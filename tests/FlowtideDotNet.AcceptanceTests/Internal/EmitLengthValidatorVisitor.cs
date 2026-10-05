@@ -47,6 +47,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return base.VisitFilterRelation(filterRelation, state);
         }
 
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            if (checkRelation.EmitSet && checkRelation.Input.EmitSet &&
+                checkRelation.Emit.Count > checkRelation.Input.Emit.Count)
+            {
+                Assert.Fail();
+            }
+            return base.VisitCheckRelation(checkRelation, state);
+        }
+
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)
         {
             if (joinRelation.OutputLength > joinRelation.Left.OutputLength + joinRelation.Right.OutputLength)

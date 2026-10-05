@@ -656,6 +656,183 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        [Fact]
+        public void TestSerializeCheckRelationWithGuardsTagsAndEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = new ScalarFunction()
+                                {
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>() { CheckField(0), CheckField(1) }
+                                },
+                                Message = "a {a} differs from b {b}",
+                                Tags = new List<CheckTag>()
+                                {
+                                    new CheckTag() { Key = "a", Value = CheckField(0) },
+                                    new CheckTag() { Key = "b", Value = CheckField(1) }
+                                },
+                                Guards = new List<CheckGuard>()
+                                {
+                                    new CheckGuard() { Expression = CheckField(0), Kind = CheckGuardKind.IsTrue },
+                                    new CheckGuard() { Expression = new BoolLiteral() { Value = false }, Kind = CheckGuardKind.IsNotTrue },
+                                    new CheckGuard() { Expression = CheckField(1), Kind = CheckGuardKind.IsNull }
+                                }
+                            },
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(1),
+                                Message = "second",
+                                Tags = new List<CheckTag>(),
+                                Guards = new List<CheckGuard>()
+                            }
+                        },
+                        Emit = new List<int>() { 1, 0 }
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestSerializeCheckRelationWithoutEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = "failed",
+                                Tags = new List<CheckTag>(),
+                                Guards = new List<CheckGuard>()
+                                {
+                                    new CheckGuard() { Expression = CheckField(1), Kind = CheckGuardKind.IsTrue }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            Assert.Contains("type.googleapis.com/flowtide.CheckRelation", json);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestSerializeCheckRelationGuardKindChangesJson()
+        {
+            Plan CreatePlan(CheckGuardKind kind) => new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = "failed",
+                                Tags = new List<CheckTag>(),
+                                Guards = new List<CheckGuard>()
+                                {
+                                    new CheckGuard() { Expression = CheckField(1), Kind = kind }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var isTrue = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsTrue));
+            var isNotTrue = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsNotTrue));
+            var isNull = SubstraitSerializer.SerializeToJson(CreatePlan(CheckGuardKind.IsNull));
+            Assert.NotEqual(isTrue, isNotTrue);
+            Assert.NotEqual(isTrue, isNull);
+            Assert.NotEqual(isNotTrue, isNull);
+        }
+
+        [Fact]
+        public void TestSerializeCheckRelationMessageIsAStringTemplate()
+        {
+            Plan CreatePlan(string message) => new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = message,
+                                Tags = new List<CheckTag>() { new CheckTag() { Key = "a", Value = CheckField(0) } },
+                                Guards = new List<CheckGuard>()
+                            }
+                        }
+                    }
+                }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(CreatePlan("Value {a} is invalid"));
+            Assert.Contains("\"message\": \"Value {a} is invalid\"", json);
+            Assert.NotEqual(json, SubstraitSerializer.SerializeToJson(CreatePlan("Value {a} is wrong")));
+
+            var deserialized = SubstraitDeserializer.DeserializeFromJson(json);
+            var check = Assert.Single(Assert.IsType<CheckRelation>(Assert.Single(deserialized.Relations)).Checks);
+            Assert.Equal("Value {a} is invalid", check.Message);
+
+            AssertPlanCanSerializeDeserialize(CreatePlan(""));
+        }
+
+        private static ReadRelation CheckInputRead()
+        {
+            return new ReadRelation()
+            {
+                BaseSchema = new Type.NamedStruct()
+                {
+                    Names = ["a", "b"]
+                },
+                NamedTable = new Type.NamedTable()
+                {
+                    Names = ["t"]
+                }
+            };
+        }
+
+        private static DirectFieldReference CheckField(int index)
+        {
+            return new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment()
+                {
+                    Field = index
+                }
+            };
+        }
+
 
         /// <summary>
         /// This will add a named struct type in the write relation.

@@ -322,18 +322,24 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Subscribes an <see cref="ICheckFailureListener"/> to receive a notification each time
-        /// a data quality check within the stream fails.
+        /// Subscribes an <see cref="ICheckFailureListener"/> to the check issues of the committed state.
         /// </summary>
-        /// <remarks>
-        /// Multiple listeners can be registered. Exceptions thrown by a listener are swallowed to
-        /// ensure they cannot disrupt the stream.
-        /// </remarks>
         /// <param name="listener">The listener to register.</param>
         /// <returns>This builder instance for method chaining.</returns>
         public DataflowStreamBuilder AddCheckFailureListener(ICheckFailureListener listener)
         {
             _streamNotificationReceiver.AddCheckFailureListener(listener);
+            return this;
+        }
+
+        /// <summary>
+        /// Subscribes an <see cref="ICheckStatusListener"/> to the pass or fail status of every check.
+        /// </summary>
+        /// <param name="listener">The listener to register.</param>
+        /// <returns>This builder instance for method chaining.</returns>
+        public DataflowStreamBuilder AddCheckStatusListener(ICheckStatusListener listener)
+        {
+            _streamNotificationReceiver.AddCheckStatusListener(listener);
             return this;
         }
 

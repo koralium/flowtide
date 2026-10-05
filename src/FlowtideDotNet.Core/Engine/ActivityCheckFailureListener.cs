@@ -11,25 +11,41 @@
 // limitations under the License.
 
 using FlowtideDotNet.Base.Engine;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlowtideDotNet.Core.Engine
 {
     internal class ActivityCheckFailureListener : ICheckFailureListener
     {
         private static readonly ActivitySource _activitySource = new ActivitySource("FlowtideDotNet.CheckFailures");
+
+        /// <inheritdoc/>
         public void OnCheckFailure(ref readonly CheckFailureNotification notification)
         {
-            var activity = _activitySource.StartActivity("CheckFailure", ActivityKind.Internal);
+            ReportActivity("CheckFailure", "Check failed with message: ", in notification);
+        }
+
+        /// <inheritdoc/>
+        public void OnCheckResolved(ref readonly CheckFailureNotification notification)
+        {
+            ReportActivity("CheckResolved", "Check resolved with message: ", in notification);
+        }
+
+        /// <inheritdoc/>
+        public void OnCheckReset(ref readonly CheckResetNotification notification)
+        {
+        }
+
+        private static void ReportActivity(string name, string displayPrefix, ref readonly CheckFailureNotification notification)
+        {
+            var activity = _activitySource.StartActivity(name, ActivityKind.Internal);
             if (activity != null)
             {
-                activity.DisplayName = $"Check failed with message: {notification.Message}";
-                activity.SetTag("Message", notification.Message);
+                var message = CheckNameRenderer.Render(notification.CheckName, notification.Tags);
+                activity.DisplayName = displayPrefix + message;
+                activity.SetTag("CheckId", notification.CheckId);
+                activity.SetTag("CheckName", notification.CheckName);
+                activity.SetTag("Message", message);
                 foreach (var tag in notification.Tags)
                 {
                     activity.SetTag(tag.Key, tag.Value);

@@ -56,6 +56,12 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
             return filterRelation;
         }
 
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, bool state)
+        {
+            Visit(checkRelation.Input, state);
+            return checkRelation;
+        }
+
         public override Relation VisitIterationReferenceReadRelation(IterationReferenceReadRelation iterationReferenceReadRelation, bool state)
         {
             return iterationReferenceReadRelation;

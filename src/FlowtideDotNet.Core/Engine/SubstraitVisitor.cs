@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Buffer;
+using FlowtideDotNet.Core.Operators.Check;
 using FlowtideDotNet.Core.Operators.Filter;
 using FlowtideDotNet.Core.Operators.Iteration;
 using FlowtideDotNet.Core.Operators.Join.MergeJoin;
@@ -664,6 +665,33 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFetchRelation(FetchRelation fetchRelation, ITargetBlock<IStreamEvent>? state)
         {
             throw new NotSupportedException("Fetch operation (top or limit) is not supported without an order by");
+        }
+
+        public override IStreamVertex VisitCheckRelation(CheckRelation checkRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (!_useColumnStore)
+            {
+                throw new NotSupportedException("Check functions are only supported with the column store.");
+            }
+
+            var id = _operatorId++;
+
+            // Prefix keeps check ids unique across substreams
+            var prefix = _distributedOptions != null ? $"{_distributedOptions.SubstreamName}/" : string.Empty;
+            var checkIds = new string[checkRelation.Checks.Count];
+            for (int i = 0; i < checkIds.Length; i++)
+            {
+                checkIds[i] = $"{prefix}{id}:{i}";
+            }
+
+            var op = new ColumnCheckOperator(checkRelation, functionsRegister, dataflowStreamBuilder.StreamNotificationReceiver, checkIds, DefaultBlockOptions);
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+            checkRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+            return op;
         }
 
         public override IStreamVertex VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, ITargetBlock<IStreamEvent>? state)

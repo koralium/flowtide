@@ -1420,7 +1420,78 @@ namespace FlowtideDotNet.Substrait
                         Emit = GetEmit(extensionSingle.Common)
                     };
                 }
+                else if (typeName == CustomProtobuf.CheckRelation.Descriptor.FullName)
+                {
+                    var checkRel = extensionSingle.Detail.Unpack<CustomProtobuf.CheckRelation>();
+                    var checks = new List<CheckDefinition>(checkRel.Checks.Count);
+                    foreach (var check in checkRel.Checks)
+                    {
+                        checks.Add(VisitCheckDefinition(check));
+                    }
+                    return new CheckRelation()
+                    {
+                        Input = input,
+                        Checks = checks,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                }
                 throw new NotImplementedException();
+            }
+
+            private CheckDefinition VisitCheckDefinition(CustomProtobuf.CheckRelation.Types.Check check)
+            {
+                if (check.Condition == null)
+                {
+                    throw new InvalidOperationException("Check must have a condition");
+                }
+                var tags = new List<CheckTag>(check.Tags.Count);
+                foreach (var tag in check.Tags)
+                {
+                    if (tag.Value == null)
+                    {
+                        throw new InvalidOperationException($"Check tag '{tag.Key}' must have a value");
+                    }
+                    tags.Add(new CheckTag()
+                    {
+                        Key = tag.Key,
+                        Value = expressionDeserializer.VisitExpression(tag.Value)
+                    });
+                }
+                var guards = new List<CheckGuard>(check.Guards.Count);
+                foreach (var guard in check.Guards)
+                {
+                    if (guard.Expression == null)
+                    {
+                        throw new InvalidOperationException("Check guard must have an expression");
+                    }
+                    guards.Add(new CheckGuard()
+                    {
+                        Expression = expressionDeserializer.VisitExpression(guard.Expression),
+                        Kind = GetCheckGuardKind(guard.Kind)
+                    });
+                }
+                return new CheckDefinition()
+                {
+                    Condition = expressionDeserializer.VisitExpression(check.Condition),
+                    Message = check.Message,
+                    Tags = tags,
+                    Guards = guards
+                };
+            }
+
+            private static CheckGuardKind GetCheckGuardKind(CustomProtobuf.CheckRelation.Types.Guard.Types.Kind kind)
+            {
+                switch (kind)
+                {
+                    case CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue:
+                        return CheckGuardKind.IsTrue;
+                    case CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue:
+                        return CheckGuardKind.IsNotTrue;
+                    case CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull:
+                        return CheckGuardKind.IsNull;
+                    default:
+                        throw new NotSupportedException($"Check guard kind {kind} is not supported.");
+                }
             }
 
             private Relation VisitAggregate(Protobuf.AggregateRel aggregateRel)

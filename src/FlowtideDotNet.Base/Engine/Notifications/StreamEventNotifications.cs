@@ -132,63 +132,118 @@ namespace FlowtideDotNet.Base.Engine
     }
 
     /// <summary>
-    /// A stack-allocated notification carrying data quality check failure information
-    /// delivered to <see cref="ICheckFailureListener"/> implementations.
+    /// A check issue delivered to <see cref="ICheckFailureListener"/>, valid only during the call.
     /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This type is a <see langword="ref struct"/> to avoid heap allocation on each check failure
-    /// and to allow its <see cref="Tags"/> field to hold a <see cref="ReadOnlySpan{T}"/>, which
-    /// itself cannot appear as a field in a non-ref-struct type.
-    /// It must not be stored or accessed beyond the duration of the
-    /// <see cref="ICheckFailureListener.OnCheckFailure"/> call in which it is received; copy any
-    /// required fields to local variables if they must outlive the call.
-    /// </para>
-    /// <para>
-    /// Instances are created internally by <c>StreamNotificationReceiver</c> each time a compiled
-    /// SQL <c>CHECK</c> expression calls <see cref="ICheckNotificationReceiver.OnCheckFailure"/>
-    /// with a failing message and diagnostic tags.
-    /// </para>
-    /// </remarks>
     public ref struct CheckFailureNotification
     {
         /// <summary>
-        /// A read-only managed reference to the name of the stream in which the check failed.
+        /// The name of the stream that runs the check.
         /// </summary>
         public readonly ref string StreamName;
 
         /// <summary>
-        /// The human-readable failure message declared in the SQL <c>CHECK</c> expression.
+        /// Identifies the check within the stream.
         /// </summary>
-        public readonly string Message;
+        public readonly string CheckId;
 
         /// <summary>
-        /// A stack-allocated span of named diagnostic key-value pairs declared as tag arguments
-        /// in the SQL <c>CHECK</c> expression.
-        /// Must not be stored or accessed after the enclosing
-        /// <see cref="ICheckFailureListener.OnCheckFailure"/> call returns.
+        /// The check's message template, its {tag} placeholders are not rendered.
+        /// </summary>
+        public readonly string CheckName;
+
+        /// <summary>
+        /// The issue tags, must not be kept after the call returns.
         /// </summary>
         public readonly ReadOnlySpan<KeyValuePair<string, object?>> Tags;
 
         /// <summary>
-        /// Initializes a new <see cref="CheckFailureNotification"/> with a reference to the
-        /// stream name, the failure message, and the associated diagnostic tags.
+        /// Creates a notification for one issue of a check.
         /// </summary>
-        /// <param name="streamName">
-        /// A <see langword="ref"/> to the stream name string held by <c>StreamNotificationReceiver</c>.
-        /// </param>
-        /// <param name="message">
-        /// The human-readable failure message from the SQL <c>CHECK</c> expression.
-        /// </param>
-        /// <param name="tags">
-        /// A stack-allocated span of key-value diagnostic tag pairs from the <c>CHECK</c> expression.
-        /// Must not be stored beyond the scope of the constructor call.
-        /// </param>
-        public CheckFailureNotification(ref string streamName, string message, ReadOnlySpan<KeyValuePair<string, object?>> tags)
+        public CheckFailureNotification(ref string streamName, string checkId, string checkName, ReadOnlySpan<KeyValuePair<string, object?>> tags)
         {
             StreamName = ref streamName;
-            Message = message;
+            CheckId = checkId;
+            CheckName = checkName;
             Tags = tags;
+        }
+    }
+
+    /// <summary>
+    /// Tells <see cref="ICheckFailureListener"/> to forget every issue of a check.
+    /// </summary>
+    public ref struct CheckResetNotification
+    {
+        /// <summary>
+        /// The name of the stream that runs the check.
+        /// </summary>
+        public readonly ref string StreamName;
+
+        /// <summary>
+        /// Identifies the check within the stream.
+        /// </summary>
+        public readonly string CheckId;
+
+        /// <summary>
+        /// The check's message template.
+        /// </summary>
+        public readonly string CheckName;
+
+        /// <summary>
+        /// Creates a reset notification for a check.
+        /// </summary>
+        public CheckResetNotification(ref string streamName, string checkId, string checkName)
+        {
+            StreamName = ref streamName;
+            CheckId = checkId;
+            CheckName = checkName;
+        }
+    }
+
+    /// <summary>
+    /// The status of a check delivered to <see cref="ICheckStatusListener"/>, valid only during the call.
+    /// </summary>
+    public ref struct CheckStatusNotification
+    {
+        /// <summary>
+        /// The name of the stream that runs the check.
+        /// </summary>
+        public readonly ref string StreamName;
+
+        /// <summary>
+        /// Identifies the check within the stream.
+        /// </summary>
+        public readonly string CheckId;
+
+        /// <summary>
+        /// The check's message template.
+        /// </summary>
+        public readonly string CheckName;
+
+        /// <summary>
+        /// The number of distinct active issues.
+        /// </summary>
+        public readonly long ActiveIssues;
+
+        /// <summary>
+        /// The number of rows that fail the check.
+        /// </summary>
+        public readonly long FailingRows;
+
+        /// <summary>
+        /// True when the check has no active issue.
+        /// </summary>
+        public readonly bool Passed => ActiveIssues == 0;
+
+        /// <summary>
+        /// Creates a status notification for a check.
+        /// </summary>
+        public CheckStatusNotification(ref string streamName, string checkId, string checkName, long activeIssues, long failingRows)
+        {
+            StreamName = ref streamName;
+            CheckId = checkId;
+            CheckName = checkName;
+            ActiveIssues = activeIssues;
+            FailingRows = failingRows;
         }
     }
 }

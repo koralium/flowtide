@@ -281,5 +281,64 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
 
             return projectRelation;
         }
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            checkRelation.Input = Visit(checkRelation.Input, state);
+
+            var replacer = new GetTimestampReplacer(checkRelation.Input.OutputLength);
+
+            foreach (var check in checkRelation.Checks)
+            {
+                check.Condition = replacer.Visit(check.Condition, state)!;
+                foreach (var tag in check.Tags)
+                {
+                    tag.Value = replacer.Visit(tag.Value, state)!;
+                }
+                foreach (var guard in check.Guards)
+                {
+                    guard.Expression = replacer.Visit(guard.Expression, state)!;
+                }
+            }
+
+            if (!replacer.ContainsGetTimestamp)
+            {
+                return checkRelation;
+            }
+
+            // Keeps the appended timestamp out of the output
+            if (!checkRelation.EmitSet)
+            {
+                List<int> emitList = new List<int>();
+                for (int i = 0; i < checkRelation.Input.OutputLength; i++)
+                {
+                    emitList.Add(i);
+                }
+                checkRelation.Emit = emitList;
+            }
+
+            checkRelation.Input = new JoinRelation()
+            {
+                Left = checkRelation.Input,
+                Right = new ReferenceRelation()
+                {
+                    ReferenceOutputLength = 1,
+                    RelationId = GetReferenceIndex()
+                },
+                Expression = new BoolLiteral() { Value = true },
+                Type = JoinType.Inner
+            };
+
+            if (planOptimizerSettings.AddBufferBlockOnGetTimestamp)
+            {
+                // Holds the output until the timestamp join is done
+                return new BufferRelation()
+                {
+                    Input = checkRelation
+                };
+            }
+
+            return checkRelation;
+        }
     }
 }

@@ -60,6 +60,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public string TestName => testName;
 
+        public string StreamName => testName.Replace("/", "_");
+
         public IReadOnlyList<User> Users => generator.Users;
 
         public IReadOnlyList<Order> Orders => generator.Orders;
@@ -311,7 +313,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
             string? version = default,
-            DistributedOptions? distributedOptions = default)
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? checkStatusListener = default)
         {
             if (stateSerializeOptions == null)
             {
@@ -410,6 +413,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 flowtideBuilder.WithCheckFailureListener(checkFailureListener);
             }
 
+            if (checkStatusListener != null)
+            {
+                flowtideBuilder.WithCheckStatusListener(checkStatusListener);
+            }
+
             if (WaitForCheckpointAfterInitialData)
             {
                 flowtideBuilder.WaitForCheckpointAfterInitialData(true);
@@ -438,9 +446,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             ICheckFailureListener? checkFailureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
             string? version = default,
-            DistributedOptions? distributedOptions = default)
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? checkStatusListener = default)
         {
-            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions);
+            await CreateStream(sql, parallelism, stateSerializeOptions, timestampInterval, pageSize, ignoreSameDataCheck, checkFailureListener, planOptimizerSettings, version, distributedOptions, checkStatusListener);
             await _stream!.StartAsync();
         }
 

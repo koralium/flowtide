@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
                     if (_context._notificationReciever != null)
                     {
-                        _context._notificationReciever.OnCheckpointComplete();
+                        _context._notificationReciever.OnCheckpointComplete(run._context._stateManager.LastCompletedCheckpointVersion);
                     }
 
                     await _context.ForEachIngressBlockAsync((key, block) =>

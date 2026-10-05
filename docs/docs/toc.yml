@@ -89,6 +89,8 @@
       href: operators/tablefunction.md
     - name: Window Operator
       href: operators/window.md
+    - name: Check Operator
+      href: operators/check.md
 - name: Expressions
   items:
     - name: Scalar Functions
