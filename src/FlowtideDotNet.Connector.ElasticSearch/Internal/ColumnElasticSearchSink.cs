@@ -14,6 +14,7 @@ using Elastic.Clients.Elasticsearch;
 using Elastic.Clients.Elasticsearch.IndexManagement;
 using Elastic.Clients.Elasticsearch.Mapping;
 using Elastic.Transport;
+using Elastic.Transport.Products.Elasticsearch;
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Metrics;
 using FlowtideDotNet.Connector.ElasticSearch.Exceptions;
@@ -99,18 +100,29 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
         {
             var client = new ElasticsearchClient(m_elasticsearchOptions.ConnectionSettings());
 
-            var existingIndex = await client.Indices.GetAsync(m_indexName);
-            IndexState? indexState = default;
-            Properties? properties = null;
+            var getResponse = await client.Indices.GetAsync(m_indexName).ConfigureAwait(false);
+            bool indexExists;
+            Properties properties;
 
-            if (existingIndex != null && existingIndex.IsValidResponse && existingIndex.Indices.TryGetValue(m_indexName, out indexState) &&
-                indexState.Mappings != null)
+            // Check status first, a 404 without a body counts as valid
+            if (getResponse.ApiCallDetails?.HttpStatusCode == 404)
             {
-                properties = indexState.Mappings.Properties ?? new Properties();
+                indexExists = false;
+                properties = new Properties();
+            }
+            else if (getResponse.IsValidResponse && getResponse.Indices.TryGetValue(m_indexName, out var indexState))
+            {
+                indexExists = true;
+                properties = indexState.Mappings?.Properties ?? new Properties();
+            }
+            else if (getResponse.IsValidResponse)
+            {
+                // Aliases and data streams are keyed by the concrete index name
+                throw new NotSupportedException($"'{m_indexName}' is an alias or data stream, the Elasticsearch sink must write to a concrete index.");
             }
             else
             {
-                properties = new Properties();
+                throw CreateResponseException("get index", getResponse);
             }
 
             if (m_elasticsearchOptions.CustomMappings != null)
@@ -118,24 +130,60 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Internal
                 m_elasticsearchOptions.CustomMappings(properties);
             }
 
-            if (indexState == null)
+            if (!indexExists)
             {
-                var response = await client.Indices.CreateAsync(m_indexName);
-                if (!response.IsValidResponse)
+                // Mappings are sent with the settings so they can use custom analyzers
+                var request = new CreateIndexRequest(m_indexName)
                 {
-                    throw new FlowtideElasticsearchResponseException(response);
+                    Mappings = new TypeMapping()
+                    {
+                        Properties = properties
+                    }
+                };
+
+                if (m_elasticsearchOptions.OnIndexCreation != null)
+                {
+                    await m_elasticsearchOptions.OnIndexCreation(new FlowtideElasticsearchIndexCreationContext(client, m_writeRelation, m_indexName, request)).ConfigureAwait(false);
+
+                    // Keep custom mappings if the hook replaced the type mapping
+                    request.Mappings ??= new TypeMapping();
+                    request.Mappings.Properties ??= properties;
+                    request.Index = m_indexName;
                 }
+
+                var createResponse = await client.Indices.CreateAsync(request).ConfigureAwait(false);
+
+                if (createResponse.IsValidResponse)
+                {
+                    return;
+                }
+
+                // Created by another process, only apply the mappings
+                if (createResponse.ElasticsearchServerError?.Error?.Type != "resource_already_exists_exception")
+                {
+                    throw CreateResponseException("create index", createResponse);
+                }
+                properties = request.Mappings?.Properties ?? properties;
             }
 
             var mapResponse = await client.Indices.PutMappingAsync(new PutMappingRequest(m_indexName)
             {
                 Properties = properties
-            });
+            }).ConfigureAwait(false);
 
             if (!mapResponse.IsValidResponse)
             {
-                throw new FlowtideElasticsearchResponseException(mapResponse);
+                throw CreateResponseException("put mapping", mapResponse);
             }
+        }
+
+        private FlowtideElasticsearchResponseException CreateResponseException(string operation, ElasticsearchResponse response)
+        {
+            var error = response.ElasticsearchServerError?.Error;
+            response.TryGetOriginalException(out var originalException);
+            var status = response.ApiCallDetails?.HttpStatusCode?.ToString() ?? "no response";
+            var detail = error != null ? $"{error.Type} {error.Reason}" : originalException?.Message;
+            return new FlowtideElasticsearchResponseException(response, $"Elasticsearch {operation} failed for index '{m_indexName}': {status} {detail}", originalException);
         }
 
         protected override Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
