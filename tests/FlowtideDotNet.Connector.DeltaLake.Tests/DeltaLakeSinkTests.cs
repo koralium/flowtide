@@ -1058,5 +1058,295 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.Equal(149, rowCount);
             }
         }
+
+        [Fact]
+        public async Task TestSinkCheckpointing()
+        {
+            var storage = Files.Of.InternalMemory("./test_checkpointing");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestSinkCheckpointing), storage, options =>
+            {
+                options.CheckpointInterval = 2; // Checkpoint every 2 commits
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            // Version 0: Create Table (and insert some data if it runs immediately)
+            // Wait for version 0
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // Trigger some commits to get versions 1, 2, etc.
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+            stream.Generate(5);
+            await WaitForVersion(storage, "test", stream, 1);
+
+            // Commit 2: this should trigger checkpointing!
+            firstUser = stream.Users.Last();
+            stream.DeleteUser(firstUser);
+            await WaitForVersion(storage, "test", stream, 2);
+
+            // Verify that checkpoint file exists in storage!
+            var checkpointExists = await storage.Exists("/test/_delta_log/00000000000000000002.checkpoint.parquet");
+            Assert.True(checkpointExists, "Checkpoint parquet file should exist");
+
+            var lastCheckpointExists = await storage.Exists("/test/_delta_log/_last_checkpoint");
+            Assert.True(lastCheckpointExists, "_last_checkpoint file should exist");
+
+            // Read the _last_checkpoint file and verify content
+            using var lastCheckpointStream = await storage.OpenRead("/test/_delta_log/_last_checkpoint");
+            using var lastCheckpointReader = new StreamReader(lastCheckpointStream!);
+            var lastCheckpointContent = await lastCheckpointReader.ReadToEndAsync();
+            var lastCheckpointInfo = JsonSerializer.Deserialize<LastCheckpointInfo>(lastCheckpointContent);
+            Assert.NotNull(lastCheckpointInfo);
+            Assert.Equal(2, lastCheckpointInfo.Version);
+            Assert.True(lastCheckpointInfo.Size > 0);
+
+            // Read the table using DeltaTransactionReader.ReadTable to verify it can read checkpointed table
+            var table = await DeltaTransactionReader.ReadTable(storage, "test");
+            Assert.NotNull(table);
+            Assert.Equal(2, table.Version);
+
+            // Clean up stream
+            await stream.DisposeAsync();
+        }
+
+        [Fact]
+        public async Task TestDuckDbScanWithCheckpoint()
+        {
+            var tempPath = Path.Join(Directory.GetCurrentDirectory(), "test_duckdb_checkpoint_" + Guid.NewGuid().ToString("N"));
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, true);
+                }
+                catch (Exception)
+                {
+                }
+            }
+
+            var storage = Stowage.Files.Of.LocalDisk(tempPath);
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestDuckDbScanWithCheckpoint), storage, options =>
+            {
+                options.CheckpointInterval = 2; // Checkpoint every 2 commits
+            });
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            var firstUser = stream.Users[0];
+            stream.DeleteUser(firstUser);
+            stream.Generate(5);
+            await WaitForVersion(storage, "test", stream, 1);
+
+            firstUser = stream.Users.Last();
+            stream.DeleteUser(firstUser);
+            await WaitForVersion(storage, "test", stream, 2);
+
+            await stream.DisposeAsync();
+
+            using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
+            conn.Open();
+
+            var extensionsDir = Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/");
+            Directory.CreateDirectory(extensionsDir);
+
+            using (var cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var cmd = conn.CreateCommand())
+            {
+                var tableFullPath = Path.GetFullPath(Path.Join(tempPath, "test")).Replace("\\", "/");
+                cmd.CommandText = $"SELECT * FROM delta_scan('{tableFullPath}')";
+
+                using var reader = cmd.ExecuteReader();
+                int rowCount = 0;
+                while (reader.Read())
+                {
+                    rowCount++;
+                }
+
+                Assert.Equal(13, rowCount);
+            }
+
+            if (Directory.Exists(tempPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPath, true);
+                }
+                catch (Exception)
+                {
+                }
+            }
+        }
+
+        [Fact]
+        public async Task TestStagedCommitHiddenUntilPublished()
+        {
+            var storage = Files.Of.InternalMemory("./test_staged_commit");
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+            var schemaStruct = new StructType(new List<StructField>()
+            {
+                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
+            });
+
+            var stagedFile = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
+                    }
+                }
+            });
+
+            Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
+
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            // Second publish is a no-op, as after a restart.
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+
+            Assert.False(await storage.Exists($"/staged/_delta_log/{stagedFile}"));
+            var table = await DeltaTransactionReader.ReadTable(storage, "staged");
+            Assert.NotNull(table);
+            Assert.Equal(0, table.Version);
+        }
+
+        [Fact]
+        public async Task TestCheckpointKeepsAddFieldsAndLongCardinality()
+        {
+            var storage = Files.Of.InternalMemory("./test_checkpoint_fields");
+
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new TypeConverter());
+            var schemaStruct = new StructType(new List<StructField>()
+            {
+                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
+            });
+
+            await DeltaTransactionWriter.WriteCommit(storage, "fields", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
+                    {
+                        Id = Guid.NewGuid().ToString(),
+                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions),
+                        Format = new Internal.Delta.Actions.DeltaMetadataFormat() { Provider = "parquet", Options = new Dictionary<string, string>() },
+                        PartitionColumns = new List<string>(),
+                        Configuration = new Dictionary<string, string>(),
+                        CreatedTime = 1
+                    }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction()
+                    {
+                        MinReaderVersion = 3,
+                        MinWriterVersion = 7,
+                        ReaderFeatures = new List<string>() { "deletionVectors" },
+                        WriterFeatures = new List<string>() { "deletionVectors" }
+                    }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Add = new Internal.Delta.Actions.DeltaAddAction()
+                    {
+                        Path = "a.parquet",
+                        PartitionValues = new Dictionary<string, string>(),
+                        Size = 1,
+                        ModificationTime = 1,
+                        DataChange = true,
+                        BaseRowId = 42,
+                        DefaultRowCommitVersion = 7,
+                        ClusteringProvider = "liquid",
+                        DeletionVector = new Internal.Delta.DeletionVectors.DeletionVector()
+                        {
+                            StorageType = "p",
+                            PathOrInlineDv = "dv.bin",
+                            Offset = 1,
+                            SizeInBytes = 10,
+                            Cardinality = 3_000_000_000
+                        }
+                    }
+                }
+            });
+
+            var table = await DeltaTransactionReader.ReadTable(storage, "fields");
+            Assert.NotNull(table);
+            await DeltaCheckpointWriter.WriteCheckpoint(storage, "fields", table);
+
+            var checkpointFile = (await DeltaTransactionReader.ReadTransactionLog(storage, "fields")).Single(x => x.IsCheckpoint);
+            var checkpointActions = await new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry);
+            var add = checkpointActions.Single(x => x.Add != null).Add!;
+
+            Assert.Equal(42, add.BaseRowId);
+            Assert.Equal(7, add.DefaultRowCommitVersion);
+            Assert.Equal("liquid", add.ClusteringProvider);
+            Assert.Equal(3_000_000_000, add.DeletionVector!.Cardinality);
+        }
+
+        [Fact]
+        public async Task TestCrashBeforeCommitVersionPublishesOnRestart()
+        {
+            var storage = new CrashOnceFileStorage(Files.Of.InternalMemory("./test_crash_commit"), "00000000000000000001.json");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage);
+
+            stream.Generate(10);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING,
+                    LastName STRING,
+                    NullableString STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name, lastName, NullableString FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            stream.Generate(5);
+
+            // First publish of version 1 crashes, the restart publishes it.
+            await WaitForVersion(storage, "test", stream, 1);
+            Assert.Equal(1, storage.Crashes);
+
+            await AssertResult(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage, "test", 2, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+        }
     }
 }
