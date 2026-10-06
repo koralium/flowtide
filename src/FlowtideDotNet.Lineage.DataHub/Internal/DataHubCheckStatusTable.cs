@@ -235,10 +235,21 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             var urn = assertion.Builder.Urn;
             _published.TryGetValue(urn, out var last);
             // An obsolete snapshot can miss the parts of a rebuild, it only serves what was published.
-            if (version != _version || assertion.GetResult(GetLocked) is not DataHubAssertionResult result)
+            if (version != _version)
             {
                 return last;
             }
+            // The priority resolver can answer differently after a rebuild, the result keeps its time.
+            if (last != null && last.Priority != assertion.Priority)
+            {
+                last = last with { Priority = assertion.Priority };
+                _published[urn] = last;
+            }
+            if (assertion.GetResult(GetLocked) is not DataHubAssertionResult computed)
+            {
+                return last;
+            }
+            var result = computed with { Priority = assertion.Priority };
             if (last != null &&
                 (result.TimestampMillis <= last.TimestampMillis ||
                 (last.State == result.State && last.ActiveIssues == result.ActiveIssues && last.FailingRows == result.FailingRows)))

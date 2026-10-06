@@ -189,10 +189,10 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
         }
 
         [Theory]
-        [InlineData(CheckState.NotEvaluated, "SUCCESS", 0L, 0L)]
-        [InlineData(CheckState.Passed, "SUCCESS", 0L, 0L)]
-        [InlineData(CheckState.Failed, "FAILURE", 2L, 5L)]
-        public void StatusIsServedAsARunEvent(CheckState state, string type, long activeIssues, long failingRows)
+        [InlineData(CheckState.NotEvaluated, "SUCCESS", 0L, 0L, "")]
+        [InlineData(CheckState.Passed, "SUCCESS", 0L, 0L, "")]
+        [InlineData(CheckState.Failed, "FAILURE", 2L, 5L, "'severity':'MEDIUM',")]
+        public void StatusIsServedAsARunEvent(CheckState state, string type, long activeIssues, long failingRows, string severity)
         {
             var store = Store(new ManualClock());
             var a = store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
@@ -201,8 +201,58 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             store.RecordCheckStatus(a, "1:0", state, activeIssues, failingRows);
 
             Assert.Equal(
-                Json($"{{'timestampMillis':{Start.ToUnixTimeMilliseconds()},'runId':'a','asserteeUrn':'{DatasetT}','status':'COMPLETE','result':{{'type':'{type}','unexpectedCount':{failingRows},'nativeResults':{{'activeIssues':'{activeIssues}','failingRows':'{failingRows}'}}}},'assertionUrn':'{urn}','partitionSpec':{{'type':'FULL_TABLE','partition':'FULL_TABLE_SNAPSHOT'}}}}"),
+                Json($"{{'timestampMillis':{Start.ToUnixTimeMilliseconds()},'runId':'a','asserteeUrn':'{DatasetT}','status':'COMPLETE','result':{{'type':'{type}',{severity}'unexpectedCount':{failingRows},'nativeResults':{{'activeIssues':'{activeIssues}','failingRows':'{failingRows}'}}}},'assertionUrn':'{urn}','partitionSpec':{{'type':'FULL_TABLE','partition':'FULL_TABLE_SNAPSHOT'}}}}"),
                 RunEvent(store, urn).GetRawText());
+        }
+
+        // DataHub has three severities, so critical and high incidents both fail as high.
+        [Theory]
+        [InlineData(DataHubIncidentPriority.Critical, "HIGH")]
+        [InlineData(DataHubIncidentPriority.High, "HIGH")]
+        [InlineData(DataHubIncidentPriority.Medium, "MEDIUM")]
+        [InlineData(DataHubIncidentPriority.Low, "LOW")]
+        public void FailureSeverityFollowsThePriority(DataHubIncidentPriority priority, string severity)
+        {
+            var store = Store(new ManualClock(), o => o.IncidentPriority = priority);
+            var a = store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
+            var urn = AssertionUrn("a", DatasetT, "x is negative", 0);
+
+            store.RecordCheckStatus(a, "1:0", CheckState.Failed, 1, 1);
+
+            Assert.Equal(severity, RunEvent(store, urn).GetProperty("result").GetProperty("severity").GetString());
+        }
+
+        [Fact]
+        public void FailureSeverityFollowsTheResolverWithoutIncidents()
+        {
+            var store = Store(new ManualClock(), o => o.IncidentPriorityResolver = context => context.CheckMessage == "y is null" ? DataHubIncidentPriority.Low : null);
+            var a = store.Register(Lineage([Check("1:0", "x is negative", ["t"]), Check("2:0", "y is null", ["t"])]), "a");
+            store.RecordCheckStatus(a, "1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(a, "2:0", CheckState.Failed, 1, 1);
+
+            var x = RunEvent(store, AssertionUrn("a", DatasetT, "x is negative", 0)).GetProperty("result").GetProperty("severity").GetString();
+            var y = RunEvent(store, AssertionUrn("a", DatasetT, "y is null", 0)).GetProperty("result").GetProperty("severity").GetString();
+
+            Assert.Equal(("MEDIUM", "LOW"), (x, y));
+        }
+
+        [Fact]
+        public void ObsoleteSnapshotServesThePublishedSeverity()
+        {
+            var priority = DataHubIncidentPriority.Low;
+            var store = Store(new ManualClock(), o => o.IncidentPriorityResolver = _ => priority);
+            var first = store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
+            var urn = AssertionUrn("a", DatasetT, "x is negative", 0);
+            store.RecordCheckStatus(first, "1:0", CheckState.Failed, 1, 1);
+            Assert.Equal("LOW", RunEvent(store, urn).GetProperty("result").GetProperty("severity").GetString());
+            var obsolete = store.GetSnapshot();
+
+            priority = DataHubIncidentPriority.Critical;
+            store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
+            Assert.Equal("HIGH", RunEvent(store, urn).GetProperty("result").GetProperty("severity").GetString());
+
+            Assert.True(obsolete.TryGetEntity(urn, out var json));
+            Assert.Equal("HIGH", JsonDocument.Parse(json).RootElement.GetProperty("aspects").GetProperty("assertionRunEvent").GetProperty("value").GetProperty("result").GetProperty("severity").GetString());
         }
 
         [Fact]
