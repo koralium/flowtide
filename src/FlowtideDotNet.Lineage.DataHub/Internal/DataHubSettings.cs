@@ -43,7 +43,12 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             Func<DataHubDatasetContext, DataHubDataset?>? datasetResolver,
             Func<DataHubEntityContext, IEnumerable<DataHubAspect>?>? aspectProvider,
             bool includePlatformInfo,
-            string? platformLogoUrl)
+            string? platformLogoUrl,
+            bool includeChecks,
+            bool raiseIncidents,
+            DataHubIncidentPriority incidentPriority,
+            Func<DataHubIncidentContext, DataHubIncidentPriority?>? incidentPriorityResolver,
+            bool includeRuns)
         {
             Env = env;
             ExcludedNamespaces = excludedNamespaces;
@@ -55,6 +60,11 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             AspectProvider = aspectProvider;
             IncludePlatformInfo = includePlatformInfo;
             PlatformLogoUrl = platformLogoUrl;
+            IncludeChecks = includeChecks;
+            RaiseIncidents = raiseIncidents;
+            IncidentPriority = incidentPriority;
+            IncidentPriorityResolver = incidentPriorityResolver;
+            IncludeRuns = includeRuns;
         }
 
         public string Env { get; }
@@ -77,9 +87,28 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
 
         public string? PlatformLogoUrl { get; }
 
+        public bool IncludeChecks { get; }
+
+        public bool RaiseIncidents { get; }
+
+        public DataHubIncidentPriority IncidentPriority { get; }
+
+        public Func<DataHubIncidentContext, DataHubIncidentPriority?>? IncidentPriorityResolver { get; }
+
+        public bool IncludeRuns { get; }
+
         public static DataHubSettings Create(DataHubLineageOptions options)
         {
             ArgumentNullException.ThrowIfNull(options);
+            if (options.RaiseIncidents && !options.IncludeChecks)
+            {
+                throw new ArgumentException("RaiseIncidents needs IncludeChecks, incidents follow the check assertions.", nameof(options));
+            }
+            // DataHub accepts any integer but shows no priority for one outside 0 to 3.
+            if (!Enum.IsDefined(options.IncidentPriority))
+            {
+                throw new ArgumentException($"{options.IncidentPriority} is not a DataHubIncidentPriority.", nameof(options));
+            }
             var mappings = options.Namespaces.ToFrozenDictionary(
                 x => x.Key,
                 x => new DataHubNamespaceMapping(
@@ -102,7 +131,12 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 options.DatasetResolver,
                 options.AspectProvider,
                 options.IncludePlatformInfo,
-                string.IsNullOrWhiteSpace(options.PlatformLogoUrl) ? null : options.PlatformLogoUrl);
+                string.IsNullOrWhiteSpace(options.PlatformLogoUrl) ? null : options.PlatformLogoUrl,
+                options.IncludeChecks,
+                options.RaiseIncidents,
+                options.IncidentPriority,
+                options.IncidentPriorityResolver,
+                options.IncludeRuns);
         }
 
         // DataHub rejects aspects with an unknown FabricType.

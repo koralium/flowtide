@@ -455,8 +455,16 @@ namespace FlowtideDotNet.Core.Engine
             var stream = dataflowStreamBuilder.Build();
 
             // Only a successful build reaches the listeners.
-            if (lineage != null)
+            if (lineage != null && _lineageListeners.Count > 0)
             {
+                try
+                {
+                    lineage = lineage.WithChecks(StreamLineageCheckExtractor.Extract(_plan, _connectorManager!, lineage, visitor.BuiltChecks, _distributedOptions != null));
+                }
+                catch (Exception ex)
+                {
+                    lineageLogger.LogError(ex, "Failed to extract the checks of stream '{StreamName}', the lineage has no checks for this build.", _streamName);
+                }
                 var logicalStreamName = LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName);
                 foreach (var listener in _lineageListeners)
                 {

@@ -27,7 +27,18 @@ namespace FlowtideDotNet.Lineage.DataHub
         {
             ArgumentNullException.ThrowIfNull(builder);
             ArgumentNullException.ThrowIfNull(store);
-            return builder.AddLineageListener(new DataHubLineageListener(store));
+            var listener = new DataHubLineageListener(store);
+            builder.AddLineageListener(listener);
+            if (store.IncludeChecks)
+            {
+                builder.WithCheckStatusListener(listener);
+            }
+            if (store.IncludeRuns)
+            {
+                builder.WithStateChangeListener(listener);
+                builder.WithFailureListener(listener);
+            }
+            return builder;
         }
     }
 }

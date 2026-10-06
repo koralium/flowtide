@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace FlowtideDotNet.Lineage.DataHub.Internal
@@ -44,6 +46,30 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
         public static string DataJob(string flowUrn, string jobId)
         {
             return $"urn:li:dataJob:({flowUrn},{Encode(jobId)})";
+        }
+
+        // Partition copies of a check share the urn, checks with the same message on one dataset differ by ordinal.
+        public static string Assertion(string streamName, string datasetUrn, string message, int ordinal)
+        {
+            return "urn:li:assertion:" + Hash(string.Join('\u001f', streamName, datasetUrn, message, ordinal.ToString(CultureInfo.InvariantCulture)));
+        }
+
+        // One incident per assertion, so it can be resolved after any restart.
+        public static string Incident(string assertionUrn)
+        {
+            return "urn:li:incident:" + Hash(assertionUrn);
+        }
+
+        // Fixed per parent and substream, so the next process serves the same run.
+        public static string DataProcessInstance(string parentUrn, string? substreamName)
+        {
+            return "urn:li:dataProcessInstance:" + Hash(string.Join('\u001f', Orchestrator, parentUrn, substreamName ?? string.Empty));
+        }
+
+        // 128 bits, so distinct inputs never share a hash.
+        public static string Hash(string value)
+        {
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)), 0, 16).ToLowerInvariant();
         }
 
         public static string SchemaField(string datasetUrn, string fieldPath)

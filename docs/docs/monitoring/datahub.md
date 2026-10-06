@@ -11,6 +11,8 @@ The lineage arrives as native DataHub metadata, so no SQL is parsed and every da
 * Every table a stream writes becomes a **data job** in that flow, with the tables it reads as inputs and column lineage between them.
 * Every table read or written becomes a **dataset** with a schema, unless turned off.
 * The `flowtide` **data platform** gets a display name and a logo, unless turned off.
+* Every [check](../expressions/scalarfunctions/check.md) becomes an **assertion** on the datasets it guards, with its latest status, unless turned off.
+* Every data job gets a **run** per stream, or per substream of a distributed stream, with its current state, unless turned off.
 
 Install the NuGet package `FlowtideDotNet.Lineage.DataHub`. Everything below is in the namespace `FlowtideDotNet.Lineage.DataHub`.
 
@@ -19,23 +21,21 @@ Install the NuGet package `FlowtideDotNet.Lineage.DataHub`. Everything below is 
 Add the following code to your *Program.cs*:
 
 ```csharp
-builder.Services.AddFlowtideDataHubLineage(opt =>
-{
-    opt.MapNamespace("mssql", m => m.Database = "shop");
-});
-
 builder.Services.AddFlowtideStream("orders")
     // ...
-    .AddDataHubLineage();
+    .AddDataHubLineage(opt =>
+    {
+        opt.MapNamespace("mssql", m => m.Database = "shop");
+    });
 
 var app = builder.Build();
 
 app.MapFlowtideDataHubLineage("/datahub");
 ```
 
-* `AddDataHubLineage` opts a stream in. All opted-in streams share one `DataHubLineageStore`.
-* `AddFlowtideDataHubLineage` configures the store once for the host. It can be called any number of times.
-* A `DataHubLineageStore` singleton registered before these calls is used instead of the default one. Call `ExpectStream` on it yourself to get the warm-up behaviour.
+* `AddDataHubLineage` opts a stream in. All opted-in streams share one `DataHubLineageStore` and one set of options, so the options it configures apply to every stream. When several streams configure them, all callbacks run in registration order and a later one wins on a conflict.
+* `AddFlowtideDataHubLineage` configures the same options without a stream, for example in a shared startup method. It can be called any number of times.
+* A `DataHubLineageStore` singleton registered before these calls is used instead of the default one, and the options callbacks then have no effect. Call `ExpectStream` on it yourself to get the warm-up behaviour.
 
 ## Setup with FlowtideBuilder
 
@@ -143,13 +143,18 @@ app.MapFlowtideDataHubLineage().RequireAuthorization("lineage");
 | IncludeDatasetMetadata | `bool`                                                  | `true`                         | Serves status and schema for every dataset. See **Dataset Metadata**.                        |
 | WarmupTimeout          | `TimeSpan`                                              | 2 minutes                      | Longest time the routes answer 503 while expected streams are missing.                       |
 | DatasetResolver        | `Func<DataHubDatasetContext, DataHubDataset?>?`         | `null`                         | Overrides the platform, name, platform instance and environment of a table. Returning `null` keeps the default. |
-| AspectProvider         | `Func<DataHubEntityContext, IEnumerable<DataHubAspect>?>?` | `null`                      | Adds aspects to flows, jobs and datasets. See **Custom Aspects**.                            |
+| AspectProvider         | `Func<DataHubEntityContext, IEnumerable<DataHubAspect>?>?` | `null`                      | Adds aspects to flows, jobs, datasets and assertions. See **Custom Aspects**.                |
 | IncludePlatformInfo    | `bool`                                                  | `true`                         | Serves the `flowtide` data platform. See **Flowtide Platform**.                              |
 | PlatformLogoUrl        | `string?`                                               | The Flowtide logo on GitHub    | Logo of the `flowtide` data platform. `null` leaves the logo out.                            |
+| IncludeChecks          | `bool`                                                  | `true`                         | Serves checks as assertions with their latest status. See **Data Quality Checks**.           |
+| RaiseIncidents         | `bool`                                                  | `false`                        | Raises an incident while a check fails and resolves it when the check passes. Needs `IncludeChecks`. See **Incidents**. |
+| IncidentPriority       | `DataHubIncidentPriority`                               | `Medium`                       | Priority of raised incidents: `Critical`, `High`, `Medium` or `Low`.                          |
+| IncidentPriorityResolver | `Func<DataHubIncidentContext, DataHubIncidentPriority?>?` | `null`                     | Overrides the priority per check. Returning `null` keeps `IncidentPriority`.                 |
+| IncludeRuns            | `bool`                                                  | `true`                         | Serves a run on each data job per stream, or per substream, with its current state. See **Runs**. |
 
-Configuration binding adds to `ExcludedNamespaces`. `MapNamespace`, `DatasetResolver` and `AspectProvider` can only be set in code.
+Configuration binding adds to `ExcludedNamespaces`. `MapNamespace`, `DatasetResolver`, `AspectProvider` and `IncidentPriorityResolver` can only be set in code.
 
-`DatasetResolver` and `AspectProvider` run when the entities are generated, on the first request after a stream registers. One generation runs at a time, on a request thread. An exception from either fails the routes with 500 and is logged, until the next registration.
+`DatasetResolver`, `AspectProvider` and `IncidentPriorityResolver` run when the entities are generated, on the first request after a stream registers. One generation runs at a time, on a request thread. An exception from any of them, or a priority outside `DataHubIncidentPriority`, fails the routes with 500 and is logged, until the next registration.
 
 `MapNamespace(namespace, configure)` sets the following for one namespace. The namespace is matched in full first, then by the part before `://`, ignoring case:
 
@@ -216,6 +221,81 @@ opt.MapNamespace("mssql", m => m.IncludeDatasetMetadata = false);
 
 The data jobs still link to those datasets, and `AspectProvider` can still add aspects to them.
 
+## Data Quality Checks
+
+Checks made with `CHECK_VALUE` and `CHECK_TRUE` are served as DataHub assertions, listed in the **Quality** tab of a dataset.
+A check becomes one assertion for every table the rows it checks are written to. A check whose rows reach no served table has no assertion.
+
+Each assertion is a custom assertion of type `Flowtide Check` with the check message as its description.
+Its run event carries the status that Flowtide last committed:
+
+| `CheckState`   | DataHub result | `unexpectedCount` | `nativeResults`                |
+| -------------- | -------------- | ----------------- | ------------------------------ |
+| `NotEvaluated` | `SUCCESS`      | 0                 | `activeIssues`, `failingRows`  |
+| `Passed`       | `SUCCESS`      | 0                 | `activeIssues`, `failingRows`  |
+| `Failed`       | `FAILURE`      | Failing rows      | `activeIssues`, `failingRows`  |
+
+* **Checks need a running stream.** The status comes from the stream that runs the check, so an assertion has no run event until the stream has started.
+* **Only the latest status.** Each run of the ingestion source writes the status at that moment. A check that fails and passes again between two runs shows only the pass. The run event keeps its time until the status changes, so runs without a change add no new event. After a stream or substream is rebuilt, its assertions keep their last result until the rebuilt checks report.
+* **Not evaluated is a success.** A new check is `NotEvaluated` until its first checkpoint. It is served as `SUCCESS` rather than DataHub's `INIT`, because DataHub counts `INIT` as failing in the dataset health, which would mark the dataset as failing during startup.
+* **Identity.** The assertion urn is a hash of the stream name, the dataset and the check message. Edits that keep the message keep the assertion. Changing the message, or writing to another table, creates a new assertion, and the old one stays in DataHub with its last status. Give every check on a table its own message, because checks with the same message on a table are told apart only by their order in the plan.
+* **Distributed streams.** The copies of a check in each substream report as one assertion. It fails when any copy fails, and adds up the failing rows of copies that check different partitions. Copies in other processes are not seen, as described under **Limitations**.
+
+`flowtide.checkIds` in the assertion's custom properties lists the ids that check status listeners receive for the check.
+Set `IncludeChecks = false` to serve no assertions.
+
+## Incidents
+
+Open source DataHub does not raise incidents from assertion results by itself, an assertion's `assertionActions` have no effect there.
+With `RaiseIncidents` on, Flowtide raises the incident itself: while a check fails, its dataset has an active incident, and when the check passes again the incident is resolved.
+
+```csharp
+builder.Services.AddFlowtideDataHubLineage(opt =>
+{
+    opt.RaiseIncidents = true;
+    opt.IncidentPriority = DataHubIncidentPriority.High;
+    opt.IncidentPriorityResolver = ctx => ctx.CheckMessage.StartsWith("Order")
+        ? DataHubIncidentPriority.Critical
+        : null;
+});
+```
+
+* **One incident per assertion.** It is titled with the check message, has the type `Flowtide Check`, and links to its assertion. A failure after a pass opens the same incident again with a new start time.
+* **Datasets with failing checks.** An active incident makes the dataset match the **Has Active Incidents** filter, so a view can list the datasets with failing checks. The **Has Failing Assertions** filter does not work in open source DataHub for any assertion.
+* **Only checks that failed.** A check that never failed in this process has no incident.
+* **Removed checks.** When a stream is rebuilt in the same process without a check that has an incident, the incident is resolved. After a restart or redeploy without the check, Flowtide no longer knows the incident, so it stays active in DataHub; resolve or delete it there.
+* **Flowtide owns the incident.** Every run of the ingestion source writes the incident again, so a change made in DataHub to its status, stage, priority, assignees, title or description is undone on the next run while Flowtide still serves it. Deleting it in DataHub does not last either. Notes added in DataHub are kept.
+* **Restarts.** Incidents are kept in memory. If a check passes and Flowtide restarts before the next ingestion run, its incident stays active in DataHub. Resolve it there; that lasts until the check fails again. A restart while a check fails raises its incident again with new times, which undoes changes made in DataHub once.
+* **Only the latest status.** A check that fails and passes again between two runs raises no incident. Every read of the endpoint counts, so another client reading it while the check fails makes the next run write a resolved incident.
+
+To leave Flowtide's incidents out on the DataHub side, add `urn:li:incident:.*` to the source's `urn_pattern.deny` list. The list replaces the source's default deny patterns, which match nothing Flowtide serves.
+
+## Runs
+
+Runs hang under the data jobs, so the shape in DataHub is data flow, data job, run. Each data job, that is each table a stream writes, has one run for the stream. In a distributed stream it has one run per substream that writes the table, named `stream/substream`. A stream or substream that writes no table itself, for example a substream that only feeds other substreams, gets its run on the data flow instead, with no output, so its failures still show in the flow's **Runs** tab.
+
+A run lists the tables that feed its job's table and the table itself. It shows in the job's **Runs** tab, in the **Runs** tab of the table it writes, and as **Running** or **Last run** on the job in search and in the lineage graph of a flow or job. All runs of one stream or substream follow its state:
+
+| Stream state                                        | Run status                  |
+| --------------------------------------------------- | --------------------------- |
+| Starting, Running                                   | Running                     |
+| Failure                                             | Failed, with its duration   |
+| Restarted after a failure                           | Running again               |
+| Stopped, also while starting                        | Succeeded                   |
+| Stopped, but the stop reported an error             | Failed                      |
+| Stopped or deleted after a failure                  | Stays Failed                |
+| Deleted while starting or running                   | Cancelled                   |
+
+* **One run, not one per start.** The run's urn is fixed per job and substream, so a restarted or redeployed process takes the same run over, and the Runs tab shows the current state rather than a history of starts. The run's time is its first start since the stream was last built, so a rebuild, such as a new Orleans activation, moves it.
+* **The last state stays.** A stop is only seen if an ingestion run happens before the process exits, and a crashed process reports nothing. The run then shows its last pulled state, usually Running, until a process serves it again.
+* **Not started yet.** A built stream that has not started has no run.
+* **Several processes.** When a substream moves to another process, the run with the newest state wins in DataHub, so the clocks of the processes should agree. The run's time can switch between the processes' start times.
+* Runs are not drawn as nodes of their own in the lineage graph.
+* **DataHub's cleanup.** DataHub's optional cleanup of process instances, off by default, removes job runs older than its retention, including the run of a stream that has been running longer than that.
+* **OpenLineage.** Flowtide's OpenLineage reporter creates runs of its own, a new one per build. If it also sends to the same DataHub, DataHub shows both kinds of runs for the same stream, so turn one of them off.
+
+Set `IncludeRuns = false` to serve no runs.
+
 ## Flowtide Platform
 
 Flows and jobs belong to the data platform `flowtide`, which DataHub does not know.
@@ -227,7 +307,7 @@ Only the `flowtide` platform is served. Dataset platforms such as `mssql` or `ka
 
 ## Custom Aspects
 
-`AspectProvider` is called for every flow, job and dataset in the lineage and can add any DataHub aspect.
+`AspectProvider` is called for every flow, job, dataset and assertion in the lineage, not for incidents, and can add any DataHub aspect.
 The value is the aspect in the JSON form the GMS API returns, and an aspect with the same name as a built-in one replaces it:
 
 ```csharp
@@ -248,6 +328,6 @@ An aspect name the CLI does not know is dropped with a warning in the ingestion 
 * Nothing is ever removed. A stream or table that disappears stays in DataHub until it is deleted there, for example with `datahub delete`.
 * Every aspect is written in full on every run, so a dataset aspect such as `schemaMetadata` also written by another source flips between the two versions.
 * Filters pushed into a read and filters inside views are not visible in the lineage.
-* Each process serves only the substreams built in it. When substreams of one stream in different processes write the same table, their data jobs have the same urn and replace each other.
+* Each process serves only the substreams built in it. When substreams of one stream in different processes write the same table, their data jobs have the same urn and replace each other. The same goes for the assertions and incidents of a check whose copies run in different processes, and an incident then switches between active and resolved.
 * Registrations last for the life of the process.
 * A data job's id is built from its output dataset alone, as `platform.name`. Outputs in another environment than `Env`, platforms whose id contains a dot, and names containing `~` get `~env~` and a hash of the dataset urn appended. Renaming or remapping an output creates a new job and leaves the old one in DataHub.

@@ -10,9 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Substrait.Type;
 using System.Buffers;
+using System.Globalization;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Lineage.DataHub.Internal
@@ -49,7 +51,23 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             _aspects[name] = writeValue;
         }
 
-        public byte[] ToUtf8Json()
+        // Renders every aspect once, concurrent requests then share no aspect writer.
+        public void Freeze()
+        {
+            foreach (var name in _names)
+            {
+                var buffer = new ArrayBufferWriter<byte>();
+                using (var writer = new Utf8JsonWriter(buffer))
+                {
+                    _aspects[name](writer);
+                }
+                var json = buffer.WrittenSpan.ToArray();
+                _aspects[name] = w => w.WriteRawValue(json, skipInputValidation: true);
+            }
+        }
+
+        // The timeseries aspect is written per request, the builder stays unchanged.
+        public byte[] ToUtf8Json(string? timeseriesName = null, Action<Utf8JsonWriter>? writeTimeseries = null)
         {
             var buffer = new ArrayBufferWriter<byte>();
             using (var writer = new Utf8JsonWriter(buffer))
@@ -60,18 +78,27 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 writer.WriteStartObject("aspects");
                 foreach (var name in _names)
                 {
-                    writer.WriteStartObject(name);
-                    writer.WriteString("name", name);
-                    writer.WriteString("type", "VERSIONED");
-                    writer.WriteNumber("version", 0);
-                    writer.WritePropertyName("value");
-                    _aspects[name](writer);
-                    writer.WriteEndObject();
+                    WriteAspect(writer, name, "VERSIONED", _aspects[name]);
+                }
+                if (timeseriesName != null && writeTimeseries != null)
+                {
+                    WriteAspect(writer, timeseriesName, "TIMESERIES", writeTimeseries);
                 }
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
             return buffer.WrittenSpan.ToArray();
+        }
+
+        private static void WriteAspect(Utf8JsonWriter writer, string name, string type, Action<Utf8JsonWriter> writeValue)
+        {
+            writer.WriteStartObject(name);
+            writer.WriteString("name", name);
+            writer.WriteString("type", type);
+            writer.WriteNumber("version", 0);
+            writer.WritePropertyName("value");
+            writeValue(writer);
+            writer.WriteEndObject();
         }
     }
 
@@ -169,6 +196,133 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             writer.WriteEndObject();
         }
 
+        // A custom assertion like the dbt and Great Expectations integrations write.
+        public static void WriteAssertionInfo(Utf8JsonWriter writer, string datasetUrn, string description, string streamName, IEnumerable<string> checkIds)
+        {
+            writer.WriteStartObject();
+            writer.WriteStartObject("customProperties");
+            writer.WriteString("flowtide.stream", streamName);
+            writer.WriteString("flowtide.checkIds", string.Join(",", checkIds));
+            writer.WriteEndObject();
+            writer.WriteString("type", "CUSTOM");
+            writer.WriteStartObject("customAssertion");
+            writer.WriteString("type", "Flowtide Check");
+            writer.WriteString("entity", datasetUrn);
+            writer.WriteEndObject();
+            writer.WriteStartObject("source");
+            writer.WriteString("type", "EXTERNAL");
+            writer.WriteEndObject();
+            writer.WriteString("description", description);
+            writer.WriteString("entityUrn", datasetUrn);
+            writer.WriteEndObject();
+        }
+
+        // Every result carries the same fields, so an overwritten event never keeps old values.
+        public static void WriteAssertionRunEvent(Utf8JsonWriter writer, string assertionUrn, string datasetUrn, string streamName, DataHubAssertionResult result)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("timestampMillis", result.TimestampMillis);
+            writer.WriteString("runId", streamName);
+            writer.WriteString("asserteeUrn", datasetUrn);
+            writer.WriteString("status", "COMPLETE");
+            writer.WriteStartObject("result");
+            writer.WriteString("type", result.State == CheckState.Failed ? "FAILURE" : "SUCCESS");
+            writer.WriteNumber("unexpectedCount", result.FailingRows);
+            writer.WriteStartObject("nativeResults");
+            writer.WriteString("activeIssues", result.ActiveIssues.ToString(CultureInfo.InvariantCulture));
+            writer.WriteString("failingRows", result.FailingRows.ToString(CultureInfo.InvariantCulture));
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+            writer.WriteString("assertionUrn", assertionUrn);
+            writer.WriteStartObject("partitionSpec");
+            writer.WriteString("type", "FULL_TABLE");
+            writer.WriteString("partition", "FULL_TABLE_SNAPSHOT");
+            writer.WriteEndObject();
+            writer.WriteEndObject();
+        }
+
+        // DataHub's summary hook fails on a CUSTOM incident without customType.
+        public static void WriteIncidentInfo(Utf8JsonWriter writer, DataHubIncidentState incident)
+        {
+            var info = incident.Info;
+            writer.WriteStartObject();
+            writer.WriteString("type", "CUSTOM");
+            writer.WriteString("customType", "Flowtide Check");
+            writer.WriteString("title", info.Title);
+            writer.WriteString("description", $"Raised by the Flowtide check '{info.Title}' in stream '{info.StreamName}'.");
+            WriteStringArray(writer, "entities", [info.DatasetUrn]);
+            writer.WriteNumber("priority", (int)info.Priority);
+            writer.WriteStartObject("status");
+            writer.WriteString("state", incident.Active ? "ACTIVE" : "RESOLVED");
+            if (!incident.Active)
+            {
+                writer.WriteString("message", incident.CheckRemoved ? "Resolved by Flowtide, the check was removed from the stream." : "Resolved by Flowtide, the check reports no failing rows.");
+            }
+            WriteAuditStamp(writer, "lastUpdated", incident.LastUpdatedMillis);
+            writer.WriteEndObject();
+            writer.WriteStartObject("source");
+            writer.WriteString("type", "ASSERTION_FAILURE");
+            writer.WriteString("sourceUrn", info.AssertionUrn);
+            writer.WriteEndObject();
+            writer.WriteNumber("startedAt", incident.StartedAtMillis);
+            WriteAuditStamp(writer, "created", incident.CreatedMillis);
+            writer.WriteEndObject();
+        }
+
+        public static void WriteDataProcessInstanceProperties(Utf8JsonWriter writer, DataHubRunInfo run, long createdMillis)
+        {
+            writer.WriteStartObject();
+            writer.WriteStartObject("customProperties");
+            writer.WriteString("flowtide.stream", run.StreamName);
+            if (run.SubstreamName != null)
+            {
+                writer.WriteString("flowtide.substream", run.SubstreamName);
+            }
+            writer.WriteEndObject();
+            writer.WriteString("name", run.Name);
+            writer.WriteString("type", "STREAMING");
+            WriteAuditStamp(writer, "created", createdMillis);
+            writer.WriteEndObject();
+        }
+
+        // DataHub requires upstreamInstances, even when empty.
+        public static void WriteDataProcessInstanceRelationships(Utf8JsonWriter writer, string parentUrn)
+        {
+            writer.WriteStartObject();
+            writer.WriteString("parentTemplate", parentUrn);
+            WriteStringArray(writer, "upstreamInstances", []);
+            writer.WriteEndObject();
+        }
+
+        // Plain inputs and outputs fill the runs table, edges would add every run to lineage.
+        public static void WriteDataProcessInstanceDatasets(Utf8JsonWriter writer, string propertyName, IReadOnlyList<string> datasetUrns)
+        {
+            writer.WriteStartObject();
+            WriteStringArray(writer, propertyName, datasetUrns);
+            writer.WriteEndObject();
+        }
+
+        // DataHub shows a run as running until a COMPLETE event, which needs a result to show its outcome.
+        public static void WriteDataProcessInstanceRunEvent(Utf8JsonWriter writer, DataHubRunState run)
+        {
+            writer.WriteStartObject();
+            writer.WriteNumber("timestampMillis", run.EventMillis);
+            if (run.ResultType == null)
+            {
+                writer.WriteString("status", "STARTED");
+            }
+            else
+            {
+                writer.WriteString("status", "COMPLETE");
+                writer.WriteStartObject("result");
+                writer.WriteString("type", run.ResultType);
+                writer.WriteString("nativeResultType", "flowtide");
+                writer.WriteEndObject();
+                writer.WriteNumber("durationMillis", run.EventMillis - run.StartedMillis);
+            }
+            writer.WriteEndObject();
+        }
+
         // Same shape as 'datahub put platform' writes.
         public static void WriteDataPlatformInfo(Utf8JsonWriter writer, string name, string displayName, string? logoUrl)
         {
@@ -184,11 +338,14 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             writer.WriteEndObject();
         }
 
-        public static void WriteDataPlatformInstance(Utf8JsonWriter writer, string platformUrn, string instanceUrn)
+        public static void WriteDataPlatformInstance(Utf8JsonWriter writer, string platformUrn, string? instanceUrn)
         {
             writer.WriteStartObject();
             writer.WriteString("platform", platformUrn);
-            writer.WriteString("instance", instanceUrn);
+            if (instanceUrn != null)
+            {
+                writer.WriteString("instance", instanceUrn);
+            }
             writer.WriteEndObject();
         }
 
@@ -207,6 +364,14 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 NamedStruct => "RecordType",
                 _ => "NullType"
             };
+        }
+
+        private static void WriteAuditStamp(Utf8JsonWriter writer, string propertyName, long timeMillis)
+        {
+            writer.WriteStartObject(propertyName);
+            writer.WriteNumber("time", timeMillis);
+            writer.WriteString("actor", "urn:li:corpuser:flowtide");
+            writer.WriteEndObject();
         }
 
         private static void WriteStringArray(Utf8JsonWriter writer, string propertyName, IReadOnlyList<string> values)

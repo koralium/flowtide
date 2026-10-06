@@ -47,6 +47,36 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
         }
 
         [Fact]
+        public void StreamConfigurationsAddUpOnTheSharedStore()
+        {
+            var services = new ServiceCollection();
+            services.AddFlowtideStream("a").AddDataHubLineage(o => o.Env = "DEV");
+            services.AddFlowtideStream("b").AddDataHubLineage(o => o.WarmupTimeout = TimeSpan.Zero);
+
+            using var provider = services.BuildServiceProvider();
+            var store = provider.GetRequiredService<DataHubLineageStore>();
+            store.Register(LineageTestData.Snapshot([], [LineageTestData.Output("postgres", "t", [LineageTestData.Col("x")], new())]), "a");
+
+            Assert.Single(services, x => x.ServiceType == typeof(DataHubLineageStore));
+            Assert.False(store.IsWarmingUp);
+            Assert.Contains("urn:li:dataFlow:(flowtide,a,DEV)", store.GetSnapshot().Urns);
+        }
+
+        [Fact]
+        public void LaterStreamConfigurationWinsOnConflict()
+        {
+            var services = new ServiceCollection();
+            services.AddFlowtideStream("a").AddDataHubLineage(o => o.Env = "DEV");
+            services.AddFlowtideStream("b").AddDataHubLineage(o => o.Env = "TEST");
+
+            using var provider = services.BuildServiceProvider();
+            var store = provider.GetRequiredService<DataHubLineageStore>();
+            store.Register(LineageTestData.Snapshot([], [LineageTestData.Output("postgres", "t", [LineageTestData.Col("x")], new())]), "a");
+
+            Assert.Contains("urn:li:dataFlow:(flowtide,a,TEST)", store.GetSnapshot().Urns);
+        }
+
+        [Fact]
         public void InvalidEnvironmentFailsWhenTheStoreIsResolved()
         {
             var services = new ServiceCollection();

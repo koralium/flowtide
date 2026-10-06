@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Engine.Distributed;
 using FlowtideDotNet.Core.Lineage;
@@ -22,6 +23,8 @@ using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Core.Tests.LineageTests
 {
@@ -34,6 +37,16 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         private const string GetTimestampSql = @"
             CREATE TABLE input1 (a any, d timestamp);
             INSERT INTO output SELECT a FROM input1 WHERE d < gettimestamp();
+            ";
+
+        // TestIngress sends one row (namn1, namn2, 90210).
+        private const string CheckViewSql = @"
+            CREATE TABLE input1 (a any, b any, c any);
+            CREATE VIEW checked AS
+            SELECT CHECK_VALUE(c, c < 10, 'c is too large') AS c, a FROM input1
+            WHERE CHECK_TRUE(a = 'namn1', 'a is not namn1');
+            INSERT INTO output1 SELECT c FROM checked;
+            INSERT INTO output2 SELECT a FROM checked;
             ";
 
         private class ThrowingLineageSinkFactory : FailureEgressFactory
@@ -303,6 +316,60 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             var (lineage, streamName) = Assert.Single(listener.Calls);
             Assert.Equal("orders", streamName);
             Assert.Equal("sub1", lineage.SubstreamName);
+        }
+
+        private sealed class RecordingCheckStatusListener : ICheckStatusListener
+        {
+            public ConcurrentDictionary<string, (string CheckName, CheckState State, long FailingRows)> Latest { get; } = new ConcurrentDictionary<string, (string CheckName, CheckState State, long FailingRows)>();
+
+            public void OnCheckStatus(ref readonly CheckStatusNotification notification)
+            {
+                Latest[notification.CheckId] = (notification.CheckName, notification.State, notification.FailingRows);
+            }
+        }
+
+        [Fact]
+        public void CheckInAViewTargetsEveryWriteItFeeds()
+        {
+            var listener = new RecordingLineageListener();
+            CreateBuilder(GetPlan(CheckViewSql), "listenerCheckTargets", new ListLoggerProvider())
+                .AddConnectorManager(CreateConnectorManager())
+                .AddLineageListener(listener)
+                .Build();
+
+            var checks = Assert.Single(listener.Calls).Lineage.Checks;
+            Assert.Equal(["a is not namn1", "c is too large"], checks.Select(x => x.Message).Order(StringComparer.Ordinal));
+            Assert.All(checks, x => Assert.Equal(["output1", "output2"], x.Targets.Select(t => t.TableName).Order(StringComparer.Ordinal)));
+            Assert.All(checks, x => Assert.False(x.Replicated));
+        }
+
+        [Fact]
+        public async Task ListenerGetsTheCheckIdsTheRunningChecksReport()
+        {
+            var listener = new RecordingLineageListener();
+            var status = new RecordingCheckStatusListener();
+            var stream = CreateBuilder(GetPlan(CheckViewSql), "listenerCheckIds", new ListLoggerProvider())
+                .AddConnectorManager(CreateConnectorManager())
+                .AddLineageListener(listener)
+                .WithCheckStatusListener(status)
+                .Build();
+            await using var _ = stream;
+            var checks = Assert.Single(listener.Calls).Lineage.Checks;
+
+            await stream.StartAsync();
+            // 90210 fails the value check, the row passes the filter check.
+            var stopwatch = Stopwatch.StartNew();
+            while (stopwatch.Elapsed < TimeSpan.FromSeconds(30) &&
+                !(status.Latest.Count == 2 && status.Latest.Values.All(x => x.State != CheckState.NotEvaluated)))
+            {
+                await Task.Delay(10);
+            }
+
+            Assert.Equal(checks.Select(x => x.CheckId).Order(StringComparer.Ordinal), status.Latest.Keys.Order(StringComparer.Ordinal));
+            Assert.All(checks, x => Assert.Equal(x.Message, status.Latest[x.CheckId].CheckName));
+            var valueCheck = status.Latest[checks.Single(x => x.Message == "c is too large").CheckId];
+            Assert.Equal((CheckState.Failed, 1L), (valueCheck.State, valueCheck.FailingRows));
+            Assert.Equal(CheckState.Passed, status.Latest[checks.Single(x => x.Message == "a is not namn1").CheckId].State);
         }
 
         private static ConnectorManager CreateConnectorManager()

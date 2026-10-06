@@ -30,7 +30,12 @@ namespace FlowtideDotNet.Lineage.DataHub
         /// <summary>
         /// A table read or written by a stream.
         /// </summary>
-        Dataset
+        Dataset,
+
+        /// <summary>
+        /// A check of a stream on one dataset.
+        /// </summary>
+        Assertion
     }
 
     /// <summary>

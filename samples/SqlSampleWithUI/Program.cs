@@ -34,7 +34,7 @@ CREATE TABLE other (
 );
 
 INSERT INTO output
-SELECT t.val, o.val FROM testtable t
+SELECT CHECK_VALUE(t.val, t.val > 0, 'val is larger than 0') FROM testtable t
 INNER JOIN other o
 ON t.val = o.val;
 ";
@@ -43,7 +43,10 @@ builder.Services.AddFlowtideDataHubLineage(o => o.ExcludedNamespaces.Clear());
 builder.Services.AddFlowtideStream("test")
 .AddSqlTextAsPlan(sqlText)
 .AddVersioningFromString("1.0.3")
-.AddDataHubLineage()
+.AddDataHubLineage(opt =>
+{
+    opt.RaiseIncidents = true;
+})
 .AddConnectors((connectorManager) =>
 {
     connectorManager.AddSource(new DummyReadFactory("*"));

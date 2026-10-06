@@ -23,13 +23,15 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
             string? substreamName,
             DateTimeOffset buildTime,
             IReadOnlyList<StreamLineageInput> inputs,
-            IReadOnlyList<StreamLineageOutput> outputs)
+            IReadOnlyList<StreamLineageOutput> outputs,
+            IReadOnlyList<StreamLineageCheck>? checks = null)
         {
             BuilderStreamName = builderStreamName;
             SubstreamName = substreamName;
             BuildTime = TruncateToMicroseconds(buildTime);
             Inputs = inputs;
             Outputs = outputs;
+            Checks = checks ?? [];
 
             // Built eagerly, readers share it across threads.
             _inputsByKey = new Dictionary<string, StreamLineageInput>(StringComparer.Ordinal);
@@ -49,6 +51,14 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
         public IReadOnlyList<StreamLineageInput> Inputs { get; }
 
         public IReadOnlyList<StreamLineageOutput> Outputs { get; }
+
+        // Known only after the operators are built.
+        public IReadOnlyList<StreamLineageCheck> Checks { get; }
+
+        public StreamLineage WithChecks(IReadOnlyList<StreamLineageCheck> checks)
+        {
+            return new StreamLineage(BuilderStreamName, SubstreamName, BuildTime, Inputs, Outputs, checks);
+        }
 
         public bool TryGetInput(string key, [NotNullWhen(true)] out StreamLineageInput? input)
         {

@@ -51,11 +51,12 @@ namespace FlowtideDotNet.Lineage.DataHub
         /// Publishes this stream's lineage to DataHub.
         /// </summary>
         /// <param name="builder">The stream builder to opt in.</param>
+        /// <param name="configure">Optional configuration of the options every opted-in stream shares.</param>
         /// <returns>The same builder for chaining.</returns>
-        public static IFlowtideDIBuilder AddDataHubLineage(this IFlowtideDIBuilder builder)
+        public static IFlowtideDIBuilder AddDataHubLineage(this IFlowtideDIBuilder builder, Action<DataHubLineageOptions>? configure = null)
         {
             ArgumentNullException.ThrowIfNull(builder);
-            builder.Services.AddFlowtideDataHubLineage();
+            builder.Services.AddFlowtideDataHubLineage(configure);
             // Early requests get 503 until this stream registers.
             builder.Services.AddSingleton(new DataHubExpectedStream(builder.StreamName));
             builder.AddCustomOptions((provider, flowtideBuilder) =>

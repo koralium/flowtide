@@ -55,6 +55,31 @@ namespace FlowtideDotNet.Lineage.DataHub
         public Func<DataHubEntityContext, IEnumerable<DataHubAspect>?>? AspectProvider { get; set; }
 
         /// <summary>
+        /// Serves the check functions of the streams as assertions with their latest status.
+        /// </summary>
+        public bool IncludeChecks { get; set; } = true;
+
+        /// <summary>
+        /// Raises an incident while a check fails and resolves it when the check passes, needs <see cref="IncludeChecks"/>.
+        /// </summary>
+        public bool RaiseIncidents { get; set; }
+
+        /// <summary>
+        /// Priority of raised incidents.
+        /// </summary>
+        public DataHubIncidentPriority IncidentPriority { get; set; } = DataHubIncidentPriority.Medium;
+
+        /// <summary>
+        /// Overrides the priority of a check's incident, null keeps <see cref="IncidentPriority"/>.
+        /// </summary>
+        public Func<DataHubIncidentContext, DataHubIncidentPriority?>? IncidentPriorityResolver { get; set; }
+
+        /// <summary>
+        /// Serves a run on each data job per stream, or per substream, with its latest state.
+        /// </summary>
+        public bool IncludeRuns { get; set; } = true;
+
+        /// <summary>
         /// Serves the flowtide data platform with its display name and logo.
         /// </summary>
         public bool IncludePlatformInfo { get; set; } = true;

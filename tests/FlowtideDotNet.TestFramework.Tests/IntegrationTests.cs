@@ -140,7 +140,12 @@ namespace FlowtideDotNet.TestFramework.Tests
                 .EnumerateArray().Select(x => x.GetProperty("entity").GetProperty("urn").GetString()).ToList();
             const string job = "urn:li:dataJob:(urn:li:dataFlow:(flowtide,stream,PROD),test.output)";
             const string input = "urn:li:dataset:(urn:li:dataPlatform:test,testtable,PROD)";
-            Assert.Equal(["urn:li:dataFlow:(flowtide,stream,PROD)", job, "urn:li:dataPlatform:flowtide", "urn:li:dataset:(urn:li:dataPlatform:test,output,PROD)", input], urns);
+            var run = "urn:li:dataProcessInstance:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("flowtide\u001f" + job + "\u001f")), 0, 16).ToLowerInvariant();
+            Assert.Equal(["urn:li:dataFlow:(flowtide,stream,PROD)", job, "urn:li:dataPlatform:flowtide", run, "urn:li:dataset:(urn:li:dataPlatform:test,output,PROD)", input], urns);
+
+            // The hosted stream runs, so its run is served as started.
+            using var runEntity = JsonDocument.Parse(await client.GetStringAsync("/datahub/entitiesV2/" + Uri.EscapeDataString(run)));
+            Assert.Equal("STARTED", runEntity.RootElement.GetProperty("aspects").GetProperty("dataProcessInstanceRunEvent").GetProperty("value").GetProperty("status").GetString());
 
             using var entity = JsonDocument.Parse(await client.GetStringAsync("/datahub/entitiesV2/" + Uri.EscapeDataString(job)));
             var inputOutput = entity.RootElement.GetProperty("aspects").GetProperty("dataJobInputOutput").GetProperty("value");

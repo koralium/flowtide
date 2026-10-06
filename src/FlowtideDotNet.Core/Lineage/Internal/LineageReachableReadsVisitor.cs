@@ -31,6 +31,14 @@ namespace FlowtideDotNet.Core.Lineage.Internal
 
         public List<ReadRelation> Reads { get; } = new List<ReadRelation>();
 
+        public List<CheckRelation> Checks { get; } = new List<CheckRelation>();
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            Checks.Add(checkRelation);
+            return base.VisitCheckRelation(checkRelation, state);
+        }
+
         public override Relation VisitReadRelation(ReadRelation readRelation, object state)
         {
             if (readRelation.NamedTable.DotSeperated != GetTimestampVisitor.GetTimestampTableName)

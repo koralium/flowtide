@@ -56,9 +56,10 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             return (a, b);
         }
 
+        // Lineage only, runs have their own tests.
         private static DataHubLineageStore Store(Action<DataHubLineageOptions>? configure = null)
         {
-            var options = new DataHubLineageOptions();
+            var options = new DataHubLineageOptions() { IncludeRuns = false };
             options.MapNamespace("postgres", m =>
             {
                 m.Database = "db";
@@ -725,7 +726,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
         [Fact]
         public void ReservedUrnCharactersAreEncoded()
         {
-            var store = new DataHubLineageStore();
+            var store = new DataHubLineageStore(new DataHubLineageOptions() { IncludeRuns = false });
             store.Register(Snapshot(
                 [Input("kafka", "in(1)", [Col("a,b")])],
                 [Output("kafka", "out,2", [Col("c")], new() { ["c"] = [Identity("kafka", "in(1)", "a,b")] }, upstream: ["in(1)"])]), "s(1)");

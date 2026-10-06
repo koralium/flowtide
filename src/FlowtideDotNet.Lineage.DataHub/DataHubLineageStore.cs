@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Lineage.DataHub.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using System.Collections.Immutable;
@@ -33,6 +34,9 @@ namespace FlowtideDotNet.Lineage.DataHub
         private readonly object _lock = new object();
         private volatile StoreState _state = new StoreState(0, ImmutableSortedDictionary.Create<(string Stream, string Substream), DataHubRegistration>(s_keyComparer));
         private volatile ImmutableHashSet<string> _expectedStreams = ImmutableHashSet.Create<string>(StringComparer.Ordinal);
+        // Read per request, the snapshot itself does not change with a status.
+        private readonly DataHubCheckStatusTable _checkStatuses;
+        private long _lastGeneration;
 
         /// <summary>
         /// Creates a store with default options.
@@ -56,6 +60,7 @@ namespace FlowtideDotNet.Lineage.DataHub
             _settings = DataHubSettings.Create(options);
             _timeProvider = timeProvider;
             _createdTimestamp = timeProvider.GetTimestamp();
+            _checkStatuses = new DataHubCheckStatusTable(timeProvider);
         }
 
         /// <summary>
@@ -76,6 +81,10 @@ namespace FlowtideDotNet.Lineage.DataHub
         }
 
         internal bool IncludeConnectorSchema => _settings.IncludeConnectorSchema;
+
+        internal bool IncludeChecks => _settings.IncludeChecks;
+
+        internal bool IncludeRuns => _settings.IncludeRuns;
 
         internal long Version => _state.Version;
 
@@ -112,23 +121,43 @@ namespace FlowtideDotNet.Lineage.DataHub
                 {
                     return cached;
                 }
-                var generated = DataHubEntityGenerator.Generate(state.Entries.Values.ToList(), _settings);
+                var generated = DataHubEntityGenerator.Generate(state.Entries.Values.ToList(), _settings, _checkStatuses, state.Version);
                 state.Snapshot = generated;
                 return generated;
             }
         }
 
-        // Last registration per (stream, substream) wins.
-        internal void Register(StreamLineage lineage, string logicalStreamName)
+        // Last registration per (stream, substream) wins, the returned generation scopes the check statuses of that build.
+        internal long Register(StreamLineage lineage, string logicalStreamName)
         {
             ArgumentNullException.ThrowIfNull(lineage);
             ArgumentNullException.ThrowIfNull(logicalStreamName);
             lock (_lock)
             {
                 var state = _state;
-                var entries = state.Entries.SetItem((logicalStreamName, lineage.SubstreamName ?? string.Empty), new DataHubRegistration(logicalStreamName, lineage));
-                _state = new StoreState(state.Version + 1, entries);
+                var key = (logicalStreamName, lineage.SubstreamName ?? string.Empty);
+                var generation = ++_lastGeneration;
+                var version = state.Version + 1;
+                _checkStatuses.Register(version, generation, state.Entries.TryGetValue(key, out var replaced) ? replaced.Generation : null);
+                var entries = state.Entries.SetItem(key, new DataHubRegistration(logicalStreamName, lineage, generation));
+                _state = new StoreState(version, entries);
+                return generation;
             }
+        }
+
+        internal void RecordStreamState(long generation, StreamStateValue state)
+        {
+            _checkStatuses.RecordStreamState(generation, state);
+        }
+
+        internal void RecordStreamFailure(long generation, bool cancellation)
+        {
+            _checkStatuses.RecordStreamFailure(generation, cancellation);
+        }
+
+        internal void RecordCheckStatus(long generation, string checkId, CheckState state, long activeIssues, long failingRows)
+        {
+            _checkStatuses.Record(generation, checkId, state, activeIssues, failingRows);
         }
 
         // Immutable apart from the cache, swapped whole on register.

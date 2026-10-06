@@ -13,12 +13,10 @@
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Type;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace FlowtideDotNet.Lineage.DataHub.Internal
 {
-    internal sealed record DataHubRegistration(string StreamName, StreamLineage Lineage);
+    internal sealed record DataHubRegistration(string StreamName, StreamLineage Lineage, long Generation);
 
     // One data flow per stream, one data job per stream and output dataset.
     internal static class DataHubEntityGenerator
@@ -137,7 +135,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
         }
 
         // Registrations arrive in (stream, substream) ordinal order.
-        public static DataHubSnapshot Generate(IReadOnlyList<DataHubRegistration> registrations, DataHubSettings settings)
+        public static DataHubSnapshot Generate(IReadOnlyList<DataHubRegistration> registrations, DataHubSettings settings, DataHubCheckStatusTable checkStatuses, long version)
         {
             var resolution = new DataHubDatasetResolution(settings);
             var datasets = new Dictionary<string, DatasetEntry>(StringComparer.Ordinal);
@@ -196,6 +194,8 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
 
             // Keyed by urn, stream names that encode alike share one flow.
             var flows = new SortedDictionary<string, FlowEntry>(StringComparer.Ordinal);
+            // The inputs of one registration's writes to a table, a job can have writes from several substreams.
+            var runInputs = new Dictionary<(DataHubRegistration Registration, string Output), SortedSet<string>>();
             foreach (var scope in scopes)
             {
                 var streamName = scope.Registration.StreamName;
@@ -212,11 +212,16 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                         job = new JobEntry(identity);
                         flow.Jobs.Add(identity.Urn, job);
                     }
+                    if (!runInputs.TryGetValue((scope.Registration, identity.Urn), out var inputs))
+                    {
+                        inputs = new SortedSet<string>(StringComparer.Ordinal);
+                        runInputs.Add((scope.Registration, identity.Urn), inputs);
+                    }
                     foreach (var key in output.UpstreamInputKeys)
                     {
                         if (scope.InputsByKey.TryGetValue(key, out var upstream) && upstream != null)
                         {
-                            job.AddInput(upstream.Urn);
+                            AddInput(job, inputs, upstream.Urn);
                         }
                     }
                     if (output.ColumnLineage is not ColumnLineage columnLineage)
@@ -231,7 +236,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                         {
                             if (ResolveField(scope, inputField, resolution) is DataHubResolvedDataset upstream)
                             {
-                                job.AddInput(upstream.Urn);
+                                AddInput(job, inputs, upstream.Urn);
                                 var upstreamField = DataHubUrns.SchemaField(upstream.Urn, datasets[upstream.Urn].FieldPath(inputField.Field));
                                 job.AddEdge(downstreamField, upstreamField, inputField.Transformations);
                             }
@@ -241,13 +246,14 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                     {
                         if (ResolveField(scope, inputField, resolution) is DataHubResolvedDataset upstream)
                         {
-                            job.AddInput(upstream.Urn);
+                            AddInput(job, inputs, upstream.Urn);
                         }
                     }
                 }
             }
 
             var entities = new List<(DataHubEntityBuilder Builder, DataHubEntityContext Context)>();
+            var jobUrnsByOutput = new Dictionary<(string Flow, string Output), string>();
             foreach (var flow in flows.Values)
             {
                 var flowEntity = new DataHubEntityBuilder("dataFlow", flow.Urn);
@@ -260,6 +266,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 {
                     var output = job.Output;
                     var jobUrn = jobUrns[output.Urn];
+                    jobUrnsByOutput.Add((flow.Urn, output.Urn), jobUrn);
                     var fineGrainedLineages = GetFineGrainedLineages(job, datasets[output.Urn]);
                     var jobEntity = new DataHubEntityBuilder("dataJob", jobUrn);
                     jobEntity.Set("dataJobInfo", w => DataHubAspectWriter.WriteDataJobInfo(w, output.QualifiedName, flow.Urn, settings.Env, output.Namespace, output.TableName));
@@ -292,6 +299,21 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 entities.Add((datasetEntity, new DataHubEntityContext(DataHubEntityType.Dataset, identity.Urn, null, identity.Namespace, identity.TableName)));
             }
 
+            var assertions = settings.IncludeChecks ? GetAssertions(registrations, resolution) : new Dictionary<string, DataHubAssertion>(StringComparer.Ordinal);
+            foreach (var assertion in assertions.Values)
+            {
+                var builder = assertion.Builder;
+                var checkIds = assertion.Parts.Select(x => x.CheckId).Distinct().Order(StringComparer.Ordinal).ToList();
+                builder.Set("assertionInfo", w => DataHubAspectWriter.WriteAssertionInfo(w, assertion.DatasetUrn, assertion.Message, assertion.StreamName, checkIds));
+                builder.Set("dataPlatformInstance", w => DataHubAspectWriter.WriteDataPlatformInstance(w, DataHubUrns.Platform(DataHubUrns.Orchestrator), null));
+                builder.Set("status", DataHubAspectWriter.WriteStatus);
+                if (settings.AspectProvider != null)
+                {
+                    AddProvidedAspects(builder, new DataHubEntityContext(DataHubEntityType.Assertion, builder.Urn, assertion.StreamName, assertion.Namespace, assertion.TableName), settings.AspectProvider);
+                }
+                builder.Freeze();
+            }
+
             var json = new Dictionary<string, byte[]>(StringComparer.Ordinal);
             // Only the own platform, a built-in platform would lose its DataHub logo and name.
             if (settings.IncludePlatformInfo && flows.Count > 0)
@@ -312,8 +334,122 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                     json.Add(builder.Urn, builder.ToUtf8Json());
                 }
             }
-            var urns = json.Keys.Order(StringComparer.Ordinal).ToList();
-            return new DataHubSnapshot(urns, json);
+            var incidents = settings.RaiseIncidents ? GetIncidents(assertions, settings) : new Dictionary<string, (DataHubAssertion, DataHubIncidentInfo)>(StringComparer.Ordinal);
+            // Raised before, but no current check has them any more.
+            var removedIncidents = settings.RaiseIncidents
+                ? checkStatuses.GetIncidentUrns().Where(x => !incidents.ContainsKey(x)).ToHashSet(StringComparer.Ordinal)
+                : new HashSet<string>(StringComparer.Ordinal);
+
+            var runs = settings.IncludeRuns ? GetRuns(scopes, runInputs, jobUrnsByOutput, settings) : new Dictionary<string, DataHubRunInfo>(StringComparer.Ordinal);
+
+            var urns = json.Keys.Concat(assertions.Keys).Concat(incidents.Keys).Concat(removedIncidents).Concat(runs.Keys).Order(StringComparer.Ordinal).ToList();
+            return new DataHubSnapshot(urns, json, assertions, checkStatuses, version, incidents, removedIncidents, runs);
+        }
+
+        private static void AddInput(JobEntry job, SortedSet<string> runInputs, string datasetUrn)
+        {
+            job.AddInput(datasetUrn);
+            runInputs.Add(datasetUrn);
+        }
+
+        // One run per job and registration, that is per stream or substream writing the job's table.
+        // A registration that writes no table, such as a substream that only feeds the exchange, is run on the flow, else its
+        // failure would be hidden while its peers wait for it. Not its stream's jobs, they change as peers register and move.
+        private static Dictionary<string, DataHubRunInfo> GetRuns(
+            List<RegistrationScope> scopes,
+            Dictionary<(DataHubRegistration Registration, string Output), SortedSet<string>> runInputs,
+            Dictionary<(string Flow, string Output), string> jobUrnsByOutput,
+            DataHubSettings settings)
+        {
+            var runs = new Dictionary<string, DataHubRunInfo>(StringComparer.Ordinal);
+            foreach (var scope in scopes)
+            {
+                var registration = scope.Registration;
+                var substream = registration.Lineage.SubstreamName;
+                var name = substream == null ? registration.StreamName : registration.StreamName + "/" + substream;
+                var flowUrn = DataHubUrns.DataFlow(registration.StreamName, settings.Env);
+                var outputs = GetJobOutputs(scope).Select(x => x.Identity.Urn).Distinct().ToList();
+                foreach (var output in outputs)
+                {
+                    var jobUrn = jobUrnsByOutput[(flowUrn, output)];
+                    var urn = DataHubUrns.DataProcessInstance(jobUrn, substream);
+                    runs[urn] = new DataHubRunInfo(urn, name, registration.StreamName, substream, jobUrn, runInputs[(registration, output)].ToList(), [output], registration.Generation);
+                }
+                if (outputs.Count > 0)
+                {
+                    continue;
+                }
+                var inputs = scope.InputsByKey.Values.OfType<DataHubResolvedDataset>().Select(x => x.Urn).Distinct().Order(StringComparer.Ordinal).ToList();
+                var flowRunUrn = DataHubUrns.DataProcessInstance(flowUrn, substream);
+                runs[flowRunUrn] = new DataHubRunInfo(flowRunUrn, name, registration.StreamName, substream, flowUrn, inputs, [], registration.Generation);
+            }
+            return runs;
+        }
+
+        // Every assertion has a possible incident, served only once its check failed.
+        private static Dictionary<string, (DataHubAssertion, DataHubIncidentInfo)> GetIncidents(Dictionary<string, DataHubAssertion> assertions, DataHubSettings settings)
+        {
+            var incidents = new Dictionary<string, (DataHubAssertion, DataHubIncidentInfo)>(StringComparer.Ordinal);
+            foreach (var (assertionUrn, assertion) in assertions)
+            {
+                var priority = settings.IncidentPriority;
+                if (settings.IncidentPriorityResolver != null)
+                {
+                    var context = new DataHubIncidentContext(assertion.StreamName, assertion.Message, assertionUrn, assertion.DatasetUrn, assertion.Namespace, assertion.TableName);
+                    DataHubIncidentPriority? resolved;
+                    try
+                    {
+                        resolved = settings.IncidentPriorityResolver(context);
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"The DataHub incident priority resolver failed for '{assertionUrn}'.", ex);
+                    }
+                    if (resolved is DataHubIncidentPriority value)
+                    {
+                        if (!Enum.IsDefined(value))
+                        {
+                            throw new InvalidOperationException($"The DataHub incident priority resolver returned {value} for '{assertionUrn}', which is not a DataHubIncidentPriority.");
+                        }
+                        priority = value;
+                    }
+                }
+                var info = new DataHubIncidentInfo(assertionUrn, assertion.DatasetUrn, assertion.StreamName, assertion.Message, priority);
+                incidents.Add(DataHubUrns.Incident(assertionUrn), (assertion, info));
+            }
+            return incidents;
+        }
+
+        // One assertion per check and target dataset, the partition copies of a check share it.
+        private static Dictionary<string, DataHubAssertion> GetAssertions(IReadOnlyList<DataHubRegistration> registrations, DataHubDatasetResolution resolution)
+        {
+            var assertions = new Dictionary<string, DataHubAssertion>(StringComparer.Ordinal);
+            foreach (var registration in registrations)
+            {
+                // Checks with the same message on one dataset are told apart by their order.
+                var ordinals = new Dictionary<(string Message, string DatasetUrn), int>();
+                foreach (var check in registration.Lineage.Checks)
+                {
+                    foreach (var target in check.Targets)
+                    {
+                        if (resolution.Resolve(target.Namespace, target.TableName, target.NameParts) is not DataHubResolvedDataset dataset)
+                        {
+                            continue;
+                        }
+                        var ordinalKey = (check.Message, dataset.Urn);
+                        var ordinal = ordinals.GetValueOrDefault(ordinalKey);
+                        ordinals[ordinalKey] = ordinal + 1;
+                        var urn = DataHubUrns.Assertion(registration.StreamName, dataset.Urn, check.Message, ordinal);
+                        if (!assertions.TryGetValue(urn, out var assertion))
+                        {
+                            assertion = new DataHubAssertion(new DataHubEntityBuilder("assertion", urn), dataset.Urn, registration.StreamName, check.Message, target.Namespace, target.TableName);
+                            assertions.Add(urn, assertion);
+                        }
+                        assertion.Parts.Add(new DataHubCheckPart(registration.Generation, check.CheckId, check.Replicated));
+                    }
+                }
+            }
+            return assertions;
         }
 
         private static void AddProvidedAspects(DataHubEntityBuilder builder, DataHubEntityContext context, Func<DataHubEntityContext, IEnumerable<DataHubAspect>?> provider)
@@ -352,20 +488,14 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 !output.QualifiedName.Contains('~');
             var jobId = plain
                 ? output.Platform + "." + output.QualifiedName
-                : output.Platform + "." + output.QualifiedName + "~" + output.Env + "~" + UrnHash(output.Urn);
+                : output.Platform + "." + output.QualifiedName + "~" + output.Env + "~" + DataHubUrns.Hash(output.Urn);
             var jobUrn = DataHubUrns.DataJob(flowUrn, jobId);
             // GMS silently drops urns over 512 bytes once URL encoded.
             if (DataHubUrns.UrlEncodedLength(jobUrn) > DataHubUrns.MaxUrnLength)
             {
-                jobUrn = DataHubUrns.DataJob(flowUrn, output.Platform + "~" + UrnHash(output.Urn));
+                jobUrn = DataHubUrns.DataJob(flowUrn, output.Platform + "~" + DataHubUrns.Hash(output.Urn));
             }
             return jobUrn;
-        }
-
-        // 128 bits, so distinct outputs never share a hash.
-        private static string UrnHash(string urn)
-        {
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(urn)), 0, 16).ToLowerInvariant();
         }
 
         // Output column order, unknown fields last.

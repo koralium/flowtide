@@ -289,6 +289,9 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 "dataFlow" => "DATA_FLOW",
                 "dataJob" => "DATA_JOB",
                 "dataPlatform" => "DATA_PLATFORM",
+                "assertion" => "ASSERTION",
+                "incident" => "INCIDENT",
+                "dataProcessInstance" => "DATA_PROCESS_INSTANCE",
                 _ => string.Empty
             };
         }

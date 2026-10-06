@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.Lineage.Internal;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
+using FlowtideDotNet.Lineage.DataHub.Internal;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
@@ -33,6 +34,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
         private const string Input = "urn:li:dataset:(urn:li:dataPlatform:kafka,in%2C1,PROD)";
         private const string Output = "urn:li:dataset:(urn:li:dataPlatform:kafka,out/v1,PROD)";
         private const string Platform = "urn:li:dataPlatform:flowtide";
+        private static readonly string Run = DataHubUrns.DataProcessInstance(Job, null);
 
         private static readonly (string Pattern, string Method)[] Routes =
         [
@@ -92,7 +94,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             var context = await InvokeAsync(app, "/datahub/api/graphql", HttpMethods.Post, ScrollBody(null, null));
 
             Assert.Equal(StatusCodes.Status200OK, context.Response.StatusCode);
-            Assert.Equal([Flow, Job, Platform, Input, Output], ScrollUrns(context));
+            Assert.Equal([Flow, Job, Platform, Run, Input, Output], ScrollUrns(context));
         }
 
         [Fact]
@@ -123,7 +125,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
 
             Assert.Equal([Flow, Job, Platform], ScrollUrns(first));
             Assert.NotNull(nextScrollId);
-            Assert.Equal([Input, Output], ScrollUrns(second));
+            Assert.Equal([Run, Input, Output], ScrollUrns(second));
             Assert.Equal(JsonValueKind.Null, ReadJson(second).GetProperty("data").GetProperty("scrollAcrossEntities").GetProperty("nextScrollId").ValueKind);
         }
 
@@ -164,6 +166,36 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             var context = await InvokeAsync(app, "/datahub/api/graphql", HttpMethods.Post, body);
 
             Assert.Equal([Input, Output], ScrollUrns(context));
+        }
+
+        [Fact]
+        public async Task ScrollFiltersAssertions()
+        {
+            var store = new DataHubLineageStore();
+            Register(store, [new StreamLineageCheck() { CheckId = "1:0", Message = "y is negative", Targets = [new StreamLineageCheckTarget("out/v1", "kafka", "out/v1", ["out/v1"])] }]);
+            await using var app = MapStore(store);
+            var body = JsonSerializer.Serialize(new { query = ScrollQuery, variables = new { batchSize = 100, types = new[] { "ASSERTION" } } });
+            var assertion = DataHubUrns.Assertion("orders", Output, "y is negative", 0);
+
+            var context = await InvokeAsync(app, "/datahub/api/graphql", HttpMethods.Post, body);
+            var entity = await InvokeAsync(app, "/datahub/entitiesV2/{**urn}", HttpMethods.Get, rawTarget: "/datahub/entitiesV2/" + Uri.EscapeDataString(assertion));
+
+            Assert.Equal([assertion], ScrollUrns(context));
+            Assert.Equal(StatusCodes.Status200OK, entity.Response.StatusCode);
+            Assert.Equal("assertion", ReadJson(entity).GetProperty("entityName").GetString());
+        }
+
+        [Fact]
+        public async Task ScrollFiltersIncidents()
+        {
+            var store = new DataHubLineageStore(new DataHubLineageOptions() { RaiseIncidents = true });
+            Register(store, [new StreamLineageCheck() { CheckId = "1:0", Message = "y is negative", Targets = [new StreamLineageCheckTarget("out/v1", "kafka", "out/v1", ["out/v1"])] }]);
+            await using var app = MapStore(store);
+            var body = JsonSerializer.Serialize(new { query = ScrollQuery, variables = new { batchSize = 100, types = new[] { "INCIDENT" } } });
+
+            var context = await InvokeAsync(app, "/datahub/api/graphql", HttpMethods.Post, body);
+
+            Assert.Equal([DataHubUrns.Incident(DataHubUrns.Assertion("orders", Output, "y is negative", 0))], ScrollUrns(context));
         }
 
         [Theory]
@@ -349,7 +381,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
         }
 
         // One stream writing kafka "out/v1" from "in,1".
-        private static void Register(DataHubLineageStore store)
+        private static void Register(DataHubLineageStore store, IReadOnlyList<StreamLineageCheck>? checks = null)
         {
             var input = new StreamLineageInput()
             {
@@ -374,7 +406,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
                     []),
                 UpstreamInputKeys = ["in,1"]
             };
-            store.Register(new StreamLineage("orders", null, DateTimeOffset.UnixEpoch, [input], [output]), "orders");
+            store.Register(new StreamLineage("orders", null, DateTimeOffset.UnixEpoch, [input], [output], checks), "orders");
         }
 
         private static string ScrollBody(string? scrollId, int? batchSize)
