@@ -28,9 +28,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestAddAndGetByIndex()
         {
             var column = new DoubleColumn(GlobalMemoryManager.Instance);
-            int i1 = column.Add(new DoubleValue(1));
-            int i2 = column.Add(new DoubleValue(3));
-            int i3 = column.Add(new DoubleValue(2));
+            int i1 = column.Add(new DoubleValue(1), GlobalMemoryManager.Instance);
+            int i2 = column.Add(new DoubleValue(3), GlobalMemoryManager.Instance);
+            int i3 = column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
 
             Assert.Equal(0, i1);
             Assert.Equal(1, i2);
@@ -45,17 +45,17 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSearchBoundries()
         {
             var column = new DoubleColumn(GlobalMemoryManager.Instance);
-            column.Add(new DoubleValue(1));
-            column.Add(new DoubleValue(2));
-            column.Add(new DoubleValue(2));
-            column.Add(new DoubleValue(2));
-            column.Add(new DoubleValue(2));
-            column.Add(new DoubleValue(3));
-            column.Add(new DoubleValue(4));
-            column.Add(new DoubleValue(4));
-            column.Add(new DoubleValue(5));
-            column.Add(new DoubleValue(6));
-            column.Add(new DoubleValue(7));
+            column.Add(new DoubleValue(1), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(3), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(4), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(4), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(5), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(6), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(7), GlobalMemoryManager.Instance);
 
             var (start, end) = column.SearchBoundries(new DoubleValue(2), 0, 9, default, false);
             Assert.Equal(1, start);
@@ -83,9 +83,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestCompareTo()
         {
             var column = new DoubleColumn(GlobalMemoryManager.Instance);
-            column.Add(new DoubleValue(0));
-            column.Add(new DoubleValue(1));
-            column.Add(new DoubleValue(2));
+            column.Add(new DoubleValue(0), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(1), GlobalMemoryManager.Instance);
+            column.Add(new DoubleValue(2), GlobalMemoryManager.Instance);
             Assert.Equal(-1, column.CompareTo(0, new DoubleValue(1), default, default));
             Assert.Equal(0, column.CompareTo(1, new DoubleValue(1), default, default));
             Assert.Equal(1, column.CompareTo(2, new DoubleValue(1), default, default));

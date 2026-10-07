@@ -170,6 +170,12 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             }
             else
             {
+                if (incoming.weight == 0)
+                {
+                    // Created and emptied in one batch, the group never existed.
+                    return GenericWriteOperation.None;
+                }
+
                 var stateColumns = incoming.referenceBatch.GetColumns_Unsafe();
                 for (int i = 0; i < measures.Length; i++)
                 {

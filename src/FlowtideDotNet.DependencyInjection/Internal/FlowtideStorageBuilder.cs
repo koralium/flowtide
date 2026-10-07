@@ -73,6 +73,14 @@ namespace FlowtideDotNet.DependencyInjection.Internal
 
         public int? MaxPageCount { get; set; }
 
+        public bool DrainSmallQueueEarly { get; set; } = true;
+
+        public bool AdaptiveSmallQueueSize { get; set; } = true;
+
+        public bool? BackgroundCommit { get; set; }
+
+        public TimeSpan? RecoveryCommitWaitTimeout { get; set; }
+
         internal StateManagerOptions Build(IServiceProvider serviceProvider)
         {
             var persistentStorage = serviceProvider.GetKeyedService<IPersistentStorage>(name);
@@ -91,7 +99,7 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 serializeOptions = new StateSerializeOptions();
             }
 
-            return new StateManagerOptions()
+            var options = new StateManagerOptions()
             {
                 PersistentStorage = persistentStorage,
                 SerializeOptions = serializeOptions,
@@ -100,8 +108,20 @@ namespace FlowtideDotNet.DependencyInjection.Internal
                 MaxProcessMemory = MaxProcessMemory ?? -1,
                 MinCachePageCount = MinPageCount,
                 FileCacheFactory = fileCacheFactory,
-                CachePageCount = MaxPageCount ?? 1000
+                CachePageCount = MaxPageCount ?? 1000,
+                DrainSmallQueueEarly = DrainSmallQueueEarly,
+                AdaptiveSmallQueueSize = AdaptiveSmallQueueSize
             };
+            // Unset keeps the option's own default, the AppContext switch for the commit mode.
+            if (BackgroundCommit.HasValue)
+            {
+                options.BackgroundCommit = BackgroundCommit.Value;
+            }
+            if (RecoveryCommitWaitTimeout.HasValue)
+            {
+                options.RecoveryCommitWaitTimeout = RecoveryCommitWaitTimeout.Value;
+            }
+            return options;
         }
 
         public IFlowtideStorageBuilder SetPersistentStorage(Func<IServiceProvider, IPersistentStorage> func)

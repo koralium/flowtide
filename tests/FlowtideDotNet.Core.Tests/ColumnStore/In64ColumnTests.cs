@@ -29,9 +29,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestAddAndGetByIndex()
         {
             var column = new Int64Column(GlobalMemoryManager.Instance);
-            int i1 = column.Add(new Int64Value(1));
-            int i2 = column.Add(new Int64Value(3));
-            int i3 = column.Add(new Int64Value(2));
+            int i1 = column.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            int i2 = column.Add(new Int64Value(3), GlobalMemoryManager.Instance);
+            int i3 = column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
 
             Assert.Equal(0, i1);
             Assert.Equal(1, i2);
@@ -46,26 +46,26 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestSearchBoundries()
         {
             var c1 = new Int64Column(GlobalMemoryManager.Instance);
-            c1.Add(new Int64Value(1));
-            c1.Add(new Int64Value(1));
-            c1.Add(new Int64Value(1));
-            c1.Add(new Int64Value(2));
+            c1.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            c1.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            c1.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            c1.Add(new Int64Value(2), GlobalMemoryManager.Instance);
             var (start, end) = c1.SearchBoundries(new Int64Value(1), 0, 4, default, false);
             Assert.Equal(0, start);
             Assert.Equal(2, end);
 
             var column = new Int64Column(GlobalMemoryManager.Instance);
-            column.Add(new Int64Value(1));
-            column.Add(new Int64Value(2));
-            column.Add(new Int64Value(2));
-            column.Add(new Int64Value(2));
-            column.Add(new Int64Value(2));
-            column.Add(new Int64Value(3));
-            column.Add(new Int64Value(4));
-            column.Add(new Int64Value(4));
-            column.Add(new Int64Value(5));
-            column.Add(new Int64Value(6));
-            column.Add(new Int64Value(7));
+            column.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(3), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(4), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(4), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(5), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(6), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(7), GlobalMemoryManager.Instance);
 
             (start, end) = column.SearchBoundries(new Int64Value(2), 0, 9, default, false);
             Assert.Equal(1, start);
@@ -93,9 +93,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         public void TestCompareTo()
         {
             var column = new Int64Column(GlobalMemoryManager.Instance);
-            column.Add(new Int64Value(0));
-            column.Add(new Int64Value(1));
-            column.Add(new Int64Value(2));
+            column.Add(new Int64Value(0), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(2), GlobalMemoryManager.Instance);
             Assert.Equal(-1, column.CompareTo(0, new Int64Value(1), default, default));
             Assert.Equal(0, column.CompareTo(1, new Int64Value(1), default, default));
             Assert.Equal(1, column.CompareTo(2, new Int64Value(1), default, default));

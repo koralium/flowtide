@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             int credits = 0;
             var target = new SubstreamTarget(1, 1, pointA, () => Interlocked.Increment(ref credits));
-            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask);
+            await target.Initialize(0, 1, await CreateStateClient(), new ExchangeOperatorState(), GlobalMemoryManager.Instance, _ => Task.CompletedTask, TimeSpan.FromSeconds(30));
             await pointB.InitializeOperator(0);
 
             return (pointA, pointB, () => Volatile.Read(ref credits));

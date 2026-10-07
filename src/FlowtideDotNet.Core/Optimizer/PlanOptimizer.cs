@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -10,9 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
+using FlowtideDotNet.Core.Optimizer.Window;
 using FlowtideDotNet.Substrait;
 
 namespace FlowtideDotNet.Core.Optimizer
@@ -26,6 +28,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 settings = new PlanOptimizerSettings();
             }
 
+            // Before gettimestamp turns filters into joins
+            plan = CheckExtractor.Extract(plan);
+
             // Start with timestamp to join since its actual logic and not only optimization
             if (settings.GetTimestampToJoin)
             {
@@ -33,6 +38,9 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             plan = SubqueryDecorrelationVisitor.Optimize(plan);
+
+            // Again for checks exposed by decorrelation, before filter pushdown
+            plan = CheckExtractor.Extract(plan);
 
             for (int i = 0; i < plan.Relations.Count; i++)
             {
@@ -43,6 +51,9 @@ namespace FlowtideDotNet.Core.Optimizer
 
                 var filterIntoRead = new FilterIntoReadOptimizer();
                 relation = filterIntoRead.Visit(relation, null!);
+
+                var rowNumberFilterHint = new RowNumberFilterHintVisitor();
+                relation = rowNumberFilterHint.Visit(relation, null!);
 
                 plan.Relations[i] = relation;
             }
@@ -72,6 +83,12 @@ namespace FlowtideDotNet.Core.Optimizer
             if (settings.WindowJoinKeyOptimization)
             {
                 plan = WindowJoin.TumblingWindowJoinKeyOptimizer.Optimize(plan);
+            }
+
+            // Runs before emit optimizations so the projection is simplified
+            if (settings.GroupByToDistinct)
+            {
+                plan = GroupByToDistinct.GroupByToDistinctOptimizer.Optimize(plan);
             }
 
             // Try and remove any direct field references if possible

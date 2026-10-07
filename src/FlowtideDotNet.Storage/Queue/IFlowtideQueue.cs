@@ -42,6 +42,11 @@ namespace FlowtideDotNet.Storage.Queue
         /// <returns></returns>
         ValueTask<(V value, Action? returnFunc)> Peek();
 
+        /// <summary>
+        /// Captures pending changes for the next checkpoint. With background commits enabled,
+        /// page writes may continue after this returns. Durability requires
+        /// <see cref="StateManager.IStateManager.CheckpointAsync"/>.
+        /// </summary>
         ValueTask Commit();
 
         ValueTask Clear();

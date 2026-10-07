@@ -45,26 +45,35 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
         {
             var result = _batchSerializer.Deserialize(ref reader, _memoryAllocator);
 
-            if (!reader.TryReadLittleEndian(out int weightsLength))
+            FlowtideMemory weightsMemory = default;
+            try
             {
-                throw new InvalidOperationException("Failed to read weights length");
-            }
+                if (!reader.TryReadLittleEndian(out int weightsLength))
+                {
+                    throw new InvalidOperationException("Failed to read weights length");
+                }
 
-            var weightsMemory = _memoryAllocator.Allocate(weightsLength, 64);
+                weightsMemory = _memoryAllocator.AllocateMemory(weightsLength);
 
-            if (!reader.TryCopyTo(weightsMemory.Memory.Span.Slice(0, weightsLength)))
-            {
-                throw new InvalidOperationException("Failed to copy weights memory");
-            }
-            reader.Advance(weightsLength);
+                if (!reader.TryCopyTo(weightsMemory.Span.Slice(0, weightsLength)))
+                {
+                    throw new InvalidOperationException("Failed to copy weights memory");
+                }
+                reader.Advance(weightsLength);
 
-            
-            var column = result.EventBatch.Columns[0];
-            if (column is Column c)
-            {
+                if (result.EventBatch.Columns.Count < 1 ||
+                    result.EventBatch.Columns[0] is not Column c)
+                {
+                    throw new NotImplementedException();
+                }
                 return new SurrogateKeyValueContainer(c, new PrimitiveList<int>(weightsMemory, weightsLength / sizeof(int), _memoryAllocator));
             }
-            throw new NotImplementedException();
+            catch
+            {
+                _memoryAllocator.Free(ref weightsMemory);
+                result.EventBatch.Dispose();
+                throw;
+            }
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -76,11 +85,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Surroga
         {
             _batchSerializer.Serialize(writer, new EventBatchData([values._column]), values.Count);
 
-            var weightsMemory = values._weights.SlicedMemory;
+            var weightsMemory = values._weights.SlicedSpan;
             var weightsSpan = writer.GetSpan(4 + weightsMemory.Length);
 
             BinaryPrimitives.WriteInt32LittleEndian(weightsSpan, weightsMemory.Length);
-            weightsMemory.Span.CopyTo(weightsSpan.Slice(4));
+            weightsMemory.CopyTo(weightsSpan.Slice(4));
             writer.Advance(weightsMemory.Length + 4);
         }
     }

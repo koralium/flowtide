@@ -54,8 +54,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
         // A migration is pending: the stream was handed off and must not restart here, the
         // migrated activation resumes it. Cleared by the reminder if the runtime skipped it.
         private bool _migrating;
-        // The stream stopped through a completed handoff drain. Carried to the next activation,
-        // whose start announces a clean handoff so the peers accept the reconnect.
+        // Stopped cleanly for a handoff, carried to the next activation.
         private bool _handoffCompletedCleanly;
 
         public SubStreamGrain(
@@ -86,6 +85,21 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             await handler.TargetCheckpointDone(request.CheckpointVersion, request.CheckpointEpoch, request.CoversPeerStopBarrier);
         }
 
+        // Test seam: drops durability claims arriving at an activation (grain key, activation id).
+        internal static Func<string, string, bool>? DropDurabilityClaimForTests;
+
+        public async Task DurabilityClaim(DurabilityClaimRequest request)
+        {
+            if (DropDurabilityClaimForTests?.Invoke(this.GetPrimaryKeyString(), ((IGrainBase)this).GrainContext.ActivationId.ToString()) == true) return;
+            if (_orleansCommunicationFactory == null ||
+                !_orleansCommunicationFactory.handlers.TryGetValue(request.Requestor, out var handler))
+            {
+                // The stream has not started yet, the claim is sent again later
+                return;
+            }
+            await handler.TargetDurabilityClaim(request.Version, request.Radius, request.InitVersion, new RecoveryWave(request.WaveCounter, request.WaveId), request.SenderCheckpointEpoch, request.TargetCheckpointEpoch, request.RequestReply);
+        }
+
         public Task FailAndRecoverAsync(FailAndRecoverRequest request)
         {
             if (_orleansCommunicationFactory == null ||
@@ -99,7 +113,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // Without an announcement the requestor cannot be told apart from a zombie.
                 // Refused; a live requestor re-runs the handshake on its restart, which
                 // reconciles the versions.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor}, no fetch epoch has been announced to this activation.", request.RecoveryPoint, request.Requestor);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor}, no fetch epoch has been announced to this activation.", request.WaveCounter, request.Requestor);
                 return Task.CompletedTask;
             }
             if (request.FetchEpoch < announcedEpoch)
@@ -108,7 +122,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 // live stream back to the zombie's restore point, discarding committed
                 // progress on both substreams. A live requestor bumps its epoch on failure
                 // before notifying, so a legitimate request is never below the announcement.
-                _logger.LogDebug("Refusing fail and recover to {recoveryPoint} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.RecoveryPoint, request.Requestor, request.FetchEpoch, announcedEpoch);
+                _logger.LogDebug("Refusing fail and recover of wave {wave} from {requestor} with fetch epoch {requestEpoch}, announced epoch is {announcedEpoch}.", request.WaveCounter, request.Requestor, request.FetchEpoch, announcedEpoch);
                 return Task.CompletedTask;
             }
             // Acknowledge immediately, awaiting the recovery would time the caller out
@@ -116,7 +130,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 try
                 {
-                    await handler.FailAndRecover(request.RecoveryPoint);
+                    await handler.FailAndRecover(new RecoveryWave(request.WaveCounter, request.WaveId));
                 }
                 catch (Exception e)
                 {
@@ -296,8 +310,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
         // Failures do not propagate out of StartAsync, the stream retries them in the
         // background, so they are captured through the failure listener.
         private volatile string? _lastFailure;
-        // Counts stream failures on this activation. A handoff checks it across the drain: a
-        // stop completed by the failure path also ends not started but is not a clean handoff.
+        // Checked across the handoff, a failed stop is not clean.
         private int _failureCount;
 
         public Task<SubstreamStatus> GetStatusAsync()
@@ -317,6 +330,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
         // Stream state observed by the previous keep alive reminder tick, used to detect a
         // stream that is stuck in the same non running state for a whole reminder period.
         private Base.Engine.StreamStateValue? _reminderObservedState;
+
+        // Consecutive keep alive ticks that saw the current stream in the start agreement wait.
+        private int _agreementWaitTicks;
 
         // Fetch epoch per requestor substream, announced through the initialize handshake.
         // Fetches from any other epoch are refused, see FetchDataRequest.FetchEpoch. Only
@@ -347,6 +363,21 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 return Task.CompletedTask;
             }
             var state = stream.State;
+            if (stream.IsWaitingForConnectedStreams)
+            {
+                // Waiting for another substream is tolerated for a bounded number of ticks, a wait that never ends needs a new activation.
+                _reminderObservedState = null;
+                if (++_agreementWaitTicks > Math.Max(1, _options.AgreementWaitReminderTicks))
+                {
+                    _logger.LogWarning(
+                        "Substream {substream} has been waiting for the start agreement for {ticks} reminder ticks, recreating it.",
+                        this.GetPrimaryKeyString(), _agreementWaitTicks);
+                    _agreementWaitTicks = 0;
+                    DeactivateOnIdle();
+                }
+                return Task.CompletedTask;
+            }
+            _agreementWaitTicks = 0;
             if (state != Base.Engine.StreamStateValue.Running &&
                 _reminderObservedState == state)
             {
@@ -392,15 +423,10 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                 _migrating = true;
                 try
                 {
-                    // Drain, then stop: the peers fetch and ack the final barrier and the
-                    // stream ends at a checkpoint they match, so the new activation reconnects
-                    // without a rollback. A failure during the drain also ends not started but
-                    // via a rollback, so the failure count is checked before claiming clean.
+                    // Peers ack the final barrier, check failures before claiming clean.
                     var failuresBeforeHandoff = Volatile.Read(ref _failureCount);
-                    var handoff = RunHandoff(stream);
-                    // The handoff is internally bounded (drain and stop drain timeouts), the
-                    // outer bound is a last resort against a genuine hang and is set above the
-                    // default stop drain timeout so the handoff normally settles on its own.
+                    var handoff = stream.StopAsync();
+                    // Last resort bound, above the default stop drain timeout.
                     var finished = await Task.WhenAny(handoff, Task.Delay(TimeSpan.FromSeconds(60)));
                     // Take ownership of the stream teardown either way: null it so a following
                     // OnDeactivateAsync does not dispose it concurrently with the handoff's own
@@ -413,33 +439,24 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
                     {
                         _handoffCompletedCleanly = true;
                         await stream.DisposeAsync();
-                        _logger.LogInformation("Substream {substream} completed its handoff drain and migrates cleanly.", this.GetPrimaryKeyString());
+                        _logger.LogInformation("Substream {substream} completed its handoff stop and migrates cleanly.", this.GetPrimaryKeyString());
                     }
                     else
                     {
-                        // Drain did not finish (e.g. a peer never fetched the stop barrier).
-                        // Migrate as an unplanned restart, the handshake reconciles on recovery.
-                        // Dispose once the handoff settles rather than abandoning it, so its
-                        // stop never runs concurrently with the dispose.
-                        _logger.LogWarning("Substream {substream} could not complete its handoff drain, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                        // Stop did not finish, migrate unplanned, dispose once it settles.
+                        _logger.LogWarning("Substream {substream} could not complete its handoff stop, migrating through the recovery path instead.", this.GetPrimaryKeyString());
                         _migrating = false;
                         _ = DisposeAfterHandoff(handoff, stream);
                     }
                 }
                 catch (Exception e)
                 {
-                    _logger.LogWarning(e, "Substream {substream} handoff drain failed, migrating through the recovery path instead.", this.GetPrimaryKeyString());
+                    _logger.LogWarning(e, "Substream {substream} handoff stop failed, migrating through the recovery path instead.", this.GetPrimaryKeyString());
                     _migrating = false;
                 }
             }
             // Migrate once the current calls complete; the runtime rehydrates and OnActivate resumes.
             this.MigrateOnIdle();
-        }
-
-        private static async Task RunHandoff(Base.Engine.DataflowStream stream)
-        {
-            await stream.PrepareHandoffAsync();
-            await stream.StopAsync();
         }
 
         // Disposes a handed-off stream once its (possibly still running) handoff has settled,
@@ -490,23 +507,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
 
         public async Task<InitSubstreamResponse> InitializeSubstreamRequest(InitSubstreamRequest request)
         {
-            // Fetch epochs come from a monotonically increasing per-process seed, so within one
-            // process a newer stream instance always announces a higher epoch than an abandoned
-            // one. A handshake carrying an older epoch than the one already recorded is treated
-            // as a stale instance, for example one still running on a silo the requestors grain
-            // has moved off of. Installing it would overwrite the live instances announcement
-            // and make every fetch from the live instance mismatch the recorded epoch, fencing
-            // the healthy consumer out of its own data. The announcement is kept and the
-            // stale instance is answered as an already reconciled success: refusing or
-            // reporting a version mismatch would drive the live serving stream into a needless
-            // fail over to the abandoned instances restore point. The seeds are clock-based per
-            // process though, so after a silo failover a LIVE requestor can also land here: its
-            // grain reactivated on a process whose seed started earlier than the dead instances,
-            // and each failure only draws +1 from that seed, which never bridges a clock-scale
-            // gap. The response therefore carries the recorded epoch, so a live requestor can
-            // raise its seed above it and re-run the handshake; a genuinely stale instance dies
-            // with its bounded startup retry loop and cannot keep reclaiming the record, while
-            // the live instance re-announces on every recovery and wins terminally.
+            // Older epoch, stale or clock behind, answer with the record.
             if (_peerFetchEpochs.TryGetValue(request.Requestor, out var recordedEpoch) &&
                 request.FetchEpoch < recordedEpoch)
             {
@@ -524,11 +525,11 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             {
                 return new InitSubstreamResponse(true, false, request.RestorePoint, recordedFetchEpoch: request.FetchEpoch);
             }
-            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff);
+            var response = await handler.TargetInitializeRequest(request.RestorePoint, request.CheckpointEpoch, request.CleanHandoff, new RecoveryWave(request.WaveCounter, request.WaveId));
             // NotStarted must survive the wire: it signals a transient state where the
             // requestor retries with backoff; a plain failure would make it fail and recover
             // instead, needlessly rolling back both substreams on a clean handoff reconnect.
-            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect);
+            return new InitSubstreamResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, recordedFetchEpoch: request.FetchEpoch, recordedCheckpointEpoch: response.RecordedCheckpointEpoch, cleanReconnect: response.CleanReconnect, peerDraining: response.PeerDraining, waveCounter: response.Wave.Counter, waveId: response.Wave.Id, peerInInit: response.PeerInInit);
         }
 
         /// <summary>
@@ -679,6 +680,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Grains
             _options.ConfigureBuilder?.Invoke(_state.State.StreamName, _state.State.SubstreamName!, flowtideBuilder);
 
             _stream = flowtideBuilder.Build();
+            _agreementWaitTicks = 0;
             var stream = _stream;
             _tickCancellation = new CancellationTokenSource();
             var tickToken = _tickCancellation.Token;

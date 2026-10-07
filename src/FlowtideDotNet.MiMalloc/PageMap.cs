@@ -409,6 +409,45 @@ namespace FlowtideDotNet.MiMalloc
             mi_page_map_set_range(null, idx, sub_idx, slice_count);   // todo: avoid committing if not already committed?
         }
 
+        // Visit every distinct page currently registered in the page map.
+        //
+        // Port note: this has no counterpart in the C -- it exists so diagnostics can enumerate pages
+        // independently of where they came from. `_mi_heap_visit_blocks` can only reach pages that are
+        // either in an arena's `pages` bitmap or on the `os_abandoned_pages` list, so a live page that
+        // was allocated outside an arena is invisible to it. The page map has no such gap: every page
+        // is registered here at creation regardless of its memkind.
+        //
+        // `mi_page_map_set_range` writes one entry per slice covered by the page, and those entries are
+        // always a contiguous ascending run, so remembering the previous entry is enough to visit each
+        // page exactly once. Reads are unsynchronized (as the C does elsewhere) -- a page being created
+        // or freed concurrently may be seen or missed, so treat the result as a gauge.
+        // Returns false if the visitor asked to stop.
+        public static bool _mi_page_map_forall_pages(delegate*<mi_page_t*, void*, bool> visitor, void* arg)
+        {
+            mi_assert(visitor != null);
+            if (visitor == null) return false;
+            mi_page_t*** page_map = mi_page_map_get();
+            if (page_map == null || page_map == mi_page_map_empty_get()) return true;   // not initialized yet
+
+            mi_page_t* prev = null;
+            for (nuint idx = 0; idx < mi_page_map_count; idx++)
+            {
+                // never dereference an uncommitted part of the map
+                if (!mi_page_map_is_committed(idx, null)) { prev = null; continue; }
+                mi_page_t** sub = _mi_page_map_at(idx);
+                if (sub == null) { prev = null; continue; }
+                for (nuint sub_idx = 0; sub_idx < MI_PAGE_MAP_SUB_COUNT; sub_idx++)
+                {
+                    mi_page_t* page = sub[sub_idx];
+                    if (page == null) { prev = null; continue; }
+                    if (page == prev) continue;   // still inside the run of the page we just visited
+                    prev = page;
+                    if (!visitor(page, arg)) return false;
+                }
+            }
+            return true;
+        }
+
         // Return NULL for invalid pointers
         public static mi_page_t* _mi_safe_ptr_page(void* p)
         {

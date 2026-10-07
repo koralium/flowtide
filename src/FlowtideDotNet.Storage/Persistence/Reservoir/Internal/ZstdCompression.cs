@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         }
 
         private ZSTD_outBuffer_s output;
-        FlowtideZstdCompressor _compressor;
+        FlowtideZstdCompressor? _compressor;
         private IMemoryOwner<byte>? _destinationOwner;
         private Memory<byte> _destination;
         private bool disposedValue;
@@ -96,7 +96,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         {
             if (!disposedValue)
             {
-                _compressor.Dispose();
+                // The constructor can throw before this is assigned.
+                _compressor?.Dispose();
                 if (_destinationOwner != null)
                 {
                     _destinationOwner.Dispose();

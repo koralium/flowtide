@@ -34,13 +34,13 @@ namespace FlowtideDotNet.Core.Tests
         private sealed class RecordingHandler : ISubstreamCommunicationHandler
         {
             private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunc;
-            private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+            private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
             private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 _getDataFunc = getDataFunction;
@@ -53,9 +53,15 @@ namespace FlowtideDotNet.Core.Tests
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
 
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
+
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
                 => Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
 
             /// <summary>
@@ -88,7 +94,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     throw new InvalidOperationException("The handler was not initialized by a communication point.");
                 }
-                var response = await _initializeFromTarget(0, 0, false);
+                var response = await _initializeFromTarget(0, 0, false, default);
                 await _callRecieveCheckpointDone(checkpointVersion, response.CheckpointEpoch, coversPeerStopBarrier);
             }
         }
@@ -160,7 +166,7 @@ namespace FlowtideDotNet.Core.Tests
             Assert.True(op.ReadyToStop);
 
             // The stop cycle stores the stop barrier into the target queue.
-            await ((ITargetBlock<IStreamEvent>)op).SendAsync(new StopStreamCheckpoint(1, 2));
+            await ((ITargetBlock<IStreamEvent>)op).SendAsync(new StopStreamCheckpoint(1, 2, 1));
             await WaitUntilAsync(() => !op.ReadyToStop, "The stop barrier was never stored in the exchange target");
 
             // The peer fetches the barrier; the fetch alone must not finish the stop, the

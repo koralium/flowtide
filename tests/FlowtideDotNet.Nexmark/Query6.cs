@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 namespace FlowtideDotNet.Nexmark
 {
     [EventCountDiagnoser]
+    [CacheHitRateDiagnoser]
     public class Query6 : QueryBase
     {
         [Benchmark]
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Nexmark
             ) AS Q;
             ", planOptimizerSettings: new Core.Optimizer.PlanOptimizerSettings()
             {
-                Parallelization = 1
+                Parallelization = 4
             });
             await Stream.WaitForUpdate();
         }

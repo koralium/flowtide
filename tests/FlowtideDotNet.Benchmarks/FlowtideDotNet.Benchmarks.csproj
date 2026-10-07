@@ -12,6 +12,7 @@
     <PackageReference Include="Apache.Arrow.Compression" />
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" />
+    <PackageReference Include="Roslyn.Diagnostics.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

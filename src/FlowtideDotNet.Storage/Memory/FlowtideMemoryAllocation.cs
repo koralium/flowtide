@@ -31,6 +31,24 @@ namespace FlowtideDotNet.Storage.Memory
         // The managed mimalloc port requires a 64-bit process; on 32-bit fall back to NativeMemory.
         private static readonly bool _useMimalloc = IntPtr.Size == 8;
 
+        /// <summary>
+        /// Whether <see cref="GetAllocationSize"/> can recover a block's size from its pointer alone.
+        /// Only mimalloc can do this; the <see cref="NativeMemory"/> fallback has no equivalent, so a
+        /// caller that needs the size on a free path must remember it itself when this is false.
+        /// </summary>
+        public static bool CanQueryAllocationSize => _useMimalloc;
+
+        /// <summary>
+        /// The size of a block previously returned by <see cref="AllocateAligned"/>. Only valid when
+        /// <see cref="CanQueryAllocationSize"/> is true -- asking mimalloc about a pointer it did not
+        /// hand out reads through a page map that has no entry for it.
+        /// </summary>
+        public static nuint GetAllocationSize(void* ptr)
+        {
+            Debug.Assert(_useMimalloc, "GetAllocationSize is only valid when mimalloc is in use");
+            return MiMalloc.mi_usable_size(ptr);
+        }
+
         static FlowtideMemoryAllocation()
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
@@ -140,7 +158,14 @@ namespace FlowtideDotNet.Storage.Memory
         {
             if (_useMimalloc)
             {
-                MiMalloc.mi_collect(true);
+                // Overallocate a bunch of work items to try and hit all threads in the thread pool to run the collection.
+                for (int i = 0; i < Environment.ProcessorCount * 8; i++)
+                {
+                    ThreadPool.QueueUserWorkItem<object?>((_) =>
+                    {
+                        MiMalloc.mi_collect(true);
+                    }, default, false);
+                }
             }
         }
     }

@@ -19,6 +19,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         bool AddOrUpdate(in long key, V value);
         Task WaitForNotFullAsync();
         ValueTask<V?> GetValue(in long key);
+        /// <summary>
+        /// Captures this client's changes for the next checkpoint. With background commits,
+        /// returns after metadata and externally rented pages are captured; remaining pages
+        /// are written by the worker or by a fetch before the page is returned for editing.
+        /// Only one generation may be in flight. Durability requires the manager's checkpoint.
+        /// </summary>
         ValueTask Commit();
         void Delete(in long key);
         ValueTask Reset(bool clearMetadata);
@@ -26,6 +32,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         int BPlusTreePageSizeBytes { get; }
 
         long CacheMisses { get; }
+
+        /// <summary>
+        /// How many pages the caller may hold rented at once. A held page is never evicted, so
+        /// the cache caps this at what it can spare.
+        /// </summary>
+        int MaxHeldPages { get; }
+
+        /// <summary>
+        /// Rents the page only when it is already cached, without reading from storage.
+        /// A page that is not cached cannot be evicted, so there is nothing to hold and the
+        /// caller fetches it on the normal path when it reaches it.
+        /// </summary>
+        bool TryGetCachedValue(in long key, out V? value);
 
         Task InitializeSerializerAsync();
     }

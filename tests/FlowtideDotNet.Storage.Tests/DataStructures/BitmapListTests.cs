@@ -20,10 +20,10 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestRemoveAtFirst()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(0);
-            list.Set(31);
-            list.Set(33);
+            var list = default(BitmapList);
+            list.Set(0, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(33, GlobalMemoryManager.Instance);
             list.RemoveAt(0);
 
             Assert.False(list.Get(0));
@@ -34,12 +34,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestRemoveAtMiddle()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(2);
-            list.Set(16);
-            list.Set(28);
-            list.Set(31);
-            list.Set(34);
+            var list = default(BitmapList);
+            list.Set(2, GlobalMemoryManager.Instance);
+            list.Set(16, GlobalMemoryManager.Instance);
+            list.Set(28, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(34, GlobalMemoryManager.Instance);
             list.RemoveAt(16);
 
             Assert.True(list.Get(2));
@@ -52,12 +52,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestRemoveAtLast()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(2);
-            list.Set(16);
-            list.Set(28);
-            list.Set(31);
-            list.Set(34);
+            var list = default(BitmapList);
+            list.Set(2, GlobalMemoryManager.Instance);
+            list.Set(16, GlobalMemoryManager.Instance);
+            list.Set(28, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(34, GlobalMemoryManager.Instance);
             list.RemoveAt(31);
 
             Assert.True(list.Get(2));
@@ -70,13 +70,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestRemoveAtLastNextBitTrue()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(2);
-            list.Set(16);
-            list.Set(28);
-            list.Set(31);
-            list.Set(32);
-            list.Set(34);
+            var list = default(BitmapList);
+            list.Set(2, GlobalMemoryManager.Instance);
+            list.Set(16, GlobalMemoryManager.Instance);
+            list.Set(28, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(32, GlobalMemoryManager.Instance);
+            list.Set(34, GlobalMemoryManager.Instance);
             list.RemoveAt(31);
 
             Assert.True(list.Get(2));
@@ -91,14 +91,14 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertAt()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(2);
-            list.Set(16);
-            list.Set(28);
-            list.Set(31);
-            list.Set(32);
-            list.Set(34);
-            list.InsertAt(3, true);
+            var list = default(BitmapList);
+            list.Set(2, GlobalMemoryManager.Instance);
+            list.Set(16, GlobalMemoryManager.Instance);
+            list.Set(28, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(32, GlobalMemoryManager.Instance);
+            list.Set(34, GlobalMemoryManager.Instance);
+            list.InsertAt(3, true, GlobalMemoryManager.Instance);
 
             Assert.True(list.Get(2));
             Assert.True(list.Get(17));
@@ -111,14 +111,14 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertAtSecondInteger()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(2);
-            list.Set(16);
-            list.Set(28);
-            list.Set(31);
-            list.Set(32);
-            list.Set(34);
-            list.InsertAt(33, true);
+            var list = default(BitmapList);
+            list.Set(2, GlobalMemoryManager.Instance);
+            list.Set(16, GlobalMemoryManager.Instance);
+            list.Set(28, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(32, GlobalMemoryManager.Instance);
+            list.Set(34, GlobalMemoryManager.Instance);
+            list.InsertAt(33, true, GlobalMemoryManager.Instance);
 
             Assert.True(list.Get(2));
             Assert.True(list.Get(16));
@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInitialization()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             for (int i = 0; i < 64; i++)
             {
                 Assert.False(list.Get(i));
@@ -142,15 +142,15 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestSetAndUnsetBits()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(0);
+            var list = default(BitmapList);
+            list.Set(0, GlobalMemoryManager.Instance);
             Assert.True(list.Get(0));
-            list.Unset(0);
+            list.Unset(0, GlobalMemoryManager.Instance);
             Assert.False(list.Get(0));
 
-            list.Set(63);
+            list.Set(63, GlobalMemoryManager.Instance);
             Assert.True(list.Get(63));
-            list.Unset(63);
+            list.Unset(63, GlobalMemoryManager.Instance);
             Assert.False(list.Get(63));
         }
 
@@ -158,11 +158,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestBoundaryConditions()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(0);
-            list.Set(31);
-            list.Set(32);
-            list.Set(63);
+            var list = default(BitmapList);
+            list.Set(0, GlobalMemoryManager.Instance);
+            list.Set(31, GlobalMemoryManager.Instance);
+            list.Set(32, GlobalMemoryManager.Instance);
+            list.Set(63, GlobalMemoryManager.Instance);
 
             Assert.True(list.Get(0));
             Assert.True(list.Get(31));
@@ -173,7 +173,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             Assert.True(list.Get(31));
             Assert.True(list.Get(62));
 
-            list.InsertAt(32, true);
+            list.InsertAt(32, true, GlobalMemoryManager.Instance);
             Assert.True(list.Get(31));
             Assert.True(list.Get(32));
         }
@@ -181,8 +181,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRemoveInEmptyList()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.InsertAt(0, true);
+            var list = default(BitmapList);
+            list.InsertAt(0, true, GlobalMemoryManager.Instance);
             Assert.True(list.Get(0));
 
             list.RemoveAt(0);
@@ -192,9 +192,9 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRemoveSingleBitList()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(10);
-            list.InsertAt(5, true);
+            var list = default(BitmapList);
+            list.Set(10, GlobalMemoryManager.Instance);
+            list.InsertAt(5, true, GlobalMemoryManager.Instance);
             Assert.True(list.Get(5));
             Assert.True(list.Get(11)); // Original bit should have shifted
 
@@ -206,8 +206,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestLargeIndexSet()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Set(1024);
+            var list = default(BitmapList);
+            list.Set(1024, GlobalMemoryManager.Instance);
             Assert.True(list.Get(1024));
             Assert.False(list.Get(1023));
         }
@@ -218,12 +218,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertAtEndOfIndex()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             for (int i = 1; i < 32; i++)
             {
-                list.InsertAt(i, true);
+                list.InsertAt(i, true, GlobalMemoryManager.Instance);
             }
-            list.InsertAt(31, true);
+            list.InsertAt(31, true, GlobalMemoryManager.Instance);
 
             Assert.False(list.Get(0));
 
@@ -237,13 +237,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestSequence()
         {
             //var lines = File.ReadAllLines("./ColumnStore/Utils/alloperations.csv");
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
-            list.InsertAt(0, false);
+            list.InsertAt(0, false, GlobalMemoryManager.Instance);
 
             for (int i = 1; i < 65; i++)
             {
-                list.InsertAt(i, true);
+                list.InsertAt(i, true, GlobalMemoryManager.Instance);
             }
             list.RemoveAt(64);
 
@@ -257,20 +257,20 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertSpecialCaseShiftLeftAtBorder()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 583; i++)
             {
-                list.Unset(i);
+                list.Unset(i, GlobalMemoryManager.Instance);
             }
-            list.Set(584);
-            list.Unset(585);
+            list.Set(584, GlobalMemoryManager.Instance);
+            list.Unset(585, GlobalMemoryManager.Instance);
             for (int i = 586; i <= 606; i++)
             {
-                list.Unset(i);
+                list.Unset(i, GlobalMemoryManager.Instance);
             }
 
-            list.InsertAt(607, false);
+            list.InsertAt(607, false, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < 583; i++)
             {
@@ -286,7 +286,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRandomInOrder()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             Random r = new Random(123);
 
@@ -297,12 +297,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 var v = r.Next(0, 2);
                 if (v == 0)
                 {
-                    list.InsertAt(i, false);
+                    list.InsertAt(i, false, GlobalMemoryManager.Instance);
                     expected.Add(false);
                 }
                 else
                 {
-                    list.InsertAt(i, true);
+                    list.InsertAt(i, true, GlobalMemoryManager.Instance);
                     expected.Add(true);
                 }
             }
@@ -328,7 +328,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRandomRandomOrder()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             Random r = new Random(123);
 
@@ -343,7 +343,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -370,7 +370,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         {
             for (int seed = 0; seed < 20; seed++)
             {
-                var list = new BitmapList(GlobalMemoryManager.Instance);
+                var list = default(BitmapList);
 
                 Random r = new Random(seed);
 
@@ -385,7 +385,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                         val = false;
                     }
                     var index = r.Next(0, expected.Count);
-                    list.InsertAt(index, val);
+                    list.InsertAt(index, val, GlobalMemoryManager.Instance);
                     expected.Insert(index, val);
                 }
 
@@ -406,15 +406,15 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                         Assert.Equal(expected[k], list.Get(k));
                     }
                 }
-                list.Dispose();
+                list.Dispose(GlobalMemoryManager.Instance);
             }
         }
 
         [Fact]
         public void TestInsertRangeStartNoOffset()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
+            var other = default(BitmapList);
 
             Random r = new Random(1);
 
@@ -430,7 +430,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -443,11 +443,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, otherList.Count);
-                other.InsertAt(index, val);
+                other.InsertAt(index, val, GlobalMemoryManager.Instance);
                 otherList.Insert(index, val);
             }
 
-            list.InsertRangeFrom(1, other, 0, 10);
+            list.InsertRangeFrom(1, other, 0, 10, GlobalMemoryManager.Instance);
             expected.InsertRange(1, otherList.GetRange(0, 10));
 
             for (int i = 0; i < expected.Count; i++)
@@ -459,8 +459,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRangeStartOffsetOne()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
+            var other = default(BitmapList);
 
             Random r = new Random(1);
 
@@ -476,7 +476,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -489,11 +489,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, otherList.Count);
-                other.InsertAt(index, val);
+                other.InsertAt(index, val, GlobalMemoryManager.Instance);
                 otherList.Insert(index, val);
             }
 
-            list.InsertRangeFrom(1, other, 1, 9);
+            list.InsertRangeFrom(1, other, 1, 9, GlobalMemoryManager.Instance);
             expected.InsertRange(1, otherList.GetRange(1, 9));
 
             for (int i = 0; i < expected.Count; i++)
@@ -506,8 +506,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRangeSimple()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
+            var other = default(BitmapList);
 
             Random r = new Random(1);
 
@@ -523,7 +523,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -536,11 +536,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, otherList.Count);
-                other.InsertAt(index, val);
+                other.InsertAt(index, val, GlobalMemoryManager.Instance);
                 otherList.Insert(index, val);
             }
 
-            list.InsertRangeFrom(1, other, 2, 32);
+            list.InsertRangeFrom(1, other, 2, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(1, otherList.GetRange(2, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -552,8 +552,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertRangeFactor32InsertAtEnd()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
+            var other = default(BitmapList);
 
             Random r = new Random(1);
 
@@ -569,7 +569,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -582,11 +582,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, otherList.Count);
-                other.InsertAt(index, val);
+                other.InsertAt(index, val, GlobalMemoryManager.Instance);
                 otherList.Insert(index, val);
             }
 
-            list.InsertRangeFrom(64, other, 0, 64);
+            list.InsertRangeFrom(64, other, 0, 64, GlobalMemoryManager.Instance);
             expected.InsertRange(64, otherList.GetRange(0, 64));
 
             for (int i = 0; i < expected.Count; i++)
@@ -600,8 +600,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         {
             for (int seed = 0; seed < 20; seed++)
             {
-                var list = new BitmapList(GlobalMemoryManager.Instance);
-                var other = new BitmapList(GlobalMemoryManager.Instance);
+                var list = default(BitmapList);
+                var other = default(BitmapList);
 
                 Random r = new Random(seed);
 
@@ -617,7 +617,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                         val = false;
                     }
                     var index = r.Next(0, expected.Count);
-                    list.InsertAt(index, val);
+                    list.InsertAt(index, val, GlobalMemoryManager.Instance);
                     expected.Insert(index, val);
                 }
 
@@ -630,7 +630,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                         val = false;
                     }
                     var index = r.Next(0, otherList.Count);
-                    other.InsertAt(index, val);
+                    other.InsertAt(index, val, GlobalMemoryManager.Instance);
                     otherList.Insert(index, val);
                 }
 
@@ -641,7 +641,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     var insertLocation = r.Next(0, expected.Count);
                     var index = r.Next(0, otherList.Count);
                     var toAdd = r.Next(0, otherList.Count - index);
-                    list.InsertRangeFrom(insertLocation, other, index, toAdd);
+                    list.InsertRangeFrom(insertLocation, other, index, toAdd, GlobalMemoryManager.Instance);
 
                     expected.InsertRange(insertLocation, otherList.GetRange(index, toAdd));
                 }
@@ -651,14 +651,14 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     Assert.Equal(expected[k], list.Get(k));
                 }
 
-                list.Dispose();
+                list.Dispose(GlobalMemoryManager.Instance);
             }
         }
 
         [Fact]
         public void CountTrueInRangeFullRange()
         {
-            var bitmapList = new BitmapList(GlobalMemoryManager.Instance);
+            var bitmapList = default(BitmapList);
             var list = new List<bool>();
             Random r = new Random(123);
 
@@ -670,7 +670,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 {
                     val = false;
                 }
-                bitmapList.Add(val);
+                bitmapList.Add(val, GlobalMemoryManager.Instance);
                 list.Add(val);
             }
 
@@ -684,7 +684,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         {
             for (int seed = 0; seed < 100; seed++)
             {
-                using var list = new BitmapList(GlobalMemoryManager.Instance);
+                var list = new BitmapList(0, GlobalMemoryManager.Instance);
 
                 Random r = new Random(seed);
 
@@ -698,7 +698,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                         val = false;
                     }
                     var index = r.Next(0, expected.Count);
-                    list.InsertAt(index, val);
+                    list.InsertAt(index, val, GlobalMemoryManager.Instance);
                     expected.Insert(index, val);
                 }
 
@@ -716,7 +716,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestCountFalseInRange()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             Random r = new Random(123);
 
@@ -730,7 +730,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     val = false;
                 }
                 var index = r.Next(0, expected.Count);
-                list.InsertAt(index, val);
+                list.InsertAt(index, val, GlobalMemoryManager.Instance);
                 expected.Insert(index, val);
             }
 
@@ -747,11 +747,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestFindNextFalseIndex()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 != 0);
+                list.Add(i % 2 != 0, GlobalMemoryManager.Instance);
             }
 
             // For loop that does the same thing
@@ -767,11 +767,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestFindNextFalseIndexStartWithTrue()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
             }
 
             // For loop that does the same thing
@@ -785,11 +785,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestFindNextTrueIndexStartWithFalse()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 != 0);
+                list.Add(i % 2 != 0, GlobalMemoryManager.Instance);
             }
 
             // For loop that does the same thing
@@ -803,11 +803,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestFindNextTrueIndexStartWithTrue()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
             }
 
             // For loop that does the same thing
@@ -822,16 +822,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertTrueInRangeStartEndInSameIndexStartMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertTrueInRange(0, 5);
+            list.InsertTrueInRange(0, 5, GlobalMemoryManager.Instance);
             expected.InsertRange(0, Enumerable.Repeat(true, 5));
 
             for (int i = 0; i < expected.Count; i++)
@@ -839,7 +839,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertTrueInRange(32, 7);
+            list.InsertTrueInRange(32, 7, GlobalMemoryManager.Instance);
             expected.InsertRange(32, Enumerable.Repeat(true, 7));
 
             for (int i = 0; i < expected.Count; i++)
@@ -851,16 +851,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertTrueInRangeStartEndInSameIndexStartNotMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertTrueInRange(3, 5);
+            list.InsertTrueInRange(3, 5, GlobalMemoryManager.Instance);
             expected.InsertRange(3, Enumerable.Repeat(true, 5));
 
             for (int i = 0; i < expected.Count; i++)
@@ -868,7 +868,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertTrueInRange(39, 7);
+            list.InsertTrueInRange(39, 7, GlobalMemoryManager.Instance);
             expected.InsertRange(39, Enumerable.Repeat(true, 7));
 
             for (int i = 0; i < expected.Count; i++)
@@ -880,16 +880,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertTrueInRangeStartEndInSameIndexBothMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertTrueInRange(0, 32);
+            list.InsertTrueInRange(0, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(0, Enumerable.Repeat(true, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -897,7 +897,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertTrueInRange(32, 32);
+            list.InsertTrueInRange(32, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(32, Enumerable.Repeat(true, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -909,16 +909,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertTrueInRangeStartEndInDifferentIntegers()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertTrueInRange(5, 32);
+            list.InsertTrueInRange(5, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(5, Enumerable.Repeat(true, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -926,7 +926,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertTrueInRange(67, 17);
+            list.InsertTrueInRange(67, 17, GlobalMemoryManager.Instance);
             expected.InsertRange(67, Enumerable.Repeat(true, 17));
 
             for (int i = 0; i < expected.Count; i++)
@@ -938,16 +938,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertTrueInRangeStartEndInDifferentIntegersEndWithMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertTrueInRange(5, 59);
+            list.InsertTrueInRange(5, 59, GlobalMemoryManager.Instance);
             expected.InsertRange(5, Enumerable.Repeat(true, 59));
 
             for (int i = 0; i < expected.Count; i++)
@@ -955,7 +955,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertTrueInRange(67, 29);
+            list.InsertTrueInRange(67, 29, GlobalMemoryManager.Instance);
             expected.InsertRange(67, Enumerable.Repeat(true, 29));
 
             for (int i = 0; i < expected.Count; i++)
@@ -967,16 +967,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFalseInRangeStartEndInSameIndexStartMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertFalseInRange(0, 5);
+            list.InsertFalseInRange(0, 5, GlobalMemoryManager.Instance);
             expected.InsertRange(0, Enumerable.Repeat(false, 5));
 
             for (int i = 0; i < expected.Count; i++)
@@ -984,7 +984,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertFalseInRange(32, 7);
+            list.InsertFalseInRange(32, 7, GlobalMemoryManager.Instance);
             expected.InsertRange(32, Enumerable.Repeat(false, 7));
 
             for (int i = 0; i < expected.Count; i++)
@@ -996,16 +996,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFalseInRangeStartEndInSameIndexStartNotMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertFalseInRange(3, 5);
+            list.InsertFalseInRange(3, 5, GlobalMemoryManager.Instance);
             expected.InsertRange(3, Enumerable.Repeat(false, 5));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1013,7 +1013,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertFalseInRange(39, 7);
+            list.InsertFalseInRange(39, 7, GlobalMemoryManager.Instance);
             expected.InsertRange(39, Enumerable.Repeat(false, 7));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1025,16 +1025,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFalseInRangeStartEndInSameIndexBothMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertFalseInRange(0, 32);
+            list.InsertFalseInRange(0, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(0, Enumerable.Repeat(false, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1042,7 +1042,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertFalseInRange(32, 32);
+            list.InsertFalseInRange(32, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(32, Enumerable.Repeat(false, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1054,16 +1054,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFalseInRangeStartEndInDifferentIntegers()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertFalseInRange(5, 32);
+            list.InsertFalseInRange(5, 32, GlobalMemoryManager.Instance);
             expected.InsertRange(5, Enumerable.Repeat(false, 32));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1071,7 +1071,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertFalseInRange(67, 17);
+            list.InsertFalseInRange(67, 17, GlobalMemoryManager.Instance);
             expected.InsertRange(67, Enumerable.Repeat(false, 17));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1083,16 +1083,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFalseInRangeStartEndInDifferentIntegersEndWithMod0()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             List<bool> expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
                 expected.Add(i % 2 == 0);
             }
 
-            list.InsertFalseInRange(5, 59);
+            list.InsertFalseInRange(5, 59, GlobalMemoryManager.Instance);
             expected.InsertRange(5, Enumerable.Repeat(false, 59));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1100,7 +1100,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 Assert.Equal(expected[i], list.Get(i));
             }
 
-            list.InsertFalseInRange(67, 29);
+            list.InsertFalseInRange(67, 29, GlobalMemoryManager.Instance);
             expected.InsertRange(67, Enumerable.Repeat(false, 29));
 
             for (int i = 0; i < expected.Count; i++)
@@ -1112,16 +1112,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromEmptyLookup()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Add(true);
-            list.Add(false);
-            list.Add(true);
+            var list = default(BitmapList);
+            list.Add(true, GlobalMemoryManager.Instance);
+            list.Add(false, GlobalMemoryManager.Instance);
+            list.Add(true, GlobalMemoryManager.Instance);
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(false);
+            var other = default(BitmapList);
+            other.Add(false, GlobalMemoryManager.Instance);
 
             var emptySpan = ReadOnlySpan<int>.Empty;
-            list.InsertFrom(in other, in emptySpan, in emptySpan, -1);
+            list.InsertFrom(in other, in emptySpan, in emptySpan, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(3, list.Count);
             Assert.True(list.Get(0));
@@ -1132,19 +1132,19 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromSingleElement()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Add(true);
-            list.Add(false);
-            list.Add(true);
+            var list = default(BitmapList);
+            list.Add(true, GlobalMemoryManager.Instance);
+            list.Add(false, GlobalMemoryManager.Instance);
+            list.Add(true, GlobalMemoryManager.Instance);
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(true);
-            other.Add(false);
+            var other = default(BitmapList);
+            other.Add(true, GlobalMemoryManager.Instance);
+            other.Add(false, GlobalMemoryManager.Instance);
 
             int[] sortedLookup = [0];
             int[] insertPositions = [1];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, list.Count);
             Assert.True(list.Get(0));
@@ -1156,18 +1156,18 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromSingleElementFalse()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Add(true);
-            list.Add(true);
-            list.Add(true);
+            var list = default(BitmapList);
+            list.Add(true, GlobalMemoryManager.Instance);
+            list.Add(true, GlobalMemoryManager.Instance);
+            list.Add(true, GlobalMemoryManager.Instance);
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(false);
+            var other = default(BitmapList);
+            other.Add(false, GlobalMemoryManager.Instance);
 
             int[] sortedLookup = [0];
             int[] insertPositions = [1];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(4, list.Count);
             Assert.True(list.Get(0));
@@ -1179,27 +1179,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromAtBeginning()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 10; i++)
             {
                 bool val = i % 3 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [0, 0, 0];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1216,27 +1216,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromAtEnd()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 10; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { false, true, false };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [10, 10, 10];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1253,27 +1253,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromMultiplePositions()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 10; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2, 3, 4];
             int[] insertPositions = [1, 3, 5, 7, 9];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1290,29 +1290,29 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromCrossingWordBoundary()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 3 != 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 5; i++)
             {
                 bool val = i % 2 == 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
             int[] sortedLookup = [0, 1, 2, 3, 4];
             int[] insertPositions = [15, 30, 31, 32, 50];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1329,20 +1329,20 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromIntoEmptyList()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [0, 0, 0];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1359,27 +1359,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromAllTrue()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 32; i++)
             {
-                list.Add(false);
+                list.Add(false, GlobalMemoryManager.Instance);
                 expected.Add(false);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 4; i++)
             {
-                other.Add(true);
+                other.Add(true, GlobalMemoryManager.Instance);
                 otherList.Add(true);
             }
 
             int[] sortedLookup = [0, 1, 2, 3];
             int[] insertPositions = [0, 10, 20, 30];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1396,27 +1396,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromAllFalse()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 32; i++)
             {
-                list.Add(true);
+                list.Add(true, GlobalMemoryManager.Instance);
                 expected.Add(true);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 4; i++)
             {
-                other.Add(false);
+                other.Add(false, GlobalMemoryManager.Instance);
                 otherList.Add(false);
             }
 
             int[] sortedLookup = [0, 1, 2, 3];
             int[] insertPositions = [0, 10, 20, 30];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1433,27 +1433,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromConsecutivePositions()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [5, 6, 7];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1470,27 +1470,27 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromNonSequentialLookup()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 16; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 2, 4];
             int[] insertPositions = [3, 8, 12];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1509,23 +1509,23 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         {
             for (int seed = 0; seed < 20; seed++)
             {
-                var list = new BitmapList(GlobalMemoryManager.Instance);
+                var list = default(BitmapList);
                 var expected = new List<bool>();
                 var r = new Random(seed);
 
                 for (int i = 0; i < 1000; i++)
                 {
                     bool val = r.Next(0, 2) == 1;
-                    list.Add(val);
+                    list.Add(val, GlobalMemoryManager.Instance);
                     expected.Add(val);
                 }
 
-                var other = new BitmapList(GlobalMemoryManager.Instance);
+                var other = default(BitmapList);
                 var otherList = new List<bool>();
                 for (int i = 0; i < 500; i++)
                 {
                     bool val = r.Next(0, 2) == 1;
-                    other.Add(val);
+                    other.Add(val, GlobalMemoryManager.Instance);
                     otherList.Add(val);
                 }
 
@@ -1543,7 +1543,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     sortedLookup[i] = r.Next(0, otherList.Count);
                 }
 
-                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
                 for (int i = 0; i < sortedLookup.Length; i++)
                 {
@@ -1556,34 +1556,34 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     Assert.Equal(expected[i], list.Get(i));
                 }
 
-                list.Dispose();
+                list.Dispose(GlobalMemoryManager.Instance);
             }
         }
 
         [Fact]
         public void TestInsertFromDuplicateInsertPositions()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 16; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             int[] sortedLookup = [0, 1, 2];
             int[] insertPositions = [5, 5, 5];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1600,29 +1600,29 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromMultipleWordBoundaries()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 128; i++)
             {
                 bool val = i % 3 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 10; i++)
             {
                 bool val = i % 2 != 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
             int[] sortedLookup = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
             int[] insertPositions = [0, 14, 31, 32, 48, 63, 64, 80, 96, 112];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1639,16 +1639,16 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromSingleElementListSingleInsert()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
-            list.Add(true);
+            var list = default(BitmapList);
+            list.Add(true, GlobalMemoryManager.Instance);
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(false);
+            var other = default(BitmapList);
+            other.Add(false, GlobalMemoryManager.Instance);
 
             int[] sortedLookup = [0];
             int[] insertPositions = [0];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             Assert.Equal(2, list.Count);
             Assert.False(list.Get(0));
@@ -1659,22 +1659,22 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromShiftExactly32Bits()
         {
             // 32 inserts all at position 0 forces a shift of exactly one full word
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 32; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 32; i++)
             {
                 bool val = i % 3 == 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -1686,7 +1686,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = 0;
             }
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1704,22 +1704,22 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromLargeShiftMoreThan32()
         {
             // 50 inserts all at position 0 forces shift > 32 bits (multi-word)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 50; i++)
             {
                 bool val = i % 3 != 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -1731,7 +1731,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = 0;
             }
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1749,22 +1749,22 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromManyInsertsIntoSmallList()
         {
             // Other list much larger than self; inserts outnumber original elements
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 5; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 100; i++)
             {
                 bool val = i % 4 != 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -1776,7 +1776,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = Math.Min(i / 4, 4); // clusters at 0,0,0,0,1,1,1,1,...,4
             }
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1793,28 +1793,28 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromLookupNotStartingFromZero()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool> { true, false, true, false, true, false, true, false, true, false };
             foreach (var v in otherList)
             {
-                other.Add(v);
+                other.Add(v, GlobalMemoryManager.Instance);
             }
 
             // Lookup skips first 3 elements, picks indices 3, 7, 9
             int[] sortedLookup = [3, 7, 9];
             int[] insertPositions = [2, 10, 18];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1831,23 +1831,23 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestInsertFromRepeatedCallsCumulative()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
             var r = new Random(42);
 
             for (int i = 0; i < 50; i++)
             {
                 bool val = r.Next(0, 2) == 1;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 200; i++)
             {
                 bool val = r.Next(0, 2) == 1;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -1868,7 +1868,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     sortedLookup[i] = r.Next(0, otherList.Count);
                 }
 
-                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+                ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
                 for (int i = 0; i < sortedLookup.Length; i++)
                 {
@@ -1882,29 +1882,29 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 }
             }
 
-            list.Dispose();
+            list.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestInsertFromEveryPosition()
         {
             // Insert one element at every position in a 33-element list (crosses word boundary)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 33; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 33; i++)
             {
                 bool val = i % 3 == 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -1916,7 +1916,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = i;
             }
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -1934,23 +1934,23 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromSingleInsertAtWordBoundary31()
         {
             // Insert at bit 31 (last bit of first word)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(true);
+            var other = default(BitmapList);
+            other.Add(true, GlobalMemoryManager.Instance);
 
             int[] sortedLookup = [0];
             int[] insertPositions = [31];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             expected.Insert(31, true);
 
@@ -1965,23 +1965,23 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromSingleInsertAtWordBoundary32()
         {
             // Insert at bit 32 (first bit of second word)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
-            other.Add(false);
+            var other = default(BitmapList);
+            other.Add(false, GlobalMemoryManager.Instance);
 
             int[] sortedLookup = [0];
             int[] insertPositions = [32];
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             expected.Insert(32, false);
 
@@ -1996,22 +1996,22 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestInsertFromAlternatingBitsLargeSpread()
         {
             // Large list with alternating bits, inserts spread across many words
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 256; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
-            var other = new BitmapList(GlobalMemoryManager.Instance);
+            var other = default(BitmapList);
             var otherList = new List<bool>();
             for (int i = 0; i < 16; i++)
             {
                 bool val = i % 2 != 0;
-                other.Add(val);
+                other.Add(val, GlobalMemoryManager.Instance);
                 otherList.Add(val);
             }
 
@@ -2024,7 +2024,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 insertPositions[i] = i * 16;
             }
 
-            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1);
+            ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, -1, GlobalMemoryManager.Instance);
 
             for (int i = 0; i < sortedLookup.Length; i++)
             {
@@ -2041,13 +2041,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchEmptyTargets()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2064,13 +2064,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchSingleElementAtBeginning()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2088,13 +2088,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchSingleElementInMiddle()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2112,13 +2112,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchSingleElementAtEnd()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2136,13 +2136,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchMultiplePositions()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 20; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2166,13 +2166,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestDeleteBatchAtWordBoundary31()
         {
             // Delete at bit 31 (last bit of first word)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2191,13 +2191,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestDeleteBatchAtWordBoundary32()
         {
             // Delete at bit 32 (first bit of second word)
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2216,13 +2216,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestDeleteBatchCrossingWordBoundary()
         {
             // Delete bits on both sides of a word boundary
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2244,12 +2244,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchAllTrue()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 40; i++)
             {
-                list.Add(true);
+                list.Add(true, GlobalMemoryManager.Instance);
                 expected.Add(true);
             }
 
@@ -2271,12 +2271,12 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchAllFalse()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 40; i++)
             {
-                list.Add(false);
+                list.Add(false, GlobalMemoryManager.Instance);
                 expected.Add(false);
             }
 
@@ -2298,13 +2298,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchConsecutive()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 40; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2328,13 +2328,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestDeleteBatchInterleaved()
         {
             // Delete every other element
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 40; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2361,11 +2361,11 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
         public void TestDeleteBatchAll()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
 
             for (int i = 0; i < 20; i++)
             {
-                list.Add(i % 2 == 0);
+                list.Add(i % 2 == 0, GlobalMemoryManager.Instance);
             }
 
             int[] targets = new int[20];
@@ -2376,7 +2376,7 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
 
             list.DeleteBatch(targets.AsSpan());
 
-            Assert.Empty(list);
+            Assert.Equal(0, list.Count);
         }
 
         [Fact]
@@ -2384,14 +2384,14 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         {
             for (int seed = 0; seed < 20; seed++)
             {
-                var list = new BitmapList(GlobalMemoryManager.Instance);
+                var list = default(BitmapList);
                 var expected = new List<bool>();
                 var r = new Random(seed);
 
                 for (int i = 0; i < 100_000; i++)
                 {
                     bool val = r.Next(0, 2) == 1;
-                    list.Add(val);
+                    list.Add(val, GlobalMemoryManager.Instance);
                     expected.Add(val);
                 }
 
@@ -2416,21 +2416,21 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                     Assert.Equal(expected[i], list.Get(i));
                 }
 
-                list.Dispose();
+                list.Dispose(GlobalMemoryManager.Instance);
             }
         }
 
         [Fact]
         public void TestDeleteBatchRepeatedCallsCumulative()
         {
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
             var r = new Random(42);
 
             for (int i = 0; i < 500; i++)
             {
                 bool val = r.Next(0, 2) == 1;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2459,20 +2459,20 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
                 }
             }
 
-            list.Dispose();
+            list.Dispose(GlobalMemoryManager.Instance);
         }
 
         [Fact]
         public void TestDeleteBatchAlternatingBitsLargeSpread()
         {
             // Large list with alternating bits, deletes spread across many words
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 256; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2501,13 +2501,13 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         public void TestDeleteBatchThenAdd()
         {
             // Verify list is still usable after batch delete
-            var list = new BitmapList(GlobalMemoryManager.Instance);
+            var list = default(BitmapList);
             var expected = new List<bool>();
 
             for (int i = 0; i < 64; i++)
             {
                 bool val = i % 2 == 0;
-                list.Add(val);
+                list.Add(val, GlobalMemoryManager.Instance);
                 expected.Add(val);
             }
 
@@ -2520,8 +2520,8 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
             }
 
             // Add more elements after the delete
-            list.Add(true);
-            list.Add(false);
+            list.Add(true, GlobalMemoryManager.Instance);
+            list.Add(false, GlobalMemoryManager.Instance);
             expected.Add(true);
             expected.Add(false);
 
@@ -2535,23 +2535,23 @@ namespace FlowtideDotNet.Storage.Tests.DataStructures
         [Fact]
          public void TestInsertFromWithNullIndex()
          {
-             var list = new BitmapList(GlobalMemoryManager.Instance);
+             var list = default(BitmapList);
              
              // Base list
              for (int i = 0; i < 5; i++)
              {
-                 list.Add(true);
+                 list.Add(true, GlobalMemoryManager.Instance);
              }
 
-             var other = new BitmapList(GlobalMemoryManager.Instance);
-             other.Add(true);
-             other.Add(true);
+             var other = default(BitmapList);
+             other.Add(true, GlobalMemoryManager.Instance);
+             other.Add(true, GlobalMemoryManager.Instance);
 
              // Test inserting null values (represented as false in BitmapList)
              int[] sortedLookup = [0, 100, 1]; // 100 is the null index
              int[] insertPositions = [1, 3, 5];
 
-             ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, 100);
+             ReadOnlySpan<int> sl = sortedLookup; ReadOnlySpan<int> ip = insertPositions; list.InsertFrom(in other, in sl, in ip, 100, GlobalMemoryManager.Instance);
 
              Assert.Equal(8, list.Count);
              Assert.True(list.Get(0));

@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,78 +21,41 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
     {
         private readonly object _lock = new object();
         private Task? _currentTask;
-        private bool _isFailing = false;
+        public override Task Initialize(StreamStateValue previousState)
+        {
+            // TransitionTo already fenced the run synchronously. A callback may await
+            // this acknowledgement while it still owns a write claim or a dataflow block.
+            // Recovery must run independently so it can wait for that callback to exit.
+            _context!.RequestVertexCancellation();
+            _context.ForEachVersionAgreement(agreement => agreement.AbortPendingOperations());
+            lock (_lock)
+            {
+                _currentTask ??= Task.Run(Recover);
+            }
+            return Task.CompletedTask;
+        }
 
-        public override async Task Initialize(StreamStateValue previousState)
+        private async Task Recover()
         {
             Debug.Assert(_context != null, nameof(_context));
-            // Runs synchronously inside StreamContext.OnFailure's _contextLock, so a paused stream
-            // that faults wedges here until resume. An awaited pause removes the wedge but lets the
-            // tick loop and peer messages race the failing teardown, breaking distributed pause-crash
-            // recovery, so it stays blocking for now.
-            _context.CheckForPause();
-
-            while (true)
+            while (_context.IsCurrentState(this))
             {
                 try
                 {
-                    lock (_lock)
-                    {
-                        if (_isFailing)
-                        {
-                            return;
-                        }
-                        _isFailing = true;
-                    }
-
-                    // Run stop and dispose linearly to make sure that the caller does
-                    // not return before any dependencies have been stopped and disposed
-                    // This is useful in distributed mode to make sure all other streams are stopped
-                    // and have recieved correct restore checkpoint version before going to starting.
+                    await _context.CheckForPauseAsync();
+                    if (_context.IsDisposed) return;
                     await StopAndDispose();
-                    break;
+                    if (!_context.IsCurrentState(this)) return;
+                    _context.SetStatus(StreamStatus.Failing);
+                    await Transition();
+                    return;
                 }
                 catch (Exception e)
                 {
+                    if (!_context.IsCurrentState(this)) return;
                     _context._logger.FailedStopAndDispose(e, _context.streamName);
-                    _isFailing = false;
-                    // Paced retry, never recursion: a teardown that keeps failing, for
-                    // example on storage that is down, would otherwise grow the stack
-                    // without bound and kill the process with a stack overflow.
                     await Task.Delay(TimeSpan.FromSeconds(1));
                 }
-            }
-
-
-            lock (_lock)
-            {
-                _context.SetStatus(StreamStatus.Failing);
-                if (_currentTask != null)
-                {
-                    return;
-                }
-                // Transitioning to start is done in a separate task to avoid blocking the caller
-                _currentTask = Task.Factory.StartNew(async () =>
-                {
-                    await Transition();
-                })
-                    .Unwrap()
-                    .ContinueWith(t =>
-                    {
-                        lock (_lock)
-                        {
-                            _currentTask = null;
-                            _isFailing = false;
-                        }
-
-                        if (t.IsFaulted)
-                        {
-                            Debug.Assert(_context != null, nameof(_context));
-                            return _context.OnFailure(t.Exception);
-                        }
-                        return Task.CompletedTask;
-                    })
-                    .Unwrap();
             }
         }
 
@@ -100,38 +63,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            // Wait for any in-flight checkpoint commit or compaction to finish before
-            // tearing anything down. Faulting or disposing blocks, or disposing the state
-            // manager, while the state manager is being written corrupts it. Bounded, a
-            // write wedged on unresponsive storage cannot be made safe by waiting and must
-            // not hang the recovery forever.
-            var writeWaitStart = Stopwatch.GetTimestamp();
-            while (true)
-            {
-                if (System.Threading.Volatile.Read(ref _context._stateManagerWriteCount) > 0)
-                {
-                    if (Stopwatch.GetElapsedTime(writeWaitStart) > _context._dataflowStreamOptions.StopDrainTimeout)
-                    {
-                        _context._logger.LogWarning("Failure teardown on stream {stream} proceeded while a state manager write was still active after {timeout}, the write may be wedged on storage.", _context.streamName, _context._dataflowStreamOptions.StopDrainTimeout);
-                        break;
-                    }
-                    await Task.Delay(10);
-                    continue;
-                }
-                // Commits and compactions claim their write count at the decision point, under
-                // the checkpoint lock, before their task is scheduled. Re-reading under that
-                // lock means every claim decided against the pre-failure state is visible, so a
-                // zero here cannot race a task that was scheduled but not yet counted.
-                bool settled;
-                lock (_context._checkpointLock)
-                {
-                    settled = System.Threading.Volatile.Read(ref _context._stateManagerWriteCount) == 0;
-                }
-                if (settled)
-                {
-                    break;
-                }
-            }
+            // Includes vertex initialization and finality callbacks, a timeout never hands their storage to a successor.
+            await _context.WaitForStateManagerToSettle("Failure teardown");
+            if (_context.IsDisposed) return;
 
             // Decide the restore version now that any in-flight commit has settled. A
             // checkpoint that completed during the failure is a valid, more recent recovery
@@ -145,6 +79,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     _context._restoreCheckpointVersion = completed;
                 }
+                // The version to beat before the backoff clears, see CheckpointCompleted
+                _context._checkpointVersionAtLastFailure = _context._restoreCheckpointVersion.Value;
             }
 
             // Clear all triggers before cancelling and stop registering new triggers
@@ -163,8 +99,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // trigger times in the past and be dropped, leaving the stream without
                 // checkpoints until an external trigger arrives.
                 _context.inQueueCheckpoint = null;
-                _context._currentProvidedCheckpointVersion = default;
-                _context._scheduledProvidedCheckpointVersion = default;
+                _context._currentProvidedCheckpointToken = default;
+                _context._scheduledProvidedCheckpointToken = default;
                 if (_context._scheduleCheckpointCancelSource != null)
                 {
                     _context._scheduleCheckpointCancelSource.Cancel();
@@ -180,62 +116,125 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 _context._earlyDependenciesDone.Clear();
             }
 
-            StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
-
-            bool blocksClaimed;
-            lock (_context._blockClaimLock)
+            await _context._blockTeardownGate.WaitAsync();
+            try
             {
-                blocksClaimed = _context._blocksCreated == 1;
-                _context._blocksCreated = 0;
-            }
-            if (!blocksClaimed)
-            {
-                // The failure happened before the start created the blocks (for example at
-                // storage initialization), there is nothing to fault or dispose. Faulting,
-                // completing or disposing never-created blocks throws, which would retry
-                // this teardown forever. A superseded start that created blocks after this
-                // read cleans them up itself when it observes its abort.
-                _context._logger.LogDebug("Failure handling skipping block teardown on stream {stream}, the blocks were never created.", _context.streamName);
-                return;
-            }
+                if (_context.IsDisposed) return;
+                StreamContext.BeforeFailureDisposeForTests?.Invoke(_context.streamName);
 
-            _context.ForEachBlock((key, block) =>
-            {
-                _context._logger.LogDebug("Failure handling faulting block {block} on stream {stream}", key, _context.streamName);
-                block.Fault(new BlockStopException($"Faulting block due to stream failure."));
-            });
+                bool blocksClaimed;
+                lock (_context._blockClaimLock)
+                {
+                    blocksClaimed = _context._blocksCreated == 1;
+                    _context._blocksCreated = 0;
+                }
+                if (!blocksClaimed)
+                {
+                    // The failure happened before the start created the blocks (for example at
+                    // storage initialization), there is nothing to fault or dispose. Faulting,
+                    // completing or disposing never-created blocks throws, which would retry
+                    // this teardown forever.
+                    _context._logger.LogDebug("Failure handling skipping block teardown on stream {stream}, the blocks were never created.", _context.streamName);
+                    return;
+                }
 
-            _context._logger.LogDebug("Failure handling waiting for block completion on stream {stream}", _context.streamName);
-            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+                _context.ForEachBlock((key, block) =>
+                {
+                    _context._logger.LogDebug("Failure handling faulting block {block} on stream {stream}", key, _context.streamName);
+                    block.Fault(new BlockStopException($"Faulting block due to stream failure."));
+                });
 
-            // Call failure for all blocks
-            StreamContext.RestoreVersionForTests?.Invoke(_context.streamName, _context._restoreCheckpointVersion ?? -1);
-            if (_context._restoreCheckpointVersion.HasValue)
-            {
+                _context._logger.LogDebug("Failure handling waiting for block completion on stream {stream}", _context.streamName);
+                await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+
+                // Call failure for all blocks
+                // Read once, every block of this teardown rolls back to the same version.
+                var restoreVersion = _context._restoreCheckpointVersion;
+                StreamContext.RestoreVersionForTests?.Invoke(_context.streamName, restoreVersion ?? -1);
+                if (restoreVersion.HasValue)
+                {
+                    var version = restoreVersion.Value;
+                    await _context.ForEachBlockAsync(async (key, block) =>
+                    {
+                        _context._logger.LogDebug("Failure handling calling on failure on block {block} on stream {stream}", key, _context.streamName);
+                        await block.OnFailure(version);
+                    });
+                }
+
                 await _context.ForEachBlockAsync(async (key, block) =>
                 {
-                    _context._logger.LogDebug("Failure handling calling on failure on block {block} on stream {stream}", key, _context.streamName);
-                    await block.OnFailure(_context._restoreCheckpointVersion.Value);
+                    _context._logger.LogDebug("Failure handling disposing block {block} on stream {stream}", key, _context.streamName);
+                    await block.DisposeAsync();
                 });
+                _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
             }
+            finally { _context._blockTeardownGate.Release(); }
 
-            await _context.ForEachBlockAsync(async (key, block) =>
-            {
-                _context._logger.LogDebug("Failure handling disposing block {block} on stream {stream}", key, _context.streamName);
-                await block.DisposeAsync();
-            });
-            _context._logger.LogDebug("Failure handling stop and dispose finished on stream {stream}", _context.streamName);
         }
 
         // Internal so tests can shorten it, every recovery hop in a test otherwise pays the
         // full settle delay.
+        // The backoff grows the slice count, never the slice length
         internal static TimeSpan RecoveryRestartDelay = TimeSpan.FromMilliseconds(500);
+
+        /// <summary>
+        /// How long to wait before the next restart, in slices.
+        /// Flat inside the grace count, then doubling to the cap.
+        /// </summary>
+        private int RestartDelaySlices(int consecutiveFailures)
+        {
+            Debug.Assert(_context != null, nameof(_context));
+
+            var options = _context._dataflowStreamOptions;
+            var overGrace = consecutiveFailures - options.FailureRestartGraceCount;
+            if (overGrace <= 0)
+            {
+                return 1;
+            }
+            // Shifting past the cap would overflow, and clamps there anyway
+            if (overGrace >= 31)
+            {
+                return options.MaxFailureRestartDelaySlices;
+            }
+            return Math.Min(1 << overGrace, options.MaxFailureRestartDelaySlices);
+        }
 
         private async Task Transition()
         {
             Debug.Assert(_context != null, nameof(_context));
 
-            await Task.Delay(RecoveryRestartDelay);
+            var consecutiveFailures = Interlocked.Exchange(ref _context._realFailurePending, 0) == 1
+                ? Interlocked.Increment(ref _context._consecutiveFailures)
+                : Volatile.Read(ref _context._consecutiveFailures);
+            var slices = RestartDelaySlices(consecutiveFailures);
+            if (slices > 1 && consecutiveFailures == _context._dataflowStreamOptions.FailureRestartGraceCount + 1)
+            {
+                // Logged once as the backoff starts, not on every hop
+                _context._logger.LogWarning("Stream {stream} has failed {count} times in a row without completing a checkpoint, backing off the restarts up to {max} times the restart delay.", _context.streamName, consecutiveFailures, _context._dataflowStreamOptions.MaxFailureRestartDelaySlices);
+            }
+
+            for (int slice = 0; slice < slices; slice++)
+            {
+                await Task.Delay(RecoveryRestartDelay);
+
+                if (_context.IsDisposed)
+                {
+                    // The transition below is refused anyway, skip the rest
+                    return;
+                }
+                if (_context._wantedState == StreamStateValue.NotStarted ||
+                    _context._wantedState == StreamStateValue.Deleting)
+                {
+                    // A stop or delete is honored without waiting further
+                    break;
+                }
+            }
+
+            if (_context.IsDisposed)
+            {
+                // A dispose parks the same wish the branches below honor
+                return;
+            }
 
             // A pending delete takes precedence over a pending stop: the wish holds only the
             // last requested value, but a created delete task means a caller awaits a delete,
@@ -251,6 +250,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // finished so the delete can run now without racing it. The failure
                 // handling disposed every block, they must be created before delete can
                 // be called, see NotStartedStreamState.DeleteAsync.
+                // A start that failed from inside may still be initializing the old blocks.
+                await _context.WaitForStateManagerToSettle("Delete after failure");
                 _context.ForEachBlock((key, block) =>
                 {
                     block.Setup(_context.streamName, key);
@@ -268,6 +269,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             // Check if the stream should be in not started
             if (_context._wantedState == StreamStateValue.NotStarted)
             {
+                // A start that failed from inside may still be finishing, the manager goes only after it.
+                await _context.WaitForStateManagerToSettle("Stop after failure");
                 // Dispose state
                 _context._stateManager.Dispose();
                 lock (_context._checkpointLock)
@@ -309,11 +312,14 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             if (isScheduled)
             {
-                // Reschedule checkpoint
-                _context._scheduleCheckpointTask = null;
-                _context._triggerCheckpointTime = null;
-                _context._scheduleCheckpointCancelSource = null;
-                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10), default);
+                lock (_context._checkpointLock)
+                {
+                    // Reschedule checkpoint, a superseded timer has nothing to reschedule.
+                    if (_context.TryConsumeFiringSchedule())
+                    {
+                        _context.TryScheduleCheckpointIn_NoLock(TimeSpan.FromSeconds(10), default);
+                    }
+                }
                 return Task.CompletedTask;
             }
             return Task.FromException(new InvalidOperationException("Cant trigger a checkpoint when the stream is failing"));

@@ -38,8 +38,8 @@ namespace FlowtideDotNet.Core.Tests
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
@@ -49,12 +49,18 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task SendFailAndRecover(long restoreVersion)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave)
             {
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -75,13 +81,13 @@ namespace FlowtideDotNet.Core.Tests
         /// </summary>
         private class RecordingHandler : ISubstreamCommunicationHandler
         {
-            private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+            private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
             private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 _initializeFromTarget = initializeFromTarget;
@@ -95,9 +101,15 @@ namespace FlowtideDotNet.Core.Tests
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
 
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
+
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -113,7 +125,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     throw new InvalidOperationException("The handler was not initialized by a communication point.");
                 }
-                var response = await _initializeFromTarget(0, 0, false);
+                var response = await _initializeFromTarget(0, 0, false, default);
                 await _callRecieveCheckpointDone(checkpointVersion, response.CheckpointEpoch, false);
             }
         }
@@ -174,11 +186,7 @@ namespace FlowtideDotNet.Core.Tests
         }
 
         /// <summary>
-        /// A peer can only have one un-acknowledged cycle in flight, but a stopping peer
-        /// runs stop checkpoint cycles that each send an acknowledgement, and they can all
-        /// arrive before this streams callback is wired. Buffering more than one per peer
-        /// would make a later local cycle complete its dependencies without a real
-        /// acknowledgement.
+        /// One buffered ack per peer, duplicates never complete cycles.
         /// </summary>
         [Fact]
         public async Task BufferedAckSignalsAreCappedAtOnePerPeer()
@@ -259,8 +267,7 @@ namespace FlowtideDotNet.Core.Tests
             var peerB = handlerFactory.Handlers["peerB"];
             var peerC = handlerFactory.Handlers["peerC"];
 
-            // Peer B runs its own stop drain cycles and acknowledges twice with increasing
-            // versions while peer C stays silent. The cycle must not complete on those.
+            // B acks twice, C silent, cycle must not complete.
             await peerB.DeliverCheckpointDone(1);
             await peerB.DeliverCheckpointDone(2);
             Assert.Equal(0, Volatile.Read(ref fired));
@@ -269,9 +276,7 @@ namespace FlowtideDotNet.Core.Tests
             await peerC.DeliverCheckpointDone(1);
             Assert.Equal(1, Volatile.Read(ref fired));
 
-            // B's second acknowledgement was a real one (its own stop cycle) and must carry
-            // over to the next cycle instead of being silently dropped: with C's next
-            // acknowledgement the following cycle completes without another one from B.
+            // B's second ack carries over to the next cycle.
             await peerC.DeliverCheckpointDone(2);
             Assert.Equal(2, Volatile.Read(ref fired));
         }

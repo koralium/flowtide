@@ -320,6 +320,8 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 m_stateClient.Metadata = m_stateClient.Metadata.UpdateRootAndDepth(internalNode.children[0], m_stateClient.Metadata.Depth - 1);
                 m_stateClient.Delete(internalNode.Id);
+                // Delete drops the cache rent, this drops the fetch rent.
+                internalNode.Return();
             }
             else
             {
@@ -713,7 +715,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             var nextNodeObj = await m_stateClient.GetValue(leafNode.next);
             if (nextNodeObj is LeafNode<K, V, TKeyContainer, TValueContainer> nextNode)
             {
+                nextNode.EnterWriteLock();
                 nextNode.previous = leafNode.Id;
+                nextNode.ExitWriteLock();
                 isFull |= m_stateClient.AddOrUpdate(nextNode.Id, nextNode);
                 if (returnLeaf)
                 {

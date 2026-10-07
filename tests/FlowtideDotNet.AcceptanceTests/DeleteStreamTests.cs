@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Engine.Internal.StateMachine;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
@@ -271,6 +272,76 @@ namespace FlowtideDotNet.AcceptanceTests
                 DeletingStreamState.MaxDeleteAttempts = originalMax;
                 DeletingStreamState.DeleteRetryDelay = originalDelay;
             }
+        }
+
+        /// <summary>
+        /// A delete never becomes gated on the checkpoint scheduler.
+        /// </summary>
+        /// <remarks>
+        /// Cannot fail today, it pins that the delete stays ungated.
+        /// </remarks>
+        [Fact]
+        public async Task DeleteIsNotGatedOnTheCheckpointScheduler()
+        {
+            // Well above what the delete itself needs.
+            MinimumTimeBetweenCheckpoints = TimeSpan.FromSeconds(20);
+
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+
+            // Arms the throttle and leaves a clamped schedule armed.
+            await WaitForUpdate();
+
+            var stopwatch = Stopwatch.StartNew();
+            var deleteTask = DeleteStream();
+            var completed = await Task.WhenAny(deleteTask, Task.Delay(TimeSpan.FromSeconds(60)));
+            Assert.True(completed == deleteTask, "DeleteAsync hung");
+            await deleteTask;
+            stopwatch.Stop();
+
+            Assert.True(
+                stopwatch.Elapsed < TimeSpan.FromSeconds(10),
+                $"The delete took {stopwatch.Elapsed.TotalSeconds:F1}s, it is now waiting on the checkpoint scheduler.");
+        }
+
+        /// <summary>
+        /// A delete on top of a queued stop hung both.
+        /// </summary>
+        [Fact]
+        public async Task DeleteOnTopOfAStopQueuedBehindTheInitialDataPlaceholderCompletes()
+        {
+            WaitForCheckpointAfterInitialData = true;
+            InitialDataDelay = TimeSpan.FromSeconds(2);
+
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT userkey, firstName FROM users");
+
+            var runningDeadline = DateTime.UtcNow.AddSeconds(5);
+            while (State != StreamStateValue.Running && DateTime.UtcNow < runningDeadline)
+            {
+                await Task.Delay(10);
+            }
+            Assert.Equal(StreamStateValue.Running, State);
+
+            // The stop queues its drain behind the placeholder.
+            var stopTask = StopStream();
+            await Task.Delay(100);
+
+            // The delete lands on top of the queued stop.
+            var deleteTask = DeleteStream();
+
+            var both = Task.WhenAll(stopTask, deleteTask);
+            var completed = await Task.WhenAny(both, Task.Delay(TimeSpan.FromSeconds(45)));
+            if (completed != both)
+            {
+                // Abandoning them here, so a later fault needs observing.
+                _ = stopTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+                _ = deleteTask.ContinueWith(t => { _ = t.Exception; }, TaskScheduler.Default);
+            }
+            Assert.True(completed == both,
+                $"The stop and the delete both hung, the stream is still {State}: the queued stop drain was never promoted once the placeholder cleared.");
+            // Rethrows if either faulted, both must complete cleanly.
+            await both;
         }
     }
 }

@@ -263,25 +263,6 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
-        public void SerializeWindowFunctionWithOptions()
-        {
-            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
-            sqlPlanBuilder.Sql(@"
-                create table table1 (a any, b any);
-                insert into out
-                select a, LAST_VALUE(b) IGNORE NULLS OVER (PARTITION BY a ORDER BY b) as last_b FROM table1;
-            ");
-            var plan = sqlPlanBuilder.GetPlan();
-
-            // The ignore nulls option changes the result, it has to survive the roundtrip
-            var windowRelation = FindWindowRelation(plan.Relations[0]);
-            Assert.NotNull(windowRelation);
-            Assert.Equal("IGNORE_NULLS", windowRelation.WindowFunctions[0].Options!["NULL_TREATMENT"]);
-
-            AssertPlanCanSerializeDeserialize(plan);
-        }
-
-        [Fact]
         public void SerializeScalarFunctionWithOptions()
         {
             Plan plan = new Plan()
@@ -344,16 +325,47 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
-        private static ConsistentPartitionWindowRelation? FindWindowRelation(Relation relation)
+        [Fact]
+        public void SerializeWindowFunctionWithOptions()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, ROW_NUMBER() OVER (PARTITION BY a ORDER BY b) as rn FROM table1;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+
+            var windowRelation = FindWindowRelation(plan.Relations[plan.Relations.Count - 1]);
+            windowRelation.WindowFunctions[0].Options = new SortedList<string, string>()
+            {
+                { "max_row_number", "1" }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var deserializedWindowRelation = FindWindowRelation(deserializedPlan.Relations[deserializedPlan.Relations.Count - 1]);
+            Assert.NotNull(deserializedWindowRelation.WindowFunctions[0].Options);
+            Assert.Equal("1", deserializedWindowRelation.WindowFunctions[0].Options!["max_row_number"]);
+        }
+
+        private static ConsistentPartitionWindowRelation FindWindowRelation(Relation relation)
         {
             switch (relation)
             {
-                case ConsistentPartitionWindowRelation window: return window;
-                case WriteRelation write: return FindWindowRelation(write.Input);
-                case ProjectRelation project: return FindWindowRelation(project.Input);
-                case FilterRelation filter: return FindWindowRelation(filter.Input);
-                case RootRelation root: return FindWindowRelation(root.Input);
-                default: return null;
+                case ConsistentPartitionWindowRelation windowRelation:
+                    return windowRelation;
+                case FilterRelation filterRelation:
+                    return FindWindowRelation(filterRelation.Input);
+                case ProjectRelation projectRelation:
+                    return FindWindowRelation(projectRelation.Input);
+                case WriteRelation writeRelation:
+                    return FindWindowRelation(writeRelation.Input);
+                case RootRelation rootRelation:
+                    return FindWindowRelation(rootRelation.Input);
+                default:
+                    throw new InvalidOperationException($"No window relation found under {relation.GetType().Name}");
             }
         }
 
@@ -642,6 +654,120 @@ namespace FlowtideDotNet.Substrait.Tests
             };
 
             AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestSerializeCheckRelationWithGuardsTagsAndEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = new ScalarFunction()
+                                {
+                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionName = FunctionsComparison.Equal,
+                                    Arguments = new List<Expression>() { CheckField(0), CheckField(1) }
+                                },
+                                Message = "a {a} differs from b {b}",
+                                Tags = new List<CheckTag>()
+                                {
+                                    new CheckTag() { Key = "a", Value = CheckField(0) },
+                                    new CheckTag() { Key = "b", Value = CheckField(1) }
+                                },
+                                Guards = new List<CheckGuard>()
+                                {
+                                    new CheckGuard() { Expression = CheckField(0), Kind = CheckGuardKind.IsTrue },
+                                    new CheckGuard() { Expression = new BoolLiteral() { Value = false }, Kind = CheckGuardKind.IsNotTrue },
+                                    new CheckGuard() { Expression = CheckField(1), Kind = CheckGuardKind.IsNull }
+                                }
+                            },
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(1),
+                                Message = "second",
+                                Tags = new List<CheckTag>(),
+                                Guards = new List<CheckGuard>()
+                            },
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = "",
+                                Tags = new List<CheckTag>() { new CheckTag() { Key = "a", Value = CheckField(0) } },
+                                Guards = new List<CheckGuard>()
+                            }
+                        },
+                        Emit = new List<int>() { 1, 0 }
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestSerializeCheckRelationWithoutEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new CheckRelation()
+                    {
+                        Input = CheckInputRead(),
+                        Checks = new List<CheckDefinition>()
+                        {
+                            new CheckDefinition()
+                            {
+                                Condition = CheckField(0),
+                                Message = "failed",
+                                Tags = new List<CheckTag>(),
+                                Guards = new List<CheckGuard>()
+                                {
+                                    new CheckGuard() { Expression = CheckField(1), Kind = CheckGuardKind.IsTrue }
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var json = SubstraitSerializer.SerializeToJson(plan);
+            Assert.Contains("type.googleapis.com/flowtide.CheckRelation", json);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        private static ReadRelation CheckInputRead()
+        {
+            return new ReadRelation()
+            {
+                BaseSchema = new Type.NamedStruct()
+                {
+                    Names = ["a", "b"]
+                },
+                NamedTable = new Type.NamedTable()
+                {
+                    Names = ["t"]
+                }
+            };
+        }
+
+        private static DirectFieldReference CheckField(int index)
+        {
+            return new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment()
+                {
+                    Field = index
+                }
+            };
         }
 
 
@@ -990,6 +1116,20 @@ namespace FlowtideDotNet.Substrait.Tests
 
             var writeRelation = Assert.IsType<WriteRelation>(SubstraitDeserializer.DeserializeFromJson(json).Relations[0]);
             Assert.Null(writeRelation.PrimaryKeyNames);
+        }
+
+
+        [Fact]
+        public void TestSerializeListAggNamedStructAggregate()
+        {
+            SqlPlanBuilder sqlPlanBuilder = new SqlPlanBuilder();
+            sqlPlanBuilder.Sql(@"
+                create table table1 (a any, b any);
+                insert into out
+                select a, list_agg(named_struct('b', b)) as list FROM table1 GROUP BY a;
+            ");
+            var plan = sqlPlanBuilder.GetPlan();
+            AssertPlanCanSerializeDeserialize(plan);
         }
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)

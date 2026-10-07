@@ -92,14 +92,14 @@ namespace FlowtideDotNet.Substrait
                 return functionAnchor;
             }
 
-            private uint GetAnyTypeId()
+            private uint GetUserDefinedTypeId(string uri, string name)
             {
-                if (!_typeExtensions.TryGetValue("any", out var id))
+                if (!_typeExtensions.TryGetValue(name, out var id))
                 {
                     var anchor = uriCounter++;
                     Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
                     {
-                        Uri = $"/any_type.yaml",
+                        Uri = uri,
                         ExtensionUriAnchor = (uint)anchor
                     });
                     var typeAnchor = (uint)extensionCounter++;
@@ -108,14 +108,54 @@ namespace FlowtideDotNet.Substrait
                         ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
                         {
                             ExtensionUriReference = (uint)anchor,
-                            Name = "any",
+                            Name = name,
                             TypeAnchor = typeAnchor
                         }
                     });
                     id = (int)typeAnchor;
-                    _typeExtensions.Add("any", id);
+                    _typeExtensions.Add(name, id);
                 }
                 return (uint)id;
+            }
+
+            private uint GetAnyTypeId()
+            {
+                return GetUserDefinedTypeId("/any_type.yaml", "any");
+            }
+
+            private Protobuf.Type GetNamedStructAsUserDefinedType(Type.NamedStruct namedStruct, Protobuf.Type.Types.Nullability nullability)
+            {
+                var userDefined = new Protobuf.Type.Types.UserDefined()
+                {
+                    Nullability = nullability,
+                    TypeReference = GetUserDefinedTypeId("/named_struct_type.yaml", "named_struct")
+                };
+                foreach (var name in namedStruct.Names)
+                {
+                    userDefined.TypeParameters.Add(new Protobuf.Type.Types.Parameter()
+                    {
+                        String = name
+                    });
+                }
+                if (namedStruct.Struct != null)
+                {
+                    var structType = new Protobuf.Type.Types.Struct();
+                    foreach (var fieldType in namedStruct.Struct.Types)
+                    {
+                        structType.Types_.Add(GetType(fieldType));
+                    }
+                    userDefined.TypeParameters.Add(new Protobuf.Type.Types.Parameter()
+                    {
+                        DataType = new Protobuf.Type()
+                        {
+                            Struct = structType
+                        }
+                    });
+                }
+                return new Protobuf.Type()
+                {
+                    UserDefined = userDefined
+                };
             }
 
             public Protobuf.Type GetType(SubstraitBaseType type, List<string>? names = default)
@@ -206,34 +246,30 @@ namespace FlowtideDotNet.Substrait
                             }
                         };
                     case SubstraitType.Struct:
-                        if (names == null)
-                        {
-                            throw new NotSupportedException("names list must be provided with serializing named structs");
-                        }
-                        var structType = new Protobuf.Type.Types.Struct();
-                        if (type is Type.NamedStruct namedStruct)
-                        {
-                            if (namedStruct.Struct != null)
-                            {
-                                for (int i = 0; i < namedStruct.Names.Count; i++)
-                                {
-                                    names.Add(namedStruct.Names[i]);
-                                    structType.Types_.Add(GetType(namedStruct.Struct.Types[i], names));
-                                }
-                                return new Protobuf.Type()
-                                {
-                                    Struct = structType
-                                };
-                            }
-                            else
-                            {
-                                throw new NotSupportedException("Inner structs must have data types");
-                            }
-                        }
-                        else
+                        if (type is not Type.NamedStruct namedStruct)
                         {
                             throw new InvalidOperationException("Struct must be NamedStruct");
                         }
+                        if (names == null)
+                        {
+                            // No names list means the type is stored on its own, substrait keeps struct field
+                            // names in a named struct only, so the names travel along in a user defined type.
+                            return GetNamedStructAsUserDefinedType(namedStruct, nullable);
+                        }
+                        if (namedStruct.Struct == null)
+                        {
+                            throw new NotSupportedException("Inner structs must have data types");
+                        }
+                        var structType = new Protobuf.Type.Types.Struct();
+                        for (int i = 0; i < namedStruct.Names.Count; i++)
+                        {
+                            names.Add(namedStruct.Names[i]);
+                            structType.Types_.Add(GetType(namedStruct.Struct.Types[i], names));
+                        }
+                        return new Protobuf.Type()
+                        {
+                            Struct = structType
+                        };
                     case SubstraitType.List:
                         if (type is ListType listType)
                         {
@@ -1194,6 +1230,69 @@ namespace FlowtideDotNet.Substrait
                 {
                     ExtensionSingle = rel
                 };
+            }
+
+            public override Rel VisitCheckRelation(CheckRelation checkRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+                var checkRel = new CustomProtobuf.CheckRelation();
+                var exprVisitor = new SerializerExpressionVisitor();
+
+                foreach (var check in checkRelation.Checks)
+                {
+                    var protoCheck = new CustomProtobuf.CheckRelation.Types.Check()
+                    {
+                        Condition = exprVisitor.Visit(check.Condition, state),
+                        Message = check.Message
+                    };
+                    foreach (var tag in check.Tags)
+                    {
+                        protoCheck.Tags.Add(new CustomProtobuf.CheckRelation.Types.Tag()
+                        {
+                            Key = tag.Key,
+                            Value = exprVisitor.Visit(tag.Value, state)
+                        });
+                    }
+                    foreach (var guard in check.Guards)
+                    {
+                        protoCheck.Guards.Add(new CustomProtobuf.CheckRelation.Types.Guard()
+                        {
+                            Expression = exprVisitor.Visit(guard.Expression, state),
+                            Kind = GetCheckGuardKind(guard.Kind)
+                        });
+                    }
+                    checkRel.Checks.Add(protoCheck);
+                }
+
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(checkRel);
+
+                if (checkRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(checkRelation.Emit);
+                }
+                rel.Input = Visit(checkRelation.Input, state);
+
+                return new Protobuf.Rel()
+                {
+                    ExtensionSingle = rel
+                };
+            }
+
+            private static CustomProtobuf.CheckRelation.Types.Guard.Types.Kind GetCheckGuardKind(CheckGuardKind kind)
+            {
+                switch (kind)
+                {
+                    case CheckGuardKind.IsTrue:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue;
+                    case CheckGuardKind.IsNotTrue:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue;
+                    case CheckGuardKind.IsNull:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull;
+                    default:
+                        throw new NotSupportedException($"Check guard kind {kind} is not supported.");
+                }
             }
 
             public override Rel VisitSetRelation(SetRelation setRelation, SerializerVisitorState state)

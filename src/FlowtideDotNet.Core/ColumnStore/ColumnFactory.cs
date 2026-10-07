@@ -37,10 +37,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public static Column Get(int nullCounter, IDataColumn? dataColumn, BitmapList validityList, ArrowTypeId type, IMemoryAllocator memoryAllocator)
         {
+            // The list moves into the column and is not used again.
+#pragma warning disable RS0042
             return new Column(nullCounter, dataColumn, validityList, type, memoryAllocator);
-            //var list = _pool.Get();
-            //list.Assign(nullCounter, dataColumn, validityList, type, memoryAllocator);
-            //return list;
+#pragma warning restore RS0042
         }
 
         public static void Return(Column list)

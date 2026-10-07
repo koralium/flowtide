@@ -211,6 +211,20 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             return new LineageVisitorResult([]);
         }
 
+        public override LineageVisitorResult VisitCheckRelation(CheckRelation checkRelation, LineageVisitorState state)
+        {
+            if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+            {
+                var emitIndex = checkRelation.EmitSet ? checkRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+
+                return Visit(checkRelation.Input, new LineageVisitorState(new DirectFieldReference()
+                {
+                    ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
+                }, state.Transformations));
+            }
+            return new LineageVisitorResult([]);
+        }
+
         public override LineageVisitorResult VisitReadRelation(ReadRelation readRelation, LineageVisitorState state)
         {
             var key = readRelation.NamedTable.DotSeperated;

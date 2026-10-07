@@ -69,6 +69,38 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
         }
 
         [Fact]
+        public async Task RollbackHandsOutTheSameCheckpointVersionAgain()
+        {
+            var provider = new MemoryFileProvider();
+            long uncommittedVersion;
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+                var session = persistentStorage.CreateSession();
+                await session.Write(100, new SerializableObject(new byte[] { 1 }));
+                await session.Commit();
+                await persistentStorage.CheckpointAsync(new byte[] { 1 }, false); // Version 1
+
+                // The version the next checkpoint would commit as.
+                uncommittedVersion = persistentStorage.CurrentVersion;
+
+                // Never checkpointed, this epoch is rolled back.
+                await session.Write(101, new SerializableObject(new byte[] { 2 }));
+                await session.Commit();
+            }
+
+            {
+                var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = provider });
+                await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+                await persistentStorage.RecoverAsync(1);
+
+                // Rolled back version is reused, replayed rows keep their id.
+                Assert.Equal(uncommittedVersion, persistentStorage.CurrentVersion);
+            }
+        }
+
+        [Fact]
         public async Task TestRecoverSpecificCheckpoint()
         {
             var provider = new MemoryFileProvider();
@@ -166,6 +198,39 @@ namespace FlowtideDotNet.Storage.Tests.Reservoir
             var newSession = persistentStorage.CreateSession();
             
             // Should be empty since storage was re-initialized entirely
+            await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
+            {
+                await newSession.Read(100);
+            });
+        }
+
+        [Fact]
+        public async Task TestResetWithLocalCacheRemovesDataFiles()
+        {
+            var provider = new MemoryFileProvider();
+            var cacheProvider = new MemoryFileProvider();
+            var persistentStorage = new ReservoirPersistentStorage(new Persistence.Reservoir.ReservoirStorageOptions()
+            {
+                FileProvider = provider,
+                CacheProvider = cacheProvider
+            });
+            await persistentStorage.InitializeAsync(new StorageInitializationMetadata("a", NullLoggerFactory.Instance, GlobalMemoryManager.Instance));
+
+            var session = persistentStorage.CreateSession();
+            await session.Write(100, new SerializableObject(new byte[] { 9 }));
+            await session.Commit();
+            await persistentStorage.CheckpointAsync(new byte[] { 1 }, false);
+
+            Assert.NotEmpty(await provider.GetStoredDataFileIdsAsync());
+            Assert.NotEmpty(await cacheProvider.GetStoredDataFileIdsAsync());
+
+            await persistentStorage.ResetAsync();
+
+            // The previous timeline must not be left behind in either layer
+            Assert.Empty(await provider.GetStoredDataFileIdsAsync());
+            Assert.Empty(await cacheProvider.GetStoredDataFileIdsAsync());
+
+            var newSession = persistentStorage.CreateSession();
             await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () =>
             {
                 await newSession.Read(100);

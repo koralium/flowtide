@@ -17,6 +17,8 @@
 
 	<PackageReference Include="Fody" PrivateAssets="all" />
 	<PackageReference Include="InlineIL.Fody" PrivateAssets="all" />
+
+	<PackageReference Include="Roslyn.Diagnostics.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

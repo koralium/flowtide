@@ -36,9 +36,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
         private const string NegativeStart = "negative_start";
         private const string WrapFromEnd = "WRAP_FROM_END";
         private const string LeftOfBeginning = "LEFT_OF_BEGINNING";
-        private const string NullHandling = "null_handling";
+        internal const string NullHandling = "null_handling";
         private const string AcceptNulls = "ACCEPT_NULLS";
-        private const string IgnoreNulls = "IGNORE_NULLS";
+        internal const string IgnoreNulls = "IGNORE_NULLS";
 
         private static readonly StringValue EmptyString = new StringValue("");
         private static readonly StringValue BackslashString = new StringValue("\\");

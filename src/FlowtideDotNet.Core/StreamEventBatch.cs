@@ -74,6 +74,11 @@ namespace FlowtideDotNet.Core
         {
             _data = data;
             _columnCount = _data.EventBatchData.Columns.Count;
+
+            // From here the data is shared with downstream readers, so writes to it are bugs.
+            data.EventBatchData.SealForHandoff();
+            data.Weights.SealForHandoff();
+            data.Iterations.SealForHandoff();
         }
 
         public StreamEventBatch(List<RowEvent> events, int columnCount)

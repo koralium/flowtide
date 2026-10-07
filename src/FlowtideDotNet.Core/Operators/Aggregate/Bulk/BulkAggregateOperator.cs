@@ -251,6 +251,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Buffered batches must be in state before emitting results
             await foreach (var batch in FlushPending())
             {
+                CancellationToken.ThrowIfCancellationRequested();
                 yield return batch;
             }
             _defer.ExitBuffering();
@@ -303,6 +304,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -391,6 +393,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -444,6 +447,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     while (await _treeBulkSearch.MoveNextLeaf())
                     {
+                        CancellationToken.ThrowIfCancellationRequested();
                         var persistedLeaf = _treeBulkSearch.CurrentLeaf;
                         var currentResults = _treeBulkSearch.CurrentResults;
                         var previousValueSent = persistedLeaf.values._previousValueSent;
@@ -731,6 +735,39 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
         private async IAsyncEnumerable<StreamEventBatch> ProcessBatch(StreamEventBatch msg, long time)
         {
+            try
+            {
+                await foreach (var batch in ProcessBatchCore(msg, time))
+                {
+                    yield return batch;
+                }
+            }
+            finally
+            {
+                BatchDone();
+            }
+        }
+
+        /// <summary>
+        /// Releases the per batch projections that the measures and shared trees allocate in NewBatch.
+        /// Without this the last batch keeps its columns until the operator is disposed, and since the
+        /// column finalizer does not free anything that memory is gone for good.
+        /// Runs in a finally so it also happens if the consumer stops enumerating early.
+        /// </summary>
+        private void BatchDone()
+        {
+            for (int i = 0; i < _measures.Length; i++)
+            {
+                _measures[i].BatchDone();
+            }
+            foreach (var sharedTree in _sharedTrees.Values)
+            {
+                sharedTree.BatchDone();
+            }
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ProcessBatchCore(StreamEventBatch msg, long time)
+        {
             if (msg.Data.Count > 0)
             {
                 // Take first iteration
@@ -781,6 +818,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 for (int k = 0; k < groupExpressions.Count; k++)
                 {
                     var exprInfo = groupExpressions[k];
+                    // A computed slot owns its column, a borrowed one would corrupt the group key
+                    if (m_groupDirectFields![exprInfo.GroupIndex] != -1)
+                    {
+                        throw new InvalidOperationException($"Group slot {exprInfo.GroupIndex} is computed but bound to input field {m_groupDirectFields[exprInfo.GroupIndex]}, the group state was not rebuilt.");
+                    }
                     var targetColumn = (ColumnStore.Column)m_groupValues[exprInfo.GroupIndex];
                     for (int i = 0; i < dataCount; i++)
                     {
@@ -1163,7 +1205,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_groupDirectFields = new int[grouping.GroupingExpressions.Count];
                 m_groupValues = new IColumn[grouping.GroupingExpressions.Count];
 
-                if (groupExpressions == null)
+                // Fresh arrays every restore, so always refill them
                 {
                     groupExpressions = new List<GroupExpressionInfo>();
                     for (int i = 0; i < grouping.GroupingExpressions.Count; i++)

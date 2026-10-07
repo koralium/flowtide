@@ -927,8 +927,181 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             return outputData;
         }
 
+        /// <summary>
+        /// The name a 'SESSION(...)' grouping is exposed under.
+        /// </summary>
+        private const string SessionWindowStartName = "window_start";
+
+        private static bool IsSessionGrouping(SqlParser.Ast.Expression expression, [NotNullWhen(true)] out Expression.Function? function)
+        {
+            if (expression is Expression.Function candidate &&
+                candidate.Over == null &&
+                string.Equals(string.Join(".", candidate.Name.Values.Select(x => x.Value)), "session", StringComparison.OrdinalIgnoreCase))
+            {
+                function = candidate;
+                return true;
+            }
+            function = null;
+            return false;
+        }
+
+        /// <summary>
+        /// Returns the accessor name, or null when it is neither.
+        /// </summary>
+        private static string? GetSessionAccessorName(Expression.Function function)
+        {
+            var name = string.Join(".", function.Name.Values.Select(x => x.Value));
+            if (string.Equals(name, "session_start", StringComparison.OrdinalIgnoreCase))
+            {
+                return "session_start";
+            }
+            if (string.Equals(name, "session_end", StringComparison.OrdinalIgnoreCase))
+            {
+                return "session_end";
+            }
+            return null;
+        }
+
+        private static List<SqlParser.Ast.Expression> GetSessionArguments(Expression.Function function, string functionName)
+        {
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(function.Args);
+            if (argList.Args == null || argList.Args.Count != 3)
+            {
+                throw new SubstraitParseException($"{functionName} must have three arguments: (timestamp, gap_amount, gap_unit)");
+            }
+
+            var expressions = new List<SqlParser.Ast.Expression>();
+            for (int i = 0; i < 3; i++)
+            {
+                if (argList.Args[i] is FunctionArg.Unnamed unnamed &&
+                    unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcArg)
+                {
+                    expressions.Add(funcArg.Expression);
+                }
+                else
+                {
+                    throw new SubstraitParseException($"{functionName} argument {i} is not a valid expression");
+                }
+            }
+            return expressions;
+        }
+
+        /// <summary>
+        /// A mismatch would silently return the grouping's session instead.
+        /// </summary>
+        private static void ValidateSessionAccessor(Expression.Function accessor, string accessorName, Expression.Function? sessionGrouping)
+        {
+            if (sessionGrouping == null)
+            {
+                throw new SubstraitParseException($"{accessorName} requires a 'SESSION(...)' expression in the GROUP BY");
+            }
+
+            var expected = GetSessionArguments(sessionGrouping, "SESSION");
+            var actual = GetSessionArguments(accessor, accessorName);
+
+            for (int i = 0; i < expected.Count; i++)
+            {
+                if (!expected[i].Equals(actual[i]))
+                {
+                    throw new SubstraitParseException(
+                        $"{accessorName} argument {i} does not match the 'SESSION(...)' in the GROUP BY, expected '{expected[i].ToSql()}' but got '{actual[i].ToSql()}'");
+                }
+            }
+        }
+
+        /// <summary>
+        /// A SESSION grouping becomes a window relation below the aggregate.
+        /// The partition is the rest of the group by.
+        /// </summary>
+        private RelationData AddSessionWindowRelation(Select select, Expression.Function sessionGrouping, RelationData parent)
+        {
+            var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
+            var argList = BuiltInSqlFunctions.GetFunctionArguments(sessionGrouping.Args);
+            if (argList.Args == null || argList.Args.Count != 3)
+            {
+                throw new SubstraitParseException("SESSION must have three arguments: (timestamp, gap_amount, gap_unit)");
+            }
+
+            Expressions.Expression VisitArgument(int index)
+            {
+                if (argList.Args[index] is FunctionArg.Unnamed unnamed &&
+                    unnamed.FunctionArgExpression is FunctionArgExpression.FunctionExpression funcArg)
+                {
+                    return exprVisitor.Visit(funcArg.Expression, parent.EmitData).Expr;
+                }
+                throw new SubstraitParseException($"SESSION argument {index} is not a valid expression");
+            }
+
+            var timestampExpression = VisitArgument(0);
+            var gapAmount = VisitArgument(1);
+            var gapUnit = VisitArgument(2);
+
+            var partitionBy = new List<Expressions.Expression>();
+            if (select.GroupBy is GroupByExpression.Expressions groupByExpressions)
+            {
+                foreach (var group in groupByExpressions.ColumnNames)
+                {
+                    if (ReferenceEquals(group, sessionGrouping))
+                    {
+                        continue;
+                    }
+                    partitionBy.Add(exprVisitor.Visit(group, parent.EmitData).Expr);
+                }
+            }
+
+            var windowRelation = new ConsistentPartitionWindowRelation()
+            {
+                Input = parent.Relation,
+                PartitionBy = partitionBy,
+                OrderBy = new List<Expressions.SortField>()
+                {
+                    new Expressions.SortField()
+                    {
+                        Expression = timestampExpression,
+                        SortDirection = Expressions.SortDirection.SortDirectionAscNullsFirst
+                    }
+                },
+                WindowFunctions = new List<Expressions.WindowFunction>()
+                {
+                    new Expressions.WindowFunction()
+                    {
+                        ExtensionUri = FunctionExtensions.FunctionsDatetime.Uri,
+                        ExtensionName = FunctionExtensions.FunctionsDatetime.SessionWindow,
+                        Arguments = new List<Expressions.Expression>() { gapAmount, gapUnit }
+                    }
+                }
+            };
+
+            var emitData = parent.EmitData.Clone();
+            // Keyed by the SESSION node so the grouping resolves here.
+            emitData.Add(sessionGrouping, emitData.Count, "$sessionwindow", new TimestampType(), hiddenFromWildcard: true);
+
+            return new RelationData(windowRelation, emitData);
+        }
+
         private RelationData VisitSelectAggregate(Select select, ContainsAggregateVisitor containsAggregateVisitor, RelationData parent)
         {
+            Expression.Function? sessionGrouping = default;
+            if (select.GroupBy is GroupByExpression.Expressions sessionSearch)
+            {
+                foreach (var group in sessionSearch.ColumnNames)
+                {
+                    if (IsSessionGrouping(group, out var found))
+                    {
+                        if (sessionGrouping != null)
+                        {
+                            throw new SubstraitParseException("Only one SESSION expression is supported in a GROUP BY");
+                        }
+                        sessionGrouping = found;
+                    }
+                }
+            }
+            if (sessionGrouping != null)
+            {
+                parent = AddSessionWindowRelation(select, sessionGrouping, parent);
+            }
+            var sessionGroupingEmitIndex = -1;
+
             var aggRel = new AggregateRelation()
             {
                 Input = parent.Relation
@@ -956,7 +1129,17 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
                         var result = exprVisitor.Visit(group, parent.EmitData);
                         grouping.GroupingExpressions.Add(result.Expr);
-                        aggEmitData.Add(group, emitcount, result.Name, result.Type);
+
+                        var isSession = ReferenceEquals(group, sessionGrouping);
+                        aggEmitData.Add(group, emitcount, isSession ? SessionWindowStartName : result.Name, result.Type);
+                        if (isSession)
+                        {
+                            // Also reachable by name, like hopping and tumbling.
+                            aggEmitData.AddWithAlias(
+                                new Expression.CompoundIdentifier(new Sequence<Ident>(new List<Ident>() { new Ident(SessionWindowStartName) })),
+                                emitcount);
+                            sessionGroupingEmitIndex = emitcount;
+                        }
                         emitcount++;
                     }
                 }
@@ -968,6 +1151,19 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
             foreach (var foundMeasure in containsAggregateVisitor.AggregateFunctions)
             {
+                var accessorName = GetSessionAccessorName(foundMeasure);
+                if (accessorName != null)
+                {
+                    ValidateSessionAccessor(foundMeasure, accessorName, sessionGrouping);
+
+                    if (accessorName == "session_start")
+                    {
+                        // The start is the grouping column, not a measure.
+                        aggEmitData.AddWithAlias(foundMeasure, sessionGroupingEmitIndex);
+                        continue;
+                    }
+                }
+
                 var mapper = sqlFunctionRegister.GetAggregateMapper(foundMeasure.Name);
                 var exprVisitor = new SqlExpressionVisitor(sqlFunctionRegister);
 

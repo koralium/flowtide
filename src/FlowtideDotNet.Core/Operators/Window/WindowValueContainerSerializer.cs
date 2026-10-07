@@ -61,41 +61,75 @@ namespace FlowtideDotNet.Core.Operators.Window
                 throw new InvalidOperationException("Failed to read bitmap memory length");
             }
 
-            var weightsNativeMemory = _memoryAllocator.Allocate(weightsMemoryLength, 64);
-            var slice = weightsNativeMemory.Memory.Span.Slice(0, weightsMemoryLength);
-            if (!reader.TryCopyTo(slice))
+            // Both lengths are validated before either allocation, a declared length
+            // the payload cannot satisfy must not reach the allocator
+            if (weightsMemoryLength < 0 || weightsMemoryLength % sizeof(int) != 0 || reader.Remaining < weightsMemoryLength)
             {
                 throw new InvalidOperationException("Failed to read weights memory");
             }
-            reader.Advance(weightsMemoryLength);
-
-            var bitmapNativeMemory = _memoryAllocator.Allocate(bitmapMemoryLength, 64);
-            if (!reader.TryCopyTo(bitmapNativeMemory.Memory.Span.Slice(0, bitmapMemoryLength)))
+            if (bitmapMemoryLength < 0 || reader.Remaining < (long)weightsMemoryLength + bitmapMemoryLength)
             {
                 throw new InvalidOperationException("Failed to read bitmap memory");
             }
-            reader.Advance(bitmapMemoryLength);
 
-            var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
-            var bitmap = new BitmapList(bitmapNativeMemory, weights.Count, _memoryAllocator);
-
-            var deserializer = new EventBatchDeserializer(_memoryAllocator);
-            var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
-
-            ListColumn[] listColumns = new ListColumn[functionStatesResult.DataColumns.Length];
-            for (int i = 0; i < functionStatesResult.DataColumns.Length; i++)
+            var weightsNativeMemory = _memoryAllocator.AllocateMemory(weightsMemoryLength);
+            FlowtideMemory bitmapNativeMemory = default;
+            try
             {
-                if (functionStatesResult.DataColumns[i] is ListColumn listColumn)
+                var slice = weightsNativeMemory.Span.Slice(0, weightsMemoryLength);
+                if (!reader.TryCopyTo(slice))
                 {
-                    listColumns[i] = listColumn;
+                    throw new InvalidOperationException("Failed to read weights memory");
                 }
-                else
+                reader.Advance(weightsMemoryLength);
+
+                bitmapNativeMemory = _memoryAllocator.AllocateMemory(bitmapMemoryLength);
+                if (!reader.TryCopyTo(bitmapNativeMemory.Span.Slice(0, bitmapMemoryLength)))
                 {
-                    throw new InvalidOperationException("Invalid data column type");
+                    throw new InvalidOperationException("Failed to read bitmap memory");
                 }
+                reader.Advance(bitmapMemoryLength);
+            }
+            catch
+            {
+                _memoryAllocator.Free(ref weightsNativeMemory);
+                _memoryAllocator.Free(ref bitmapNativeMemory);
+                throw;
             }
 
-            return new WindowValueContainer(weights, listColumns, bitmap);
+            var weights = new PrimitiveList<int>(weightsNativeMemory, weightsMemoryLength / sizeof(int), _memoryAllocator);
+
+            ListColumn[] listColumns;
+            try
+            {
+                var deserializer = new EventBatchDeserializer(_memoryAllocator);
+                var functionStatesResult = deserializer.DeserializeDataColumns(ref reader);
+
+                listColumns = new ListColumn[functionStatesResult.DataColumns.Length];
+                for (int i = 0; i < functionStatesResult.DataColumns.Length; i++)
+                {
+                    if (functionStatesResult.DataColumns[i] is ListColumn listColumn)
+                    {
+                        listColumns[i] = listColumn;
+                    }
+                    else
+                    {
+                        for (int k = 0; k < functionStatesResult.DataColumns.Length; k++)
+                        {
+                            functionStatesResult.DataColumns[k].Dispose(_memoryAllocator);
+                        }
+                        throw new InvalidOperationException("Invalid data column type");
+                    }
+                }
+            }
+            catch
+            {
+                weights.Dispose();
+                _memoryAllocator.Free(ref bitmapNativeMemory);
+                throw;
+            }
+
+            return new WindowValueContainer(weights, listColumns, new BitmapList(bitmapNativeMemory, weights.Count), _memoryAllocator);
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -105,8 +139,8 @@ namespace FlowtideDotNet.Core.Operators.Window
 
         public void Serialize(in IBufferWriter<byte> writer, in WindowValueContainer values)
         {
-            var weightsmemory = values._weights.SlicedMemory.Span;
-            var bitmapMemory = values._previousValueSent.MemorySlice.Span;
+            var weightsmemory = values._weights.SlicedSpan;
+            var bitmapMemory = values._previousValueSent.SlicedSpan;
 
             var writeSpan = writer.GetSpan(weightsmemory.Length + bitmapMemory.Length + 8);
 

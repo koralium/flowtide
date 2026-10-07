@@ -31,21 +31,27 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 AnnouncedCheckpointEpochs.Add(checkpointEpoch);
-                return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
+                return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion, wave: wave, peerInInit: true));
             }
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
 
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
 
             public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
                 => throw new NotSupportedException();
@@ -156,7 +162,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The aborted generation's handshake retry captured its self epoch (the initial 0)
             // before the failure and lands late, re-announcing it after the fresh handshake.
-            await handlerA.SendInitializeRequest(0, 0, false, default);
+            await handlerA.SendInitializeRequest(0, 0, false, default, default);
 
             // B completes a checkpoint. Its ack must carry A's current epoch and be credited; a
             // regressed record tags it with the aborted epoch and the fence drops it.
@@ -235,7 +241,7 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             // The dead generation of A ran on a process whose clock seeded its epochs a day
             // ahead; its announcement is what B has recorded when A fails over.
-            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, false, default);
+            await handlerA.SendInitializeRequest(0, DateTime.UtcNow.Ticks + TimeSpan.FromDays(1).Ticks, false, default, default);
 
             // The failed-over live A: a fresh point whose clock-seeded epoch is far below
             // the dead generation's announcement.
@@ -250,6 +256,59 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             // credited again.
             await pointB.SendCheckpointDone(5);
             Assert.Equal(1, Volatile.Read(ref credited));
+        }
+
+        [Fact]
+        public async Task AbortRacingARestartedHandshakeDoesNotThrow()
+        {
+            var point = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "target", new RecordingHandler());
+            using var stop = new CancellationTokenSource();
+            Exception? thrown = null;
+            long aborts = 0;
+            // A failure or dispose aborting while the next run's start replaces the aborted source.
+            var aborter = Task.Run(() =>
+            {
+                while (!stop.IsCancellationRequested && Volatile.Read(ref thrown) == null)
+                {
+                    try { point.AbortPendingOperations(); Interlocked.Increment(ref aborts); }
+                    catch (Exception e) { Volatile.Write(ref thrown, e); }
+                }
+            });
+            Assert.True(SpinWait.SpinUntil(() => Interlocked.Read(ref aborts) > 0, TimeSpan.FromSeconds(10)));
+            var elapsed = System.Diagnostics.Stopwatch.StartNew();
+            int restarts = 0;
+            while (restarts < 50_000 && (restarts < 1_000 || elapsed.Elapsed < TimeSpan.FromSeconds(1)) && Volatile.Read(ref thrown) == null)
+            {
+                point.OnStreamFailure();
+                point.ResetPendingOperations();
+                try { await point.InitializeOperator(0); } catch (OperationCanceledException) { }
+                restarts++;
+            }
+            stop.Cancel();
+            await aborter;
+            Assert.True(thrown == null, $"AbortPendingOperations threw after {elapsed.ElapsedMilliseconds} ms, {restarts} restarts: {thrown}");
+        }
+
+        [Fact]
+        public async Task AbortLandingBeforeTheRunsHandshakeCancelsIt()
+        {
+            var handler = new RecordingHandler();
+            var point = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "target", handler);
+            point.ResetPendingOperations();
+            await point.InitializeOperator(0);
+            point.AbortPendingOperations();
+            point.OnStreamFailure();
+
+            // The restarted run fails after its start reset, before its handshake on this point.
+            point.ResetPendingOperations();
+            point.AbortPendingOperations();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => point.InitializeOperator(0));
+            Assert.Single(handler.AnnouncedCheckpointEpochs);
+
+            // No OnStreamFailure since, the start reset alone revives the handshake.
+            point.ResetPendingOperations();
+            await point.InitializeOperator(0);
+            Assert.Equal(2, handler.AnnouncedCheckpointEpochs.Count);
         }
     }
 }

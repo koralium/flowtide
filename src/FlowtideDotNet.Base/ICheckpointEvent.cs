@@ -30,5 +30,10 @@ namespace FlowtideDotNet.Base
         /// Gets the time of the newly created checkpoint span.
         /// </summary>
         long NewTime { get; }
+
+        /// <summary>
+        /// State manager version, reused on rollback, equal across substreams.
+        /// </summary>
+        long CheckpointVersion { get; }
     }
 }

@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -52,6 +52,25 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             return filterRelation;
         }
 
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            checkRelation.Input = Visit(checkRelation.Input, state);
+            if (checkRelation.Input is SetRelation union && _laneUnions.TryGetValue(union, out var lane))
+            {
+                PushIntoLanes(lane, input => new CheckRelation()
+                {
+                    Checks = checkRelation.Checks,
+                    Input = input,
+                    Emit = checkRelation.Emit,
+                    Hint = checkRelation.Hint
+                });
+                // Columns only move through the emit
+                lane.PartitionKeyColumns = MapColumnsThroughEmit(lane.PartitionKeyColumns, checkRelation.Emit);
+                return union;
+            }
+            return checkRelation;
+        }
+
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
         {
             projectRelation.Input = Visit(projectRelation.Input, state);
@@ -70,6 +89,40 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 return union;
             }
             return projectRelation;
+        }
+
+        public override Relation VisitSetRelation(SetRelation setRelation, object state)
+        {
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                setRelation.Inputs[i] = Visit(setRelation.Inputs[i], state);
+            }
+
+            // Only a single input operation can move into the lanes, the inputs of a multi
+            // input operation are not scattered into the same lanes. Union all is also the
+            // lane union itself, which must not be moved into its own lanes.
+            if (setRelation.Operation == SetOperation.UnionAll ||
+                setRelation.Inputs.Count != 1)
+            {
+                return setRelation;
+            }
+
+            if (setRelation.Inputs[0] is SetRelation union && _laneUnions.TryGetValue(union, out var lane) &&
+                lane.PartitionKeyColumns != null)
+            {
+                // The key is the whole row, so it always covers the lane partition keys
+                PushIntoLanes(lane, input => new SetRelation()
+                {
+                    Inputs = new List<Relation>() { input },
+                    Operation = setRelation.Operation,
+                    Emit = setRelation.Emit,
+                    Hint = setRelation.Hint
+                });
+                // A set operation keeps the columns of its rows, only the emit moves them
+                lane.PartitionKeyColumns = MapColumnsThroughEmit(lane.PartitionKeyColumns, setRelation.Emit);
+                return union;
+            }
+            return setRelation;
         }
 
         public override Relation VisitAggregateRelation(AggregateRelation aggregateRelation, object state)

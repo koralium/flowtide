@@ -28,6 +28,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait.Relations;
+using Microsoft.Extensions.Logging;
 using Stowage;
 using System.Diagnostics;
 using System.Text.Json;
@@ -35,6 +36,13 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal
 {
+    internal class DeltaLakePendingCommit
+    {
+        public long Version { get; set; }
+
+        public string StagedFile { get; set; } = string.Empty;
+    }
+
     internal class DeltaLakeSink : WriteBaseOperator
     {
         private readonly DeltaLakeOptions _options;
@@ -44,6 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IOPath _tablePath;
 
         private IObjectState<bool>? _firstInsertDone;
+        private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
 
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -88,20 +97,60 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 UseByteBasedPageSizes = true,
             });
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
+            _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_firstInsertDone != null);
+            Debug.Assert(_pendingCommit != null);
 
-            await SaveData();
+            // Stop skipped the commit, rows wait in the tree.
+            if (_pendingCommit.Value == null)
+            {
+                await SaveData();
+            }
             await _firstInsertDone.Commit();
+            await _pendingCommit.Commit();
+        }
+
+        public override async Task CommitVersion(long version)
+        {
+            Debug.Assert(_pendingCommit != null);
+
+            var pendingCommit = _pendingCommit.Value;
+            if (pendingCommit == null)
+            {
+                return;
+            }
+
+            await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, pendingCommit.Version, pendingCommit.StagedFile);
+
+            if (_options.CheckpointInterval > 0 && pendingCommit.Version > 0 && (pendingCommit.Version % _options.CheckpointInterval == 0))
+            {
+                try
+                {
+                    var currentTableState = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
+                    if (currentTableState != null)
+                    {
+                        await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
+                    }
+                }
+                catch (Exception e)
+                {
+                    // Checkpoint is optional, next interval tries again.
+                    Logger.LogWarning(e, "Failed to write delta checkpoint for version {version} of table {table}", pendingCommit.Version, _tableName);
+                }
+            }
+
+            _pendingCommit.Value = null;
         }
 
         private async Task SaveData()
         {
             Debug.Assert(_temporaryTree != null);
             Debug.Assert(_firstInsertDone != null);
+            Debug.Assert(_pendingCommit != null);
 
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
@@ -385,7 +434,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
-            await DeltaTransactionWriter.WriteCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+            // Published in CommitVersion once the version is final.
+            var stagedFile = await DeltaTransactionWriter.StageCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+            _pendingCommit.Value = new DeltaLakePendingCommit()
+            {
+                Version = nextVersion,
+                StagedFile = stagedFile
+            };
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
             await _temporaryTree.Clear();

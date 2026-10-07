@@ -41,28 +41,29 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// </summary>
     internal class TimestampTzColumn : IDataColumn
     {
-        private readonly PrimitiveList<TimestampTzValue> _values;
-        private bool disposedValue;
+        // Not readonly, mutations would run on a copy.
+        private NativeList<TimestampTzValue> _values;
 
         public TimestampTzColumn(IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<TimestampTzValue>(memoryAllocator);
         }
 
         public TimestampTzColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
         {
-            _values = new PrimitiveList<TimestampTzValue>(memoryAllocator, columnSizeInfo.TotalRows);
+            _values.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
         }
 
-        public TimestampTzColumn(IMemoryOwner<byte> memory, int length, IMemoryAllocator memoryAllocator)
+        public TimestampTzColumn(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
         {
-            _values = new PrimitiveList<TimestampTzValue>(memory, length, memoryAllocator);
+            _values = new NativeList<TimestampTzValue>(memory, length);
         }
 
-        internal TimestampTzColumn(PrimitiveList<TimestampTzValue> values)
+#pragma warning disable RS0042 // The list moves into the column and is not used again.
+        internal TimestampTzColumn(NativeList<TimestampTzValue> values)
         {
             _values = values;
         }
+#pragma warning restore RS0042
 
         public int Count => _values.Count;
 
@@ -70,34 +71,34 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public StructHeader StructHeader => throw new NotImplementedException();
 
-        public int Add<T>(in T value) where T : IDataValue
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             var index = _values.Count;
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.Add(new TimestampTzValue());
+                _values.Add(new TimestampTzValue(), memoryAllocator);
             }
             else
             {
-                _values.Add(value.AsTimestamp);
+                _values.Add(value.AsTimestamp, memoryAllocator);
             }
             return index;
         }
 
-        public void AddToNewList<T>(in T value) where T : IDataValue
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             // No operation
             throw new NotImplementedException();
         }
 
-        public void Clear()
+        public void Clear(IMemoryAllocator memoryAllocator)
         {
             _values.Clear();
         }
 
-        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList? validityList) where T : IDataValue
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
         {
-            if (validityList != null &&
+            if (!validityList.IsNull &&
                 !validityList.Get(index))
             {
                 if (value.Type == ArrowTypeId.Null)
@@ -115,11 +116,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            Debug.Assert(_values != null);
-
             if (otherColumn is TimestampTzColumn timestampColumn)
             {
-                Debug.Assert(timestampColumn._values != null);
                 return _values.Get(thisIndex).CompareTo(timestampColumn._values.Get(otherIndex));
             }
             throw new NotImplementedException();
@@ -130,7 +128,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return new TimestampTzColumn(_values.Copy(memoryAllocator));
         }
 
-        public int EndNewList()
+        public int EndNewList(IMemoryAllocator memoryAllocator)
         {
             // No operation
             throw new NotImplementedException();
@@ -167,28 +165,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             dataValueContainer._timestampValue = _values.Get(index);
         }
 
-        public void InsertAt<T>(in int index, in T value) where T : IDataValue
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             if (value.Type == ArrowTypeId.Null)
             {
-                _values.InsertAt(index, new TimestampTzValue());
+                _values.InsertAt(index, new TimestampTzValue(), memoryAllocator);
             }
             else
             {
-                _values.InsertAt(index, value.AsTimestamp);
+                _values.InsertAt(index, value.AsTimestamp, memoryAllocator);
             }
         }
 
-        public void InsertNullRange(int index, int count)
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
         {
-            _values.InsertStaticRange(index, new TimestampTzValue(), count);
+            _values.InsertStaticRange(index, new TimestampTzValue(), count, memoryAllocator);
         }
 
-        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, BitmapList? validityList)
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
         {
             if (other is TimestampTzColumn timestampColumn)
             {
-                _values.InsertRangeFrom(index, timestampColumn._values, start, count);
+                _values.InsertRangeFrom(index, in timestampColumn._values, start, count, memoryAllocator);
             }
             else
             {
@@ -196,23 +194,23 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void RemoveAt(in int index)
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
         {
-            _values.RemoveAt(index);
+            _values.RemoveAt(index, memoryAllocator);
         }
 
-        public void RemoveRange(int start, int count)
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
         {
-            _values.RemoveRange(start, count);
+            _values.RemoveRange(start, count, memoryAllocator);
         }
 
         public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
         {
             if (desc)
             {
-                return BoundarySearch.SearchBoundries(_values, dataValue.AsTimestamp, start, end, TimestampTzComparerDesc.Instance);
+                return BoundarySearch.SearchBoundries(in _values, dataValue.AsTimestamp, start, end, TimestampTzComparerDesc.Instance);
             }
-            return BoundarySearch.SearchBoundries(_values, dataValue.AsTimestamp, start, end, TimestampTzComparer.Instance);
+            return BoundarySearch.SearchBoundries(in _values, dataValue.AsTimestamp, start, end, TimestampTzComparer.Instance);
         }
 
         public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
@@ -226,7 +224,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             return (array, TimestampTzType.Default);
         }
 
-        public int Update<T>(in int index, in T value) where T : IDataValue
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
         {
             _values.Update(index, value.AsTimestamp);
             return index;
@@ -238,29 +236,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             writer.WriteStringValue(dt);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public void Dispose(IMemoryAllocator memoryAllocator)
         {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    _values.Dispose();
-                }
-                disposedValue = true;
-            }
-        }
-
-        ~TimestampTzColumn()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: false);
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _values.Dispose(memoryAllocator);
         }
 
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
@@ -292,19 +270,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
         {
-            arrowSerializer.AddBufferForward(_values.SlicedMemory.Length);
+            arrowSerializer.AddBufferForward(_values.SlicedSpan.Length);
         }
 
         void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
         {
-            dataWriter.WriteArrowBuffer(_values.SlicedMemory.Span);
+            dataWriter.WriteArrowBuffer(_values.SlicedSpan);
         }
 
-        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
         {
             if (other is TimestampTzColumn timestampColumn)
             {
-                _values.InsertFrom(in timestampColumn._values, in sortedLookup, in insertPositions, lookupNullIndex);
+                _values.InsertFrom(in timestampColumn._values, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
             }
             else
             {
@@ -312,9 +290,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
-        public void DeleteBatch(ReadOnlySpan<int> targets)
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
         {
-            _values.DeleteBatch(targets);
+            _values.DeleteBatch(targets, memoryAllocator);
         }
 
         public ColumnSizeInfo GetColumnSizeInfo()

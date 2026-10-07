@@ -67,6 +67,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             return true;
         }
 
+        public bool TryReclaimForEviction()
+        {
+            // Metadata is never disposed or evicted, so it is never reclaimable.
+            return false;
+        }
+
         public void Return()
         {
         }

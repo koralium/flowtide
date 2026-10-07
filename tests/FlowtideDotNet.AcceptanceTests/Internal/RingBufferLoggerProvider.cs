@@ -25,6 +25,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         private const int MaxLines = 50_000;
         private readonly ConcurrentQueue<string> _lines = new ConcurrentQueue<string>();
 
+        /// <summary>
+        /// Called with each line as it is logged, a test can hold the logging thread at a line.
+        /// </summary>
+        public Action<string>? OnLine { get; set; }
+
         public ILogger CreateLogger(string categoryName)
         {
             return new RingBufferLogger(this, categoryName);
@@ -41,6 +46,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 // Intentionally empty: trimming is performed by TryDequeue in the loop condition.
             }
+        }
+
+        /// <summary>
+        /// Lines containing the text, so a test can assert on what was logged.
+        /// </summary>
+        public IReadOnlyList<string> LinesContaining(string text)
+        {
+            return _lines.Where(x => x.Contains(text, StringComparison.Ordinal)).ToList();
         }
 
         public void WriteToFile(string path)
@@ -86,6 +99,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                     line += Environment.NewLine + exception;
                 }
                 _provider.Add(line);
+                _provider.OnLine?.Invoke(line);
             }
         }
     }

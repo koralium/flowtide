@@ -29,6 +29,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
     {
         private readonly WriteRelation writeRelation;
         private readonly Action<EventBatchData> onDataChange;
+        private readonly Action<int>? onChangeRowsReceived;
         private int crashOnCheckpointCount;
         private int _checkpointsBeforeCrash;
         private bool watermarkRecieved = false;
@@ -39,10 +40,14 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
 #if DEBUG_WRITE
         // Debug data
-        private StreamWriter? allInput;
+        private TextWriter? allInput;
 #endif
 
         private int _deleteFailCount;
+        private readonly Action<long>? _onCheckpointDone;
+        private readonly Action<long>? _onCompact;
+        private readonly Action<long>? _onCommitVersion;
+        private long _lastCheckpointDone = -1;
 
         public MockDataSink(
             WriteRelation writeRelation,
@@ -51,7 +56,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             int crashOnCheckpointCount,
             Action<Watermark> onWatermark,
             int checkpointsBeforeCrash = 0,
-            int deleteFailCount = 0) : base(executionDataflowBlockOptions)
+            int deleteFailCount = 0,
+            Action<int>? onChangeRowsReceived = null,
+            Action<long>? onCheckpointDone = null,
+            Action<long>? onCompact = null,
+            Action<long>? onCommitVersion = null) : base(executionDataflowBlockOptions)
         {
             this.writeRelation = writeRelation;
             this.onDataChange = onDataChange;
@@ -59,12 +68,31 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             this.onWatermark = onWatermark;
             _checkpointsBeforeCrash = checkpointsBeforeCrash;
             _deleteFailCount = deleteFailCount;
+            this.onChangeRowsReceived = onChangeRowsReceived;
+            _onCheckpointDone = onCheckpointDone;
+            _onCompact = onCompact;
+            _onCommitVersion = onCommitVersion;
         }
 
         public override string DisplayName => "Mock Data Sink";
 
+        public override Task CheckpointDone(long checkpointVersion)
+        {
+            _lastCheckpointDone = checkpointVersion;
+            _onCheckpointDone?.Invoke(checkpointVersion);
+            return base.CheckpointDone(checkpointVersion);
+        }
+
+        public override Task CommitVersion(long version)
+        {
+            _onCommitVersion?.Invoke(version);
+            return base.CommitVersion(version);
+        }
+
         public override Task Compact()
         {
+            // Reports the version Compact ran for, a sink commits here.
+            _onCompact?.Invoke(_lastCheckpointDone);
             return Task.CompletedTask;
         }
 
@@ -89,7 +117,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else
             {
-                allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt");
+                allInput = TextWriter.Synchronized(File.CreateText($"debugwrite/{StreamName}-{Name}.sink.txt"));
             }
 #endif
             _tree = await stateManagerClient.GetOrCreateTree("sink", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
@@ -184,6 +212,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         protected override async Task OnRecieve(StreamEventBatch msg, long time)
         {
             Logger.LogDebug("Mock sink recieved batch with {count} rows", msg.Data.Weights.Count);
+            // Counts the change stream so a test can assert re-emission.
+            onChangeRowsReceived?.Invoke(msg.Data.Weights.Count);
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
             foreach (var e in msg.Events)

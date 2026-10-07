@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Window
             if (isNew)
             {
                 Updated = true;
-                windowValue.valueContainer._previousValueSent.Set(windowValue.index);
+                windowValue.valueContainer.SetPreviousValueSent(windowValue.index);
                 _addOutputRow.AddOutputRow(_columnRowReference.Value, values, 1);
             }
         }
