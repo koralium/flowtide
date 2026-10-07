@@ -333,10 +333,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         deleteWriter.AddRow(rowRef);
                         if (cdcWriter != null)
                         {
-                            // One change row per deleted copy
+                            // One change row per deleted copy, rolled per copy so a large weight stays bounded
                             for (int v = 0; v > weight; v--)
                             {
                                 cdcWriter.AddRow(rowRef, true);
+                                if (IsFull(cdcWriter))
+                                {
+                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                                }
                             }
                         }
 
@@ -368,14 +372,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                     else
                     {
-                        // Make sure to handle duplicate rows
+                        // One row per copy, rolled per copy so a large weight stays bounded
+                        var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                         for (int v = 0; v < weight; v++)
                         {
-                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                             writer.AddRow(rowRef);
+                            if (IsFull(writer))
+                            {
+                                await WriteNewFile(writer, actions, currentTime, schema);
+                            }
                             if (cdcWriter != null)
                             {
                                 cdcWriter.AddRow(rowRef);
+                                if (IsFull(cdcWriter))
+                                {
+                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                                }
                             }
                         }
                     }
@@ -393,16 +405,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, deleteBatch);
                     }
                     deleteWriter.NewBatch();
-                }
-
-                // Roll files based on approximate size in bytes; WrittenBytes vs MaxFileSizeBytes is an estimate due to Parquet encoding/compression
-                if (IsFull(writer))
-                {
-                    await WriteNewFile(writer, actions, currentTime, schema);
-                }
-                if (cdcWriter != null && IsFull(cdcWriter))
-                {
-                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
                 }
             }
 

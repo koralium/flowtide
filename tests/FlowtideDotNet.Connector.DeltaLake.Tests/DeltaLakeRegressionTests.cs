@@ -71,6 +71,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertResult(testName, storage, "test", 2, expected);
         }
 
+        [Theory]
+        [InlineData(100)]
+        [InlineData(10)]
+        public async Task DistinctRowsStoredAsTheSameValueAreFullyDeleted(int userCount)
+        {
+            // Sub millisecond differences are lost on write, both rows store the same timestamp
+            var testName = $"{nameof(DistinctRowsStoredAsTheSameValueAreFullyDeleted)}_{userCount}";
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(testName, storage);
+
+            stream.Generate(userCount);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    ts TIMESTAMP
+                );
+
+                INSERT INTO test
+                SELECT userKey, timestamp_add('MICROSECOND', 100, birthdate) as ts FROM users
+                UNION ALL
+                SELECT userKey, timestamp_add('MICROSECOND', 200, birthdate) as ts FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            stream.DeleteUser(stream.Users[0]);
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            Assert.Equal(stream.Users.Count * 2, await LiveRowCount(storage, "test"));
+        }
+
         [Fact]
         public async Task DuplicateRowDeletesAreFullyWrittenToChangeData()
         {
@@ -179,16 +212,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 SELECT userKey, firstName as Name, lastName FROM users
             ");
 
-            // Four commits, one small file each.
+            // Four commits of small files.
             await WaitForVersion(storage, "test", stream, 0);
             for (int version = 1; version < 4; version++)
             {
                 stream.Generate(25);
                 await WaitForVersion(storage, "test", stream, version);
             }
+            var beforeDelete = await DeltaTransactionReader.ReadTable(storage, "test", 3);
+            Assert.NotNull(beforeDelete);
+            var filesBeforeDelete = beforeDelete.Files.Count;
+            Assert.True(filesBeforeDelete >= 4, $"Expected at least one file per commit, got {filesBeforeDelete}");
 
-            // A quarter of every file is deleted, every file is rewritten inline.
-            var toDelete = stream.Users.Where((_, i) => i % 4 == 0).ToList();
+            // Every fourth row of every file is deleted, chosen per file so every file is rewritten inline
+            var keyColumn = beforeDelete.Schema.Fields.First(x => x.Name == "userkey");
+            var keyStatsName = keyColumn.PhysicalName ?? keyColumn.Name;
+            var toDelete = new List<FlowtideDotNet.AcceptanceTests.Entities.User>();
+            foreach (var file in beforeDelete.Files)
+            {
+                using var stats = JsonDocument.Parse(file.Action.Statistics!);
+                var min = stats.RootElement.GetProperty("minValues").GetProperty(keyStatsName).GetInt32();
+                var max = stats.RootElement.GetProperty("maxValues").GetProperty(keyStatsName).GetInt32();
+                var rows = stream.Users.Where(x => x.UserKey >= min && x.UserKey <= max).OrderBy(x => x.UserKey).ToList();
+                Assert.Equal(file.Statistics.NumRecords, rows.Count);
+                toDelete.AddRange(rows.Where((_, i) => i % 4 == 0));
+            }
             foreach (var user in toDelete)
             {
                 stream.DeleteUser(user);
@@ -199,7 +247,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var deleteCommit = await DeltaTransactionReader.ReadVersionCommit(storage, "test", 4);
             Assert.NotNull(deleteCommit);
-            Assert.Equal(4, deleteCommit.RemovedFiles.Count);
+            Assert.Equal(filesBeforeDelete, deleteCommit.RemovedFiles.Count);
             var rewrittenFiles = deleteCommit.AddedFiles.Where(x => x.DeletionVector == null).ToList();
             var survivors = stream.Users.Count;
             var recordsPerFile = rewrittenFiles.Select(x => JsonDocument.Parse(x.Statistics!).RootElement.GetProperty("numRecords").GetInt32()).ToList();
@@ -587,6 +635,149 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task MultiplicityExpansionRollsFiles()
+        {
+            var storage = Files.Of.InternalMemory($"./{nameof(MultiplicityExpansionRollsFiles)}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(MultiplicityExpansionRollsFiles), storage, options =>
+            {
+                options.WriteChangeDataOnNewTables = true;
+                // Every row fills a file
+                options.MaxFileSizeBytes = 1;
+            });
+
+            stream.Generate(5);
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    Name STRING
+                );
+
+                INSERT INTO test
+                SELECT userKey, firstName as Name FROM users
+                UNION ALL
+                SELECT userKey, firstName as Name FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // Each copy of a weight 2 row rolls its own file
+            var initial = await DeltaTransactionReader.ReadVersionCommit(storage, "test", 0);
+            Assert.NotNull(initial);
+            Assert.Equal(10, initial.AddedFiles.Count);
+            Assert.All(initial.AddedFiles, add => Assert.Equal(1, NumRecords(add)));
+
+            stream.DeleteUser(stream.Users[0]);
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            var commit = await ReadCommitLines(storage, "test", 1);
+            var cdcPaths = commit
+                .Where(x => x.RootElement.TryGetProperty("cdc", out _))
+                .Select(x => x.RootElement.GetProperty("cdc").GetProperty("path").GetString()!)
+                .ToList();
+            Assert.Equal(2, cdcPaths.Count);
+            foreach (var cdcPath in cdcPaths)
+            {
+                Assert.Equal(1, await CountChangeRows(storage, "test", cdcPath, "delete"));
+            }
+
+            // An update keeps its change files, so inserted copies must roll too
+            var updated = stream.Users[0];
+            updated.FirstName = "Renamed";
+            stream.AddOrUpdateUser(updated);
+
+            await WaitForVersion(storage, "test", stream, 2);
+
+            var updateCommit = await ReadCommitLines(storage, "test", 2);
+            var updateCdcPaths = updateCommit
+                .Where(x => x.RootElement.TryGetProperty("cdc", out _))
+                .Select(x => x.RootElement.GetProperty("cdc").GetProperty("path").GetString()!)
+                .ToList();
+            Assert.Equal(4, updateCdcPaths.Count);
+            long deletes = 0;
+            long inserts = 0;
+            foreach (var cdcPath in updateCdcPaths)
+            {
+                var fileDeletes = await CountChangeRows(storage, "test", cdcPath, "delete");
+                var fileInserts = await CountChangeRows(storage, "test", cdcPath, "insert");
+                Assert.Equal(1, fileDeletes + fileInserts);
+                deletes += fileDeletes;
+                inserts += fileInserts;
+            }
+            Assert.Equal(2, deletes);
+            Assert.Equal(2, inserts);
+
+            var expected = stream.Users.SelectMany(x => new[] { new { x.UserKey, x.FirstName }, new { x.UserKey, x.FirstName } });
+            await AssertResult(nameof(MultiplicityExpansionRollsFiles), storage, "test", 3, expected);
+        }
+
+        [Fact]
+        public async Task CopyFromCountsSurvivorsAcrossBatches()
+        {
+            var storage = Files.Of.InternalMemory($"./{nameof(CopyFromCountsSurvivorsAcrossBatches)}");
+            var schema = SingleColumnSchema(new LongType());
+            var names = new List<string>() { "v" };
+            const int rows = 150_000;
+
+            var column = FlowtideDotNet.Core.ColumnStore.Column.Create(GlobalMemoryManager.Instance);
+            for (int i = 0; i < rows; i++)
+            {
+                column.Add(new Int64Value(i));
+            }
+            using var data = new EventBatchData(new IColumn[] { column });
+            var source = new ParquetSharpWriter(schema, names);
+            source.NewBatch();
+            for (int i = 0; i < rows; i++)
+            {
+                source.AddRow(new ColumnRowReference() { referenceBatch = data, RowIndex = i });
+            }
+            await source.WriteData(storage, "t", "source.parquet");
+
+            var batchLengths = await ReadBatchLengths(storage, "t/source.parquet");
+            Assert.True(batchLengths.Count > 1, "The source file must be read in several batches");
+
+            // Every third row plus both edges of each batch
+            var positions = new SortedSet<long>();
+            for (long i = 0; i < rows; i += 3)
+            {
+                positions.Add(i);
+            }
+            long start = 0;
+            foreach (var length in batchLengths)
+            {
+                positions.Add(start);
+                positions.Add(start + length - 1);
+                start += length;
+            }
+            var deleted = new ModifiableDeleteVector(EmptyDeleteVector.Instance);
+            foreach (var position in positions)
+            {
+                deleted.Add(position);
+            }
+
+            var writer = new ParquetSharpWriter(schema, names);
+            writer.NewBatch();
+            var rolledCounts = new List<int>();
+            await writer.CopyFrom(storage, "t", "source.parquet", deleted, _ => true, () =>
+            {
+                rolledCounts.Add(writer.WrittenCount);
+                writer.NewBatch();
+                return Task.CompletedTask;
+            });
+
+            // A roll after every batch exposes the per batch count
+            var expected = new List<int>();
+            long offset = 0;
+            foreach (var length in batchLengths)
+            {
+                expected.Add(length - positions.GetViewBetween(offset, offset + length - 1).Count);
+                offset += length;
+            }
+            Assert.Equal(expected, rolledCounts);
+        }
+
+        [Fact]
         public void Float32CopyArrayReportsCopiedBytes()
         {
             var writer = new ParquetFloat32Writer();
@@ -752,6 +943,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 field = new Field("v", Apache.Arrow.Types.DoubleType.Default, true);
             }
             return new RecordBatch(new Apache.Arrow.Schema(new List<Field>() { field }, null), new[] { array }, values.Length);
+        }
+
+        private static int NumRecords(DeltaAddAction add)
+        {
+            using var stats = JsonDocument.Parse(add.Statistics!);
+            return stats.RootElement.GetProperty("numRecords").GetInt32();
+        }
+
+        private static async Task<List<int>> ReadBatchLengths(IFileStorage storage, string path)
+        {
+            using var stream = await storage.OpenRead(path);
+            Assert.NotNull(stream);
+            using var memory = new MemoryStream();
+            await stream.CopyToAsync(memory);
+            memory.Position = 0;
+            using var reader = new ParquetSharp.Arrow.FileReader(memory);
+            using var batches = reader.GetRecordBatchReader();
+            var lengths = new List<int>();
+            RecordBatch batch;
+            while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
+            {
+                using (batch)
+                {
+                    lengths.Add(batch.Length);
+                }
+            }
+            return lengths;
         }
 
         private static async Task<long> CountChangeRows(IFileStorage storage, string tableName, string path, string changeType)
