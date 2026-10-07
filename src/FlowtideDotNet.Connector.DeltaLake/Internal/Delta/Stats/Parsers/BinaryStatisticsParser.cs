@@ -44,36 +44,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
                 return new BinaryValue(null);
             }
 
-            byte[] byteArray = Encoding.Unicode.GetBytes(str);
+            byte[] byteArray = Encoding.UTF8.GetBytes(str);
             return new BinaryValue(byteArray);
         }
 
         public void ReadMaxValue(ref Utf8JsonReader reader)
         {
-            var str = reader.GetString();
-
-            if (str == null)
-            {
-                _maxValue = null;
-            }
-            else
-            {
-                _maxValue = Encoding.Unicode.GetBytes(str);
-            }
+            _maxValue = ReadBound(ref reader);
         }
 
         public void ReadMinValue(ref Utf8JsonReader reader)
         {
+            _minValue = ReadBound(ref reader);
+        }
+
+        private static byte[]? ReadBound(ref Utf8JsonReader reader)
+        {
             var str = reader.GetString();
 
-            if (str == null)
+            // Replaced invalid bytes, the real bound is unknown
+            if (str == null || str.Contains('\uFFFD'))
             {
-                _minValue = null;
+                return null;
             }
-            else
-            {
-                _minValue = Encoding.Unicode.GetBytes(str);
-            }
+            return Encoding.UTF8.GetBytes(str);
         }
 
         public void ReadNullValue(ref Utf8JsonReader reader)

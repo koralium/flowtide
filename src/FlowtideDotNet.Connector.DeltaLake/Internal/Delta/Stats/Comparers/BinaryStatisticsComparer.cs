@@ -11,8 +11,8 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
-using System.Text;
 using System.Text.Json;
+using System.Text.Unicode;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
@@ -54,17 +54,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)
         {
-            if (_maxValue != null)
+            // Json text cannot hold invalid utf8, leave unbounded
+            if (_maxValue != null && Utf8.IsValid(_maxValue))
             {
-                writer.WriteString(propertyName, Encoding.Unicode.GetString(_maxValue));
+                writer.WriteString(propertyName, _maxValue);
             }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
-            if (_minValue != null)
+            // Json text cannot hold invalid utf8, leave unbounded
+            if (_minValue != null && Utf8.IsValid(_minValue))
             {
-                writer.WriteString(propertyName, Encoding.Unicode.GetString(_minValue));
+                writer.WriteString(propertyName, _minValue);
             }
         }
 

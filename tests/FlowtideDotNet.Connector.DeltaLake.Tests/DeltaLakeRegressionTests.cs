@@ -27,6 +27,7 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Storage.Memory;
 using Stowage;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
@@ -793,6 +794,242 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var bytes = writer.CopyArray(array, 0, EmptyDeleteVector.Instance, 0, array.Length);
 
             Assert.Equal(40, bytes);
+        }
+
+        [Theory]
+        [InlineData("Tami")]
+        [InlineData("Tom")]
+        public async Task BinaryRowSharingFirstByteWithMaxIsDeleted(string deletedName)
+        {
+            // Tami and Tom share their first byte with the max, Tom
+            var testName = $"{nameof(BinaryRowSharingFirstByteWithMaxIsDeleted)}_{deletedName}";
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(testName, storage);
+
+            AddUsers(stream, "Aaron", "Bob", "Tami", "Tom");
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    firstName BINARY
+                );
+
+                INSERT INTO test
+                SELECT firstName FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            stream.DeleteUser(stream.Users.Single(x => x.FirstName == deletedName));
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
+        }
+
+        [Fact]
+        public async Task NonUtf8BinaryRowsAreDeleted()
+        {
+            var storage = Files.Of.InternalMemory($"./{nameof(NonUtf8BinaryRowsAreDeleted)}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(NonUtf8BinaryRowsAreDeleted), storage);
+
+            AddUsers(stream, "a", "b", "c", "d");
+
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    v BINARY
+                );
+
+                INSERT INTO test
+                SELECT b.v
+                FROM users u
+                INNER JOIN (
+                    VALUES (1, 0x41), (2, 0xC3), (3, 0x41FF42), (4, 0xFF)
+                ) b(k, v) ON u.userKey = b.k
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // 0xFF is the max of the file
+            stream.DeleteUser(stream.Users.Single(x => x.UserKey == 4));
+
+            await WaitForVersion(storage, "test", stream, 1);
+
+            // 0x41 is the min of the rewritten file
+            stream.DeleteUser(stream.Users.Single(x => x.UserKey == 1));
+
+            await WaitForVersion(storage, "test", stream, 2);
+
+            await AssertResult(nameof(NonUtf8BinaryRowsAreDeleted), storage, "test", 3, new[]
+            {
+                new { v = new byte[] { 0xC3 } },
+                new { v = new byte[] { 0x41, 0xFF, 0x42 } }
+            });
+        }
+
+        [Fact]
+        public void BinaryStatisticsRoundTripAsUtf8()
+        {
+            var schema = SingleColumnSchema(new BinaryType());
+            var writer = new ParquetSharpWriter(schema, new List<string>() { "v" });
+
+            writer.NewBatch();
+            writer.AddRow(SingleValueRow(new BinaryValue(Encoding.UTF8.GetBytes("Tom"))));
+            writer.AddRow(SingleValueRow(new BinaryValue(Encoding.UTF8.GetBytes("Aaron"))));
+            writer.AddRow(SingleValueRow(NullValue.Instance));
+
+            var json = SerializeStatistics(schema, writer.GetStatistics());
+
+            Assert.Equal("Aaron", json.GetProperty("minValues").GetProperty("v").GetString());
+            Assert.Equal("Tom", json.GetProperty("maxValues").GetProperty("v").GetString());
+            Assert.Equal(1, json.GetProperty("nullCount").GetProperty("v").GetInt32());
+
+            var comparer = DeserializeStatistics(schema, json.GetRawText()).ValueComparers!["v"];
+
+            Assert.True(comparer.IsInBetween(new BinaryValue(Encoding.UTF8.GetBytes("Tami"))));
+            Assert.True(comparer.IsInBetween(new BinaryValue(Encoding.UTF8.GetBytes("Tom"))));
+            // Bounds still prune
+            Assert.False(comparer.IsInBetween(new BinaryValue(Encoding.UTF8.GetBytes("Zed"))));
+        }
+
+        [Fact]
+        public void BinaryStatisticsSkipInvalidUtf8Bounds()
+        {
+            var schema = SingleColumnSchema(new BinaryType());
+            var writer = new ParquetSharpWriter(schema, new List<string>() { "v" });
+
+            writer.NewBatch();
+            writer.AddRow(SingleValueRow(new BinaryValue(new byte[] { 0xFF })));
+            writer.AddRow(SingleValueRow(new BinaryValue(new byte[] { 0x41 })));
+
+            var json = SerializeStatistics(schema, writer.GetStatistics());
+
+            // 0xFF has no json text form
+            Assert.Equal("A", json.GetProperty("minValues").GetProperty("v").GetString());
+            Assert.False(json.GetProperty("maxValues").TryGetProperty("v", out _));
+        }
+
+        [Theory]
+        // Older Flowtide, bytes written as utf8 text
+        [InlineData("Aaron", "Tom", "54616D69")]
+        [InlineData("Aaron", "Tom", "546F6D")]
+        [InlineData("A", "Tom", "41")]
+        // Older Flowtide, invalid utf8 replaced on write
+        [InlineData("A", "\uFFFD", "FF")]
+        [InlineData("\uFFFD", "\uFFFD", "C3")]
+        public void LegacyBinaryBoundsKeepTheirRows(string min, string max, string probeHex)
+        {
+            var schema = SingleColumnSchema(new BinaryType());
+            var stats = DeserializeStatistics(schema, JsonSerializer.Serialize(new
+            {
+                numRecords = 2,
+                minValues = new { v = min },
+                maxValues = new { v = max },
+                nullCount = new { v = 0 }
+            }));
+
+            Assert.True(stats.ValueComparers!["v"].IsInBetween(new BinaryValue(Convert.FromHexString(probeHex))));
+            // The null count still rules out nulls
+            Assert.False(stats.ValueComparers!["v"].IsInBetween(NullValue.Instance));
+        }
+
+        [Theory]
+        [InlineData("BINARY", true, 20)]
+        [InlineData("BINARY", false, 3)]
+        [InlineData("STRING", true, 20)]
+        [InlineData("STRING", false, 3)]
+        public async Task EmptyValueDeleteKeepsNullRow(string type, bool deletionVectors, int rowCount)
+        {
+            // 20 rows deletes through a deletion vector, 3 rows rewrites the file
+            var testName = $"{nameof(EmptyValueDeleteKeepsNullRow)}_{type}_{deletionVectors}";
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(testName, storage, o => o.EnableDeletionVectorsOnNewTables = deletionVectors);
+
+            var names = new List<string?>() { null, "" };
+            for (int i = 2; i < rowCount; i++)
+            {
+                names.Add($"n{i:D2}");
+            }
+            AddUsers(stream, names.ToArray());
+
+            await stream.StartStream($@"
+                CREATE TABLE test (
+                    firstName {type}
+                );
+
+                INSERT INTO test
+                SELECT firstName FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // Nulls sort first, the empty delete matched the null row
+            stream.DeleteUser(stream.Users.Single(x => x.FirstName == ""));
+            await WaitForVersion(storage, "test", stream, 1);
+            await AssertUsers($"{testName}_empty", 2);
+
+            // Rewrite without the null row made this delete throw
+            stream.DeleteUser(stream.Users.Single(x => x.FirstName == null));
+            await WaitForVersion(storage, "test", stream, 2);
+            await AssertUsers($"{testName}_null", 3);
+
+            Task AssertUsers(string name, int waitCount)
+            {
+                if (type == "BINARY")
+                {
+                    return AssertResult(name, storage, "test", waitCount, stream.Users.Select(x => new { val = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
+                }
+                return AssertResult(name, storage, "test", waitCount, stream.Users.Select(x => new { val = x.FirstName }));
+            }
+        }
+
+        [Theory]
+        [InlineData("BINARY")]
+        [InlineData("STRING")]
+        public async Task EmptyValueDeleteKeepsNullRowInSecondColumn(string type)
+        {
+            // Columns after the first are matched by IsEqual
+            var testName = $"{nameof(EmptyValueDeleteKeepsNullRowInSecondColumn)}_{type}";
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(testName, storage);
+
+            AddUsers(stream, null, "", "n02");
+
+            await stream.StartStream($@"
+                CREATE TABLE test (
+                    lastName STRING,
+                    firstName {type}
+                );
+
+                INSERT INTO test
+                SELECT lastName, firstName FROM users
+            ");
+
+            await WaitForVersion(storage, "test", stream, 0);
+
+            stream.DeleteUser(stream.Users.Single(x => x.FirstName == ""));
+            await WaitForVersion(storage, "test", stream, 1);
+
+            if (type == "BINARY")
+            {
+                await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
+            }
+            else
+            {
+                await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName }));
+            }
+        }
+
+        private static void AddUsers(FlowtideTestStream stream, params string?[] firstNames)
+        {
+            for (int i = 0; i < firstNames.Length; i++)
+            {
+                stream.AddOrUpdateUser(new FlowtideDotNet.AcceptanceTests.Entities.User()
+                {
+                    UserKey = i + 1,
+                    FirstName = firstNames[i],
+                    LastName = "Last"
+                });
+            }
         }
 
         private static StructType SingleColumnSchema(SchemaBaseType type)
