@@ -19,6 +19,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using Stowage;
+using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
@@ -102,7 +103,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             _schema = new Apache.Arrow.Schema(fields, new Dictionary<string, string>());
         }
 
-        public async Task CopyFrom(IFileStorage storage, IOPath table, string filePath, IDeleteVector deleteVector)
+        /// <summary>
+        /// Copies the rows outside the deletion vector, rolling the file between batches when full.
+        /// </summary>
+        public async Task CopyFrom(IFileStorage storage, IOPath table, string filePath, IDeleteVector deleteVector, Func<ParquetSharpWriter, bool> isFull, Func<Task> rollFile)
         {
             using var stream = await storage.OpenRead(table.Combine(filePath));
 
@@ -115,6 +119,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             var batchReader = fileReader.GetRecordBatchReader();
 
+            // Deletion vectors enumerate ascending, one cursor counts the deletes per batch
+            using var deleted = deleteVector.GetEnumerator();
+            bool hasDeleted = deleted.MoveNext();
+
             int globalIndex = 0;
             Apache.Arrow.RecordBatch batch;
             while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
@@ -125,10 +133,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                     {
                         _writtenBytes += writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector, 0, batch.Length);
                     }
+                    long batchEnd = globalIndex + batch.Length;
+                    int deletedInBatch = 0;
+                    while (hasDeleted && deleted.Current < batchEnd)
+                    {
+                        Debug.Assert(deleted.Current >= globalIndex, "Deletion vector positions must be ascending");
+                        deletedInBatch++;
+                        hasDeleted = deleted.MoveNext();
+                    }
+                    // Counted per batch, a roll can happen between batches
+                    rowCount += batch.Length - deletedInBatch;
                     globalIndex += batch.Length;
                 }
+                if (isFull(this))
+                {
+                    await rollFile();
+                }
             }
-            rowCount += (int)(globalIndex - deleteVector.Cardinality);
         }
 
         public int WrittenCount => rowCount;
@@ -218,19 +239,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             return obj;
         }
 
-        public async Task<int> WriteData(IFileStorage storage, IOPath tablePath, string fileName)
+        public async Task<long> WriteData(IFileStorage storage, IOPath tablePath, string fileName)
         {
             using var stream = await storage.OpenWrite(tablePath.Combine(fileName));
             using var deltaStream = new DeltaWriteStream(stream);
             using var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, _schema);
 
-            var batch = GetRecordBatch();
+            using var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);
             writer.Close();
 
-            var length = deltaStream.Position;
-
-            return (int)length;
+            return deltaStream.Position;
         }
     }
 }

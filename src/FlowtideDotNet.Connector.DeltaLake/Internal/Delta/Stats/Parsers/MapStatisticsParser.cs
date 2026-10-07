@@ -18,6 +18,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 {
     internal class MapStatisticsParser : IStatisticsParser
     {
+        public void Reset()
+        {
+        }
+
         public IStatisticsComparer GetStatisticsComparer()
         {
             throw new NotImplementedException();

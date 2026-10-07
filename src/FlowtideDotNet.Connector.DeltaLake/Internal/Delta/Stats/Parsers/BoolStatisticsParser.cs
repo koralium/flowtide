@@ -20,7 +20,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
     {
         private bool? _minValue;
         private bool? _maxValue;
-        private int _nullCount;
+        private int? _nullCount;
+
+        public void Reset()
+        {
+            _minValue = null;
+            _maxValue = null;
+            _nullCount = null;
+        }
 
         public IStatisticsComparer GetStatisticsComparer()
         {

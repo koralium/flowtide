@@ -25,6 +25,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
             _parsers = parsers;
         }
 
+        public void Reset()
+        {
+            foreach (var parser in _parsers.Values)
+            {
+                parser.Reset();
+            }
+        }
+
         public IStatisticsComparer GetStatisticsComparer()
         {
             return new StructStatisticsComparer(_parsers.Select(x => new KeyValuePair<string, IStatisticsComparer>(x.Key, x.Value.GetStatisticsComparer())), default);

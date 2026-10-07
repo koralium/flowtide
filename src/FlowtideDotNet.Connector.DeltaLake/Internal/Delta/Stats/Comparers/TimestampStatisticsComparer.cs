@@ -19,12 +19,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
     {
         private DateTimeOffset? _minValue;
         private DateTimeOffset? _maxValue;
+        private readonly long? _minMilliseconds;
+        private readonly long? _maxMilliseconds;
         private readonly int? _nullCount;
 
         public TimestampStatisticsComparer(DateTimeOffset? minValue, DateTimeOffset? maxValue, int? nullCount)
         {
-            _minValue = minValue;
-            _maxValue = maxValue;
+            // Bounds and probes compare at the stored millisecond precision
+            if (minValue.HasValue)
+            {
+                _minMilliseconds = StoredValue.TimestampMilliseconds(minValue.Value);
+                _minValue = StoredValue.Timestamp(minValue.Value);
+            }
+            if (maxValue.HasValue)
+            {
+                _maxMilliseconds = StoredValue.TimestampMilliseconds(maxValue.Value);
+                _maxValue = StoredValue.Timestamp(maxValue.Value);
+            }
             _nullCount = nullCount;
         }
 
@@ -38,13 +49,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 }
                 return false;
             }
-            var dateValue = value.AsTimestamp.ToDateTimeOffset();
+            var probe = StoredValue.TimestampMilliseconds(value.AsTimestamp);
 
-            if (_minValue != null && _minValue > dateValue)
+            if (_minMilliseconds.HasValue && _minMilliseconds.Value > probe)
             {
                 return false;
             }
-            if (_maxValue != null && _maxValue < dateValue)
+            if (_maxMilliseconds.HasValue && _maxMilliseconds.Value < probe)
             {
                 return false;
             }
