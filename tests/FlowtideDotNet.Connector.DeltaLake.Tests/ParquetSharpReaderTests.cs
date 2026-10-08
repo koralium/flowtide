@@ -183,5 +183,84 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
             }
         }
+
+        [Fact]
+        public async Task ReadsRunOnTheCallingThread()
+        {
+            // Reads from Arrow's own threads crashed the test host on Linux
+            var schema = new Apache.Arrow.Schema.Builder()
+                .Field(new Field("id", Int64Type.Default, true))
+                .Field(new Field("name", StringType.Default, true))
+                .Build();
+            var ids = new Int64Array.Builder();
+            var names = new StringArray.Builder();
+            for (int i = 0; i < 1000; i++)
+            {
+                ids.Append(i);
+                names.Append($"name_{i}");
+            }
+            var file = new MemoryStream();
+            using (var writer = new ParquetSharp.Arrow.FileWriter(file, schema))
+            {
+                using var batch = new RecordBatch(schema, [ids.Build(), names.Build()], 1000);
+                writer.WriteRecordBatch(batch);
+                writer.Close();
+            }
+
+            var stream = new ThreadRecordingStream(file.ToArray());
+            stream.Caller = Environment.CurrentManagedThreadId;
+            using var reader = ParquetFileReaders.Open(stream);
+            using var batches = reader.GetRecordBatchReader();
+            long rows = 0;
+            while (true)
+            {
+                stream.Caller = Environment.CurrentManagedThreadId;
+                var read = await batches.ReadNextRecordBatchAsync();
+                if (read == null)
+                {
+                    break;
+                }
+                rows += read.Length;
+                read.Dispose();
+            }
+
+            Assert.Equal(1000, rows);
+            Assert.True(stream.Reads > 0);
+            Assert.Equal(0, stream.ForeignReads);
+        }
+
+        private sealed class ThreadRecordingStream : MemoryStream
+        {
+            public ThreadRecordingStream(byte[] bytes) : base(bytes)
+            {
+            }
+
+            public volatile int Caller;
+
+            public int Reads;
+
+            public int ForeignReads;
+
+            public override int Read(byte[] buffer, int offset, int count)
+            {
+                Record();
+                return base.Read(buffer, offset, count);
+            }
+
+            public override int Read(Span<byte> buffer)
+            {
+                Record();
+                return base.Read(buffer);
+            }
+
+            private void Record()
+            {
+                Interlocked.Increment(ref Reads);
+                if (Environment.CurrentManagedThreadId != Caller)
+                {
+                    Interlocked.Increment(ref ForeignReads);
+                }
+            }
+        }
     }
 }

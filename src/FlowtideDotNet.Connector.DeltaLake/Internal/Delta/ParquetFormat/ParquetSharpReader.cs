@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new DeltaFileNotFoundException(path);
             }
 
-            ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             foreach (var encoder in _encoders)
             {
@@ -238,7 +238,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new DeltaFileNotFoundException(path);
             }
 
-            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             var batchReader = fileReader.GetRecordBatchReader();
 
@@ -267,7 +267,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new DeltaFileNotFoundException(path);
             }
 
-            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             List<int> columnsToSelect = new List<int>();
 
@@ -388,7 +388,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new DeltaFileNotFoundException(path);
             }
 
-            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             List<int> columnsToSelect = new List<int>();
 

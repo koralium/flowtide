@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new Exception($"File not found: {filePath}");
             }
 
-            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             var batchReader = fileReader.GetRecordBatchReader();
 

@@ -14,6 +14,7 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using Stowage;
 using System.Collections.Concurrent;
 using System.Text;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -117,7 +118,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task<string?> ReadText(IOPath path, Encoding? encoding = null, CancellationToken cancellationToken = default)
         {
             await Record("ReadText", path);
-            return await _inner.ReadText(path, encoding, cancellationToken);
+            using var copy = await ReadCopy(path, cancellationToken);
+            return copy == null ? null : (encoding ?? Encoding.UTF8).GetString(copy.ToArray());
         }
 
         public async Task WriteText(IOPath path, string contents, Encoding? encoding = null, CancellationToken cancellationToken = default)
@@ -141,18 +143,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return null;
             }
+            return await ReadCopy(path, cancellationToken);
+        }
+
+        private async Task<MemoryStream?> ReadCopy(IOPath path, CancellationToken cancellationToken)
+        {
             await s_readLock.WaitAsync(cancellationToken);
             try
             {
-                using var stream = await _inner.OpenRead(path, cancellationToken);
+                var stream = await _inner.OpenRead(path, cancellationToken);
                 if (stream == null)
                 {
                     return null;
                 }
-                var copy = new MemoryStream();
-                await stream.CopyToAsync(copy, cancellationToken);
-                copy.Position = 0;
-                return copy;
+                try
+                {
+                    var copy = new MemoryStream();
+                    await stream.CopyToAsync(copy, cancellationToken);
+                    copy.Position = 0;
+                    return copy;
+                }
+                finally
+                {
+                    // Disposing the in-memory store's stream adds its file back, undoing a remove made during the read
+                    if (stream is not MemoryStream)
+                    {
+                        await stream.DisposeAsync();
+                    }
+                }
             }
             finally
             {
@@ -160,9 +178,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
-        public Task<T?> ReadAsJson<T>(IOPath path, CancellationToken cancellationToken = default)
+        public async Task<T?> ReadAsJson<T>(IOPath path, CancellationToken cancellationToken = default)
         {
-            return _inner.ReadAsJson<T>(path, cancellationToken);
+            using var copy = await ReadCopy(path, cancellationToken);
+            return copy == null ? default : JsonSerializer.Deserialize<T>(Encoding.UTF8.GetString(copy.ToArray()));
         }
 
         public Task WriteAsJson(IOPath path, object value, bool writeIndented = true, CancellationToken cancellationToken = default)

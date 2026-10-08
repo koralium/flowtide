@@ -1195,7 +1195,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
             memory.Position = 0;
-            using var reader = new ParquetSharp.Arrow.FileReader(memory);
+            using var reader = ParquetFileReaders.Open(memory);
             using var batches = reader.GetRecordBatchReader();
             var lengths = new List<int>();
             RecordBatch batch;
@@ -1216,7 +1216,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var memory = new MemoryStream();
             await stream.CopyToAsync(memory);
             memory.Position = 0;
-            using var reader = new ParquetSharp.Arrow.FileReader(memory);
+            using var reader = ParquetFileReaders.Open(memory);
             using var batches = reader.GetRecordBatchReader();
             long count = 0;
             RecordBatch batch;
