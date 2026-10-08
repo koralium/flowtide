@@ -941,6 +941,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             });
         }
 
+        private async Task WaitForCheckpoint(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(1);
+            while (true)
+            {
+                try
+                {
+                    using var lastCheckpoint = await storage.OpenRead($"/{tableName}/_delta_log/_last_checkpoint");
+                    if (lastCheckpoint != null)
+                    {
+                        using var reader = new StreamReader(lastCheckpoint);
+                        var info = JsonSerializer.Deserialize<LastCheckpointInfo>(await reader.ReadToEndAsync());
+                        if (info != null && info.Version >= version)
+                        {
+                            return;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Not written yet, or caught mid-write
+                }
+
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException($"Checkpoint {version} of {tableName} was not written in time");
+                }
+                await stream.SchedulerTick();
+                await Task.Delay(100);
+            }
+        }
+
         private async Task WaitForVersion(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)
         {
             while (true)
@@ -1096,6 +1128,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // The checkpoint is written after the commit is published
+            await WaitForCheckpoint(storage, "test", stream, 2);
 
             // Verify that checkpoint file exists in storage!
             var checkpointExists = await storage.Exists("/test/_delta_log/00000000000000000002.checkpoint.parquet");
@@ -1167,6 +1201,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // Without the checkpoint DuckDB would only read the json log
+            await WaitForCheckpoint(storage, "test", stream, 2);
 
             await stream.DisposeAsync();
 

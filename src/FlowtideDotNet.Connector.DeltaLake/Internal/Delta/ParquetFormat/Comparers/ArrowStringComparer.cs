@@ -22,13 +22,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
             var left = (StringArray)toFindFrom;
             var right = (StringArray)toFindIn;
             var toSearchValue = left.GetBytes(toFindIndex);
+            // Null slots read as empty bytes, match nullness too
+            var toSearchNull = left.IsNull(toFindIndex);
             for (int i = searchIndex; i < searchLength; i++)
             {
                 if (deleteVector.Contains(globalOffset + i))
                 {
                     continue;
                 }
-                if (right.GetBytes(i).SequenceEqual(toSearchValue))
+                if (right.IsNull(i) == toSearchNull && right.GetBytes(i).SequenceEqual(toSearchValue))
                 {
                     return i;
                 }
@@ -41,7 +43,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
             var left = (StringArray)array;
             var right = (StringArray)otherArray;
 
-            return left.GetBytes(leftIndex).SequenceEqual(right.GetBytes(rightIndex));
+            return left.IsNull(leftIndex) == right.IsNull(rightIndex) && left.GetBytes(leftIndex).SequenceEqual(right.GetBytes(rightIndex));
         }
     }
 }

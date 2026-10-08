@@ -45,6 +45,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
     internal class DeltaLakeSink : WriteBaseOperator
     {
+        private const int MaxRowsPerFile = 10_000_000;
+
         private readonly DeltaLakeOptions _options;
         private readonly WriteRelation _writeRelation;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
@@ -331,7 +333,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         deleteWriter.AddRow(rowRef);
                         if (cdcWriter != null)
                         {
-                            cdcWriter.AddRow(rowRef, true);
+                            // One change row per deleted copy, rolled per copy so a large weight stays bounded
+                            for (int v = 0; v > weight; v--)
+                            {
+                                cdcWriter.AddRow(rowRef, true);
+                                if (IsFull(cdcWriter))
+                                {
+                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                                }
+                            }
                         }
 
                         var rowToDelete = new RowToDelete()
@@ -362,14 +372,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                     else
                     {
-                        // Make sure to handle duplicate rows
+                        // One row per copy, rolled per copy so a large weight stays bounded
+                        var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                         for (int v = 0; v < weight; v++)
                         {
-                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                             writer.AddRow(rowRef);
+                            if (IsFull(writer))
+                            {
+                                await WriteNewFile(writer, actions, currentTime, schema);
+                            }
                             if (cdcWriter != null)
                             {
                                 cdcWriter.AddRow(rowRef);
+                                if (IsFull(cdcWriter))
+                                {
+                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                                }
                             }
                         }
                     }
@@ -388,16 +406,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                     deleteWriter.NewBatch();
                 }
-
-                // Roll files based on approximate size in bytes; WrittenBytes vs MaxFileSizeBytes is an estimate due to Parquet encoding/compression
-                if (writer.WrittenBytes >= _options.MaxFileSizeBytes)
-                {
-                    await WriteNewFile(writer, actions, currentTime, schema);
-                }
-                if (cdcWriter != null && cdcWriter.WrittenBytes >= _options.MaxFileSizeBytes)
-                {
-                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
-                }
             }
 
             if (deleteWriter.WrittenCount > 0)
@@ -412,7 +420,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
-            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime, writer);
+            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime, writer, schema);
 
             if (writer.WrittenCount > 0)
             {
@@ -467,7 +475,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             DeltaTable? table,
             List<DeltaAction> actions,
             long currentTime,
-            ParquetSharpWriter writer)
+            ParquetSharpWriter writer,
+            StructType schema)
         {
             foreach (var deleteFile in fileDeleteVectors)
             {
@@ -500,32 +509,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Write delete vector here to file
                     var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
 
-var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
+                    var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
 
                     actions.Add(new DeltaAction()
                     {
-                        Add = new DeltaAddAction()
+                        Add = existingFile.Action.WithDeletionVector(new DeletionVector()
                         {
-                            Path = deleteFile.Key,
-                            Size = existingFile.Action.Size,
-                            Statistics = existingFile.Action.Statistics,
-                            PartitionValues = existingFile.Action.PartitionValues,
-                            DataChange = existingFile.Action.DataChange,
-                            ModificationTime = currentTime,
-                            DeletionVector = new DeletionVector()
-                            {
-                                Cardinality = roaringBitmap.Cardinality,
-                                Offset = 1,
-                                StorageType = "u",
-                                PathOrInlineDv = z85string,
-                                SizeInBytes = dataSize
-                            }
-                        }
+                            Cardinality = roaringBitmap.Cardinality,
+                            Offset = 1,
+                            StorageType = "u",
+                            PathOrInlineDv = z85string,
+                            SizeInBytes = dataSize
+                        })
                     });
                 }
                 else
                 {
-                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Action.Path!, deleteFile.Value);
+                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Action.Path!, deleteFile.Value, IsFull, () => WriteNewFile(writer, actions, currentTime, schema));
                 }
             }
         }
@@ -555,13 +555,20 @@ var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.Stor
             {
                 Cdc = new DeltaCdcAction()
                 {
-                    DataChange = true,
+                    // Change files never change table data (spec)
+                    DataChange = false,
                     PartitionValues = new Dictionary<string, string>(),
                     Path = addFilePath,
                     Size = fileSize
                 }
             });
             cdcWriter.NewBatch();
+        }
+
+        // The row cap bounds buffering when a byte estimate is wrong
+        private bool IsFull(ParquetSharpWriter writer)
+        {
+            return writer.WrittenBytes >= _options.MaxFileSizeBytes || writer.WrittenCount >= MaxRowsPerFile;
         }
 
         private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)
@@ -612,9 +619,9 @@ var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.Stor
             }
 
             // If a modified delete vector already exist, use it instead
-            if (deleteVectors.TryGetValue(file.Path!, out var vector))
+            if (deleteVectors.TryGetValue(file.Path!, out var claimed))
             {
-                deleteVector = vector;
+                deleteVector = claimed;
             }
 
             if (reader.Fields == null)
@@ -628,51 +635,69 @@ var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.Stor
             int globalOffset = 0;
             await foreach (var batch in iterator)
             {
-                for (int i = 0; i < toFind.Count; i++)
+                using (batch)
                 {
-                    // Lock to see if the row has been found in another file
-                    lock (toFind[i].Lock)
+                    for (int i = 0; i < toFind.Count; i++)
                     {
-                        if (toFind[i].Weight == 0)
+                        var row = toFind[i];
+                        bool resolved = false;
+                        int searchFrom = 0;
+                        // A weight of -k needs k matches, copies can share a batch
+                        while (!resolved)
+                        {
+                            // Another file may have found the row already
+                            lock (row.Lock)
+                            {
+                                if (row.Weight == 0)
+                                {
+                                    resolved = true;
+                                    break;
+                                }
+                            }
+                            int index = comparer.FindOccurance(row.DeleteIndex, deleteBatch, batch, globalOffset, deleteVector, searchFrom);
+                            if (index < 0)
+                            {
+                                break;
+                            }
+                            searchFrom = index + 1;
+                            // Positions claimed in this scan are checked per match, not per scanned row
+                            if (claimed != null && claimed.Contains(index + globalOffset))
+                            {
+                                continue;
+                            }
+                            lock (row.Lock)
+                            {
+                                if (row.Weight == 0)
+                                {
+                                    resolved = true;
+                                    break;
+                                }
+                                row.Weight++;
+                                resolved = row.Weight == 0;
+                            }
+                            lock (deleteVectors)
+                            {
+                                if (claimed == null)
+                                {
+                                    claimed = new ModifiableDeleteVector(deleteVector);
+                                    deleteVectors.Add(file.Path!, claimed);
+                                }
+                                claimed.Add(index + globalOffset);
+                            }
+                        }
+                        if (resolved)
                         {
                             toFind.RemoveAt(i);
                             i--;
-                            continue;
                         }
                     }
-                    int index = comparer.FindOccurance(toFind[i].DeleteIndex, deleteBatch, batch, globalOffset, deleteVector);
-                    if (index >= 0)
-                    {
-                        lock (toFind[i].Lock)
-                        {
-                            // See if the row has been found in another file
-                            if (toFind[i].Weight == 0)
-                            {
-                                toFind.RemoveAt(i);
-                                i--;
-                                continue;
-                            }
-                            // If not increase the weight until we reach 0
-                            toFind[i].Weight++;
-                            // check if the object has been removed completely
-                            if (toFind[i].Weight == 0)
-                            {
-                                toFind.RemoveAt(i);
-                                i--;
-                            }
-                        }
-                        lock (deleteVectors)
-                        {
-                            if (!deleteVectors.TryGetValue(file.Path!, out var modifiedVector))
-                            {
-                                modifiedVector = new ModifiableDeleteVector(deleteVector);
-                                deleteVectors.Add(file.Path!, modifiedVector);
-                            }
-                            modifiedVector.Add(index + globalOffset);
-                        }
-                    }
+                    globalOffset += batch.Length;
                 }
-                globalOffset += batch.Length;
+                // Nothing left to find in this file
+                if (toFind.Count == 0)
+                {
+                    break;
+                }
             }
         }
 

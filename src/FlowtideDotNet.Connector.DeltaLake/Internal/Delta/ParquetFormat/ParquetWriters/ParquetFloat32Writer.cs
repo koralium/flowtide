@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System;
@@ -29,6 +30,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private double? _minValue;
         private double? _maxValue;
         private int _nullCount;
+        private bool _hasNonFinite;
 
         public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
@@ -41,6 +43,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     {
                         continue;
                     }
+                    added++;
 
                     var val = arr.GetValue(i);
                     if (!val.HasValue)
@@ -65,7 +68,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount);
+            // JSON cannot hold NaN or infinity, such a file has no bounds
+            if (_hasNonFinite)
+            {
+                return new FloatStatisticsComparer(null, null, _nullCount, isFloat32: true);
+            }
+            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount, isFloat32: true);
         }
 
         public void NewBatch()
@@ -74,6 +82,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
+            _hasNonFinite = false;
         }
 
         public void WriteNull()
@@ -86,14 +95,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private void WriteValue(double val)
         {
             Debug.Assert(_builder != null);
-            if (_minValue == null || val < _minValue)
+            // Statistics describe the stored float, not the incoming double
+            val = StoredValue.Float32(val);
+            if (!double.IsFinite(val))
             {
-                _minValue = val;
+                _hasNonFinite = true;
             }
-
-            if (_maxValue == null || val > _maxValue)
+            else
             {
-                _maxValue = val;
+                if (_minValue == null || val < _minValue)
+                {
+                    _minValue = val;
+                }
+                if (_maxValue == null || val > _maxValue)
+                {
+                    _maxValue = val;
+                }
             }
 
             _builder.Append((float)val);

@@ -23,8 +23,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 
         public DateStatisticsComparer(DateTime? minValue, DateTime? maxValue, int? nullCount)
         {
-            _minValue = minValue;
-            _maxValue = maxValue;
+            // Bounds and probes compare on the stored date part
+            _minValue = minValue.HasValue ? StoredValue.Date(minValue.Value) : null;
+            _maxValue = maxValue.HasValue ? StoredValue.Date(maxValue.Value) : null;
             _nullCount = nullCount;
         }
 
@@ -38,7 +39,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 }
                 return false;
             }
-            var dateValue = value.AsTimestamp.ToDateTimeOffset().DateTime;
+            var dateValue = StoredValue.Date(value.AsTimestamp.ToDateTimeOffset().DateTime);
 
             if (_minValue != null && _minValue > dateValue)
             {
