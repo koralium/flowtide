@@ -73,7 +73,7 @@ namespace FlowtideDotNet.AcceptanceTests
 
                 // Deliver the stale checkpoint acknowledgement into the held starting phase. It
                 // must be ignored rather than throw or disturb the init tracking.
-                var thrown = Record.Exception(() => InjectEgressCheckpointDone("some_egress", new Checkpoint(1, 2)));
+                var thrown = Record.Exception(() => InjectEgressCheckpointDone("some_egress", new Checkpoint(1, 2, 1)));
                 Assert.Null(thrown);
 
                 release.TrySetResult();

@@ -52,7 +52,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient, 
             ExchangeOperatorState exchangeOperatorState, 
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc)
+            Func<long?, Task> failAndRecoverFunc,
+            TimeSpan stopDrainTimeout)
         {
             _eventCounter = exchangeOperatorState.EventCounter;
 
@@ -156,6 +157,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public Task CheckpointDone(long checkpointVersion)
         {
             return Task.CompletedTask;
+        }
+
+        public void SetRollbacks(Func<long?, Task>? failAndRecoverFunc)
+        {
         }
     }
 }

@@ -31,6 +31,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         // Not readonly, mutations would run on a copy.
         private NativeList<T> _list;
         private bool _disposedValue;
+        private bool _handoffSealed;
         private readonly IMemoryAllocator _memoryAllocator;
         private int _rentCounter;
 
@@ -80,6 +81,23 @@ namespace FlowtideDotNet.Storage.DataStructures
 #pragma warning restore RS0042
 
         /// <summary>
+        /// Blocks further writes, called when the list is handed downstream in a batch.
+        /// </summary>
+        internal void SealForHandoff()
+        {
+            _handoffSealed = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void ThrowIfSealed([CallerMemberName] string? member = null)
+        {
+            if (HandoffSeal.Enabled && _handoffSealed)
+            {
+                HandoffSeal.Throw(nameof(PrimitiveList<T>), member);
+            }
+        }
+
+        /// <summary>
         /// A span over the current elements of the list.
         /// </summary>
         public Span<T> Span => _list.Span;
@@ -111,6 +129,7 @@ namespace FlowtideDotNet.Storage.DataStructures
 
         internal void EnsureCapacity(int length)
         {
+            ThrowIfSealed();
             _list.EnsureCapacity(length, _memoryAllocator);
         }
 
@@ -120,6 +139,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The value to append.</param>
         public void Add(T value)
         {
+            ThrowIfSealed();
             _list.Add(value, _memoryAllocator);
         }
 
@@ -131,6 +151,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to copy.</param>
         public void AddRangeFrom(PrimitiveList<T> list, int index, int count)
         {
+            ThrowIfSealed();
             _list.AddRangeFrom(in list._list, index, count, _memoryAllocator);
         }
 
@@ -141,6 +162,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The value to insert.</param>
         public void InsertAt(int index, T value)
         {
+            ThrowIfSealed();
             _list.InsertAt(index, value, _memoryAllocator);
         }
 
@@ -153,6 +175,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to copy.</param>
         public void InsertRangeFrom(int index, PrimitiveList<T> other, int start, int count)
         {
+            ThrowIfSealed();
             _list.InsertRangeFrom(index, in other._list, start, count, _memoryAllocator);
         }
 
@@ -164,6 +187,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of copies to insert.</param>
         public void InsertStaticRange(int index, T value, int count)
         {
+            ThrowIfSealed();
             _list.InsertStaticRange(index, value, count, _memoryAllocator);
         }
 
@@ -180,6 +204,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="lookupNullIndex">A sentinel value in <paramref name="sortedLookup"/> that inserts a default element instead of reading from <paramref name="other"/>.</param>
         public void InsertFrom(ref readonly PrimitiveList<T> other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex)
         {
+            ThrowIfSealed();
             _list.InsertFrom(in other._list, in sortedLookup, in insertPositions, in lookupNullIndex, _memoryAllocator);
         }
 
@@ -191,6 +216,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="targets">A span of sorted indices (ascending) of elements to delete.</param>
         public void DeleteBatch(ReadOnlySpan<int> targets)
         {
+            ThrowIfSealed();
             _list.DeleteBatch(targets, _memoryAllocator);
         }
 
@@ -206,6 +232,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="insertPositions">A span containing the positions at which to insert the elements in the current list. Must be in non-decreasing order.</param>
         public void InsertFrom(T[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> insertPositions)
         {
+            ThrowIfSealed();
             _list.InsertFrom(keys, sortedLookup, insertPositions, _memoryAllocator);
         }
 
@@ -217,6 +244,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of element slots to open.</param>
         public void MoveAtIndex(int index, int count)
         {
+            ThrowIfSealed();
             _list.MoveAtIndex(index, count, _memoryAllocator);
         }
 
@@ -226,6 +254,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="index">The zero based index of the element to remove.</param>
         public void RemoveAt(int index)
         {
+            ThrowIfSealed();
             _list.RemoveAt(index, _memoryAllocator);
         }
 
@@ -236,6 +265,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="count">The number of elements to remove.</param>
         public void RemoveRange(int index, int count)
         {
+            ThrowIfSealed();
             _list.RemoveRange(index, count, _memoryAllocator);
         }
 
@@ -265,6 +295,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="value">The new value.</param>
         public void Update(in int index, in T value)
         {
+            ThrowIfSealed();
             _list.Update(in index, in value);
         }
 
@@ -280,6 +311,7 @@ namespace FlowtideDotNet.Storage.DataStructures
             }
             set
             {
+                ThrowIfSealed();
                 _list.Update(index, value);
             }
         }
@@ -357,6 +389,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// </summary>
         public void Clear()
         {
+            ThrowIfSealed();
             _list.Clear();
         }
 
@@ -391,6 +424,7 @@ namespace FlowtideDotNet.Storage.DataStructures
         /// <param name="newLength">The new element count.</param>
         public void SetLength(int newLength)
         {
+            ThrowIfSealed();
             _list.SetLength(newLength);
         }
 

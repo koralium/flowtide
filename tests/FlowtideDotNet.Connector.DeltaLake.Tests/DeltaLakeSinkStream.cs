@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -19,18 +19,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     internal class DeltaLakeSinkStream : FlowtideTestStream
     {
         private readonly IFileStorage storage;
+        private readonly Action<DeltaLakeOptions>? configureOptions;
 
-        public DeltaLakeSinkStream(string testName, IFileStorage storage) : base(testName)
+        public DeltaLakeSinkStream(string testName, IFileStorage storage, Action<DeltaLakeOptions>? configureOptions = null) : base(testName)
         {
             this.storage = storage;
+            this.configureOptions = configureOptions;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddDeltaLakeSink(new DeltaLakeOptions()
+            var options = new DeltaLakeOptions()
             {
                 StorageLocation = storage
-            });
+            };
+            configureOptions?.Invoke(options);
+            connectorManger.AddDeltaLakeSink(options);
         }
     }
 }

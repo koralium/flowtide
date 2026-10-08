@@ -75,6 +75,20 @@ namespace FlowtideDotNet.Base.Engine
         // Test seam: current block-created flag.
         internal int BlocksCreatedForTests => streamContext._blocksCreated;
 
+        // Test seam: no cycle or schedule left by a stop.
+        internal bool CheckpointSchedulingIdleForTests
+        {
+            get
+            {
+                lock (streamContext._checkpointLock)
+                {
+                    return streamContext.checkpointTask == null
+                        && streamContext._scheduleCheckpointTask == null
+                        && streamContext.inQueueCheckpoint == null;
+                }
+            }
+        }
+
         /// <summary>
         /// Test seam: delivers an egress checkpoint done into the current state as if an egress
         /// vertex fired it, so tests can reproduce a spurious or stale acknowledgement arriving
@@ -86,32 +100,6 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Prepares the stream for a planned handoff stop (e.g. a grain migration): ingress
-        /// vertices stop taking in new input and drain what they have, so a following
-        /// <see cref="StopAsync"/> covers everything consumed and the stream can resume
-        /// elsewhere from that checkpoint without any peer rolling back.
-        /// </summary>
-        internal async Task PrepareHandoffAsync()
-        {
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    ingress.BeginHandoffDrain();
-                }
-                return Task.CompletedTask;
-            });
-            await streamContext.ForEachIngressBlockAsync((key, block) =>
-            {
-                if (block is IStreamIngressVertex ingress)
-                {
-                    return ingress.CompleteHandoffDrainAsync();
-                }
-                return Task.CompletedTask;
-            });
-        }
-
-        /// <summary>
         /// Gets the current high-level state machine value of the stream.
         /// </summary>
         /// <remarks>
@@ -120,6 +108,13 @@ namespace FlowtideDotNet.Base.Engine
         /// <see cref="StreamStateValue.Failure"/>, or <see cref="StreamStateValue.Stopping"/>.
         /// </remarks>
         public StreamStateValue State => streamContext.currentState;
+
+        /// <summary>
+        /// True while the stream has initialized and only waits for the streams it exchanges data
+        /// with to initialize at the same version. It stays in the starting state meanwhile, a
+        /// host must not take that for a start that is stuck.
+        /// </summary>
+        public bool IsWaitingForConnectedStreams => streamContext._waitingForVersionAgreementAtStart;
 
         /// <summary>
         /// Gets the desired target state that the stream is transitioning towards.
@@ -279,8 +274,8 @@ namespace FlowtideDotNet.Base.Engine
         }
 
         /// <summary>
-        /// Releases all resources held by the stream asynchronously, completing all dataflow blocks
-        /// and disposing each vertex.
+        /// Releases all resources held by the stream asynchronously, faulting and awaiting active
+        /// dataflow blocks before disposing each vertex. Use StopAsync for a graceful stop.
         /// </summary>
         /// <returns>A <see cref="ValueTask"/> representing the asynchronous dispose operation.</returns>
         public ValueTask DisposeAsync()

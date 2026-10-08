@@ -24,6 +24,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private double? _minValue;
         private double? _maxValue;
         private int _nullCount;
+        private bool _hasNonFinite;
 
         public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
         {
@@ -60,6 +61,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IStatisticsComparer GetStatisticsComparer()
         {
+            // JSON cannot hold NaN or infinity, such a file has no bounds
+            if (_hasNonFinite)
+            {
+                return new FloatStatisticsComparer(null, null, _nullCount);
+            }
             return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
@@ -69,6 +75,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
+            _hasNonFinite = false;
         }
 
         public void WriteNull()
@@ -81,13 +88,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private void WriteValue(double doubleValue)
         {
             Debug.Assert(_builder != null);
-            if (_minValue == null || _minValue.Value.CompareTo(doubleValue) > 0)
+            if (!double.IsFinite(doubleValue))
             {
-                _minValue = doubleValue;
+                _hasNonFinite = true;
             }
-            if (_maxValue == null || _maxValue.Value.CompareTo(doubleValue) < 0)
+            else
             {
-                _maxValue = doubleValue;
+                if (_minValue == null || _minValue.Value.CompareTo(doubleValue) > 0)
+                {
+                    _minValue = doubleValue;
+                }
+                if (_maxValue == null || _maxValue.Value.CompareTo(doubleValue) < 0)
+                {
+                    _maxValue = doubleValue;
+                }
             }
 
             _builder.Append(doubleValue);

@@ -36,29 +36,33 @@ namespace FlowtideDotNet.Connector.SqlServer
         public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.Hybrid;
 
         /// <summary>
-        /// If set, the sink writes data to the custom table and does not trigger any merge into to another table.
-        /// For custom merge into logic with custom destination table you can use OnDataUploaded event to run any sql code.
-        /// When using a custom destination table, the metadata if it's an upsert or delete is not sent, that can be
-        /// added manually using ModifyRow.
+        /// Bulk copy table per destination, no merge, no md_operation column.
         /// </summary>
-        public string? CustomBulkCopyDestinationTable { get; set; }
+        public Func<IReadOnlyList<string>, string?>? CustomBulkCopyDestinationTable { get; set; }
 
         /// <summary>
-        /// Allows adding extra columns to the data table that will be bulk uploaded
+        /// Adds extra columns, args: data table, tmp table, destination parts.
         /// </summary>
-        public Func<DataTable, ValueTask>? OnDataTableCreation { get; set; }
+        public Func<DataTable, string, IReadOnlyList<string>, ValueTask>? OnDataTableCreation { get; set; }
 
         /// <summary>
-        /// Allows modifying a data row adding extra metadata columns if required.
-        /// First argument is the actual data row, the second is if it is a deletion row, third is the watermark, fourth is the checkpointId.
-        /// The last argument is if this is the initial data upload.
+        /// Modifies rows, args: deleted, watermark, checkpointId, initial, tmp table, destination.
         /// </summary>
-        public Action<DataRow, bool, Watermark, long, bool>? ModifyRow { get; set; }
+        public Action<DataRow, bool, Watermark, long, bool, string, IReadOnlyList<string>>? ModifyRow { get; set; }
 
         /// <summary>
-        /// Called when all data in a batch has been uploaded.
-        /// First argument is the sql connection, second the watermark, third the checkpointId, fourth if it is the initial data upload or not.
+        /// After batch upload, args: watermark, checkpointId, initial, tmp table, destination.
         /// </summary>
-        public Func<SqlConnection, Watermark, long, bool, ValueTask>? OnDataUploaded { get; set; }
+        public Func<SqlConnection, Watermark, long, bool, string, IReadOnlyList<string>, ValueTask>? OnDataUploaded { get; set; }
+
+        /// <summary>
+        /// Runs each start: next checkpointId, last committed, tmp table, destination.
+        /// </summary>
+        public Func<SqlConnection, long, long, string, IReadOnlyList<string>, ValueTask>? OnInitialize { get; set; }
+
+        /// <summary>
+        /// Commit phase after checkpoint or clean stop, staging table required.
+        /// </summary>
+        public Func<SqlConnection, long, string, IReadOnlyList<string>, ValueTask>? OnCheckpointComplete { get; set; }
     }
 }

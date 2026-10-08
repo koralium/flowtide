@@ -20,17 +20,35 @@ namespace FlowtideDotNet.Core.Operators.Exchange
 {
     public class SubstreamInitializeResponse
     {
-        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false)
+        public SubstreamInitializeResponse(bool notStarted, bool success, long restoreVersion, long checkpointEpoch = 0, long recordedCheckpointEpoch = 0, bool cleanReconnect = false, bool peerDraining = false, RecoveryWave wave = default, bool peerInInit = false)
         {
+            Wave = wave;
+            PeerInInit = peerInInit;
             NotStarted = notStarted;
             Success = success;
             RestoreVersion = restoreVersion;
             CheckpointEpoch = checkpointEpoch;
             RecordedCheckpointEpoch = recordedCheckpointEpoch;
             CleanReconnect = cleanReconnect;
+            PeerDraining = peerDraining;
         }
 
         public bool NotStarted { get; }
+
+        /// <summary>
+        /// The recovery the answering substream is in.
+        /// </summary>
+        public RecoveryWave Wave { get; }
+
+        /// <summary>
+        /// The answering substream has not finished its own start in that recovery.
+        /// </summary>
+        public bool PeerInInit { get; }
+
+        /// <summary>
+        /// Peer draining, wait it out, start retry budget not spent.
+        /// </summary>
+        public bool PeerDraining { get; }
 
         public bool Success { get; }
 
@@ -44,14 +62,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         public long CheckpointEpoch { get; }
 
         /// <summary>
-        /// The checkpoint epoch the responder has recorded for the REQUESTOR after handling this
-        /// handshake (its record is highest-wins). Epochs are clock-seeded per process, so after a
-        /// hard fail over onto a process whose clock seed is behind, a live requestor announces a
-        /// lower epoch than its dead predecessor and the responder keeps the dead record - every
-        /// ack the responder sends is then tagged with it and dropped by the requestor. When this
-        /// value is higher than the epoch the requestor announced, it re-seeds above it and re-runs
-        /// the handshake (see SubstreamCommunicationPoint.SendInitializeRequest) instead of being
-        /// permanently fenced out of its acks.
+        /// Recorded requestor epoch, a higher one makes the requestor re-announce.
         /// </summary>
         public long RecordedCheckpointEpoch { get; }
 

@@ -56,6 +56,11 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected int CachePageCount { set => flowtideTestStream.CachePageCount = value; }
 
+        /// <summary>
+        /// Scheduler for every dataflow task, set before starting.
+        /// </summary>
+        protected TaskScheduler? TaskScheduler { set => flowtideTestStream.TaskScheduler = value; }
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,
@@ -64,7 +69,8 @@ namespace FlowtideDotNet.AcceptanceTests
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? failureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            DistributedOptions? distributedOptions = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings, distributedOptions: distributedOptions);
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? statusListener = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings, distributedOptions: distributedOptions, checkStatusListener: statusListener);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();
@@ -89,6 +95,10 @@ namespace FlowtideDotNet.AcceptanceTests
         /// Makes the sinks DeleteAsync throw this many times, set before StartStream.
         /// </summary>
         protected int SinkDeleteFailCount { set => flowtideTestStream.SinkDeleteFailCount = value; }
+
+        protected long SinkLastCheckpointDoneVersion => flowtideTestStream.SinkLastCheckpointDoneVersion;
+
+        protected long SinkLastCompactedVersion => flowtideTestStream.SinkLastCompactedVersion;
 
         /// <summary>
         /// Enables the checkpoint-after-initial-data stream option, set before StartStream.
@@ -118,6 +128,10 @@ namespace FlowtideDotNet.AcceptanceTests
         protected TimeSpan? StopDrainTimeout { set => flowtideTestStream.StopDrainTimeout = value; }
 
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+
+        protected FlowtideDotNet.Base.Metrics.StreamGraph GetDiagnosticsGraph() => flowtideTestStream.GetDiagnosticsGraph();
+
+        protected string StreamName => flowtideTestStream.StreamName;
 
         /// <summary>
         /// Rows sent to the sink, not the state.
@@ -357,6 +371,16 @@ namespace FlowtideDotNet.AcceptanceTests
         protected void TryScheduleCheckpoint(TimeSpan t)
         {
             flowtideTestStream.TryScheduleCheckpoint(t);
+        }
+
+        protected Task TriggerCheckpoint()
+        {
+            return flowtideTestStream.TriggerCheckpoint();
+        }
+
+        protected Task WaitForCheckpointsToSettle()
+        {
+            return flowtideTestStream.WaitForCheckpointsToSettle();
         }
 
         public Task DeleteStream()

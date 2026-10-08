@@ -62,7 +62,8 @@ namespace FlowtideDotNet.Base
         /// Schedules a checkpoint to be taken by the stream engine.
         /// </summary>
         /// <param name="time">The interval after which the checkpoint should be scheduled.</param>
-        void ScheduleCheckpoint(TimeSpan time, long? checkpointVersion);
+        /// <param name="providedCheckpointToken">Dedup token, compared for equality only. Not a checkpoint version.</param>
+        void ScheduleCheckpoint(TimeSpan time, long? providedCheckpointToken);
 
         /// <summary>
         /// Registers a trigger that can be called externally from the stream.
@@ -75,6 +76,11 @@ namespace FlowtideDotNet.Base
         /// <summary>
         /// Signals the stream engine that a critical failure has occurred and requests a rollback to a previous checkpoint.
         /// </summary>
+        /// <remarks>
+        /// Completion acknowledges that this run is fenced and recovery has been requested;
+        /// it does not wait for recovery. Safe to await from a vertex callback. Requests
+        /// through a handler belonging to an earlier run are ignored.
+        /// </remarks>
         /// <param name="exception">The exception that caused the failure, if any.</param>
         /// <param name="restoreVersion">An optional specific checkpoint version to roll back to. If not provided, the latest successful checkpoint is used.</param>
         Task FailAndRollback(Exception? exception, long? restoreVersion = default);

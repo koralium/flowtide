@@ -37,6 +37,30 @@ namespace FlowtideDotNet.DependencyInjection
 
         int MinPageCount { get; set; }
 
+        /// <summary>
+        /// Hold the cache's small queue at its share even below the eviction threshold, trading
+        /// resident pages for memory. Default: true
+        /// </summary>
+        bool DrainSmallQueueEarly { get; set; }
+
+        /// <summary>
+        /// Let the small queue's share follow what the ghost queue observes instead of a fixed 10%.
+        /// Default: true
+        /// </summary>
+        bool AdaptiveSmallQueueSize { get; set; }
+
+        /// <summary>
+        /// Write committed pages on a background task while the operator keeps running.
+        /// Default: on, unless the <c>FlowtideDotNet.DisableBackgroundCommit</c> AppContext switch is set
+        /// </summary>
+        bool? BackgroundCommit { get; set; }
+
+        /// <summary>
+        /// How long a recovery waits for a commit still writing before it fails.
+        /// Default: 10 seconds
+        /// </summary>
+        TimeSpan? RecoveryCommitWaitTimeout { get; set; }
+
         IFlowtideStorageBuilder SetPersistentStorage(IPersistentStorage persistentStorage);
 
         IFlowtideStorageBuilder SetPersistentStorage<TStorage>() where TStorage : class, IPersistentStorage;

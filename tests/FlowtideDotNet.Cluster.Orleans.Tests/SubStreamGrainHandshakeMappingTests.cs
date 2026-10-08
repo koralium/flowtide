@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => throw new NotImplementedException();
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => throw new NotImplementedException();
             public Task CheckpointDone(CheckpointDoneRequest request) => throw new NotImplementedException();
+            public Task DurabilityClaim(DurabilityClaimRequest request) => throw new NotImplementedException();
             public Task StopStreamAsync() => throw new NotImplementedException();
             public Task DeleteStreamAsync() => throw new NotImplementedException();
             public Task MigrateAsync() => throw new NotImplementedException();
@@ -101,7 +102,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             handler.Initialize(
                 (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
                 _ => Task.CompletedTask,
-                (restoreVersion, checkpointEpoch, cleanHandoff) =>
+                (restoreVersion, checkpointEpoch, cleanHandoff, wave) =>
                 {
                     onTargetInitialize?.Invoke(restoreVersion, checkpointEpoch, cleanHandoff);
                     return Task.FromResult(pointResponse);
@@ -126,6 +127,20 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             Assert.True(response.NotStarted,
                 "The point answered NotStarted but the grain mapped it away; the requestor fails over instead of retrying.");
             Assert.False(response.Success);
+        }
+
+        [Fact]
+        public async Task PeerDrainingFromThePointSurvivesTheWireMapping()
+        {
+            var grain = CreateGrainWithPointResponse(
+                new SubstreamInitializeResponse(notStarted: true, success: false, restoreVersion: 4, peerDraining: true));
+
+            var response = await grain.InitializeSubstreamRequest(
+                new InitSubstreamRequest("peer", restorePoint: 4, fetchEpoch: 1, checkpointEpoch: 0, cleanHandoff: true));
+
+            // Mapped away, the requestor burns its start budget draining.
+            Assert.True(response.NotStarted);
+            Assert.True(response.PeerDraining, "The point answered draining but the grain mapped it away.");
         }
 
         [Fact]

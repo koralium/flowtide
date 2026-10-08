@@ -29,16 +29,14 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
         private readonly IGrainFactory _grainFactory;
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
         private ISubStreamGrain _streamGrain;
-        private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
+        private Func<RecoveryWave, Task>? _callFailAndRecover;
+        private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _targetInitializeRequest;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, RecoveryWave, long, long, bool, Task>? _callReceiveDurabilityClaim;
         private Func<int, IMemoryAllocator>? _receiveAllocatorResolver;
         private readonly SubstreamEventWireSerializer _wireSerializer = new SubstreamEventWireSerializer();
-        // Every handler instance gets a unique epoch, the seed starts at the clock so
-        // processes never collide and increments per instance and failure. An abandoned
-        // stream instance can then always be told apart from the current one.
-        private static long _epochSeed = DateTime.UtcNow.Ticks;
-        private long _fetchEpoch = Interlocked.Increment(ref _epochSeed);
+        // Clock based, abandoned instances are told apart by it.
+        private long _fetchEpoch = SubstreamEpoch.Next(0);
         // Tick timestamp of the first consecutive fetch refused as unknown, 0 when fetches
         // are being served. Only touched from the single fetch loop.
         private long _requestorUnknownSince;
@@ -59,10 +57,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
 
         public void OnStreamFailure()
         {
-            // A fetch in flight when this stream failed would consume events the restarted stream
-            // needs. Bumping the epoch makes the other substream refuse such fetches; the new epoch
-            // (from the shared seed, so it never collides) is announced at the restart handshake.
-            Interlocked.Exchange(ref _fetchEpoch, Interlocked.Increment(ref _epochSeed));
+            // In flight fetches from before the failure get refused.
+            SubstreamEpoch.Advance(ref _fetchEpoch);
         }
 
         public async Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
@@ -123,8 +119,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
 
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> targetInitializeRequest,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> targetInitializeRequest,
             Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
@@ -142,61 +138,67 @@ namespace FlowtideDotNet.Cluster.Orleans.Internal
             return await _getDataFunction(targetIds, numberOfEvents, cancellationToken);
         }
 
-        public Task SendFailAndRecover(long restoreVersion)
+        public Task SendFailAndRecover(RecoveryWave wave)
         {
-            return _streamGrain.FailAndRecoverAsync(new Messages.FailAndRecoverRequest(selfName, restoreVersion, Interlocked.Read(ref _fetchEpoch)));
+            return _streamGrain.FailAndRecoverAsync(new Messages.FailAndRecoverRequest(selfName, wave.Counter, wave.Id, Interlocked.Read(ref _fetchEpoch)));
         }
 
-        public Task FailAndRecover(long restorePoint)
+        public Task FailAndRecover(RecoveryWave wave)
         {
             if (_callFailAndRecover == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _callFailAndRecover(restorePoint);
+            return _callFailAndRecover(wave);
         }
 
-        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+        public async Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
         {
             var announcedEpoch = Interlocked.Read(ref _fetchEpoch);
-            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff));
+            var response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff, wave.Counter, wave.Id));
             if (response.RecordedFetchEpoch > announcedEpoch)
             {
-                // The serving grain holds a higher epoch for this substream than was announced,
-                // recorded by an instance that no longer exists: after a silo failover this
-                // substream can run on a process whose clock-based seed started earlier than the
-                // dead instances, and the +1 drawn per failure never bridges a clock-scale gap.
-                // The refusal is answered as an already reconciled success, so without a
-                // re-announce every fetch would be refused as unknown and the stream would fail
-                // and recover forever. The shared seed is raised above the recorded epoch and the
-                // handshake re-run once with a fresh draw. A genuinely stale (zombie) instance can
-                // reach this path too, but only from its bounded startup retry loop; the live
-                // instance re-announces on every recovery and wins terminally.
-                long seed;
-                do
-                {
-                    seed = Interlocked.Read(ref _epochSeed);
-                } while (seed < response.RecordedFetchEpoch &&
-                         Interlocked.CompareExchange(ref _epochSeed, response.RecordedFetchEpoch, seed) != seed);
-                announcedEpoch = Interlocked.Increment(ref _epochSeed);
-                Interlocked.Exchange(ref _fetchEpoch, announcedEpoch);
-                response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff));
+                // A dead instance ran ahead of this clock, announce above.
+                announcedEpoch = SubstreamEpoch.Advance(ref _fetchEpoch, response.RecordedFetchEpoch);
+                response = await _streamGrain.InitializeSubstreamRequest(new Messages.InitSubstreamRequest(selfName, restoreVersion, announcedEpoch, checkpointEpoch, cleanHandoff, wave.Counter, wave.Id));
             }
-            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect);
+            return new SubstreamInitializeResponse(response.NotStarted, response.Success, response.RestoreVersion, response.CheckpointEpoch, response.RecordedCheckpointEpoch, response.CleanReconnect, response.PeerDraining, new RecoveryWave(response.WaveCounter, response.WaveId), response.PeerInInit);
         }
 
-        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff)
+        public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff, RecoveryWave wave)
         {
             if (_targetInitializeRequest == null)
             {
                 throw new InvalidOperationException("Not initialized");
             }
-            return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch, cleanHandoff);
+            return _targetInitializeRequest(restoreVersion, peerCheckpointEpoch, cleanHandoff, wave);
         }
 
         public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier)
         {
             return _streamGrain.CheckpointDone(new Messages.CheckpointDoneRequest(selfName, checkpointVersion, targetCheckpointEpoch, coversPeerStopBarrier));
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            // A dispatched grain call cannot be cancelled. Preserve its operation lifetime.
+            cancellationToken.ThrowIfCancellationRequested();
+            return _streamGrain.DurabilityClaim(new Messages.DurabilityClaimRequest(selfName, version, radius, initVersion, wave.Counter, wave.Id, senderCheckpointEpoch, targetCheckpointEpoch, requestReply));
+        }
+
+        public Task TargetDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply)
+        {
+            if (_callReceiveDurabilityClaim == null)
+            {
+                // Registered with the communication point, sent again if it was too early.
+                return Task.CompletedTask;
+            }
+            return _callReceiveDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply);
         }
 
         public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier)

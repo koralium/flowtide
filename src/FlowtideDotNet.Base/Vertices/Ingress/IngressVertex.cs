@@ -29,7 +29,6 @@ namespace FlowtideDotNet.Base.Vertices
         public BufferBlock<IStreamEvent>? _block;
         public ISourceBlock<IStreamEvent>? _sourceBlock;
         public long _currentTime;
-        public long _restoreTime;
         public IVertexHandler? _vertexHandler;
         public SemaphoreSlim? _checkpointLock;
         public bool _inCheckpointLock;
@@ -50,7 +49,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// managing triggers, and forwarding locking events. Derived classes must implement 
     /// custom data source reading logic and use <see cref="IngressOutput{TData}"/> to emit events.
     /// </remarks>
-    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
+    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex, IStreamVertexCancellation
     {
         private readonly object _stateLock;
         private readonly DataflowBlockOptions options;
@@ -153,15 +152,18 @@ namespace FlowtideDotNet.Base.Vertices
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>
+                // Completion may be dispatched after recovery created another run.
+                // Its cancellation and task gate belong to this block's state only.
+                var ingressState = _ingressState;
+                ingressState._block.Completion.ContinueWith(t =>
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
                     {
-                        _ingressState._taskEnabled = false;
+                        ingressState._taskEnabled = false;
                     }
 
-                    _ingressState._tokenSource.Cancel();
+                    ingressState._tokenSource.Cancel();
                 });
             }
         }
@@ -226,6 +228,9 @@ namespace FlowtideDotNet.Base.Vertices
 
             return _ingressState._sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            _ingressState?._tokenSource?.CancelAsync() ?? Task.CompletedTask;
 
         /// <summary>
         /// Causes the dataflow block to complete in a <see cref="TaskStatus.Faulted"/> state.
@@ -321,10 +326,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 if (checkpoint is StopStreamCheckpoint)
                 {
-                    // Stop new data from being emitted, the stop checkpoint covers everything
-                    // emitted before it. The checkpoint lock is still released, a stopping
-                    // stream can run multiple stop checkpoint cycles while it drains data
-                    // exchanged with other substreams.
+                    // Stop emitting, checkpoint lock still releases for a pairing cycle.
                     output.Stop();
                 }
                 await OnCheckpoint(checkpoint.CheckpointTime);
@@ -401,7 +403,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// Schedules a checkpoint to occur after the specified delay.
         /// </summary>
         /// <param name="inTime">The timespan indicating how long to wait before checkpointing.</param>
-        protected void ScheduleCheckpoint(TimeSpan inTime, long? checkpointVersion = default)
+        /// <param name="providedCheckpointToken">Dedup token, compared for equality only. Not a checkpoint version.</param>
+        protected void ScheduleCheckpoint(TimeSpan inTime, long? providedCheckpointToken = default)
         {
             Debug.Assert(_ingressState?._vertexHandler != null, nameof(_ingressState._vertexHandler));
 
@@ -409,7 +412,7 @@ namespace FlowtideDotNet.Base.Vertices
             {
                 throw new NotSupportedException("Cannot schedule checkpoint before initialize");
             }
-            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, checkpointVersion);
+            _ingressState._vertexHandler.ScheduleCheckpoint(inTime, providedCheckpointToken);
         }
 
         private sealed record TaskState(Func<IngressOutput<TData>, object?, Task> func, IngressOutput<TData> ingressOutput, object? state, int taskId);
@@ -499,7 +502,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// Asynchronously initializes the vertex, wiring up metrics, dependencies, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to the vertex.</param>
-        /// <param name="restoreTime">The time representing the last known good state to restore from.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
         /// <param name="newTime">The new logical stream execution time.</param>
         /// <param name="vertexHandler">The handler containing stream environment references like state client and metrics.</param>
         /// <param name="streamVersionInformation">Configuration tracking the overall version of stream changes.</param>
@@ -520,7 +523,6 @@ namespace FlowtideDotNet.Base.Vertices
 
             _ingressState._vertexHandler = vertexHandler;
             _ingressState._currentTime = newTime;
-            _ingressState._restoreTime = restoreTime;
             _ingressState._metrics = vertexHandler.Metrics;
 
             Metrics.CreateObservableGauge("backpressure", () =>
@@ -620,7 +622,7 @@ namespace FlowtideDotNet.Base.Vertices
         /// <summary>
         /// Performs the specific state initialization or restoration logic using the state manager.
         /// </summary>
-        /// <param name="restoreTime">The time to restore from.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
         /// <param name="stateManagerClient">The state manager client used to access persistent state.</param>
         /// <returns>A task representing the state initialization/restoration operation.</returns>
         protected abstract Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient);
@@ -799,23 +801,6 @@ namespace FlowtideDotNet.Base.Vertices
         /// first when the other substreams stop barrier has been consumed.
         /// </summary>
         public virtual bool ReadyToStop => true;
-
-        /// <summary>
-        /// First phase of a planned handoff stop: stop taking in new external input while the
-        /// stream keeps running. Overridden by substream read vertices. Default no-op.
-        /// </summary>
-        public virtual void BeginHandoffDrain()
-        {
-        }
-
-        /// <summary>
-        /// Second phase of a planned handoff stop: completes when input taken before
-        /// <see cref="BeginHandoffDrain"/> has drained into the pipeline. Default no-op.
-        /// </summary>
-        public virtual Task CompleteHandoffDrainAsync()
-        {
-            return Task.CompletedTask;
-        }
 
         /// <summary>
         /// Indicates a rollback behavior hook whenever a previous version is targeted for restoring due to errors.

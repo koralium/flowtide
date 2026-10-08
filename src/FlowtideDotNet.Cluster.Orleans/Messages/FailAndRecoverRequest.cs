@@ -22,18 +22,25 @@ namespace FlowtideDotNet.Cluster.Orleans.Messages
     [Immutable]
     public class FailAndRecoverRequest
     {
-        public FailAndRecoverRequest(string requestor, long recoveryPoint, long fetchEpoch)
+        public FailAndRecoverRequest(string requestor, long waveCounter, Guid waveId, long fetchEpoch)
         {
             Requestor = requestor;
-            RecoveryPoint = recoveryPoint;
+            WaveCounter = waveCounter;
+            WaveId = waveId;
             FetchEpoch = fetchEpoch;
         }
 
         [Id(0)]
         public string Requestor { get; }
 
+        /// <summary>
+        /// The recovery the requestor restarts in, the receiver restarts into it unless it is in it already.
+        /// </summary>
         [Id(1)]
-        public long RecoveryPoint { get; }
+        public long WaveCounter { get; }
+
+        [Id(3)]
+        public Guid WaveId { get; }
 
         /// <summary>
         /// The requestor's fetch epoch. A request below the epoch the requestor announced at

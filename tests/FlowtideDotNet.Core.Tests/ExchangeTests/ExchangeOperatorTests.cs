@@ -117,7 +117,7 @@ namespace FlowtideDotNet.Core.Tests.ExchangeTests
             await op.SendAsync(new Watermark("test", new LongWatermarkValue(123)));
 
             // Do a checkpoint to save the data to disk
-            await op.SendAsync(new Checkpoint(1, 2));
+            await op.SendAsync(new Checkpoint(1, 2, 1));
 
             // wait for checkpoint to complete
             var timedSource = new CancellationTokenSource(TimeSpan.FromSeconds(1));

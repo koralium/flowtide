@@ -251,6 +251,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             // Buffered batches must be in state before emitting results
             await foreach (var batch in FlushPending())
             {
+                CancellationToken.ThrowIfCancellationRequested();
                 yield return batch;
             }
             _defer.ExitBuffering();
@@ -303,6 +304,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -391,6 +393,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 await iterator.SeekFirst();
                 await foreach (var page in iterator)
                 {
+                    CancellationToken.ThrowIfCancellationRequested();
                     var currentLeaf = page.CurrentPage;
                     totalProcessed += currentLeaf.keys.Count;
 
@@ -444,6 +447,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
 
                     while (await _treeBulkSearch.MoveNextLeaf())
                     {
+                        CancellationToken.ThrowIfCancellationRequested();
                         var persistedLeaf = _treeBulkSearch.CurrentLeaf;
                         var currentResults = _treeBulkSearch.CurrentResults;
                         var previousValueSent = persistedLeaf.values._previousValueSent;
@@ -814,6 +818,11 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 for (int k = 0; k < groupExpressions.Count; k++)
                 {
                     var exprInfo = groupExpressions[k];
+                    // A computed slot owns its column, a borrowed one would corrupt the group key
+                    if (m_groupDirectFields![exprInfo.GroupIndex] != -1)
+                    {
+                        throw new InvalidOperationException($"Group slot {exprInfo.GroupIndex} is computed but bound to input field {m_groupDirectFields[exprInfo.GroupIndex]}, the group state was not rebuilt.");
+                    }
                     var targetColumn = (ColumnStore.Column)m_groupValues[exprInfo.GroupIndex];
                     for (int i = 0; i < dataCount; i++)
                     {
@@ -1196,7 +1205,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                 m_groupDirectFields = new int[grouping.GroupingExpressions.Count];
                 m_groupValues = new IColumn[grouping.GroupingExpressions.Count];
 
-                if (groupExpressions == null)
+                // Fresh arrays every restore, so always refill them
                 {
                     groupExpressions = new List<GroupExpressionInfo>();
                     for (int i = 0; i < grouping.GroupingExpressions.Count; i++)

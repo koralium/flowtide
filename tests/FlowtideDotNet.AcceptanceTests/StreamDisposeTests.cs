@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Core;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -30,6 +32,69 @@ namespace FlowtideDotNet.AcceptanceTests
 
         public StreamDisposeTests(ITestOutputHelper testOutputHelper) : base(testOutputHelper)
         {
+        }
+
+        private sealed class GatedSinkTestStream(string name) : FlowtideTestStream(name)
+        {
+            public readonly ManualResetEventSlim SinkGate = new(false);
+
+            protected override void AddWriteResolvers(IConnectorManager connectorManger)
+            {
+                connectorManger.AddSink(new MockSinkFactory("*", _ => { }, 0, _ => { }, onChangeRowsReceived: _ => SinkGate.Wait(TimeSpan.FromSeconds(60))));
+            }
+
+            public decimal Gauge(string displayName, string gauge) => GetDiagnosticsGraph().Nodes.Values
+                .Where(n => n.DisplayName == displayName)
+                .SelectMany(n => n.Gauges).Where(g => g.Name == gauge)
+                .SelectMany(g => g.Dimensions.Values).Select(d => d.Value).DefaultIfEmpty(0).Max();
+        }
+
+        [Fact]
+        public async Task DisposeOfAPausedStreamWithAParkedMessageCompletes()
+        {
+            var stream = new GatedSinkTestStream($"{nameof(StreamDisposeTests)}_{nameof(DisposeOfAPausedStreamWithAParkedMessageCompletes)}") { SourceBatchSize = 1 };
+            stream.Generate(2000);
+            try
+            {
+                await stream.StartStream("INSERT INTO output SELECT userkey + 1 as k, firstName FROM users");
+
+                // The blocked sink fills the projection's output, the pause then parks its next input
+                var deadline = DateTime.UtcNow.AddSeconds(30);
+                while ((stream.Gauge("Projection", "flowtide_backpressure") == 0 || stream.Gauge("Normalize", "flowtide_backpressure") == 0) && DateTime.UtcNow < deadline) await Task.Delay(10);
+                stream.Pause();
+                stream.SinkGate.Set();
+
+                // Parked: a steady input backlog with an empty output and an idle sink
+                decimal busy = -1;
+                deadline = DateTime.UtcNow.AddSeconds(30);
+                while (DateTime.UtcNow < deadline)
+                {
+                    var now = stream.Gauge("Projection", "flowtide_busy");
+                    if (now > 0 && now == busy && stream.Gauge("Projection", "flowtide_backpressure") == 0 && stream.Gauge("Mock Data Sink", "flowtide_InputQueue") == 0) break;
+                    busy = now;
+                    await Task.Delay(500);
+                }
+                Assert.True(busy > 0 && busy == stream.Gauge("Projection", "flowtide_busy"), "No message is parked in the paused projection");
+            }
+            catch
+            {
+                // A failed setup must not leave the stream running for the rest of the suite
+                stream.SinkGate.Set();
+                await stream.DisposeAsync();
+                throw;
+            }
+
+            var dispose = stream.DisposeAsync().AsTask();
+            var disposed = await Task.WhenAny(dispose, Task.Delay(TimeSpan.FromSeconds(20))) == dispose;
+            if (!disposed)
+            {
+                // Unpark so the hung dispose does not outlive the test
+                stream.Resume();
+                await dispose.WaitAsync(TimeSpan.FromSeconds(20));
+            }
+            Assert.True(disposed, "Disposing a paused stream with a message parked at the pause gate hung");
+            // A dispose that completed by throwing must fail the test too
+            await dispose;
         }
 
         private async Task StartPermanentlyFailingStream()

@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>()
                     {
-                        new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(1, 2) }
+                        new SubstreamEventData() { ExchangeTargetId = 1, StreamEvent = new Checkpoint(1, 2, 1) }
                     });
                 }
                 return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
@@ -68,15 +68,21 @@ namespace FlowtideDotNet.Core.Tests
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
 
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
                 => Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
         }
 
@@ -102,7 +108,7 @@ namespace FlowtideDotNet.Core.Tests
                 {
                     lock (logger.Warnings)
                     {
-                        if (logger.Warnings.Any(w => w.Contains("stalled")))
+                        if (logger.Warnings.Any(w => w.Contains($"stalled for over {SubstreamCommunicationPoint.StallLimit}")))
                         {
                             return;
                         }
@@ -115,6 +121,56 @@ namespace FlowtideDotNet.Core.Tests
             {
                 SubstreamCommunicationPoint.StallLimit = previousLimit;
                 SubstreamCommunicationPoint.StallCheckInterval = previousInterval;
+            }
+        }
+
+        /// <summary>
+        /// Paused fetch forever trips the watchdog, bounded by PausedStallLimit.
+        /// </summary>
+        [Fact]
+        public async Task AFetchPausedForeverTriggersTheWatchdog()
+        {
+            var previousLimit = SubstreamCommunicationPoint.StallLimit;
+            var previousInterval = SubstreamCommunicationPoint.StallCheckInterval;
+            var previousPausedLimit = SubstreamCommunicationPoint.PausedStallLimit;
+            SubstreamCommunicationPoint.StallLimit = TimeSpan.FromSeconds(30);
+            SubstreamCommunicationPoint.PausedStallLimit = TimeSpan.FromMilliseconds(500);
+            SubstreamCommunicationPoint.StallCheckInterval = TimeSpan.FromMilliseconds(100);
+            try
+            {
+                var logger = new RecordingLogger();
+                var handler = new SingleEventHandler();
+                var communicationPoint = new SubstreamCommunicationPoint(logger, "substream_0", "substream_1", handler);
+
+                // Paused at the barrier forever, ordinary tick stays fresh.
+                communicationPoint.Subscribe(1, ev =>
+                {
+                    if (ev is ICheckpointEvent)
+                    {
+                        communicationPoint.PauseFetch(1);
+                    }
+                    return Task.CompletedTask;
+                });
+
+                var deadline = DateTime.UtcNow.AddSeconds(10);
+                while (DateTime.UtcNow < deadline)
+                {
+                    lock (logger.Warnings)
+                    {
+                        if (logger.Warnings.Any(w => w.Contains($"held at a barrier for over {SubstreamCommunicationPoint.PausedStallLimit}")))
+                        {
+                            return;
+                        }
+                    }
+                    await Task.Delay(50);
+                }
+                Assert.Fail("The stall watchdog did not report the fetch held at a barrier past PausedStallLimit");
+            }
+            finally
+            {
+                SubstreamCommunicationPoint.StallLimit = previousLimit;
+                SubstreamCommunicationPoint.StallCheckInterval = previousInterval;
+                SubstreamCommunicationPoint.PausedStallLimit = previousPausedLimit;
             }
         }
     }

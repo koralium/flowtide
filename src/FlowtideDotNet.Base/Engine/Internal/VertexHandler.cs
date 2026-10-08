@@ -72,9 +72,9 @@ namespace FlowtideDotNet.Base.Engine.Internal
             return registerTrigger(operatorName, name, scheduledInterval);
         }
 
-        public void ScheduleCheckpoint(TimeSpan time, long? checkpointVersion)
+        public void ScheduleCheckpoint(TimeSpan time, long? providedCheckpointToken)
         {
-            checkpointFunc(time, checkpointVersion);
+            checkpointFunc(time, providedCheckpointToken);
         }
     }
 }

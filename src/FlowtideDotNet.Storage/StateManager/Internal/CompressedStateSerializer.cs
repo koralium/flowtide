@@ -36,7 +36,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly int _compressionLevel;
         private GCHandle _handle;
-        private bool _isInitialized;
+        // Compression and decompression run under separate locks, so context creation needs
+        // its own. Volatile publishes the two contexts before the flag that guards them.
+        private volatile bool _isInitialized;
+        private readonly object _contextsLock = new object();
 
         // zstd's free callback is handed only a pointer, so the size has to come from somewhere.
         // mimalloc can report it from the pointer alone; the NativeMemory fallback cannot, so on that
@@ -65,6 +68,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             {
                 return;
             }
+            lock (_contextsLock)
+            {
+                if (_isInitialized)
+                {
+                    return;
+                }
+                CreateContexts_Locked();
+            }
+        }
+
+        private void CreateContexts_Locked()
+        {
             delegate* managed<void*, nuint, void*> customAlloc = &CustomAlloc;
             delegate* managed<void*, void*, void> customFree = &CustomFree;
 
@@ -90,12 +105,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         /// </summary>
         public void ResetContexts()
         {
-            if (_isInitialized)
+            lock (_contextsLock)
             {
-                Methods.ZSTD_freeDCtx(_dctx);
-                Methods.ZSTD_freeCCtx(_cctx);
+                if (_isInitialized)
+                {
+                    Methods.ZSTD_freeDCtx(_dctx);
+                    Methods.ZSTD_freeCCtx(_cctx);
+                }
+                _isInitialized = false;
             }
-            _isInitialized = false;
         }
 
 
@@ -244,10 +262,10 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
         }
 
-        public async Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
+        public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
-            await _serializer.CheckpointAsync(checkpointWriter, metadata);
-            ClearTemporaryAllocations();
+            // Runs before the pages are written, the state client clears once they are.
+            return _serializer.CheckpointAsync(checkpointWriter, metadata);
         }
 
         public void ClearTemporaryAllocations()
@@ -282,34 +300,37 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
 
                 var temporaryDestination = ArrayPool<byte>.Shared.Rent(originalLength);
 
-                IMemoryOwner<byte>? rentedMemory = default;
-                ReadOnlySpan<byte> data;
-
-                if ((reader.CurrentSpan.Length - reader.CurrentSpanIndex) < writtenLength)
+                byte[]? rentedMemory = default;
+                try
                 {
-                    // If the span is too small, rent memory and copy
-                    rentedMemory = MemoryPool<byte>.Shared.Rent(writtenLength);
-                    if (!reader.TryCopyTo(rentedMemory.Memory.Span.Slice(0, writtenLength)))
+                    ReadOnlySpan<byte> data;
+                    if ((reader.CurrentSpan.Length - reader.CurrentSpanIndex) < writtenLength)
                     {
-                        throw new Exception("Failed to copy data for decompression");
+                        // Split compressed data requires a contiguous input buffer.
+                        rentedMemory = ArrayPool<byte>.Shared.Rent(writtenLength);
+                        if (!reader.TryCopyTo(rentedMemory.AsSpan(0, writtenLength)))
+                        {
+                            throw new Exception("Failed to copy data for decompression");
+                        }
+                        data = rentedMemory.AsSpan(0, writtenLength);
                     }
-                    data = rentedMemory.Memory.Span.Slice(0, writtenLength);
-                }
-                else
-                {
-                    data = reader.CurrentSpan.Slice(reader.CurrentSpanIndex, writtenLength);
-                }
-                
-                _compressor.Unwrap(data, temporaryDestination);
-                var result = _serializer.Deserialize(new ReadOnlySequence<byte>(temporaryDestination.AsMemory().Slice(0, originalLength)), originalLength);
-                ArrayPool<byte>.Shared.Return(temporaryDestination);
+                    else
+                    {
+                        data = reader.CurrentSpan.Slice(reader.CurrentSpanIndex, writtenLength);
+                    }
 
-                if (rentedMemory != null)
-                {
-                    rentedMemory.Dispose();
+                    _compressor.Unwrap(data, temporaryDestination);
+                    return _serializer.Deserialize(new ReadOnlySequence<byte>(temporaryDestination.AsMemory().Slice(0, originalLength)), originalLength);
                 }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(temporaryDestination);
 
-                return result;
+                    if (rentedMemory != null)
+                    {
+                        ArrayPool<byte>.Shared.Return(rentedMemory);
+                    }
+                }
             }
         }
 

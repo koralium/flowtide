@@ -77,6 +77,16 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             return true;
         }
 
+        public bool TryReclaimForEviction()
+        {
+            if (Interlocked.CompareExchange(ref _rentCount, 0, 1) == 1)
+            {
+                Dispose();
+                return true;
+            }
+            return false;
+        }
+
         public void Return()
         {
             var val = Interlocked.Decrement(ref _rentCount);

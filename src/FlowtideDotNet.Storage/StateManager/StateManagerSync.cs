@@ -22,7 +22,7 @@ using System.Buffers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics.Metrics;
-using static FlowtideDotNet.Storage.StateManager.Internal.Sync.LruTableSync;
+using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Storage.StateManager
 {
@@ -61,13 +61,14 @@ namespace FlowtideDotNet.Storage.StateManager
 
     public abstract class StateManagerSync : IStateManager, IDisposable
     {
-        private LruTableSync? m_lruTable;
+        private S3FifoTableSync? m_cacheTable;
         //private readonly FasterKV<long, SpanByte> m_persistentStorage;
         private readonly IStateSerializer<StateManagerMetadata> m_metadataSerializer;
         private readonly StateManagerOptions options;
         private readonly ILoggerFactory m_loggerFactory;
         private readonly ILogger logger;
-        private readonly Meter meter;
+        private Meter meter;
+        private readonly string m_meterName;
         private readonly string streamName;
         private readonly IStreamMemoryManager _streamMemoryManager;
         private readonly object m_lock = new object();
@@ -81,12 +82,59 @@ namespace FlowtideDotNet.Storage.StateManager
         //private ClientSession<long, SpanByte, SpanByte, byte[], long, Functions> m_adminSession;
         readonly Dictionary<string, IStateManagerClient> _clients = new Dictionary<string, IStateManagerClient>();
         private readonly Dictionary<string, StateClient> _stateClients = new Dictionary<string, StateClient>();
+        private Task? m_pendingDisposals;
         private IPersistentStorage? m_persistentStorage;
 
         /// <summary>
         /// Used for unit testing only
         /// </summary>
-        internal LruTableSync LruTable => m_lruTable ?? throw new InvalidOperationException("Manager must be initialized before getting LRU table");
+        internal S3FifoTableSync CacheTable => m_cacheTable ?? throw new InvalidOperationException("Manager must be initialized before getting cache table");
+
+        /// <summary>
+        /// The table for the client paths, gone once Dispose ran so a walk given up sees the stop, not a null.
+        /// </summary>
+        private S3FifoTableSync TableForClients => m_cacheTable ?? throw new ObjectDisposedException(nameof(StateManagerSync));
+
+        /// <summary>
+        /// Awaited by every client's background walk before it claims each page, with the client name and page id.
+        /// </summary>
+        internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
+
+        /// <summary>
+        /// True while a client's background commit is still writing. A walk starts at the
+        /// operator's Commit and is only joined by the checkpoint, a teardown drains it here.
+        /// </summary>
+        public bool HasCommitsInFlight
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    foreach (var stateClient in _stateClients.Values)
+                    {
+                        if (stateClient.HasCommitInFlight)
+                        {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Tells every walk to give up at its next page, for a caller whose own drain wait ran out.
+        /// </summary>
+        public void RequestStopCommits()
+        {
+            lock (m_lock)
+            {
+                foreach (var stateClient in _stateClients.Values)
+                {
+                    stateClient.RequestStopCommits();
+                }
+            }
+        }
 
         public bool Initialized { get; private set; }
 
@@ -119,28 +167,39 @@ namespace FlowtideDotNet.Storage.StateManager
             m_loggerFactory = loggerFactory;
             this.logger = loggerFactory.CreateLogger("StateManager");
             this.meter = meter;
+            this.m_meterName = meter.Name;
             this.streamName = streamName;
             this._streamMemoryManager = streamMemoryManager;
         }
 
         private void Setup()
         {
-            if (m_lruTable == null)
+            if (disposedValue)
             {
-                m_lruTable = new LruTableSync(new LruTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
+                // The engine disposes the manager when a stream stops and initializes it again if
+                // the stream starts back up. A fresh meter replaces the instruments that went with
+                // the disposed one, the state clients register on it again as they are recreated.
+                meter = new Meter(m_meterName);
+                disposedValue = false;
+            }
+            if (m_cacheTable == null)
+            {
+                m_cacheTable = new S3FifoTableSync(new CacheTableOptions(streamName, logger, meter, new MemoryStatsWithGC(_streamMemoryManager))
                 {
                     MaxSize = options.CachePageCount,
                     MaxMemoryUsageInBytes = options.MaxProcessMemory,
-                    MinSize = options.MinCachePageCount
+                    MinSize = options.MinCachePageCount,
+                    DrainSmallQueueEarly = options.DrainSmallQueueEarly,
+                    AdaptiveSmallQueueSize = options.AdaptiveSmallQueueSize
                 });
             }
 
             if (m_persistentStorage != null)
             {
+                // Kept, the clients' sessions belong to this instance.
                 m_persistentStorage.ClearForRestore();
-                m_persistentStorage = null;
             }
-            if (options.PersistentStorage == null)
+            else if (options.PersistentStorage == null)
             {
                 m_persistentStorage = new FileCachePersistentStorage(new FileCacheOptions()
                 {
@@ -177,48 +236,58 @@ namespace FlowtideDotNet.Storage.StateManager
             return id;
         }
 
-        internal bool AddOrUpdate<V>(in long key, in V value, in ILruEvictHandler evictHandler)
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler)
             where V : ICacheObject
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Add(key, value, evictHandler);
+            return TableForClients.Add(key, value, evictHandler);
+        }
+
+        internal bool AddOrUpdate<V>(in long key, in V value, in ICacheEvictHandler evictHandler, out S3FifoCacheEntry entry)
+            where V : ICacheObject
+        {
+            return TableForClients.Add(key, value, evictHandler, out entry);
         }
 
         internal Task WaitForNotFullAsync()
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.Wait();
+            return TableForClients.Wait();
         }
 
         internal void DeleteFromCache(in long key)
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Delete(key);
+            TableForClients.Delete(key);
         }
 
         internal void ClearCache()
         {
-            Debug.Assert(m_lruTable != null);
-            m_lruTable.Clear();
+            TableForClients.Clear();
         }
 
-        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out LinkedListNode<LinkedListValue>? value)
+        internal int MaxHeldPages => m_cacheTable?.MaxHeldPages ?? 1;
+
+        internal bool TryRentCachedValue(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
         {
-            Debug.Assert(m_lruTable != null);
-            return m_lruTable.TryGetCacheValue(key, out value);
+            return TableForClients.TryRentCached(key, out entry);
         }
 
-        internal bool TryGetValueFromCache<T>(in long key, [NotNullWhen(true)] out T? value)
-            where T : ICacheObject
+        internal void RegisterExternalHitCounter(Func<long> hitCounter)
         {
-            Debug.Assert(m_lruTable != null);
-            if (m_lruTable.TryGetValue(key, out var obj))
-            {
-                value = (T)obj!;
-                return true;
-            }
-            value = default;
-            return false;
+            TableForClients.RegisterExternalHitCounter(hitCounter);
+        }
+
+        internal bool TryPeekCacheEntry(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            return TableForClients.TryPeekEntry(key, out entry);
+        }
+
+        internal bool TryGetCacheValueFromCache(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? value)
+        {
+            return TableForClients.TryGetCacheValue(key, out value);
+        }
+
+        internal bool TryRentCacheEntryForCommit(in long key, [NotNullWhen(true)] out S3FifoCacheEntry? entry)
+        {
+            return TableForClients.TryRentForCommit(key, out entry);
         }
 
         public async ValueTask CheckpointAsync(bool includeIndex = false)
@@ -226,6 +295,10 @@ namespace FlowtideDotNet.Storage.StateManager
             Debug.Assert(m_metadata != null);
             Debug.Assert(m_persistentStorage != null);
             Debug.Assert(options != null);
+
+            // Every client's background commit must have landed before the checkpoint seals them.
+            await WaitForCommitsAsync();
+
             byte[] bytes;
             lock (m_lock)
             {
@@ -237,6 +310,43 @@ namespace FlowtideDotNet.Storage.StateManager
 
             await m_persistentStorage.CheckpointAsync(bytes, includeIndex);
             LastCompletedCheckpointVersion = m_metadata.CheckpointVersion;
+        }
+
+        /// <summary>
+        /// Waits until every client's background commit has landed and been counted, throws when one failed.
+        /// </summary>
+        public async Task WaitForCommitsAsync()
+        {
+            if (disposedValue)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
+            }
+
+            List<StateClient> stateClients;
+            lock (m_lock)
+            {
+                stateClients = _stateClients.Values.ToList();
+            }
+            foreach (var stateClient in stateClients)
+            {
+                try
+                {
+                    await stateClient.WaitForCommitAsync();
+                }
+                catch (OperationCanceledException)
+                {
+                    throw new ObjectDisposedException(nameof(StateManagerSync), "The commits were abandoned on a stop request.");
+                }
+                if (stateClient.HasCommitFault)
+                {
+                    // Faulted commit on state client aborts checkpoint.
+                    throw new Exception("Commit failed on state client.", stateClient.CommitFault);
+                }
+            }
+            if (disposedValue)
+            {
+                throw new ObjectDisposedException(nameof(StateManagerSync));
+            }
         }
 
         public async Task Compact()
@@ -362,7 +472,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -375,7 +485,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -394,7 +504,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
@@ -422,45 +532,158 @@ namespace FlowtideDotNet.Storage.StateManager
 
         public async Task InitializeAsync(StreamVersionInformation? streamVersionInformation = null, long? checkpointVersion = null)
         {
+            if (checkpointVersion < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(checkpointVersion));
+            }
+            Initialized = false;
             bool newMetadata = false;
-            Setup();
-            Debug.Assert(m_lruTable != null);
-            Debug.Assert(m_persistentStorage != null);
-            Debug.Assert(options != null);
-            m_lruTable.Clear();
-            await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
 
-            // Check that metadata exist, also that the checkpoint version is larger than 0
-            // If zero we revert back to an empty state
-            if (m_persistentStorage.TryGetValue(1, out var metadataBytes) && (!checkpointVersion.HasValue || (checkpointVersion.HasValue && checkpointVersion.Value > 0)))
+            // Recovery waits for abandoned writers and their resources.
+            if (m_pendingDisposals != null)
             {
-                lock (m_lock)
+                try
                 {
-                    m_metadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadataBytes.Value), metadataBytes.Value.Length);
+                    await m_pendingDisposals.WaitAsync(options.RecoveryCommitWaitTimeout).ConfigureAwait(false);
                 }
-                await m_persistentStorage.RecoverAsync(!checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value).ConfigureAwait(false);
-                LastCompletedCheckpointVersion = !checkpointVersion.HasValue ? m_metadata.CheckpointVersion : checkpointVersion.Value;
-            }
-            else
-            {
-                lock (m_lock)
+                catch (TimeoutException e)
                 {
-                    m_metadata = NewMetadata();
-                    // Increase the page counter to avoid using the same page id as the metadata page.
-                    if (_stateClients.Count > 0)
+                    throw new InvalidOperationException("State clients are still disposing abandoned commits, storage may be wedged.", e);
+                }
+                m_pendingDisposals = null;
+            }
+
+            // Pause eviction for the whole reset. An in-flight eviction could otherwise write a
+            // stale page after the reset and route later reads to it.
+            // The instance is captured, the finally must resume the table it paused.
+            var cacheTable = m_cacheTable;
+            if (cacheTable != null)
+            {
+                await cacheTable.PauseEvictionAsync();
+            }
+
+            // Drain in-flight client commits and hold new ones out for the whole reset.
+            // A recovery that starts under a walk must join the walk before it resets the
+            // sessions, or a page the walk writes afterwards lands in the new epoch's writer
+            // and the next checkpoint seals it over the checkpointed one.
+            var pausedClients = new List<StateClient>();
+            // Snapshot the clients under their registration lock.
+            List<StateClient> stateClients;
+            lock (m_lock)
+            {
+                stateClients = _stateClients.Values.ToList();
+            }
+            try
+            {
+                foreach (var stateClient in stateClients)
+                {
+                    await stateClient.PauseCommitsAsync(options.RecoveryCommitWaitTimeout);
+                    pausedClients.Add(stateClient);
+                }
+
+                Setup();
+                Debug.Assert(m_cacheTable != null);
+                Debug.Assert(m_persistentStorage != null);
+
+                // Returns the cache rents, the clients are reset below so no lookup handle
+                // keeps serving a cleared entry.
+                m_cacheTable.ClearAndReturnRents();
+                await m_persistentStorage.InitializeAsync(new StorageInitializationMetadata(streamName, m_loggerFactory, _streamMemoryManager, streamVersionInformation)).ConfigureAwait(false);
+
+                // The file cache keeps no pages across a restore, it starts from empty instead of failing.
+                var startsEmptyWithoutMetadata = m_persistentStorage is FileCachePersistentStorage;
+                long restoreVersion = checkpointVersion ?? 0;
+                bool restore = restoreVersion > 0;
+                if (!checkpointVersion.HasValue)
+                {
+                    if (m_persistentStorage.TryGetValue(1, out var latestBytes))
                     {
-                        m_metadata.PageCounter = _stateClients.Max(x => x.Value.MetadataId) + 1;
+                        var latest = latestBytes ?? throw new InvalidOperationException("Metadata page was found but empty.");
+                        restoreVersion = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(latest), latest.Length).CheckpointVersion;
+                        if (restoreVersion < 0)
+                        {
+                            throw new InvalidOperationException("Persisted metadata must identify a completed checkpoint.");
+                        }
+                        // A persisted page restores even at 0, SQL Server numbers its first checkpoint 0.
+                        restore = true;
                     }
-                    newMetadata = true;
+                    else if (m_persistentStorage.CurrentVersion > 1 && !startsEmptyWithoutMetadata)
+                    {
+                        throw new InvalidOperationException("Completed checkpoint is missing its state manager metadata.");
+                    }
                 }
-                await m_persistentStorage.ResetAsync();
-                LastCompletedCheckpointVersion = 0;
-            }
+                if (restore && startsEmptyWithoutMetadata && !m_persistentStorage.TryGetValue(1, out _))
+                {
+                    restoreVersion = 0;
+                    restore = false;
+                }
 
-            // Reset cached values in the state clients
-            foreach (var stateClient in _stateClients)
+                if (restore)
+                {
+                    await m_persistentStorage.RecoverAsync(restoreVersion).ConfigureAwait(false);
+                    // Recover can select an older timeline. Only its metadata may describe the
+                    // restored pages, client locations and engine checkpoint time.
+                    if (!m_persistentStorage.TryGetValue(1, out var metadataBytes) || metadataBytes == null)
+                    {
+                        throw new InvalidOperationException($"Checkpoint {restoreVersion} is missing its state manager metadata.");
+                    }
+                    var metadata = metadataBytes.Value;
+                    var restoredMetadata = m_metadataSerializer.Deserialize(new ReadOnlySequence<byte>(metadata), metadata.Length);
+                    if (restoredMetadata.CheckpointVersion != restoreVersion)
+                    {
+                        throw new InvalidOperationException($"Checkpoint {restoreVersion} contains metadata for checkpoint {restoredMetadata.CheckpointVersion}.");
+                    }
+                    lock (m_lock)
+                    {
+                        m_metadata = restoredMetadata;
+                    }
+                }
+                else
+                {
+                    lock (m_lock)
+                    {
+                        m_metadata = NewMetadata();
+                        newMetadata = true;
+                    }
+                    await m_persistentStorage.ResetAsync();
+                }
+
+                // Clients survive in-process recovery. Preserve their bindings even if they
+                // were created after this cut, and keep their IDs out of the page allocator.
+                lock (m_lock)
+                {
+                    foreach (var (name, client) in _stateClients)
+                    {
+                        if (m_metadata.ClientMetadataLocations.TryGetValue(name, out var location) && location != client.MetadataId)
+                        {
+                            throw new InvalidOperationException($"Restored metadata changed the page binding for state client '{name}'.");
+                        }
+                        m_metadata.ClientMetadataLocations[name] = client.MetadataId;
+                        m_metadata.PageCounter = Math.Max(m_metadata.PageCounter, client.MetadataId + 1);
+                    }
+                }
+
+                // Reset cached values in the state clients
+                foreach (var stateClient in stateClients)
+                {
+                    var metadataMissing = newMetadata || !m_persistentStorage.TryGetValue(stateClient.MetadataId, out _);
+                    await stateClient.Reset(metadataMissing);
+                    if (metadataMissing)
+                    {
+                        stateClient.ForgetCheckpointedMetadata();
+                    }
+                    // Rolled back, the aborted epoch's failed commit no longer applies.
+                    stateClient.ClearCommitFault();
+                }
+                LastCompletedCheckpointVersion = restoreVersion;
+            }
+            finally
             {
-                await stateClient.Value.Reset(newMetadata);
+                foreach (var pausedClient in pausedClients)
+                {
+                    pausedClient.ResumeCommits();
+                }
+                cacheTable?.ResumeEviction();
             }
 
             logger.LogDebug("State manager initialized, requested version: {requestedVersion}, recovered version: {recoveredVersion}, new metadata: {newMetadata}, reset {stateClientCount} state clients", checkpointVersion, LastCompletedCheckpointVersion, newMetadata, _stateClients.Count);
@@ -472,28 +695,101 @@ namespace FlowtideDotNet.Storage.StateManager
         {
             if (!disposedValue)
             {
+                Exception? disposalException = null;
                 if (disposing)
                 {
-                    // A supplied storage is the callers, it outlives a stop.
+                    // Walks give up at their next page, the last one out disposes its client's resources.
+                    List<StateClient> stateClients;
+                    lock (m_lock)
+                    {
+                        stateClients = _stateClients.Values.ToList();
+                    }
+                    foreach (var stateClient in stateClients)
+                    {
+                        stateClient.RequestStopCommits();
+                    }
+
+                    // Dispose the cache table first so it stops the cleanup task.
+                    // Otherwise an in-flight eviction writes through an already disposed client.
+                    // Cleared so a later initialize builds a fresh one, the disposed table's
+                    // eviction gate and cleanup task cannot be reused.
+                    if (m_cacheTable != null)
+                    {
+                        m_cacheTable.Dispose();
+                        m_cacheTable = null;
+                    }
+
+                    // Before the storage, the clients return their sessions to it.
+                    List<Task>? pendingDisposals = null;
+                    foreach (var stateClient in stateClients)
+                    {
+                        try
+                        {
+                            stateClient.Dispose();
+                        }
+                        catch (Exception e)
+                        {
+                            // Finish client cleanup before reporting the first failure.
+                            disposalException ??= e;
+                        }
+                        var disposal = stateClient.DisposalTask;
+                        if (!disposal.IsCompleted)
+                        {
+                            (pendingDisposals ??= new List<Task>()).Add(disposal);
+                        }
+                    }
+                    m_pendingDisposals = pendingDisposals == null ? null : Task.WhenAll(pendingDisposals);
+                    lock (m_lock)
+                    {
+                        _stateClients.Clear();
+                    }
+
+                    // A supplied storage belongs to the caller and must outlive a stop, otherwise
+                    // the next start has nothing to recover from. Setup resets it for restore.
                     if (m_persistentStorage != null && m_ownsPersistentStorage)
                     {
-                        m_persistentStorage.Dispose();
+                        var ownedStorage = m_persistentStorage;
                         m_persistentStorage = null;
+                        if (m_pendingDisposals == null)
+                        {
+                            ownedStorage.Dispose();
+                        }
+                        else
+                        {
+                            // A walk the stop gave up on still writes through its session, the storage goes after it.
+                            m_pendingDisposals = m_pendingDisposals.ContinueWith(static (_, state) =>
+                            {
+                                var (storage, disposalLogger) = ((IPersistentStorage, ILogger))state!;
+                                try
+                                {
+                                    storage.Dispose();
+                                }
+                                catch (Exception e)
+                                {
+                                    // A teardown fallback, a fault here would fail every later initialize.
+                                    try
+                                    {
+                                        disposalLogger.LogWarning(e, "Disposing the state manager's own persistent storage after an abandoned commit failed.");
+                                    }
+                                    catch
+                                    {
+                                        // A failing logger must not fault the task either.
+                                    }
+                                }
+                            }, (ownedStorage, logger), CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default);
+                        }
                     }
 
-                    foreach (var stateClient in _stateClients)
-                    {
-                        stateClient.Value.Dispose();
-                    }
-                    _stateClients.Clear();
-
-                    if (m_lruTable != null)
-                    {
-                        m_lruTable.Dispose();
-                    }
+                    // Released after the clients, they register instruments on it.
+                    meter.Dispose();
+                    Initialized = false;
                 }
 
                 disposedValue = true;
+                if (disposalException != null)
+                {
+                    ExceptionDispatchInfo.Throw(disposalException);
+                }
             }
         }
 

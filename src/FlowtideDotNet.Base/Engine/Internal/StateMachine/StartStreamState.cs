@@ -3,7 +3,7 @@
 // You may obtain a copy of the License at
 //
 //     http://www.apache.org/licenses/LICENSE-2.0
-//  
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -28,6 +28,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // initializing and start source and fetch tasks that nothing ever faults or awaits,
         // and every following restart then dies on the running tasks it left behind.
         private readonly CancellationTokenSource _startAbort = new CancellationTokenSource();
+
+        // The version the blocks of this start initialize at, committed once it is agreed.
+        private long _restoreVersion;
+        private bool _initEventsDone;
 
         // The block generation this start created; the abandon may only claim the created
         // flag while the context still holds this generation, later it describes a
@@ -130,8 +134,126 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
         private void InitEventsDone()
         {
-            // Start-up completed, go to running state
-            TransitionTo(StreamStateValue.Running);
+            // Called under the checkpoint lock, more than once if a late signal arrives.
+            if (_initEventsDone)
+            {
+                return;
+            }
+            _initEventsDone = true;
+            // Claimed at the decision like a compaction, a teardown waits for the commit below.
+            System.Threading.Interlocked.Increment(ref _context!._stateManagerWriteCount);
+            _ = Task.Run(FinishStart);
+        }
+
+        /// <summary>
+        /// Waits for the version every connected stream has. Restores that one if it is lower, else commits this one and runs.
+        /// </summary>
+        private async Task FinishStart()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            bool committed = false;
+            long? comeDownTo = null;
+            try
+            {
+                try
+                {
+                    long? groupVersion;
+                    _context._waitingForVersionAgreementAtStart = true;
+                    try
+                    {
+                        groupVersion = await _context.WaitForGroupVersion(_startAbort.Token);
+                    }
+                    finally
+                    {
+                        _context._waitingForVersionAgreementAtStart = false;
+                    }
+                    StreamContext.GroupVersionReadHookForTests?.Invoke(_context.streamName, groupVersion);
+                    if (StartAborted() || RollbackPending())
+                    {
+                        return;
+                    }
+                    if (groupVersion.HasValue && groupVersion.Value < _restoreVersion)
+                    {
+                        // Not every connected stream has this version, so it was never completed everywhere: the group
+                        // starts at the highest version all have.
+                        _context._logger.LogInformation("Stream {stream} restored version {version} but the connected streams only all have version {groupVersion}, restarting at that one.", _context.streamName, _restoreVersion, groupVersion.Value);
+                        // Restarted below, after the write claim is released: the teardown waits for it.
+                        comeDownTo = groupVersion.Value;
+                        return;
+                    }
+                    // The streams above the group's version come down first, nobody runs before the group is at one version.
+                    long? loweredTo;
+                    _context._waitingForVersionAgreementAtStart = true;
+                    try
+                    {
+                        loweredTo = await _context.WaitForGroupSettled(_startAbort.Token);
+                    }
+                    finally
+                    {
+                        _context._waitingForVersionAgreementAtStart = false;
+                    }
+                    if (StartAborted() || RollbackPending())
+                    {
+                        return;
+                    }
+                    if (loweredTo.HasValue && loweredTo.Value < _restoreVersion)
+                    {
+                        // A connected stream came back below the version read, the group starts at the lower one.
+                        _context._logger.LogInformation("Stream {stream} read the group's version {version} but a connected stream came back below it, restarting at {groupVersion}.", _context.streamName, _restoreVersion, loweredTo.Value);
+                        comeDownTo = loweredTo.Value;
+                        return;
+                    }
+                    // The claims report a drop only below this start's own version.
+                    Debug.Assert(!loweredTo.HasValue, "A lowered group version at or above the restore version.");
+                    await _context.CommitVersionOnEgresses(_restoreVersion, this);
+                    committed = true;
+                }
+                finally
+                {
+                    System.Threading.Interlocked.Decrement(ref _context._stateManagerWriteCount);
+                    if (comeDownTo.HasValue && !StartAborted())
+                    {
+                        var comeDownVersion = comeDownTo.Value;
+                        _context.ForEachVersionAgreement(agreement => agreement.ComingDownTo(comeDownVersion));
+                        await _context.FailAndRollback(null, comeDownVersion);
+                    }
+                }
+                if (StartAborted() || RollbackPending())
+                {
+                    // Superseded while the sinks committed, the failure on its way decides.
+                    return;
+                }
+                // A stale transition is ignored, the context checks the calling state.
+                await _context.TransitionToRunning(this);
+                if (_context.currentState == StreamStateValue.Running)
+                {
+                    _context.ForEachVersionAgreement(agreement => agreement.StartCompleted());
+                }
+            }
+            catch (OperationCanceledException) when (_startAbort.IsCancellationRequested || _context.IsDisposed)
+            {
+                // A failure, stop, delete or dispose superseded this start.
+            }
+            catch (Exception e)
+            {
+                if (_startAbort.IsCancellationRequested || _context.IsDisposed)
+                {
+                    // An error of a start that is already over must not fail its successor.
+                    _context._logger.LogWarning(e, "The superseded start of stream {stream} failed while it finished, committed: {committed}.", _context.streamName, committed);
+                    return;
+                }
+                await _context.OnFailure(e);
+            }
+        }
+
+        private bool RollbackPending()
+        {
+            Debug.Assert(_context != null, nameof(_context));
+            lock (_context._checkpointLock)
+            {
+                // Lowered by a peer after this start restored, the failure is on its way.
+                return _context._restoreCheckpointVersion.HasValue && _context._restoreCheckpointVersion.Value < _restoreVersion;
+            }
         }
 
         public override async Task Initialize(StreamStateValue previousState)
@@ -165,7 +287,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             {
                                 StartStreamState run = (StartStreamState)state!;
                                 Debug.Assert(run._context != null, nameof(_context));
-                                if (t.IsFaulted)
+                                // An aborted start was torn down already, its fault would fail a successor start.
+                                if (t.IsFaulted && !run._startAbort.IsCancellationRequested)
                                 {
                                     // Wait some time between starting up.
                                     await Task.Delay(100);
@@ -197,11 +320,16 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             Debug.Assert(_context != null, nameof(_context));
             if (isScheduled)
             {
-                // Reschedule checkpoint
-                _context._scheduleCheckpointTask = null;
-                _context._triggerCheckpointTime = null;
-                _context._scheduleCheckpointCancelSource = null;
-                _context.TryScheduleCheckpointIn(TimeSpan.FromSeconds(10), default);
+                lock (_context._checkpointLock)
+                {
+                    // Keep an elapsed request until startup completes. Retrying on a
+                    // ten-second timer can exceed a connected peer's stop deadline.
+                    if (_context.TryConsumeFiringSchedule() && !_context.inQueueCheckpoint.HasValue)
+                    {
+                        _context.inQueueCheckpoint = DateTimeOffset.UtcNow;
+                        _context._scheduledProvidedCheckpointToken = _context._currentProvidedCheckpointToken;
+                    }
+                }
             }
             // Will do no checkpoints during startup
             return Task.CompletedTask;
@@ -339,11 +467,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     return;
                 }
 
+                _restoreVersion = _context._stateManager.LastCompletedCheckpointVersion;
+                // Claims from an earlier run must not count, version numbers are reused.
+                _context.ForEachVersionAgreement(agreement => agreement.ResetAgreement());
+
                 try
                 {
                     _context._logger.InitializingPropagatorBLocks(_context.streamName);
                     foreach (var block in _context.propagatorBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -359,14 +496,24 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                     }
 
                     _context._logger.InitializingEgressBlocks(_context.streamName);
                     foreach (var block in _context.egressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -382,15 +529,25 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                         block.Value.SetCheckpointDoneFunction(_context.EgressCheckpointDone, _context.EgressDependenciesDone);
                     }
 
                     _context._logger.InitializingIngressBlocks(_context.streamName);
                     foreach (var block in _context.ingressBlocks)
                     {
+                        if (StartAborted())
+                        {
+                            // Superseded: a failure leaves the blocks to its teardown, a dispose has the abandon below take them.
+                            break;
+                        }
                         TagList tags = new TagList()
                         {
                             { "stream", _context.streamName },
@@ -406,15 +563,26 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                             blockStateClient,
                             _context.loggerFactory,
                             _context._streamMemoryManager.CreateOperatorMemoryManager(block.Key),
-                            _context.FailAndRollback,
+                            (exception, version) => _context.RequestFailure(_myBlockGeneration, exception, version),
                             _context._dataflowStreamOptions.StopDrainTimeout);
                         await block.Value.Initialize(block.Key, _context._stateManager.LastCompletedCheckpointVersion, _context._stateManager.CurrentVersion, vertexHandler, _context._streamVersionInformation);
+                        if (StartAborted())
+                        {
+                            await AbandonStartedBlocks();
+                            return;
+                        }
                         block.Value.SetDependenciesDoneFunction(_context.EgressDependenciesDone);
                     }
                 }
                 catch (Exception e)
                 {
-
+                    if (StartAborted() || _context.IsDisposed)
+                    {
+                        // An error of a start that is already over must not fail its successor.
+                        _context._logger.LogDebug(e, "The superseded start of stream {stream} failed while initializing its blocks.", _context.streamName);
+                        await AbandonStartedBlocks();
+                        return;
+                    }
                     await _context.OnFailure(e);
                     return;
                 }
@@ -424,6 +592,10 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                     await AbandonStartedBlocks();
                     return;
                 }
+
+                // Initialized, not merely restored. Announced inside the gate: a successor start
+                // resets the agreement only after this, a superseded start cannot announce into it.
+                _context.ForEachVersionAgreement(agreement => agreement.AnnounceInitialized(_restoreVersion));
             }
             finally
             {
@@ -439,12 +611,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     if (comp.IsFaulted)
                     {
-                        return _context.OnFailure(comp.Exception);
+                        return _context.RequestFailure(_myBlockGeneration, comp.Exception, null);
                     }
                 }
                 if (task.IsFaulted)
                 {
-                    return _context.OnFailure(task.Exception);
+                    return _context.RequestFailure(_myBlockGeneration, task.Exception, null);
                 }
                 return Task.CompletedTask;
             }).Unwrap();
@@ -494,8 +666,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         }
 
         /// <summary>
-        /// Tears down the blocks this abandoned start created, unless the failure teardown
-        /// already claimed them; exactly one party cleans, a dispose must not run twice.
+        /// Tears down the blocks this start created when a dispose abandoned it; exactly one
+        /// party cleans, a dispose must not run twice.
         /// Only the blocks THIS start created may be claimed: when the abandon runs late the
         /// teardown has already cleaned them and a successor start's blocks own the flag -
         /// touching those faults the successor mid start and wedges the stream.
@@ -503,37 +675,42 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private async Task AbandonStartedBlocks()
         {
             Debug.Assert(_context != null, nameof(_context));
-            lock (_context._blockClaimLock)
+            if (_startAbort.IsCancellationRequested && !_context.IsDisposed)
             {
-                if (_context._blockGeneration != _myBlockGeneration || _context._blocksCreated == 0)
-                {
-                    return;
-                }
-                _context._blocksCreated = 0;
+                // The failure teardown claims them after this start's gate and calls OnFailure.
+                return;
             }
-            _context.ForEachBlock((key, block) =>
+            await _context._blockTeardownGate.WaitAsync();
+            try
             {
-                block.Fault(new BlockStopException("The start was superseded by a failure."));
-            });
-            await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
-            await _context.ForEachBlockAsync(async (key, block) =>
-            {
-                await block.DisposeAsync();
-            });
+                lock (_context._blockClaimLock)
+                {
+                    if (_context._blockGeneration != _myBlockGeneration || _context._blocksCreated == 0)
+                    {
+                        return;
+                    }
+                    _context._blocksCreated = 0;
+                }
+                _context.ForEachBlock((key, block) =>
+                {
+                    block.Fault(new BlockStopException("The start was abandoned, the stream was disposed."));
+                });
+                await Task.WhenAll(_context.GetCompletionTasks()).ContinueWith(t => { });
+                await _context.WaitForVertexCancellation();
+                await _context.ForEachBlockAsync(async (key, block) =>
+                {
+                    await block.DisposeAsync();
+                });
+            }
+            finally { _context._blockTeardownGate.Release(); }
+
         }
 
         public override Task StopAsync()
         {
             Debug.Assert(_context != null, nameof(_context));
             _context._wantedState = StreamStateValue.NotStarted;
-            // The start can block for a long time waiting on another substream, for example
-            // the initialize handshake retries for close to a minute when the other
-            // substream is also stopping and answers not started. Waiting for the start to
-            // finish would delay the stop by that long, so the start is aborted through the
-            // failure path. The failure handling cleans up the blocks, honors the stop wish
-            // and completes the stop task the caller awaits. Nothing new has been committed
-            // during the start, so stopping without a final checkpoint loses no data, the
-            // next start replays from the last committed checkpoint.
+            // Failure path aborts the start, honors stop wish, nothing committed.
             _ = Task.Run(() => _context.OnFailure(new OperationCanceledException("The stream was stopped while it was starting.")));
             return Task.CompletedTask;
         }

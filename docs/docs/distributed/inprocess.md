@@ -58,7 +58,9 @@ Failures inside a substream, for example a connector that can not initialize, do
 
 ## Stopping
 
-*StopAsync* does the coordinated stop. The substreams run stop checkpoints until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with *SetStopDrainTimeout* on the substream builders.
+*StopAsync* does the coordinated stop. Each substream commits one stop checkpoint and then waits until the data they exchanged has been drained on both sides. The drain is bounded by the stop drain timeout, default 30 seconds, which can be changed with *SetStopDrainTimeout* on the substream builders.
+
+The timeout bounds the wait for peers. Active callbacks and storage operations must still finish before stop can release their resources, so it is not a deadline for the entire stop operation.
 
 *DeleteAsync* deletes the state of every substream and completes when the deletion has finished.
 

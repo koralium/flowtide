@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Exceptions;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Buffer;
+using FlowtideDotNet.Core.Operators.Check;
 using FlowtideDotNet.Core.Operators.Filter;
 using FlowtideDotNet.Core.Operators.Iteration;
 using FlowtideDotNet.Core.Operators.Join.MergeJoin;
@@ -151,7 +152,13 @@ namespace FlowtideDotNet.Core.Engine
             _doneRelations = new Dictionary<int, RelationTree>();
             if (distributedOptions != null && distributedOptions.CommunicationHandlerFactory != null)
             {
-                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff);
+                // From the full plan, the blocks built below only show this substream's part.
+                var group = SubstreamGroupResolver.Resolve(plan, distributedOptions.SubstreamName);
+                if (group.GroupSize > 1)
+                {
+                    dataflowStreamBuilder.RequireDistributedCheckpointRecovery();
+                }
+                _communicationPointFactory = new SubstreamCommunicationPointFactory(loggerFactory, distributedOptions.SubstreamName, distributedOptions.CommunicationHandlerFactory, distributedOptions.AnnounceCleanHandoff, group);
             }
             else
             {
@@ -664,6 +671,33 @@ namespace FlowtideDotNet.Core.Engine
         public override IStreamVertex VisitFetchRelation(FetchRelation fetchRelation, ITargetBlock<IStreamEvent>? state)
         {
             throw new NotSupportedException("Fetch operation (top or limit) is not supported without an order by");
+        }
+
+        public override IStreamVertex VisitCheckRelation(CheckRelation checkRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            if (!_useColumnStore)
+            {
+                throw new NotSupportedException("Check functions are only supported with the column store.");
+            }
+
+            var id = _operatorId++;
+
+            // Prefix keeps check ids unique across substreams
+            var prefix = _distributedOptions != null ? $"{_distributedOptions.SubstreamName}/" : string.Empty;
+            var checkIds = new string[checkRelation.Checks.Count];
+            for (int i = 0; i < checkIds.Length; i++)
+            {
+                checkIds[i] = $"{prefix}{id}:{i}";
+            }
+
+            var op = new ColumnCheckOperator(checkRelation, functionsRegister, dataflowStreamBuilder.StreamNotificationReceiver, checkIds, DefaultBlockOptions);
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+            checkRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+            return op;
         }
 
         public override IStreamVertex VisitTableFunctionRelation(TableFunctionRelation tableFunctionRelation, ITargetBlock<IStreamEvent>? state)

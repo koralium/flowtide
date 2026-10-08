@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// only when all discrete input branches have reached an agreed-upon synchronization point. Derived classes implement 
     /// <see cref="OnRecieve(int, T, long)"/> to provide specific processing logic per target.
     /// </remarks>
-    public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex
+    public abstract class MultipleInputVertex<T> : ISourceBlock<IStreamEvent>, IStreamVertex, IStreamVertexCancellation
     {
         private readonly MultipleInputTargetHolder[] _targetHolders;
         private TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>? _transformBlock;
@@ -750,6 +750,9 @@ namespace FlowtideDotNet.Base.Vertices
             Debug.Assert(_sourceBlock != null, nameof(_sourceBlock));
             return _sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            tokenSource?.CancelAsync() ?? Task.CompletedTask;
 
         /// <summary>
         /// Puts the underlying block immediately into a faulted state due to a severe exception.

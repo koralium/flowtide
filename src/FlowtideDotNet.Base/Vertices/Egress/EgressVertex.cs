@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// When a checkpoint completes, the vertex notifies the stream engine automatically through an internal
     /// callback registered by the stream infrastructure.
     /// </remarks>
-    public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex 
+    public abstract class EgressVertex<T> : ITargetBlock<IStreamEvent>, IStreamEgressVertex, IStreamVertexCancellation
     {
         private Action<string, ILockingEvent?>? _checkpointDone;
         private Action<string, ILockingEvent?>? _dependenciesDone;
@@ -97,7 +97,7 @@ namespace FlowtideDotNet.Base.Vertices
         public abstract string DisplayName { get; }
 
         /// <summary>
-        /// Gets the logical checkpoint time identifier of the most recently processed checkpoint.
+        /// Checkpoint version of the data in flight, reused after rollback.
         /// </summary>
         public long CurrentCheckpointId { get; private set; }
 
@@ -110,7 +110,8 @@ namespace FlowtideDotNet.Base.Vertices
         public ILogger Logger => _logger ?? throw new InvalidOperationException("Logger can only be fetched after initialize or setup method calls");
 
         /// <summary>
-        /// Gets the cancellation token that is cancelled when the vertex is completing or faulting.
+        /// Gets the cancellation token signalled when this run fails or is disposed.
+        /// Resources remain owned until active callbacks and cancellation handlers finish.
         /// </summary>
         /// <exception cref="InvalidOperationException">
         /// Thrown when accessed before <see cref="Initialize"/> has been called.
@@ -141,6 +142,7 @@ namespace FlowtideDotNet.Base.Vertices
         [MemberNotNull(nameof(_targetBlock))]
         private void InitializeBlocks()
         {
+            _cancellationTokenSource = new CancellationTokenSource();
             if (_executionDataflowBlockOptions.GetSupportsParallelExecution())
             {
                 _targetBlock = new ParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
@@ -204,8 +206,11 @@ namespace FlowtideDotNet.Base.Vertices
 
         private async Task HandleCheckpoint(ICheckpointEvent checkpointEvent)
         {
-            CurrentCheckpointId = checkpointEvent.CheckpointTime;
+            // Data staged inside the barrier belongs to its version.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion;
             await OnCheckpoint(checkpointEvent.CheckpointTime);
+            // Everything after belongs to the next checkpoint.
+            CurrentCheckpointId = checkpointEvent.CheckpointVersion + 1;
         }
 
         /// <summary>
@@ -289,19 +294,24 @@ namespace FlowtideDotNet.Base.Vertices
             _targetBlock.Fault(exception);
         }
 
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            _cancellationTokenSource?.CancelAsync() ?? Task.CompletedTask;
+
         /// <summary>
         /// Asynchronously initializes the vertex, wiring up metrics, memory, logging, and persistent state retrieval.
         /// </summary>
         /// <param name="name">The name assigned to this vertex.</param>
-        /// <param name="restoreTime">The logical time representing the last known good state to restore from.</param>
-        /// <param name="newTime">The new logical stream execution time after initialization.</param>
+        /// <param name="restoreTime">The checkpoint version to restore from.</param>
+        /// <param name="newTime">The version the next checkpoint commits as.</param>
         /// <param name="vertexHandler">The handler providing state clients, memory managers, logger factories, and metrics.</param>
         /// <param name="streamVersionInformation">Optional version information used to handle stream upgrades or downgrades.</param>
         /// <returns>A task representing the asynchronous initialization and state restore operation.</returns>
         public Task Initialize(string name, long restoreTime, long newTime, IVertexHandler vertexHandler, StreamVersionInformation? streamVersionInformation)
         {
             _memoryAllocator = vertexHandler.MemoryManager;
-            _cancellationTokenSource = new CancellationTokenSource();
+            // CreateBlock owns the run's token. Do not replace a cancellation that
+            // landed between block creation and this initialization callback.
+            _cancellationTokenSource ??= new CancellationTokenSource();
             _name = name;
             _streamName = vertexHandler.StreamName;
             _metrics = vertexHandler.Metrics;
@@ -405,11 +415,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public virtual ValueTask DisposeAsync()
         {
-            if (_cancellationTokenSource != null)
-            {
-                _cancellationTokenSource.Dispose();
-                _cancellationTokenSource = null;
-            }
+            // Dropped, not disposed: a late propagated Fault may still cancel it.
+            _cancellationTokenSource = null;
 
             return ValueTask.CompletedTask;
         }
@@ -531,6 +538,12 @@ namespace FlowtideDotNet.Base.Vertices
 
         /// <inheritdoc cref="IStreamEgressVertex.CheckpointDone"/>
         public virtual Task CheckpointDone(long checkpointVersion)
+        {
+            return Task.CompletedTask;
+        }
+
+        /// <inheritdoc cref="IStreamEgressVertex.CommitVersion"/>
+        public virtual Task CommitVersion(long version)
         {
             return Task.CompletedTask;
         }

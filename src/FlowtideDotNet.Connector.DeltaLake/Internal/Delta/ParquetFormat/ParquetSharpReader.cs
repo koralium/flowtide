@@ -397,16 +397,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 encoder.NewFile(partitionValues);
             }
 
+            // Keyed by encoder index, partition encoders take no physical column
             HashSet<int> nullColumns = new HashSet<int>();
-            for (int i = 0; i < _physicalColumnNamesInBatch.Count; i++)
+            int physicalIndex = 0;
+            for (int i = 0; i < _encoders.Count; i++)
             {
+                if (_encoders[i].IsPartitionValueEncoder)
+                {
+                    continue;
+                }
+                var physicalName = _physicalColumnNamesInBatch[physicalIndex];
+                physicalIndex++;
 
                 bool found = false;
                 for (int k = 0; k < fileReader.SchemaManifest.SchemaFields.Count; k++)
                 {
                     var field = fileReader.SchemaManifest.SchemaFields[k];
 
-                    if (field.Field.Name.Equals(_physicalColumnNamesInBatch[i], StringComparison.OrdinalIgnoreCase))
+                    if (field.Field.Name.Equals(physicalName, StringComparison.OrdinalIgnoreCase))
                     {
 
                         found = true;
@@ -446,10 +454,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                             }
                             else
                             {
+                                // Only columns present in the file occupy a batch column
                                 encoder.NewBatch(batch.Column(columnIndex));
+                                columnIndex++;
                             }
-
-                            columnIndex++;
                         }
                     }
 

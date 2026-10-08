@@ -330,6 +330,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await Bounded(_stream.StartAsync(), "The first start");
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
 
+            // A stop inside one substreams checkpoint is one sided and ends by drain timeout.
+            await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
             await Bounded(_stream.StopAsync(), "The first stop");
 
             // Start the same instance again and add new data, the sources must pick it up
@@ -349,9 +351,111 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 throw;
             }
 
+            await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
             await Bounded(_stream.StopAsync(), "The final stop");
 
-            Assert.Empty(failures);
+            if (!failures.IsEmpty)
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_inplace_restart_failures_{buffer.Key}.log");
+                }
+            }
+            Assert.True(failures.IsEmpty, "Substream failures: " + string.Join(Environment.NewLine, failures.Select(f => $"{f.Substream}: {f.Exception}")));
+        }
+
+        /// <summary>
+        /// A substream stopped and started again alone on the same instance, twice, resumes; a whole-group restart restarts nobody.
+        /// </summary>
+        [Theory]
+        [InlineData(true, "substream_1")]
+        [InlineData(true, "substream_0")]
+        [InlineData(false, "substream_1")]
+        [InlineData(false, "substream_0")]
+        [InlineData(true, "all")]
+        public async Task LoneStopThenStartSameInstanceResumes(bool recoverFirst, string restarted)
+        {
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var checkpoints = new ConcurrentDictionary<string, int>();
+            var peer = restarted == "substream_0" ? "substream_1" : "substream_0";
+            string[] restartLines = { "restarts the group in wave", "restarting into it", "this stream restarts into it" };
+            const string StopBarrierLine = "consumed the other substreams stop barrier";
+            var lineCounts = new ConcurrentDictionary<(string Substream, string Text), int>();
+            int Count(string substream, string text) => lineCounts.GetValueOrDefault((substream, text));
+            int GroupRestarts() => lineCounts.Where(x => restartLines.Contains(x.Key.Text)).Sum(x => x.Value);
+
+            Microsoft.Extensions.Logging.ILoggerFactory CountingLoggerFactory(string substreamName) => Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
+            {
+                b.SetMinimumLevel(Microsoft.Extensions.Logging.LogLevel.Debug);
+                b.AddProvider(new RingBufferLoggerProvider
+                {
+                    OnLine = line =>
+                    {
+                        foreach (var text in restartLines.Append(StopBarrierLine).Where(t => line.Contains(t, StringComparison.Ordinal)))
+                        {
+                            lineCounts.AddOrUpdate((substreamName, text), 1, (_, c) => c + 1);
+                        }
+                    }
+                });
+            });
+
+            _stream = BuildHost($"e2e_lone_inplace_{recoverFirst}_{restarted}", NormalJoinSql, latestData, failures, loggerFactory: CountingLoggerFactory,
+                configureSubstream: (name, builder) => builder.WithCheckpointListener(new CountingCheckpointListener(() => checkpoints.AddOrUpdate(name, 1, (_, c) => c + 1))));
+            await _stream.StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+            if (recoverFirst)
+            {
+                // A real recovery puts the group into a wave above None.
+                await _stream.Substreams["substream_1"].CallTrigger("crash", null);
+                _generator.Generate(100);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                Assert.NotEmpty(failures);
+            }
+
+            // The second lone restart starts in the wave the first one's handshake minted.
+            for (var round = 1; round <= (restarted == "all" ? 1 : 2); round++)
+            {
+                await CheckpointSettle.WaitForCheckpointsToSettle(_stream.Substreams.Values);
+                var restartsBefore = GroupRestarts();
+                var requesterRestartsBefore = Count(restarted, "restarts the group in wave");
+                if (restarted == "all")
+                {
+                    await _stream.StopAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                    await _stream.StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                }
+                else
+                {
+                    var peerStopsConsumed = Count(peer, StopBarrierLine);
+                    await _stream.Substreams[restarted].StopAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                    Assert.True(Count(peer, StopBarrierLine) > peerStopsConsumed, $"The running peer did not consume stop barrier {round}.");
+                    await _stream.Substreams[restarted].StartAsync().WaitAsync(TimeSpan.FromSeconds(90));
+                }
+                var checkpointsAtRestart = checkpoints.ToDictionary(x => x.Key, x => x.Value);
+                _generator.Generate(500);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true, timeout: TimeSpan.FromSeconds(30));
+
+                // Both substreams keep completing checkpoints after the restart.
+                var deadline = Stopwatch.StartNew();
+                while (checkpoints.Any(x => x.Value < checkpointsAtRestart.GetValueOrDefault(x.Key) + 2) && deadline.Elapsed < TimeSpan.FromSeconds(30))
+                {
+                    _generator.Generate(10);
+                    await Task.Delay(200);
+                }
+                Assert.True(checkpointsAtRestart.All(x => checkpoints[x.Key] >= x.Value + 2), $"Checkpoints stalled after restart {round}.");
+                Assert.Equal(FlowtideHealth.Healthy, _stream.Health);
+                if (restarted == "all")
+                {
+                    Assert.Equal(restartsBefore, GroupRestarts());
+                }
+                else
+                {
+                    Assert.True(Count(restarted, "restarts the group in wave") > requesterRestartsBefore, $"Lone restart {round} did not restart the group.");
+                }
+            }
         }
 
         /// <summary>
@@ -637,6 +741,8 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         /// </summary>
         private sealed class UninitializableStorage : Storage.Persistence.IPersistentStorage
         {
+            // Simulates a validated store becoming unavailable on initialization.
+            public bool SupportsDistributedCheckpoints => true;
             public long CurrentVersion => 0;
             public Task InitializeAsync(Storage.Persistence.StorageInitializationMetadata metadata) => throw new InvalidOperationException("Injected storage initialization failure");
             public Storage.Persistence.IPersistentStorageSession CreateSession() => throw new NotImplementedException();
@@ -1644,7 +1750,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await stopTask;
         }
 
-        private const string NormalJoinSql = @"
+        internal const string NormalJoinSql = @"
             INSERT INTO output
             SELECT u.userkey FROM users u
             INNER JOIN orders o ON u.userkey = o.userkey;
@@ -1684,10 +1790,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, crash.CrashCount, watermark => onWatermark?.Invoke(substreamName, watermark), crash.CheckpointsBeforeCrash));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    if (stopDrainTimeout.HasValue)
-                    {
-                        substreamBuilder.SetStopDrainTimeout(stopDrainTimeout.Value);
-                    }
+                    substreamBuilder.SetStopDrainTimeout(stopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
                     if (loggerFactory != null)
                     {
                         substreamBuilder.WithLoggerFactory(loggerFactory(substreamName));
@@ -2562,12 +2665,10 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
-        /// Stopping a single substream while the other substream keeps running must not hang.
-        /// The drain waits for the other substreams stop barrier which never comes, after the
-        /// configured drain timeout the stop finishes anyway.
+        /// Lone stop pairs with the peer's answer, no drain timeout.
         /// </summary>
         [Fact]
-        public async Task LoneSubstreamStopFinishesAfterDrainTimeout()
+        public async Task LoneSubstreamStopFinishesWhileThePeerKeepsRunning()
         {
             _generator.Generate(200);
 
@@ -3169,7 +3270,18 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 stateOptions: CreateOptions, loggerFactory: CreateBufferedLoggerFactory);
             await _stream.StartAsync();
 
-            await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            try
+            {
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+            }
+            catch
+            {
+                foreach (var buffer in logBuffers)
+                {
+                    buffer.Value.WriteToFile($"./debugwrite/e2e_stoprec_restart_initial_{buffer.Key}.log");
+                }
+                throw;
+            }
 
             // Crash the lane substream and stop while the recovery runs
             await _stream.Substreams["substream_1"].CallTrigger("crash", null);
@@ -3457,71 +3569,6 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 _generator.DeleteOrder(order);
             }
             await WaitWithDump("deletes");
-        }
-
-        /// <summary>
-        /// A barrier from the other substream that exhausts the pairing budget fails and
-        /// recovers the stream, and the recovery must not deadlock the failure teardown:
-        /// the rollback is initiated from inside the read operators own fetch task, which
-        /// the teardown waits on. A stop issued after the recovery started must complete.
-        /// </summary>
-        [Fact]
-        public async Task UnpairableBarrierRecoveryDoesNotDeadlockTeardown()
-        {
-            var originalDelay = Core.Operators.Exchange.SubstreamReadOperator.PairingAttemptDelay;
-            Core.Operators.Exchange.SubstreamReadOperator.PairingAttemptDelay = TimeSpan.FromMilliseconds(100);
-            try
-            {
-                _generator.Generate(100);
-
-                var latestData = new ConcurrentDictionary<string, EventBatchData>();
-                var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
-
-                // substream_0's sources hold initial data far longer than the shortened
-                // pairing budget (24 x 100ms), so substream_1's barrier cannot pair and the
-                // read operator fails and recovers from inside its own fetch task.
-                _stream = new DistributedStreamBuilder("e2e_unpairable_teardown")
-                    .AddPlan(() =>
-                    {
-                        var sqlPlanBuilder = new SqlPlanBuilder();
-                        sqlPlanBuilder.AddTableProvider(new DatasetTableProvider(_db));
-                        sqlPlanBuilder.Sql(NormalJoinSql);
-                        return sqlPlanBuilder.GetPlan();
-                    })
-                    .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_unpairable_teardown", substreamName))
-                    .ConfigureSubstream((substreamName, substreamBuilder) =>
-                    {
-                        var connectorManager = new ConnectorManager();
-                        var delay = substreamName == "substream_0" ? TimeSpan.FromSeconds(30) : TimeSpan.Zero;
-                        connectorManager.AddSource(new MockSourceFactory("*", _db, false, initialDataDelay: delay));
-                        connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
-                        substreamBuilder.AddConnectorManager(connectorManager);
-                        substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
-                    })
-                    .DistributeAutomatically(2)
-                    .Build();
-
-                await _stream.StartAsync();
-
-                // Wait until the pairing budget expiry has failed substream_0.
-                var deadline = DateTime.UtcNow.AddSeconds(20);
-                while (!failures.Any(f => f.Substream == "substream_0"))
-                {
-                    Assert.True(DateTime.UtcNow < deadline, "The pairing budget expiry never failed substream_0");
-                    await Task.Delay(100);
-                }
-
-                // The stop must complete even though the recovery was initiated from inside
-                // the fetch task the teardown waits on.
-                var stopTask = _stream.StopAsync();
-                var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(45)));
-                Assert.True(finished == stopTask, "Stop hung after an unpairable barrier recovery, the failure teardown deadlocked");
-                await stopTask;
-            }
-            finally
-            {
-                Core.Operators.Exchange.SubstreamReadOperator.PairingAttemptDelay = originalDelay;
-            }
         }
 
         /// <summary>
@@ -4130,7 +4177,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
-        private static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
+        internal static Storage.StateManager.StateManagerOptions CreateStateOptions(string testName, string substreamName)
         {
             return new Storage.StateManager.StateManagerOptions()
             {

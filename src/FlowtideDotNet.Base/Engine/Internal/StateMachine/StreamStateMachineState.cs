@@ -23,6 +23,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _context = context;
         }
 
+        internal virtual bool AllowsPublication => true;
+
         public abstract Task Initialize(StreamStateValue previousState);
 
         public abstract Task OnFailure();

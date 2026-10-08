@@ -27,5 +27,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         void ReadNullValue(ref Utf8JsonReader reader);
 
         IStatisticsComparer GetStatisticsComparer();
+
+        /// <summary>
+        /// Clears the values read for the previous file.
+        /// </summary>
+        void Reset();
     }
 }

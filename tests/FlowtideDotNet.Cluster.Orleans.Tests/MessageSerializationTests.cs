@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         public void FailAndRecoverRequestRoundTripsFetchEpoch()
         {
             var serializer = CreateSerializer();
-            var original = new FailAndRecoverRequest("substream_1", recoveryPoint: 7, fetchEpoch: 42);
+            var original = new FailAndRecoverRequest("substream_1", waveCounter: 7, waveId: Guid.NewGuid(), fetchEpoch: 42);
 
             var bytes = serializer.SerializeToArray(original);
             var roundTripped = serializer.Deserialize<FailAndRecoverRequest>(bytes);
@@ -77,7 +77,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // cross-silo recovery notification would be refused as stale.
             Assert.Equal(42, roundTripped.FetchEpoch);
             Assert.Equal("substream_1", roundTripped.Requestor);
-            Assert.Equal(7, roundTripped.RecoveryPoint);
+            Assert.Equal(7, roundTripped.WaveCounter);
+            Assert.Equal(original.WaveId, roundTripped.WaveId);
         }
 
         [Fact]
@@ -111,6 +112,20 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // operators must initialize from restored state; if it is dropped they wait for an
             // init watermarks event from a peer restart that never comes and the stream hangs.
             Assert.True(roundTripped.CleanReconnect, "InitSubstreamResponse.CleanReconnect did not survive serialization (missing [Id]).");
+        }
+
+        [Fact]
+        public void InitSubstreamResponseRoundTripsPeerDraining()
+        {
+            var serializer = CreateSerializer();
+            var original = new InitSubstreamResponse(notStarted: true, success: false, restoreVersion: 4, peerDraining: true);
+
+            var bytes = serializer.SerializeToArray(original);
+            var roundTripped = serializer.Deserialize<InitSubstreamResponse>(bytes);
+
+            // Dropped, a long drain burns the returning peer's start budget.
+            Assert.True(roundTripped.PeerDraining, "InitSubstreamResponse.PeerDraining did not survive serialization (missing [Id]).");
+            Assert.True(roundTripped.NotStarted);
         }
 
         [Fact]

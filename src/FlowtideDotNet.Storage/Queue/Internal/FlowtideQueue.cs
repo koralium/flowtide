@@ -10,7 +10,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Storage.Tree.Internal;
@@ -31,7 +30,6 @@ namespace FlowtideDotNet.Storage.Queue.Internal
     internal class FlowtideQueue<V, TValueContainer> : IFlowtideQueue<V, TValueContainer>
         where TValueContainer : IValueContainer<V>
     {
-        private readonly PrimitiveListKeyContainerSerializer<long> _keySerializer;
         private readonly IStateClient<IBPlusTreeNode, FlowtideQueueMetadata> _stateClient;
         private readonly FlowtideQueueOptions<V, TValueContainer> _options;
         public QueueNode<V, TValueContainer>? _leftNode;
@@ -46,7 +44,6 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
             _stateClient = stateClient;
             this._options = options;
-            _keySerializer = new PrimitiveListKeyContainerSerializer<long>(options.MemoryAllocator);
             _pageSizeBytes = options.PageSizeBytes ?? 16 * 1024;
         }
 
@@ -54,31 +51,16 @@ namespace FlowtideDotNet.Storage.Queue.Internal
         {
             if (_stateClient.Metadata == null)
             {
-                var nodeId = _stateClient.GetNewPageId();
-                var emptyKeys = _keySerializer.CreateEmpty();
-                var emptyValues = _options.ValueSerializer.CreateEmpty();
-                _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
-                _leftNode = _rightNode;
-                _rightNode.TryRent();
-                _stateClient.Metadata = new FlowtideQueueMetadata()
-                {
-                    DequeueIndex = 0,
-                    InsertIndex = 0,
-                    Left = nodeId,
-                    Right = nodeId,
-                    QueueSize = 0
-                };
+                CreateEmptyRoot();
             }
             else
             {
-                // Fetch left and right nodes
+                // Fetch left and right nodes, the fetch rent is the queue's rent.
                 _rightNode = (await _stateClient.GetValue(_stateClient.Metadata.Right)) as QueueNode<V, TValueContainer>;
-                _rightNode!.TryRent();
 
                 if (_stateClient.Metadata.Right != _stateClient.Metadata.Left)
                 {
                     _leftNode = (await _stateClient.GetValue(_stateClient.Metadata.Left)) as QueueNode<V, TValueContainer>;
-                    _leftNode!.TryRent();
                 }
                 else
                 {
@@ -95,6 +77,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             var nodeSize = _rightNode.GetByteSize();
             _rightNodeUpdated = true;
             _stateClient.Metadata.QueueSize++;
+            _stateClient.Metadata.Updated = true;
 
             if (_rightNode.values.Count > _stateClient.Metadata.InsertIndex)
             {
@@ -134,6 +117,7 @@ namespace FlowtideDotNet.Storage.Queue.Internal
 
                     // Insert the new value in the queue
                     _rightNode.values.Insert(0, value);
+                    isFull |= _stateClient.AddOrUpdate(newNodeId, _rightNode);
 
                     if (isFull)
                     {
@@ -168,19 +152,24 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     {
                         return Dequeue_Slow(getNextNodeTask);
                     }
+                    // The fetch rent is the queue's rent, like the slow path.
                     _leftNode = (getNextNodeTask.Result) as QueueNode<V, TValueContainer>;
-                    _leftNode!.TryRent();
+                    if (_leftNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the next data page in queue.");
+                    }
                 }
                 _stateClient.Metadata.Left = _leftNode.Id;
                 _stateClient.Metadata.DequeueIndex = 0;
 
                 _stateClient.Delete(oldLeftNode.Id);
-                oldLeftNode.Dispose();
+                oldLeftNode.Return();
             }
 
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
             _stateClient.Metadata.DequeueIndex++;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return ValueTask.FromResult(value);
         }
 
@@ -201,11 +190,12 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             _stateClient.Metadata.DequeueIndex = 0; 
 
             _stateClient.Delete(oldLeftNode.Id);
-            oldLeftNode.Dispose();
+            oldLeftNode.Return();
 
             var value = _leftNode.values.Get(_stateClient.Metadata.DequeueIndex);
             _stateClient.Metadata.DequeueIndex++;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return value;
         }
 
@@ -268,18 +258,40 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             if (_rightNodeUpdated)
             {
                 _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
+                _rightNodeUpdated = false;
             }
+            // The held nodes are rented, the client writes them before it returns.
             return _stateClient.Commit();
         }
 
         public async ValueTask Clear()
         {
+            Debug.Assert(_rightNode != null);
+            Debug.Assert(_leftNode != null);
+            // Cached like Commit does it, so the reset returns the cache rents and the queue's own go below.
+            _stateClient.AddOrUpdate(_rightNode.Id, _rightNode);
+            if (!ReferenceEquals(_leftNode, _rightNode))
+            {
+                _stateClient.AddOrUpdate(_leftNode.Id, _leftNode);
+            }
             await _stateClient.Reset(true);
+            if (!ReferenceEquals(_leftNode, _rightNode))
+            {
+                _leftNode.Return();
+            }
+            _rightNode.Return();
+            CreateEmptyRoot();
+        }
+
+        private void CreateEmptyRoot()
+        {
             var nodeId = _stateClient.GetNewPageId();
             var emptyValues = _options.ValueSerializer.CreateEmpty();
             _rightNode = new QueueNode<V, TValueContainer>(nodeId, emptyValues);
             _leftNode = _rightNode;
             _rightNode.TryRent();
+            // A new root must be persisted even when no enqueue follows its creation.
+            _rightNodeUpdated = true;
             _stateClient.Metadata = new FlowtideQueueMetadata()
             {
                 DequeueIndex = 0,
@@ -313,15 +325,23 @@ namespace FlowtideDotNet.Storage.Queue.Internal
                     {
                         return Pop_Slow(getPreviousNodeTask);
                     }
+                    // The fetch rent is the queue's rent, like the slow path.
                     _rightNode = (getPreviousNodeTask.Result) as QueueNode<V, TValueContainer>;
-                    _rightNode!.TryRent();
+                    if (_rightNode == null)
+                    {
+                        throw new InvalidOperationException("Could not fetch the previous data page in queue.");
+                    }
                 }
                 _stateClient.Metadata.InsertIndex = _rightNode.values.Count;
+                // Updating right boundary metadata preserves crash recovery integrity.
+                _stateClient.Metadata.Right = _rightNode.Id;
+                _stateClient.Metadata.Updated = true;
                 _stateClient.Delete(oldRightNode.Id);
-                oldRightNode.Dispose();
+                oldRightNode.Return();
             }
             _stateClient.Metadata.InsertIndex--;
             _stateClient.Metadata.QueueSize--;
+            _stateClient.Metadata.Updated = true;
             return ValueTask.FromResult(_rightNode.values.Get(_stateClient.Metadata.InsertIndex));
         }
 
@@ -341,9 +361,12 @@ namespace FlowtideDotNet.Storage.Queue.Internal
             _rightNode = previousNode;
             _stateClient.Metadata.InsertIndex = _rightNode.values.Count - 1;
             _stateClient.Metadata.QueueSize--;
+            // Updating right boundary metadata preserves crash recovery integrity.
+            _stateClient.Metadata.Right = _rightNode.Id;
+            _stateClient.Metadata.Updated = true;
 
             _stateClient.Delete(oldRightNode.Id);
-            oldRightNode.Dispose();
+            oldRightNode.Return();
 
             return _rightNode.values.Get(_stateClient.Metadata.InsertIndex);
         }
