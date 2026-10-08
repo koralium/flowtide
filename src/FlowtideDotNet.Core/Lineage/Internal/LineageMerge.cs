@@ -91,13 +91,19 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                         indexByName.Add(column.Name, result.Count);
                         result.Add(column);
                     }
-                    else if (result[index].Type is AnyType && column.Type is not AnyType)
+                    else if (IsUnknown(result[index].Type) && !IsUnknown(column.Type))
                     {
                         result[index] = column;
                     }
                 }
             }
             return result;
+        }
+
+        // Same rule as the DataHub column set.
+        private static bool IsUnknown(SubstraitBaseType type)
+        {
+            return type is AnyType || type is NullType;
         }
 
         [return: NotNullIfNotNull(nameof(schema))]

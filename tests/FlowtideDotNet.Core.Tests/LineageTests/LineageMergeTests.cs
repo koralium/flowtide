@@ -112,6 +112,22 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         }
 
         [Fact]
+        public void MergeColumnsUpgradesNullType()
+        {
+            var merged = LineageMerge.MergeColumns([
+                [new LineageColumn("c", NullType.Instance), new LineageColumn("d", NullType.Instance)],
+                [new LineageColumn("c", AnyType.Instance), new LineageColumn("d", AnyType.Instance)],
+                [new LineageColumn("c", new Int64Type())]
+                ]);
+
+            // Unknown never replaces unknown.
+            Assert.Equal([
+                new LineageColumn("c", new Int64Type()),
+                new LineageColumn("d", NullType.Instance)
+                ], merged);
+        }
+
+        [Fact]
         public void ToColumnsFillsMissingTypesWithAny()
         {
             Assert.Null(LineageMerge.ToColumns(null));

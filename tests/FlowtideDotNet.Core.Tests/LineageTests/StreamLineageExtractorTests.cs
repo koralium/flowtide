@@ -77,6 +77,20 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         }
 
         [Fact]
+        public void InferredOutputNullColumnTakesLaterType()
+        {
+            var lineage = LineageTestHelper.ExtractWithSql(@"
+                CREATE TABLE input (a int);
+                INSERT INTO output SELECT NULL AS x FROM input;
+                INSERT INTO output SELECT 1 AS x FROM input;
+                ");
+
+            var column = Assert.Single(Assert.Single(lineage.Outputs).PlanColumns);
+            Assert.Equal("x", column.Name);
+            Assert.IsType<Int64Type>(column.Type);
+        }
+
+        [Fact]
         public void SubstreamWritesHaveLineageWithoutScope()
         {
             // Output1 reads standard output, output2 crosses substreams.
