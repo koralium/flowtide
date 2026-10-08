@@ -36,5 +36,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
 
         [JsonPropertyName("cdc")]
         public DeltaCdcAction? Cdc { get; set; }
+
+        [JsonPropertyName("domainMetadata")]
+        public DeltaDomainMetadataAction? DomainMetadata { get; set; }
     }
 }

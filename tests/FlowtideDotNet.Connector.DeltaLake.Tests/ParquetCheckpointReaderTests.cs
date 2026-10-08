@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading;
 using Stowage;
 using System;
@@ -29,7 +30,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var storageLoc = Files.Of.LocalDisk("../../../testdata");
 
             var reader = new ParquetCheckpointReader();
-            var data = await reader.ReadCheckpointFile(storageLoc, new IOEntry("/simple_table_with_checkpoint/_delta_log/00000000000000000010.checkpoint.parquet"));
+            var data = new List<DeltaAction>();
+            await foreach (var action in reader.ReadCheckpointFile(storageLoc, new IOEntry("/simple_table_with_checkpoint/_delta_log/00000000000000000010.checkpoint.parquet")))
+            {
+                data.Add(action);
+            }
 
             Assert.Equal(13, data.Count);
 

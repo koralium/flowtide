@@ -418,8 +418,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             // Always fetch latest table to get all the latest column names
-            var latestTable = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc);
-            _table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, maxVersion);
+            var readOptions = new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = new HashSet<string>() };
+            var latestTable = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, options: readOptions);
+            _table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, maxVersion, readOptions);
 
             if (_table == null || latestTable == null)
             {

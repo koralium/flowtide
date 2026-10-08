@@ -55,6 +55,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         private IObjectState<bool>? _firstInsertDone;
         private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
+        private readonly HashSet<string> _checkpointSkipReasons = new HashSet<string>();
+        private readonly HashSet<string> _reportedCheckpointFailures = new HashSet<string>();
 
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
@@ -132,10 +134,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             {
                 try
                 {
-                    var currentTableState = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
+                    // The checkpoint writer does not write tombstones, so they are not read
+                    var currentTableState = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath, options: new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures });
                     if (currentTableState != null)
                     {
-                        await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
+                        var skipReason = CheckpointSkipReason(currentTableState);
+                        if (skipReason == null)
+                        {
+                            await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
+                        }
+                        else if (_checkpointSkipReasons.Add(skipReason))
+                        {
+                            Logger.LogWarning("Delta table {table} {reason}, no checkpoint is written", _tableName, skipReason);
+                        }
                     }
                 }
                 catch (Exception e)
@@ -148,6 +159,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _pendingCommit.Value = null;
         }
 
+        // Null when the checkpoint writer can write this snapshot without losing anything
+        private static string? CheckpointSkipReason(DeltaTable table)
+        {
+            // The checkpoint writer cannot keep txn or domainMetadata actions yet, a checkpoint would drop them
+            if (table.Transactions.Count > 0 || table.DomainMetadata.Count > 0)
+            {
+                return "has txn or domainMetadata actions that checkpoints cannot keep yet";
+            }
+            // The spec requires numRecords on every file with a deletion vector
+            foreach (var file in table.AddFiles)
+            {
+                if (file.DeletionVector != null && !HasRecordCount(file.Statistics))
+                {
+                    return "has files with deletion vectors but no record count";
+                }
+            }
+            return null;
+        }
+
+        // A top level, non negative integer numRecords
+        private static bool HasRecordCount(string? statistics)
+        {
+            if (statistics == null)
+            {
+                return false;
+            }
+            try
+            {
+                using var document = JsonDocument.Parse(statistics);
+                return document.RootElement.ValueKind == JsonValueKind.Object &&
+                    document.RootElement.TryGetProperty("numRecords", out var recordCount) &&
+                    recordCount.ValueKind == JsonValueKind.Number &&
+                    recordCount.TryGetInt64(out var value) &&
+                    value >= 0;
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+        }
+
         private async Task SaveData()
         {
             Debug.Assert(_temporaryTree != null);
@@ -157,7 +209,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
 
-            var table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath);
+            var table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath, options: new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures });
 
             long nextVersion = 0;
             List<DeltaAction> actions = new List<DeltaAction>();

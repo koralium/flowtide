@@ -88,6 +88,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
@@ -933,6 +937,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
@@ -1261,6 +1269,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
@@ -1345,7 +1357,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await DeltaCheckpointWriter.WriteCheckpoint(storage, "fields", table);
 
             var checkpointFile = (await DeltaTransactionReader.ReadTransactionLog(storage, "fields")).Single(x => x.IsCheckpoint);
-            var checkpointActions = await new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry);
+            var checkpointActions = new List<Internal.Delta.Actions.DeltaAction>();
+            await foreach (var action in new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry))
+            {
+                checkpointActions.Add(action);
+            }
             var add = checkpointActions.Single(x => x.Add != null).Add!;
 
             Assert.Equal(42, add.BaseRowId);
