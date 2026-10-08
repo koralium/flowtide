@@ -10,18 +10,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Text.Json;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
+namespace FlowtideDotNet.Connector.DeltaLake.Tests.PruningOracle
 {
-    internal class BoolStatisticsComparer : IStatisticsComparer, IPruningBounds
+    // Frozen copy of the comparer before the pruning kernels, the oracle for the kernels
+    internal class OracleStringComparer
     {
-        private bool? _minValue;
-        private bool? _maxValue;
+        private byte[]? _minValue;
+        private byte[]? _maxValue;
         private readonly int? _nullCount;
 
-        public BoolStatisticsComparer(bool? minValue, bool? maxValue, int? nullCount)
+        public OracleStringComparer(byte[]? minValue, byte[]? maxValue, int? nullCount)
         {
             _minValue = minValue;
             _maxValue = maxValue;
@@ -32,28 +34,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            return PruningKernels.Bool(_minValue.HasValue, _minValue ?? false, _maxValue.HasValue, _maxValue ?? false, value.AsBool);
-        }
+            var str = value.AsString;
 
-        public void WriteBounds(PruningType type, Span<byte> cell)
-        {
-            if (type == PruningType.Bool)
+            if (_minValue != null && _minValue.AsSpan().SequenceCompareTo(str.Span) > 0)
             {
-                PruningCell.WriteBool(cell, _minValue, _maxValue, _nullCount);
+                return false;
             }
-            else
+            if (_maxValue != null && _maxValue.AsSpan().SequenceCompareTo(str.Span) < 0)
             {
-                PruningCell.WriteUnknown(cell);
+                return false;
             }
+            return true;
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
             if (_minValue != null)
             {
-                writer.WriteBoolean(propertyName, _minValue.Value);
+                writer.WriteString(propertyName, _minValue);
             }
         }
 
@@ -61,7 +65,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_maxValue != null)
             {
-                writer.WriteBoolean(propertyName, _maxValue.Value);
+                writer.WriteString(propertyName, _maxValue);
             }
         }
 

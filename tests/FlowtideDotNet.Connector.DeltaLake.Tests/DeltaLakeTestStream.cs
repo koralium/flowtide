@@ -19,19 +19,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     internal class DeltaLakeTestStream : FlowtideTestStream
     {
         private readonly IFileStorage location;
+        private readonly bool oneVersionPerCheckpoint;
 
-        public DeltaLakeTestStream(string testName, IFileStorage location) : base(testName)
+        public DeltaLakeTestStream(string testName, IFileStorage location, bool oneVersionPerCheckpoint = true) : base(testName)
         {
             this.location = location;
+            this.oneVersionPerCheckpoint = oneVersionPerCheckpoint;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+            connectorManger.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
 
             connectorManger.AddCatalog("catalogtest", c =>
             {
-                c.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = true, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+                c.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
             });
         }
     }

@@ -10,12 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Text.Json;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
+namespace FlowtideDotNet.Connector.DeltaLake.Tests.PruningOracle
 {
-    internal class FloatStatisticsComparer : IStatisticsComparer, IPruningBounds
+    // Frozen copy of the comparer before the pruning kernels, the oracle for the kernels
+    internal class OracleFloatComparer
     {
         private double? _minValue;
         private double? _maxValue;
@@ -23,7 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private readonly bool _isFloat32;
         private const double Epsilon = 1e-8;
 
-        public FloatStatisticsComparer(double? minValue, double? maxValue, int? nullCount, bool isFloat32 = false)
+        public OracleFloatComparer(double? minValue, double? maxValue, int? nullCount, bool isFloat32 = false)
         {
             _isFloat32 = isFloat32;
             // Float columns compare at the stored float precision
@@ -36,25 +38,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            if (!PruningKernels.TryDoubleProbe(value, _isFloat32, out var floatValue))
-            {
-                throw new InvalidOperationException($"Unsupported data type {value.Type} for FloatStatisticsComparer.");
-            }
-            return PruningKernels.Double(_minValue.HasValue, _minValue ?? 0, _maxValue.HasValue, _maxValue ?? 0, floatValue);
-        }
 
-        public void WriteBounds(PruningType type, Span<byte> cell)
-        {
-            if (type == (_isFloat32 ? PruningType.Float32 : PruningType.Double))
+            double floatValue;
+            if (value.Type == ArrowTypeId.Double)
             {
-                PruningCell.WriteDouble(cell, type, _minValue, _maxValue, _nullCount);
+                floatValue = value.AsDouble;
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                floatValue = value.AsLong;
             }
             else
             {
-                PruningCell.WriteUnknown(cell);
+                throw new InvalidOperationException($"Unsupported data type {value.Type} for FloatStatisticsComparer.");
             }
+
+            if (_isFloat32)
+            {
+                floatValue = StoredValue.Float32(floatValue);
+            }
+
+            if (_minValue != null && (_minValue - Epsilon) > floatValue)
+            {
+                return false;
+            }
+
+            if (_maxValue != null && (_maxValue + Epsilon) < floatValue)
+            {
+                return false;
+            }
+            return true;
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

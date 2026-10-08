@@ -11,7 +11,7 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
+using FlowtideDotNet.Connector.DeltaLake.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
@@ -23,7 +23,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Core;
-using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Storage.Serializers;
@@ -36,40 +35,43 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.Threading.Tasks.Dataflow;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal
+namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
-    internal class DeltaLakePendingCommit
+    // The sink as of commit 4f2d12d01, before Phase 2, so tests can restore the state it wrote
+    internal class LegacyDeltaLakeSinkFactory : FlowtideDotNet.Core.Connectors.IConnectorSinkFactory
+    {
+        private readonly DeltaLakeOptions _options;
+
+        public LegacyDeltaLakeSinkFactory(DeltaLakeOptions options)
+        {
+            _options = options;
+        }
+
+        public bool CanHandle(WriteRelation writeRelation) => true;
+
+        public FlowtideDotNet.Base.Vertices.IStreamEgressVertex CreateSink(WriteRelation writeRelation, FlowtideDotNet.Core.Compute.IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
+        {
+            return new LegacyDeltaLakeSink(_options, writeRelation, dataflowBlockOptions);
+        }
+
+        public FlowtideDotNet.Core.Lineage.TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+        {
+            return new FlowtideDotNet.Core.Lineage.TableLineageMetadata("delta_table", writeRelation.NamedObject.DotSeperated, writeRelation.TableSchema);
+        }
+
+        public Relation ModifyPlan(WriteRelation writeRelation) => writeRelation;
+    }
+
+    internal class LegacyPendingCommit
     {
         public long Version { get; set; }
 
         public string StagedFile { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Null for commits staged before stage ids existed.
-        /// </summary>
-        public string? StageId { get; set; }
-
-        public long? Length { get; set; }
-
-        /// <summary>
-        /// The checkpoint that staged the commit, it is published once that checkpoint is committed.
-        /// </summary>
-        public long? CheckpointId { get; set; }
     }
 
-    internal class DeltaLakeSink : WriteBaseOperator
+    internal class LegacyDeltaLakeSink : WriteBaseOperator
     {
         private const int MaxRowsPerFile = 10_000_000;
-
-        /// <summary>
-        /// Called with the table name before the temporary tree is committed.
-        /// </summary>
-        internal static Action<string>? TemporaryTreeCommitHookForTests;
-
-        /// <summary>
-        /// Run by table name on the sink's thread once the catalog holds the published head, before it is used.
-        /// </summary>
-        internal static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Func<DeltaSinkCatalog, Task>> CatalogHooksForTests = new System.Collections.Concurrent.ConcurrentDictionary<string, Func<DeltaSinkCatalog, Task>>();
 
         private readonly DeltaLakeOptions _options;
         private readonly WriteRelation _writeRelation;
@@ -78,23 +80,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IOPath _tablePath;
 
         private IObjectState<bool>? _firstInsertDone;
-        private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
-        // True while the committed temporary tree may hold rows that wait for a publication
-        private IObjectState<bool>? _bufferDurable;
-        // The staged bytes and catalog changes of this run's pending commit
-        private byte[]? _stagedBytes;
-        private CatalogOverlay? _stagedOverlay;
-        private DeltaSinkCatalog? _catalog;
-        private ProbeBatch? _probes;
-        private bool _halted;
-        private bool _gaugesCreated;
-        private List<string> _createdFiles = new List<string>();
+        private IObjectState<LegacyPendingCommit>? _pendingCommit;
         private readonly HashSet<string> _checkpointSkipReasons = new HashSet<string>();
         private readonly HashSet<string> _reportedCheckpointFailures = new HashSet<string>();
-        private readonly HashSet<string> _unknownCodecs = new HashSet<string>();
-        private string _fileExtension = ".parquet";
 
-        public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
+        public LegacyDeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
             this._writeRelation = writeRelation;
@@ -114,7 +104,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
         }
 
-        public override string DisplayName => $"DeltaLakeSink({_tableName})";
+        public override string DisplayName => $"LegacyDeltaLakeSink({_tableName})";
 
         public override Task Compact()
         {
@@ -137,143 +127,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 UseByteBasedPageSizes = true,
             });
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
-            _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
-            _bufferDurable = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("bufferDurable");
-
-            // Vertices are reused across restarts
-            _stagedBytes = null;
-            _stagedOverlay = null;
-            _halted = false;
-            SetHealth(true);
-            _catalog?.Dispose();
-            _catalog = await DeltaSinkCatalog.Open(stateManagerClient, _options, _tablePath, _writeRelation.TableSchema.Names, MemoryAllocator, Logger);
-            _probes = null;
-
-            // Meters outlive restarts
-            if (!_gaugesCreated)
-            {
-                _gaugesCreated = true;
-                Metrics.CreateObservableGauge("delta_catalog_files", () => _catalog?.LiveFiles ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_pruning_columns", () => _catalog?.ScanLayout.Columns.Count ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_pruning_bytes", () => _catalog?.PruningBytes ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
-                Metrics.CreateObservableGauge("delta_catalog_rotations", () => _catalog?.Rotations ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_records_migrated", () => _catalog?.RecordsMigrated ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_last_slice_ms", () => _catalog?.LastSliceTime.TotalMilliseconds ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_last_clear_ms", () => _catalog?.LastClearTime.TotalMilliseconds ?? 0);
-            }
-        }
-
-        public override ValueTask DisposeAsync()
-        {
-            _catalog?.Dispose();
-            _catalog = null;
-            return base.DisposeAsync();
+            _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<LegacyPendingCommit>("pendingCommit");
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(_firstInsertDone != null);
             Debug.Assert(_pendingCommit != null);
-            Debug.Assert(_bufferDurable != null);
-            Debug.Assert(_catalog != null);
-
-            // Another table may need the memory, applied here so a halted sink still gives it up
-            _catalog.ApplyRevocation();
 
             // Stop skipped the commit, rows wait in the tree.
             if (_pendingCommit.Value == null)
             {
                 await SaveData();
             }
-            else
-            {
-                await KeepWaitingRows();
-            }
             await _firstInsertDone.Commit();
             await _pendingCommit.Commit();
-            await _bufferDurable.Commit();
-        }
-
-        // Rows that wait for an unpublished commit must survive a restart, the checkpoint already moved the sources past them
-        private async Task KeepWaitingRows()
-        {
-            Debug.Assert(_temporaryTree != null);
-            Debug.Assert(_bufferDurable != null);
-
-            if (_bufferDurable.Value || await HasRows())
-            {
-                TemporaryTreeCommitHookForTests?.Invoke(_tableName);
-                await _temporaryTree.Commit();
-                _bufferDurable.Value = true;
-            }
-        }
-
-        private async Task<bool> HasRows()
-        {
-            Debug.Assert(_temporaryTree != null);
-
-            using var iterator = _temporaryTree.CreateIterator();
-            await iterator.SeekFirst();
-            await foreach (var page in iterator)
-            {
-                if (page.Values.Data.Count > 0)
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Empties the tree after its rows were staged
-        private async Task ClearRows()
-        {
-            Debug.Assert(_temporaryTree != null);
-            Debug.Assert(_bufferDurable != null);
-
-            if (!_bufferDurable.Value)
-            {
-                await _temporaryTree.Clear();
-                return;
-            }
-
-            // Clear would orphan the committed pages, deletes release them
-            while (true)
-            {
-                EventBatchData? keys = null;
-                using (var iterator = _temporaryTree.CreateIterator())
-                {
-                    await iterator.SeekFirst();
-                    await foreach (var page in iterator)
-                    {
-                        if (page.Keys.Data.Count > 0)
-                        {
-                            var columns = new IColumn[page.Keys.Data.Columns.Count];
-                            for (int i = 0; i < columns.Length; i++)
-                            {
-                                columns[i] = page.Keys.Data.Columns[i].Copy(MemoryAllocator);
-                            }
-                            keys = new EventBatchData(columns);
-                            break;
-                        }
-                    }
-                }
-                if (keys == null)
-                {
-                    break;
-                }
-                using (keys)
-                {
-                    for (int i = 0; i < keys.Count; i++)
-                    {
-                        var key = new ColumnRowReference() { referenceBatch = keys, RowIndex = i };
-                        await _temporaryTree.Delete(in key);
-                    }
-                }
-            }
-            TemporaryTreeCommitHookForTests?.Invoke(_tableName);
-            await _temporaryTree.Commit();
-            _bufferDurable.Value = false;
         }
 
         public override async Task CommitVersion(long version)
@@ -281,30 +149,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_pendingCommit != null);
 
             var pendingCommit = _pendingCommit.Value;
-            if (pendingCommit == null || !IsPublishable(pendingCommit, version))
+            if (pendingCommit == null)
             {
                 return;
             }
 
-            var result = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, pendingCommit, _stagedBytes);
-            if (result.Outcome == PublishOutcome.FailedClosed)
+            // The legacy writer threw when it could not publish
+            var published = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, new FlowtideDotNet.Connector.DeltaLake.Internal.DeltaLakePendingCommit() { Version = pendingCommit.Version, StagedFile = pendingCommit.StagedFile }, null);
+            if (published.Outcome == PublishOutcome.FailedClosed)
             {
-                Halt(result.Reason!);
-                return;
+                throw new InvalidOperationException(published.Reason);
             }
-            if (_halted)
-            {
-                _halted = false;
-                SetHealth(true);
-                Logger.LogInformation("Delta table {table} published version {version}, the sink continues", _tableName, pendingCommit.Version);
-            }
-            // Applied by the next SaveData, never while OnRecieve runs
-            if (_stagedOverlay != null)
-            {
-                _catalog!.MarkPublished(_stagedOverlay);
-                _stagedOverlay = null;
-            }
-            _stagedBytes = null;
 
             if (_options.CheckpointInterval > 0 && pendingCommit.Version > 0 && (pendingCommit.Version % _options.CheckpointInterval == 0))
             {
@@ -317,8 +172,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         var skipReason = CheckpointSkipReason(currentTableState);
                         if (skipReason == null)
                         {
-                            var codec = ResolveCodec(currentTableState.Metadata.Configuration);
-                            await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState, codec.WriterProperties);
+                            await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
                         }
                         else if (_checkpointSkipReasons.Add(skipReason))
                         {
@@ -334,36 +188,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             _pendingCommit.Value = null;
-        }
-
-        /// <summary>
-        /// A stop drain cycle stages after the stop checkpoint, its rows are replayed after the restart and must not be published.
-        /// </summary>
-        internal static bool IsPublishable(DeltaLakePendingCommit pending, long version)
-        {
-            return !pending.CheckpointId.HasValue || pending.CheckpointId.Value <= version;
-        }
-
-        // The sink keeps buffering rows, a later checkpoint publishes once the conflict is gone
-        private void Halt(string reason)
-        {
-            if (_halted)
-            {
-                return;
-            }
-            _halted = true;
-            SetHealth(false);
-            Logger.LogError("Delta table {table} stopped publishing: {reason}. Rows are kept until the commit can be published, remove the conflicting commit file or reset the stream state", _tableName, reason);
-        }
-
-        private DeltaParquetCodec ResolveCodec(IReadOnlyDictionary<string, string>? configuration)
-        {
-            var codec = DeltaParquetCompression.Resolve(configuration, _options.CompressionCodec, out var unknownValue);
-            if (unknownValue != null && _unknownCodecs.Add(unknownValue))
-            {
-                Logger.LogWarning("Delta table {table} has the unsupported compression codec {codec}, zstd is used instead", _tableName, unknownValue);
-            }
-            return codec;
         }
 
         // Null when the checkpoint writer can write this snapshot without losing anything
@@ -412,46 +236,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_temporaryTree != null);
             Debug.Assert(_firstInsertDone != null);
             Debug.Assert(_pendingCommit != null);
-            Debug.Assert(_catalog != null);
-
-            await _catalog.ApplyPublished();
-            if (_catalog.IsReady && CatalogHooksForTests.TryGetValue(_tableName, out var hook))
-            {
-                await hook(_catalog);
-            }
-            var readOptions = new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures };
-            // A first read lists the log itself
-            var validated = false;
-            if (!_catalog.IsReady)
-            {
-                await _catalog.Validate(readOptions);
-                validated = true;
-            }
-            var overwrite = !_firstInsertDone.Value && _writeRelation.Overwrite;
-            if (_catalog.Header != null && !overwrite && !await HasRows())
-            {
-                await ClearRows();
-                _firstInsertDone.Value = true;
-                await _catalog.Maintain();
-                return;
-            }
-            // Before the version, the codec or any file is chosen, another writer may have moved the head
-            if (!validated)
-            {
-                await _catalog.Validate(readOptions);
-            }
-            var table = _catalog.Header;
 
             using var iterator = _temporaryTree.CreateIterator();
             await iterator.SeekFirst();
 
+            var table = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath, options: new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures });
+
             long nextVersion = 0;
-            DeltaTable? newHeader = null;
             List<DeltaAction> actions = new List<DeltaAction>();
-            var currentTime = _options.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
-            var stageId = Guid.NewGuid().ToString("N");
-            _createdFiles = new List<string>();
-            long adoptedAt;
+            var currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             bool changeDataEnabled = false;
             bool deletionVectorEnabled = false;
@@ -460,7 +253,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             int maxColumnId = 0;
 
             StructType? schema;
-            IReadOnlyDictionary<string, string>? configuration;
             if (table == null)
             {
                 changeDataEnabled = _options.WriteChangeDataOnNewTables;
@@ -474,15 +266,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 jsonOptions.Converters.Add(new TypeConverter());
                 var schemaString = JsonSerializer.Serialize(schema as SchemaBaseType, jsonOptions);
 
-                adoptedAt = 0;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
                     {
-                        StageId = stageId,
-                        Timestamp = currentTime,
-                        AdoptedAt = adoptedAt,
-                        CreatedFiles = _createdFiles,
                         Data = new Dictionary<string, object>()
                         {
                             { "operation", "CREATE TABLE" }
@@ -491,7 +278,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 });
 
                 var tableConfiguration = new Dictionary<string, string>();
-                configuration = tableConfiguration;
 
                 if (changeDataEnabled)
                 {
@@ -546,35 +332,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     readerFeatures.Add("columnMapping");
                 }
 
-                var protocolAction = new DeltaProtocolAction()
-                {
-                    MinReaderVersion = 3,
-                    MinWriterVersion = 7,
-                    ReaderFeatures = readerFeatures,
-                    WriterFeatures = writerFeatures
-                };
                 actions.Add(new DeltaAction()
                 {
-                    Protocol = protocolAction
+                    Protocol = new DeltaProtocolAction()
+                    {
+                        MinReaderVersion = 3,
+                        MinWriterVersion = 7,
+                        ReaderFeatures = readerFeatures,
+                        WriterFeatures = writerFeatures
+                    }
                 });
-                newHeader = new DeltaTable(metadataAction, protocolAction, new List<DeltaAddAction>(), schema, 0, System.Array.Empty<DeltaRemoveFileAction>(), new Dictionary<string, DeltaTransactionAction>(), new Dictionary<string, DeltaDomainMetadataAction>(), null);
             }
             else
             {
                 schema = table.Schema;
-                configuration = table.Metadata.Configuration;
-                nextVersion = _catalog.Head + 1;
+                nextVersion = table.Version + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
 
-                adoptedAt = _catalog.AdoptedAt;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
                     {
-                        StageId = stageId,
-                        Timestamp = currentTime,
-                        AdoptedAt = adoptedAt,
-                        CreatedFiles = _createdFiles,
                         Data = new Dictionary<string, object>() { { "operation", "WRITE" } }
                     }
                 });
@@ -584,41 +362,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     throw new NotImplementedException("Partition columns are not implemented yet");
                 }
 
-            }
-
-            var overlay = _catalog.BeginCommit(nextVersion, adoptedAt, newHeader);
-            if (table != null && overwrite)
-            {
-                await foreach (var (_, record) in _catalog.ScanFiles())
+                if (!_firstInsertDone.Value && _writeRelation.Overwrite)
                 {
-                    actions.Add(new DeltaAction()
+                    table.AddFiles.ForEach(x =>
                     {
-                        Remove = new DeltaRemoveFileAction()
+                        actions.Add(new DeltaAction()
                         {
-                            Path = record.Path,
-                            DeletionVector = record.DeletionVector,
-                            DataChange = true,
-                            DeletionTimestamp = currentTime,
-                            Stats = record.Statistics,
-                            Size = record.Size,
-                            PartitionValues = record.PartitionValues,
-                        }
+                            Remove = new DeltaRemoveFileAction()
+                            {
+                                Path = x.Path,
+                                DeletionVector = x.DeletionVector,
+                                DataChange = true,
+                                DeletionTimestamp = currentTime,
+                                Stats = x.Statistics,
+                                Size = x.Size,
+                                PartitionValues = x.PartitionValues,
+                            }
+                        });
                     });
+                    table.AddFiles.Clear();
+                    table.Files.Clear();
                 }
-                overlay.RemoveAll = true;
-                _catalog.RestartIds();
             }
 
-            var codec = ResolveCodec(configuration);
-            _fileExtension = codec.FileExtension;
-            var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
-            // Only used to compare deleted rows, never written
+            var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
             var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
             ParquetSharpWriter? cdcWriter = default;
             if (changeDataEnabled)
             {
-                cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
+                cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true);
                 cdcWriter.NewBatch();
             }
 
@@ -628,13 +401,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
             bool deleteWritten = false;
 
-            // Deleted rows of the current batch and their probes, matched against the catalog per batch
-            var pendingDeletes = new List<RowToDelete>();
-            _probes ??= new ProbeBatch(_catalog.ScanLayout);
-            _probes.Clear();
-            _probes.SetLayout(_catalog.ScanLayout);
-            var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
-            var touchedFiles = new Dictionary<int, DeltaFileRecord>();
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile = new Dictionary<string, List<RowToDelete>>();
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors = new Dictionary<string, ModifiableDeleteVector>();
             await foreach (var page in iterator)
             {
                 for (int i = 0; i < page.Values.Data.Count; i++)
@@ -659,12 +427,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             }
                         }
 
-                        pendingDeletes.Add(new RowToDelete()
+                        var rowToDelete = new RowToDelete()
                         {
                             DeleteIndex = deleteIndex,
                             Weight = weight
-                        });
-                        _probes.Add(rowRef);
+                        };
+
+                        bool foundFile = false;
+                        for (int f = 0; f < table!.Files.Count; f++)
+                        {
+                            var file = table.Files[f];
+                            if (file.CanBeInFile(rowRef, _writeRelation.TableSchema.Names))
+                            {
+                                foundFile = true;
+                                if (!rowsToDeleteByFile.TryGetValue(file.Action.Path!, out var deleteRowList))
+                                {
+                                    deleteRowList = new List<RowToDelete>();
+                                    rowsToDeleteByFile.Add(file.Action.Path!, deleteRowList);
+                                }
+                                deleteRowList.Add(rowToDelete);
+                            }
+                        }
+                        if (!foundFile)
+                        {
+                            throw new InvalidOperationException($"Could not find any data file that contains the row {rowRef}");
+                        }
                     }
                     else
                     {
@@ -675,7 +462,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             writer.AddRow(rowRef);
                             if (IsFull(writer))
                             {
-                                await WriteNewFile(writer, actions, currentTime, overlay);
+                                await WriteNewFile(writer, actions, currentTime, schema);
                             }
                             if (cdcWriter != null)
                             {
@@ -698,7 +485,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                     using (var deleteBatch = deleteWriter.GetRecordBatch())
                     {
-                        await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
+                        await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, deleteBatch);
                     }
                     deleteWriter.NewBatch();
                 }
@@ -712,15 +499,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 using (var deleteBatch = deleteWriter.GetRecordBatch())
                 {
-                    await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
+                    await HandleDeletedRows(rowsToDeleteByFile, table, fileDeleteVectors, deleteBatch);
                 }
             }
 
-            await WriteDeleteFiles(fileDeleteVectors, touchedFiles, table, actions, currentTime, writer, overlay);
+            await WriteDeleteFiles(fileDeleteVectors, table, actions, currentTime, writer, schema);
 
             if (writer.WrittenCount > 0)
             {
-                await WriteNewFile(writer, actions, currentTime, overlay);
+                await WriteNewFile(writer, actions, currentTime, schema);
             }
             if (cdcWriter != null)
             {
@@ -738,40 +525,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
             }
 
-            if (table == null || HasChanges(actions))
+            // Published in CommitVersion once the version is final.
+            var stagedFile = (await DeltaTransactionWriter.StageCommit(_options.StorageLocation, _tablePath, nextVersion, actions)).FileName;
+            _pendingCommit.Value = new LegacyPendingCommit()
             {
-                // Published in CommitVersion once the version is final.
-                var staged = await DeltaTransactionWriter.StageCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
-                _pendingCommit.Value = new DeltaLakePendingCommit()
-                {
-                    Version = nextVersion,
-                    StagedFile = staged.FileName,
-                    StageId = staged.StageId,
-                    Length = staged.Length,
-                    CheckpointId = CurrentCheckpointId
-                };
-                _stagedBytes = staged.Bytes;
-                _stagedOverlay = overlay;
-            }
+                Version = nextVersion,
+                StagedFile = stagedFile
+            };
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
-            await ClearRows();
+            await _temporaryTree.Clear();
             // Set that the first insert is done, this is used to determine if we need to write delete files for overwrite writes
             _firstInsertDone.Value = true;
-            await _catalog.Maintain();
-        }
-
-        // A commit without file, metadata or protocol actions is not written
-        internal static bool HasChanges(List<DeltaAction> actions)
-        {
-            foreach (var action in actions)
-            {
-                if (action.Add != null || action.Remove != null || action.Cdc != null || action.MetaData != null || action.Protocol != null || action.DomainMetadata != null)
-                {
-                    return true;
-                }
-            }
-            return false;
         }
 
         private async Task RemoveWrittenCdcFiles(List<DeltaAction> actions)
@@ -782,7 +547,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (action.Cdc != null)
                 {
                     await _options.StorageLocation.Rm(_tablePath.Combine(action.Cdc.Path));
-                    _createdFiles.Remove(action.Cdc.Path!);
                     actions.RemoveAt(i);
                     i--;
                 }
@@ -790,13 +554,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         private async Task WriteDeleteFiles(
-            Dictionary<int, ModifiableDeleteVector> fileDeleteVectors,
-            Dictionary<int, DeltaFileRecord> touchedFiles,
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
             DeltaTable? table,
             List<DeltaAction> actions,
             long currentTime,
             ParquetSharpWriter writer,
-            CatalogOverlay overlay)
+            StructType schema)
         {
             foreach (var deleteFile in fileDeleteVectors)
             {
@@ -804,22 +567,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     throw new InvalidOperationException("Table should not be null when delete is found");
                 }
-                var existingFile = touchedFiles[deleteFile.Key];
+                var existingFile = table.Files.First(x => x.Action.Path == deleteFile.Key);
                 actions.Add(new DeltaAction()
                 {
                     Remove = new DeltaRemoveFileAction()
                     {
-                        Path = existingFile.Path,
-                        DeletionVector = existingFile.DeletionVector,
+                        Path = deleteFile.Key,
+                        DeletionVector = existingFile.Action.DeletionVector,
                         DataChange = true,
                         DeletionTimestamp = currentTime,
-                        Stats = existingFile.Statistics,
-                        Size = existingFile.Size,
-                        PartitionValues = existingFile.PartitionValues
+                        Stats = existingFile.Action.Statistics,
+                        Size = existingFile.Action.Size,
+                        PartitionValues = existingFile.Action.PartitionValues
                     }
                 });
 
-                var deletePercentage = (double)deleteFile.Value.Cardinality / (double)(existingFile.NumRecords ?? 0);
+                var deletePercentage = (double)deleteFile.Value.Cardinality / (double)existingFile.Statistics.NumRecords;
 
                 // Use delete vectors if it is enabled, there is file statistics and the percentage deleted is less than 10%.
                 if (table.DeleteVectorEnabled && !double.IsNaN(deletePercentage) && deletePercentage < 0.1)
@@ -829,114 +592,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Write delete vector here to file
                     var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
 
-                    _createdFiles.Add(deletePath);
                     var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
 
-                    var reAdded = existingFile.ToAdd().WithDeletionVector(new DeletionVector()
-                    {
-                        Cardinality = roaringBitmap.Cardinality,
-                        Offset = 1,
-                        StorageType = "u",
-                        PathOrInlineDv = z85string,
-                        SizeInBytes = dataSize
-                    });
                     actions.Add(new DeltaAction()
                     {
-                        Add = reAdded
+                        Add = existingFile.Action.WithDeletionVector(new DeletionVector()
+                        {
+                            Cardinality = roaringBitmap.Cardinality,
+                            Offset = 1,
+                            StorageType = "u",
+                            PathOrInlineDv = z85string,
+                            SizeInBytes = dataSize
+                        })
                     });
-                    // Same file and bounds, only the record changes
-                    overlay.Updates.Add((deleteFile.Key, DeltaFileRecord.FromAdd(reAdded, existingFile.NumRecords)));
                 }
                 else
                 {
-                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Path, deleteFile.Value, IsFull, () => WriteNewFile(writer, actions, currentTime, overlay));
-                    overlay.Removes.Add(deleteFile.Key);
+                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Action.Path!, deleteFile.Value, IsFull, () => WriteNewFile(writer, actions, currentTime, schema));
                 }
             }
         }
 
-        // Error messages only, enumerates each column up to the row
-        private static string DescribeRow(RecordBatch batch, int index)
-        {
-            var values = new List<string>(batch.ColumnCount);
-            for (int c = 0; c < batch.ColumnCount; c++)
-            {
-                var array = batch.Column(c);
-                try
-                {
-                    values.Add(array.IsNull(index) ? "null" : array switch
-                    {
-                        Decimal128Array decimals => decimals.GetValue(index)!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                        System.Collections.IEnumerable items => items.Cast<object?>().ElementAt(index)?.ToString() ?? "null",
-                        _ => array.Data.DataType.Name
-                    });
-                }
-                catch (Exception)
-                {
-                    values.Add(array.Data.DataType.Name);
-                }
-            }
-            return $"{{{string.Join(",", values)}}}";
-        }
-
-        // One pass over the catalog for the batch, then a scan of every candidate file
         private async Task HandleDeletedRows(
-            List<RowToDelete> rows,
-            bool overwrite,
-            DeltaTable? table,
-            Dictionary<int, ModifiableDeleteVector> fileDeleteVectors,
-            Dictionary<int, DeltaFileRecord> touchedFiles,
+            Dictionary<string, List<RowToDelete>> rowsToDeleteByFile,
+            DeltaTable table,
+            Dictionary<string, ModifiableDeleteVector> fileDeleteVectors,
             RecordBatch deleteBatch)
         {
-            Debug.Assert(_catalog != null);
-            Debug.Assert(_probes != null);
-
-            if (table == null)
-            {
-                throw new InvalidOperationException("Table should not be null when delete is found");
-            }
-            // An overwrite removes every file, a delete in the same commit finds none
-            var candidates = overwrite ? new Dictionary<int, List<int>>() : await _catalog.FindCandidates(_probes);
-            var matched = new bool[rows.Count];
-            foreach (var probes in candidates.Values)
-            {
-                foreach (var probe in probes)
-                {
-                    matched[probe] = true;
-                }
-            }
-            for (int i = 0; i < matched.Length; i++)
-            {
-                if (!matched[i])
-                {
-                    throw new InvalidOperationException($"Could not find any data file that contains the row {DescribeRow(deleteBatch, rows[i].DeleteIndex)}");
-                }
-            }
-
-            var missing = candidates.Keys.Where(x => !touchedFiles.ContainsKey(x)).ToList();
-            foreach (var (id, record) in await _catalog.GetFiles(missing))
-            {
-                touchedFiles[id] = record;
-            }
             var comparer = RecordBatchComparer.Create(table.Schema);
-            foreach (var (id, probes) in candidates)
+            foreach (var fileWithPossibleDelete in rowsToDeleteByFile)
             {
-                var toFind = new List<RowToDelete>(probes.Count);
-                foreach (var probe in probes)
-                {
-                    toFind.Add(rows[probe]);
-                }
-                await ScanDataFileForRows(table, toFind, id, touchedFiles[id], fileDeleteVectors, deleteBatch, comparer);
+                // This can be made into tasks later on
+                var file = table!.AddFiles.First(x => x.Path == fileWithPossibleDelete.Key);
+                await ScanDataFileForRows(table, fileWithPossibleDelete.Value, file, fileDeleteVectors, deleteBatch, comparer);
             }
-            rows.Clear();
-            _probes.Clear();
+            rowsToDeleteByFile.Clear();
         }
 
         private async Task WriteNewCdcFile(ParquetSharpWriter cdcWriter, List<DeltaAction> actions, long currentTime)
         {
-            string addFilePath = $"_change_data/cdc-00000-{Guid.NewGuid().ToString()}{_fileExtension}";
+            string addFilePath = $"_change_data/cdc-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
 
-            _createdFiles.Add(addFilePath);
             var fileSize = await cdcWriter.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             actions.Add(new DeltaAction()
             {
@@ -958,38 +654,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return writer.WrittenBytes >= _options.MaxFileSizeBytes || writer.WrittenCount >= MaxRowsPerFile;
         }
 
-        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, CatalogOverlay overlay)
+        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, StructType schema)
         {
-            string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}{_fileExtension}";
+            string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}.snappy.parquet";
 
             var stats = writer.GetStatistics();
-            var statsString = JsonSerializer.Serialize(stats, overlay.StatisticsOptions);
 
-            _createdFiles.Add(addFilePath);
+            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
+            jsonOptions.Converters.Add(new DeltaStatisticsConverter(schema));
+            var statsString = JsonSerializer.Serialize(stats, jsonOptions);
+
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
-            var add = new DeltaAddAction()
-            {
-                Path = addFilePath,
-                PartitionValues = new Dictionary<string, string>(),
-                Size = fileSize,
-                ModificationTime = currentTime,
-                DataChange = true,
-                Statistics = statsString
-            };
             actions.Add(new DeltaAction()
             {
-                Add = add
+                Add = new DeltaAddAction()
+                {
+                    Path = addFilePath,
+                    PartitionValues = new Dictionary<string, string>(),
+                    Size = fileSize,
+                    ModificationTime = currentTime,
+                    DataChange = true,
+                    Statistics = statsString
+                }
             });
-            overlay.Add(_catalog!.AllocateId(), add);
             writer.NewBatch();
         }
 
         private async Task ScanDataFileForRows(
             DeltaTable table,
             List<RowToDelete> toFind,
-            int fileId,
-            DeltaFileRecord file,
-            Dictionary<int, ModifiableDeleteVector> deleteVectors,
+            DeltaAddAction file,
+            Dictionary<string, ModifiableDeleteVector> deleteVectors,
             RecordBatch deleteBatch,
             RecordBatchComparer comparer)
         {
@@ -1007,7 +702,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             // If a modified delete vector already exist, use it instead
-            if (deleteVectors.TryGetValue(fileId, out var claimed))
+            if (deleteVectors.TryGetValue(file.Path!, out var claimed))
             {
                 deleteVector = claimed;
             }
@@ -1018,7 +713,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             // Open file without deletion vector, it will be used when finding rows
-            var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path);
+            var iterator = reader.ReadDataFileArrowFormat(_options.StorageLocation, _tablePath, file.Path!);
 
             int globalOffset = 0;
             await foreach (var batch in iterator)
@@ -1068,7 +763,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 if (claimed == null)
                                 {
                                     claimed = new ModifiableDeleteVector(deleteVector);
-                                    deleteVectors.Add(fileId, claimed);
+                                    deleteVectors.Add(file.Path!, claimed);
                                 }
                                 claimed.Add(index + globalOffset);
                             }

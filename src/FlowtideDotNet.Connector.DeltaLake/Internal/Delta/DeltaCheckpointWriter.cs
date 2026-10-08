@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
     internal static class DeltaCheckpointWriter
     {
-        public static async Task WriteCheckpoint(IFileStorage storage, IOPath tablePath, DeltaTable table)
+        public static async Task WriteCheckpoint(IFileStorage storage, IOPath tablePath, DeltaTable table, ParquetSharp.WriterProperties? writerProperties = null)
         {
             var nextVersion = table.Version;
             var addActions = table.AddFiles;
@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
                 using (var deltaStream = new DeltaWriteStream(stream))
                 {
-                    using (var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, recordBatch.Schema))
+                    using (var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, recordBatch.Schema, writerProperties))
                     {
                         writer.WriteRecordBatch(recordBatch);
                         writer.Close();

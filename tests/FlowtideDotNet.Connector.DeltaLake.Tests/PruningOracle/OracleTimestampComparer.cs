@@ -10,12 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Text.Json;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
+namespace FlowtideDotNet.Connector.DeltaLake.Tests.PruningOracle
 {
-    internal class TimestampStatisticsComparer : IStatisticsComparer, IPruningBounds
+    // Frozen copy of the comparer before the pruning kernels, the oracle for the kernels
+    internal class OracleTimestampComparer
     {
         private DateTimeOffset? _minValue;
         private DateTimeOffset? _maxValue;
@@ -23,7 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         private readonly long? _maxMilliseconds;
         private readonly int? _nullCount;
 
-        public TimestampStatisticsComparer(DateTimeOffset? minValue, DateTimeOffset? maxValue, int? nullCount)
+        public OracleTimestampComparer(DateTimeOffset? minValue, DateTimeOffset? maxValue, int? nullCount)
         {
             // Bounds and probes compare at the stored millisecond precision
             if (minValue.HasValue)
@@ -43,21 +45,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            return PruningKernels.Int64(_minMilliseconds.HasValue, _minMilliseconds ?? 0, _maxMilliseconds.HasValue, _maxMilliseconds ?? 0, PruningKernels.TimestampProbe(value));
-        }
+            var probe = StoredValue.TimestampMilliseconds(value.AsTimestamp);
 
-        public void WriteBounds(PruningType type, Span<byte> cell)
-        {
-            if (type == PruningType.Timestamp)
+            if (_minMilliseconds.HasValue && _minMilliseconds.Value > probe)
             {
-                PruningCell.WriteInt64(cell, type, _minMilliseconds, _maxMilliseconds, _nullCount);
+                return false;
             }
-            else
+            if (_maxMilliseconds.HasValue && _maxMilliseconds.Value < probe)
             {
-                PruningCell.WriteUnknown(cell);
+                return false;
             }
+            return true;
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)

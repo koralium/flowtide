@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class Int64StatisticsComparer : IStatisticsComparer
+    internal class Int64StatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private long? _minValue;
         private long? _maxValue;
@@ -32,24 +32,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                // Check if there are any null values in the column
-                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
-                {
-                    return true;
-                }
-                return false;
+                return PruningKernels.NullMayMatch(_nullCount);
             }
-            var longValue = value.AsLong;
+            return PruningKernels.Int64(_minValue.HasValue, _minValue ?? 0, _maxValue.HasValue, _maxValue ?? 0, value.AsLong);
+        }
 
-            if (_minValue != null && _minValue > longValue)
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Int64)
             {
-                return false;
+                PruningCell.WriteInt64(cell, type, _minValue, _maxValue, _nullCount);
             }
-            if (_maxValue != null && _maxValue < longValue)
+            else
             {
-                return false;
+                PruningCell.WriteUnknown(cell);
             }
-            return true;
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

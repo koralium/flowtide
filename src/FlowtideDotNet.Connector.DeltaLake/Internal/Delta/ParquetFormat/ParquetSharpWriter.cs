@@ -34,10 +34,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private Apache.Arrow.Schema _schema;
         private readonly bool _isCdcWriter;
         private readonly IParquetWriter? _cdcWriter;
+        private readonly ParquetSharp.WriterProperties? _writerProperties;
 
-        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false)
+        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null)
         {
             _isCdcWriter = isCdcWriter;
+            _writerProperties = writerProperties;
             this.schema = schema;
             var visitor = new ParquetSharpWriteVisitor();
 
@@ -243,7 +245,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             using var stream = await storage.OpenWrite(tablePath.Combine(fileName));
             using var deltaStream = new DeltaWriteStream(stream);
-            using var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, _schema);
+            using var writer = new ParquetSharp.Arrow.FileWriter(deltaStream, _schema, _writerProperties);
 
             using var batch = GetRecordBatch();
             writer.WriteRecordBatch(batch);

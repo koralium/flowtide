@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class DateStatisticsComparer : IStatisticsComparer
+    internal class DateStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private DateTime? _minValue;
         private DateTime? _maxValue;
@@ -33,23 +33,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
-                {
-                    return true;
-                }
-                return false;
+                return PruningKernels.NullMayMatch(_nullCount);
             }
-            var dateValue = StoredValue.Date(value.AsTimestamp.ToDateTimeOffset().DateTime);
+            return PruningKernels.Int64(_minValue.HasValue, _minValue?.Ticks ?? 0, _maxValue.HasValue, _maxValue?.Ticks ?? 0, PruningKernels.DateProbe(value));
+        }
 
-            if (_minValue != null && _minValue > dateValue)
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Date)
             {
-                return false;
+                PruningCell.WriteInt64(cell, type, _minValue?.Ticks, _maxValue?.Ticks, _nullCount);
             }
-            if (_maxValue != null && _maxValue < dateValue)
+            else
             {
-                return false;
+                PruningCell.WriteUnknown(cell);
             }
-            return true;
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

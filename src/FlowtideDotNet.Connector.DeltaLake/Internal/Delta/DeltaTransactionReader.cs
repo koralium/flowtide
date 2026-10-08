@@ -37,8 +37,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// </summary>
         public static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
         {
+            return await ReadTable(storage, tableName, await ListLog(storage, tableName), maxVersion, options);
+        }
+
+        /// <summary>
+        /// Reads from a listing the caller already has, so it is not listed again.
+        /// </summary>
+        internal static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, LogListing log, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
+        {
             options ??= DeltaReadOptions.Default;
-            var log = await ListLog(storage, tableName);
 
             if (log.Head < 0)
             {
@@ -427,6 +434,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// <summary>
         /// Files in the log directory whose names start with a dot, such as staged commits.
         /// </summary>
+        /// <summary>
+        /// The commitInfo on the first line of a commit, null when the commit is missing or the line is not one.
+        /// </summary>
+        public static async Task<DeltaCommitInfoAction?> ReadFirstCommitInfo(IFileStorage storage, IOPath tableName, long version)
+        {
+            using var stream = await storage.OpenRead(tableName.Combine(DeltaLogDirName).Combine($"{version:D20}.json"));
+            if (stream == null)
+            {
+                return null;
+            }
+            using var reader = new StreamReader(stream);
+            var line = await reader.ReadLineAsync();
+            if (line == null)
+            {
+                return null;
+            }
+            try
+            {
+                return JsonSerializer.Deserialize<DeltaAction>(line)?.CommitInfo;
+            }
+            catch (JsonException)
+            {
+                return null;
+            }
+        }
+
         public static async Task<IReadOnlyList<IOEntry>> ListHiddenLogFiles(IFileStorage storage, IOPath tableName)
         {
             var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
@@ -442,7 +475,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return log.Commits.Values.Concat(log.Checkpoints).OrderBy(x => x.Version).ThenBy(x => x.IsCheckpoint ? 0 : 1).ToList();
         }
 
-        private static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
+        internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
         {
             var log = new LogListing();
             var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
@@ -496,7 +529,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return long.TryParse(name.AsSpan(0, VersionDigits), NumberStyles.None, CultureInfo.InvariantCulture, out version);
         }
 
-        private sealed class LogListing
+        /// <summary>
+        /// The commits and classic checkpoints of one listing of the log.
+        /// </summary>
+        internal sealed class LogListing
         {
             public Dictionary<long, LogTransactionFile> Commits { get; } = new Dictionary<long, LogTransactionFile>();
 
