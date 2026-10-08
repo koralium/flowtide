@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
@@ -530,51 +531,131 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
             DeltaSinkCatalog? catalog = null;
             using var registration = new Registration(table, c => { catalog = c; return Task.CompletedTask; });
-            await using var stream = new DeltaLakeSinkStream(table, storage, options =>
+            var stream = new DeltaLakeSinkStream(table, storage, options =>
             {
                 options.MaxFileSizeBytes = 1024;
                 options.CheckpointInterval = 0;
                 options.CatalogRotationFloor = 200;
                 options.CatalogMigrationSlice = 50;
             }, legacySink: legacySink);
-            stream.CachePageCount = cachePages;
-            stream.MinCachePageCount = 1;
-            stream.WaitForUpdateDoesNotRequireDataChange();
-            stream.Generate(2000);
-            await stream.StartStream(Insert(table));
-            await WaitForVersion(storage, table, stream, 0);
+            var running = true;
+            try
+            {
+                stream.CachePageCount = cachePages;
+                stream.MinCachePageCount = 1;
+                stream.WaitForUpdateDoesNotRequireDataChange();
+                stream.Generate(2000);
+                await stream.StartStream(Insert(table));
+                await WaitForVersion(storage, table, stream, 0);
 
-            var random = new Random(26);
-            var worst = TimeSpan.Zero;
-            var total = TimeSpan.Zero;
-            long peakSpill = 0;
-            var allocatedBefore = GC.GetTotalAllocatedBytes(true);
-            storage.ClearRequests();
-            for (int round = 0; round < 25; round++)
-            {
-                foreach (var user in stream.Users.OrderBy(_ => random.Next()).Take(20).ToList())
+                var random = new Random(26);
+                var worstRound = TimeSpan.Zero;
+                var total = TimeSpan.Zero;
+                long peakSpill = 0;
+                var progress = new RoundProgress();
+                var allocatedBefore = GC.GetTotalAllocatedBytes(true);
+                storage.ClearRequests();
+                for (int round = 0; round < 25; round++)
                 {
-                    stream.DeleteUser(user);
+                    foreach (var user in stream.Users.OrderBy(_ => random.Next()).Take(20).ToList())
+                    {
+                        stream.DeleteUser(user);
+                    }
+                    stream.Generate(20);
+                    var watch = System.Diagnostics.Stopwatch.StartNew();
+                    await WaitForRound(storage, table, stream, progress, stream.Users.Max(x => x.UserKey));
+                    worstRound = watch.Elapsed > worstRound ? watch.Elapsed : worstRound;
+                    total += watch.Elapsed;
+                    peakSpill = Math.Max(peakSpill, CatalogSpillBytes(table));
                 }
-                stream.Generate(20);
-                var watch = System.Diagnostics.Stopwatch.StartNew();
-                await RunCheckpoints(stream, 1);
-                worst = watch.Elapsed > worst ? watch.Elapsed : worst;
-                total += watch.Elapsed;
-                peakSpill = Math.Max(peakSpill, CatalogSpillBytes(table));
+                // Everything generated is published before the counters are read
+                await SettlePublications(stream);
+                var allocated = GC.GetTotalAllocatedBytes(true) - allocatedBefore;
+                var requests = storage.Requests;
+                var measuredHead = requests.Select(CommitWritten).Max();
+                // Stopped before the check, late work is then either measured or a failure below
+                await stream.DisposeAsync();
+                running = false;
+                int files;
+                using (storage.Unrecorded())
+                {
+                    // No data after the measured head, so the figures cover the whole workload
+                    for (var version = measuredHead + 1; await storage.Exists(CommitPath(table, version)); version++)
+                    {
+                        Assert.DoesNotContain(await ReadCommitActions(storage, table, version), x => x.Add != null || x.Remove != null || x.Cdc != null);
+                    }
+                    files = (await DeltaTransactionReader.ReadTable(storage, table))!.AddFiles.Count;
+                }
+                _output.WriteLine($"{(legacySink ? "legacy" : "catalog")} cache {cachePages}: files {files}, rotations {catalog?.Rotations}, migrated {catalog?.RecordsMigrated}, last clear {catalog?.LastClearTime}, " +
+                    $"worst round {worstRound.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms, allocated {allocated / 1024 / 1024} MiB, peak catalog spill {peakSpill / 1024} KiB, requests {requests.Count}, " +
+                    $"listings {requests.Count(x => x.StartsWith("Ls "))}, log reads {requests.Count(x => x.StartsWith("OpenRead ") && x.Contains("_delta_log"))}, " +
+                    $"data reads {requests.Count(x => x.StartsWith("OpenRead ") && x.EndsWith(".parquet") && !x.Contains("_delta_log"))}");
+                await AssertTableEquals(table, storage, stream.Users);
             }
-            var allocated = GC.GetTotalAllocatedBytes(true) - allocatedBefore;
-            var requests = storage.Requests;
-            var files = (await DeltaTransactionReader.ReadTable(storage, table))!.AddFiles.Count;
-            _output.WriteLine($"{(legacySink ? "legacy" : "catalog")} cache {cachePages}: files {files}, rotations {catalog?.Rotations}, migrated {catalog?.RecordsMigrated}, last clear {catalog?.LastClearTime}, " +
-                $"worst checkpoint {worst.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms, allocated {allocated / 1024 / 1024} MiB, peak catalog spill {peakSpill / 1024} KiB, requests {requests.Count}, " +
-                $"listings {requests.Count(x => x.StartsWith("Ls "))}, log reads {requests.Count(x => x.StartsWith("OpenRead ") && x.Contains("_delta_log"))}, " +
-                $"data reads {requests.Count(x => x.StartsWith("OpenRead ") && x.EndsWith(".parquet") && !x.Contains("_delta_log"))}");
-            // The legacy sink commits on every checkpoint, a reader would list the in-memory storage while it is written
-            if (!legacySink)
+            finally
             {
-                await AssertTableHolds(table, storage, stream);
+                if (running)
+                {
+                    await stream.DisposeAsync();
+                }
             }
+        }
+
+        private sealed class RoundProgress
+        {
+            public long NextVersion { get; set; } = 1;
+
+            public long PublishedMaxKey { get; set; } = long.MinValue;
+        }
+
+        // A round ends when a commit holds its newest key, keys only grow and its deletes came before its inserts
+        private static async Task WaitForRound(HookFileStorage storage, string table, FlowtideTestStream stream, RoundProgress progress, long roundMaxKey)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            while (progress.PublishedMaxKey < roundMaxKey)
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException($"Key {roundMaxKey} of {table} was not published in time");
+                }
+                await RunCheckpoints(stream, 0);
+                using (storage.Unrecorded())
+                {
+                    while (await storage.Exists(CommitPath(table, progress.NextVersion)))
+                    {
+                        foreach (var add in (await ReadCommitActions(storage, table, progress.NextVersion)).Where(x => x.Add?.Statistics != null))
+                        {
+                            progress.PublishedMaxKey = Math.Max(progress.PublishedMaxKey, MaxIntegerBound(add.Add!.Statistics!));
+                        }
+                        progress.NextVersion++;
+                    }
+                }
+            }
+        }
+
+        // The largest integer max value in the statistics, the key is the table's only integer column
+        private static long MaxIntegerBound(string statistics)
+        {
+            using var document = JsonDocument.Parse(statistics);
+            var max = long.MinValue;
+            if (document.RootElement.TryGetProperty("maxValues", out var maxValues))
+            {
+                foreach (var property in maxValues.EnumerateObject())
+                {
+                    if (property.Value.ValueKind == JsonValueKind.Number && property.Value.TryGetInt64(out var value))
+                    {
+                        max = Math.Max(max, value);
+                    }
+                }
+            }
+            return max;
+        }
+
+        // The version of a commit file the request wrote, -1 for any other request
+        private static long CommitWritten(string request)
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(request, @"^OpenWrite .*/_delta_log/(\d{20})\.json$");
+            return match.Success ? long.Parse(match.Groups[1].Value) : -1;
         }
 
         private static async Task WriteText(IFileStorage storage, string path, string text)
@@ -612,10 +693,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static async Task AssertTableHolds(string table, IFileStorage storage, FlowtideTestStream stream)
         {
             await SettlePublications(stream);
+            await AssertTableEquals(table, storage, stream.Users);
+        }
+
+        private static async Task AssertTableEquals(string table, IFileStorage storage, IEnumerable<User> users)
+        {
             await using var reader = new DeltaLakeTestStream(table + "_compare", storage, oneVersionPerCheckpoint: false);
             await reader.StartStream($"INSERT INTO result SELECT userkey, name FROM {table}");
             await reader.WaitForUpdate();
-            reader.AssertCurrentDataEqual(stream.Users.Select(x => new { x.UserKey, x.FirstName }));
+            reader.AssertCurrentDataEqual(users.Select(x => new { x.UserKey, x.FirstName }));
         }
 
         private sealed class Registration : IDisposable

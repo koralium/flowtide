@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
     /// <summary>
     /// A staged commit, the stage id is null for commits without a Flowtide commitInfo.
     /// </summary>
-    internal sealed record StagedCommit(string FileName, string? StageId, long Length, byte[] Bytes);
+    internal sealed record StagedCommit(string FileName, string? StageId, long Length, CommitBytes Bytes);
 
     internal enum PublishOutcome
     {
@@ -64,14 +64,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// <summary>
         /// Publishes a staged commit, the target is checked first and is never overwritten unless it is a torn copy of the stage.
         /// The stage bytes are optional, they save reading the staged file in the run that staged it.
+        /// With <paramref name="checkSuccessor"/> an absent target is only written while the log holds nothing at its version or later.
         /// </summary>
-        public static async Task<PublishResult> PublishCommit(IFileStorage storage, IOPath tablePath, DeltaLakePendingCommit pending, byte[]? stageBytes)
+        public static async Task<PublishResult> PublishCommit(IFileStorage storage, IOPath tablePath, DeltaLakePendingCommit pending, CommitBytes? stageBytes, bool checkSuccessor)
         {
             var logPath = tablePath.Combine(DeltaLogDirName);
             var stagedPath = logPath.Combine(pending.StagedFile);
             var commitPath = logPath.Combine(CommitFileName(pending.Version));
 
-            var target = await ReadAll(storage, commitPath);
+            var target = await CommitBytes.Read(storage, commitPath);
+
+            // A conflicting commit removed after another writer went on, or checkpointed it, must not be replaced
+            if (target == null && checkSuccessor && await HistoryFrom(storage, tablePath, pending.Version))
+            {
+                return Failed(pending, "is absent but the log holds a later version or a checkpoint at this version, publishing it would break the log");
+            }
 
             if (pending.StageId == null)
             {
@@ -91,7 +98,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 return new PublishResult(PublishOutcome.Published);
             }
 
-            if (target.AsSpan().StartsWith(prefix))
+            if (target.StartsWith(prefix))
             {
                 if (target.Length == pending.Length)
                 {
@@ -99,7 +106,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     var (stageState, stage) = await ReadStage(storage, stagedPath, pending, prefix, stageBytes);
                     var ours = stageState switch
                     {
-                        StageState.Valid => target.AsSpan().SequenceEqual(stage),
+                        StageState.Valid => target.ContentEquals(stage!),
                         StageState.Missing => FirstLineHasStageId(target, pending.StageId),
                         _ => false
                     };
@@ -113,7 +120,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (target.Length < pending.Length)
                 {
                     var (stageState, stage) = await ReadStage(storage, stagedPath, pending, prefix, stageBytes);
-                    if (stageState != StageState.Valid || !stage.AsSpan().StartsWith(target))
+                    if (stageState != StageState.Valid || !stage!.StartsWith(target))
                     {
                         return Failed(pending, "is a torn copy of this sink's commit and the staged commit cannot repair it");
                     }
@@ -126,9 +133,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         }
 
         // Pending commits persisted before stage ids existed, the target must equal the stage
-        private static async Task<PublishResult> PublishLegacy(IFileStorage storage, IOPath stagedPath, IOPath commitPath, DeltaLakePendingCommit pending, byte[]? target)
+        private static async Task<PublishResult> PublishLegacy(IFileStorage storage, IOPath stagedPath, IOPath commitPath, DeltaLakePendingCommit pending, CommitBytes? target)
         {
-            var stage = await ReadAll(storage, stagedPath);
+            var stage = await CommitBytes.Read(storage, stagedPath);
             if (target == null)
             {
                 if (stage == null)
@@ -144,12 +151,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             {
                 return new PublishResult(PublishOutcome.AlreadyPublished);
             }
-            if (!target.AsSpan().SequenceEqual(stage))
+            if (!target.ContentEquals(stage))
             {
                 return Failed(pending, "was written by another writer or is damaged");
             }
             await storage.Rm(stagedPath);
             return new PublishResult(PublishOutcome.AlreadyPublished);
+        }
+
+        // Commits, checkpoints and other version files at the version or later are another writer's history
+        private static async Task<bool> HistoryFrom(IFileStorage storage, IOPath tablePath, long version)
+        {
+            var log = await DeltaTransactionReader.ListLog(storage, tablePath);
+            return log.Head >= version || log.Checkpoints.Any(x => x.Version >= version) || log.MaxOtherVersion >= version;
         }
 
         private static PublishResult Failed(DeltaLakePendingCommit pending, string reason)
@@ -164,14 +178,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             Valid
         }
 
-        private static async Task<(StageState, byte[]?)> ReadStage(IFileStorage storage, IOPath stagedPath, DeltaLakePendingCommit pending, byte[] prefix, byte[]? stageBytes)
+        private static async Task<(StageState, CommitBytes?)> ReadStage(IFileStorage storage, IOPath stagedPath, DeltaLakePendingCommit pending, byte[] prefix, CommitBytes? stageBytes)
         {
-            var stage = stageBytes ?? await ReadAll(storage, stagedPath);
+            var stage = stageBytes ?? await CommitBytes.Read(storage, stagedPath);
             if (stage == null)
             {
                 return (StageState.Missing, null);
             }
-            if (stage.Length != pending.Length || !stage.AsSpan().StartsWith(prefix))
+            if (stage.Length != pending.Length || !stage.StartsWith(prefix))
             {
                 return (StageState.Damaged, null);
             }
@@ -184,16 +198,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return Encoding.UTF8.GetBytes($"{{\"commitInfo\":{{\"flowtide.stageId\":\"{stageId}\"");
         }
 
-        private static bool FirstLineHasStageId(byte[] commit, string stageId)
+        private static bool FirstLineHasStageId(CommitBytes commit, string stageId)
         {
-            var end = Array.IndexOf(commit, (byte)'\n');
-            if (end < 0)
+            var line = commit.FirstLine();
+            if (line == null)
             {
                 return false;
             }
             try
             {
-                var action = JsonSerializer.Deserialize<DeltaAction>(commit.AsSpan(0, end));
+                var action = JsonSerializer.Deserialize<DeltaAction>(line);
                 return action?.CommitInfo?.StageId == stageId;
             }
             catch (JsonException)
@@ -202,43 +216,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
         }
 
-        internal static byte[] Serialize(List<DeltaAction> actions)
+        internal static CommitBytes Serialize(List<DeltaAction> actions)
         {
-            using var memory = new MemoryStream();
+            var bytes = new CommitBytes();
+            using var stream = bytes.AsAppendStream();
             foreach (var action in actions)
             {
-                JsonSerializer.Serialize(memory, action, s_jsonOptions);
-                memory.WriteByte((byte)'\n');
+                JsonSerializer.Serialize(stream, action, s_jsonOptions);
+                stream.WriteByte((byte)'\n');
             }
-            return memory.ToArray();
+            return bytes;
         }
 
-        private static async Task<byte[]?> ReadAll(IFileStorage storage, IOPath path)
-        {
-            using var stream = await storage.OpenRead(path);
-            if (stream == null)
-            {
-                return null;
-            }
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory);
-            return memory.ToArray();
-        }
-
-        // The first bytes are flushed on their own, a torn copy then still names its stage
-        private static async Task WriteBytes(IFileStorage storage, IOPath path, byte[] bytes, int flushAfter)
+        private static async Task WriteBytes(IFileStorage storage, IOPath path, CommitBytes bytes, int flushAfter)
         {
             using var stream = await storage.OpenWrite(path);
             if (stream == null)
             {
                 throw new InvalidOperationException($"Failed to open {path.Full} for writing");
             }
-            if (flushAfter > 0)
-            {
-                await stream.WriteAsync(bytes.AsMemory(0, flushAfter));
-                await stream.FlushAsync();
-            }
-            await stream.WriteAsync(bytes.AsMemory(flushAfter));
+            await bytes.WriteTo(stream, flushAfter);
         }
 
         private static string CommitFileName(long version)

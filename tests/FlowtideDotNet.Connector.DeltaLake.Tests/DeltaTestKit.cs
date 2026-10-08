@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public static async Task WaitForVersion(IFileStorage storage, string table, FlowtideTestStream stream, long version, TimeSpan? timeout = null)
         {
             var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(2));
-            while (!await storage.Exists(CommitPath(table, version)))
+            while (!await CommitExists(storage, table, version))
             {
                 if (DateTime.UtcNow > deadline)
                 {
@@ -51,11 +51,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
+        // Local disk answers Exists by opening the file, which fails while the sink still writes it
+        private static async Task<bool> CommitExists(IFileStorage storage, string table, long version)
+        {
+            try
+            {
+                return await storage.Exists(CommitPath(table, version));
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+        }
+
         // Triggers checkpoints while waiting, for versions that need more checkpoints than new data brings
         public static async Task WaitForVersionCheckpointing(IFileStorage storage, string table, FlowtideTestStream stream, long version)
         {
             var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
-            while (!await storage.Exists(CommitPath(table, version)))
+            while (!await CommitExists(storage, table, version))
             {
                 if (DateTime.UtcNow > deadline)
                 {
@@ -182,7 +195,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             if (logLevel >= LogLevel.Warning)
             {
-                _entries.Enqueue((logLevel, formatter(state, exception)));
+                _entries.Enqueue((logLevel, exception == null ? formatter(state, exception) : $"{formatter(state, exception)} {exception}"));
             }
         }
     }

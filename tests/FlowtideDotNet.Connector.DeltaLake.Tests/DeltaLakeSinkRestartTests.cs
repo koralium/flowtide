@@ -158,8 +158,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 await stream.WaitForUpdate();
                 await stream.WaitForUpdate();
 
+                storage.ClearRequests();
                 await inner.Rm(CommitPath("test", head + 1));
-                await WaitForVersionCheckpointing(storage, "test", stream, head + 2);
+                var removed = !await inner.Exists(CommitPath("test", head + 1));
+                try
+                {
+                    await WaitForVersionCheckpointing(storage, "test", stream, head + 2);
+                }
+                catch (TimeoutException e)
+                {
+                    var log = (await inner.Ls("/test/_delta_log/")).Select(x => x.Name).Order();
+                    var target = await inner.ReadText(CommitPath("test", head + 1));
+                    var requests = storage.Requests.Where(x => x.Contains($"{head + 1:D20}") || x.Contains($"{head + 2:D20}"));
+                    throw new TimeoutException($"Episode {episode}, removed {removed}, errors: {string.Join(" | ", logs.Errors)}, log: {string.Join(", ", log)}, target: {target?.Substring(0, Math.Min(200, target.Length))}, requests: {string.Join(", ", requests)}", e);
+                }
                 head += 2;
                 await RunCheckpoints(stream, 3);
             }

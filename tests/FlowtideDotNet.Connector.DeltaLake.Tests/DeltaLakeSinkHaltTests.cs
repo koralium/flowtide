@@ -78,6 +78,44 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task ARemovedConflictIsNotPublishedOverALaterVersion()
+        {
+            var testName = nameof(ARemovedConflictIsNotPublishedOverALaterVersion);
+            var inner = Files.Of.InternalMemory($"./{testName}");
+            var storage = new HookFileStorage(inner);
+            var logs = new TestLogCollector();
+            await using var stream = new DeltaLakeSinkStream(testName, storage);
+            stream.AddLoggerProvider(logs);
+            stream.WaitForUpdateDoesNotRequireDataChange();
+            stream.Generate(10);
+            await stream.StartStream(UserInsert);
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // Another writer takes version 1 right before the sink publishes it, and goes on to version 2
+            var foreignWritten = 0;
+            storage.Before = async (verb, path) =>
+            {
+                if (verb == "OpenRead" && path.Full.EndsWith(CommitPath("test", 1)) && Interlocked.Exchange(ref foreignWritten, 1) == 0)
+                {
+                    await WriteCommit(inner, "test", 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                    await WriteCommit(inner, "test", 2, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                }
+            };
+            stream.Generate(5);
+            await WaitUntil(stream, () => logs.Errors.Count >= 1);
+
+            // Removing version 1 would let the sink's commit sit below the other writer's version 2
+            await inner.Rm(CommitPath("test", 1));
+            stream.Generate(1);
+            await RunCheckpoints(stream, 3);
+
+            Assert.False(await inner.Exists(CommitPath("test", 1)));
+            Assert.Contains(logs.Errors, x => x.Contains("a later version"));
+            Assert.Equal(0, SinkHealth(stream));
+            Assert.Equal(0, stream.FailureNotificationCount);
+        }
+
+        [Fact]
         public async Task TornPublishIsRepairedOnRestart()
         {
             var testName = nameof(TornPublishIsRepairedOnRestart);

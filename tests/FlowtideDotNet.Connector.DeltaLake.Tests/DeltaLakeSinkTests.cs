@@ -1283,9 +1283,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
 
             var pending = new Internal.DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length };
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null);
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true);
             // Second publish is a no-op, as after a restart.
-            Assert.Equal(PublishOutcome.AlreadyPublished, (await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null)).Outcome);
+            Assert.Equal(PublishOutcome.AlreadyPublished, (await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true)).Outcome);
 
             Assert.False(await storage.Exists($"/staged/_delta_log/{staged.FileName}"));
             var table = await DeltaTransactionReader.ReadTable(storage, "staged");

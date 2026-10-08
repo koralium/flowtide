@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                 parser.Reset();
             }
 
-            int numRecords = 0;
+            long numRecords = 0;
             bool tightBounds = false;
 
             while (true)
@@ -76,7 +76,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                 switch (propertyName)
                 {
                     case "numRecords":
-                        numRecords = reader.GetInt32();
+                        numRecords = reader.GetInt64();
                         break;
                     case "tightBounds":
                         tightBounds = reader.GetBoolean();

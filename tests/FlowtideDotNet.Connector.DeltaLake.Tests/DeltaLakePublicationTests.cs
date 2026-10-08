@@ -23,17 +23,108 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         private const string Target = "/t/_delta_log/00000000000000000000.json";
 
+        private static byte[] StagedBytes(StagedCommit staged) => staged.Bytes.ToArray();
+
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task AnAbsentTargetBelowALaterVersionIsOnlyWrittenWithoutTheCheck(bool checkSuccessor)
+        {
+            var (storage, staged, pending) = await Stage(nameof(AnAbsentTargetBelowALaterVersionIsOnlyWrittenWithoutTheCheck) + checkSuccessor);
+            await WriteCommit(storage.Inner, "t", 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor);
+
+            Assert.Equal(checkSuccessor ? PublishOutcome.FailedClosed : PublishOutcome.Published, result.Outcome);
+            Assert.Equal(!checkSuccessor, await storage.Inner.Exists(Target));
+            if (checkSuccessor)
+            {
+                Assert.Contains("a later version", result.Reason);
+                Assert.True(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
+            }
+        }
+
+        [Theory]
+        [InlineData(false, "later")]
+        [InlineData(false, "checkpoint")]
+        [InlineData(false, "compaction")]
+        [InlineData(true, "later")]
+        [InlineData(true, "checkpoint")]
+        public async Task AnAbsentTargetIsNotWrittenBelowAnotherWritersHistory(bool legacy, string history)
+        {
+            var name = $"{nameof(AnAbsentTargetIsNotWrittenBelowAnotherWritersHistory)}_{legacy}_{history}";
+            var (storage, staged, pending) = legacy ? await StageLegacy(name) : await Stage(name);
+            switch (history)
+            {
+                case "later":
+                    // Another writer went on to 2 and its cleanup removed 0 and 1, only its checkpoint and commit 2 remain
+                    await WriteCommit(storage.Inner, "t", 2, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                    await WriteBytes(storage.Inner, "/t/_delta_log/00000000000000000002.checkpoint.parquet", new byte[] { 1 });
+                    break;
+                case "checkpoint":
+                    // Another writer checkpointed its version 0, then its commit file was removed
+                    await WriteBytes(storage.Inner, "/t/_delta_log/00000000000000000000.checkpoint.parquet", new byte[] { 1 });
+                    break;
+                case "compaction":
+                    await WriteBytes(storage.Inner, "/t/_delta_log/00000000000000000000.00000000000000000001.compacted.json", new byte[] { 1 });
+                    break;
+            }
+
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, legacy ? null : staged.Bytes, checkSuccessor: true);
+
+            Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
+            Assert.False(await storage.Inner.Exists(Target));
+            Assert.True(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
+        }
+
+        [Fact]
+        public async Task ALogCompactionCoversUpToItsSecondVersion()
+        {
+            var storage = Files.Of.InternalMemory($"./{nameof(ALogCompactionCoversUpToItsSecondVersion)}");
+            await WriteBytes(storage, "/t/_delta_log/00000000000000000001.00000000000000000003.compacted.json", new byte[] { 1 });
+            await WriteBytes(storage, "/t/_delta_log/00000000000000000002.checkpoint.4b6a3c1e-8a52-4f8e-9d33-2c8a5a1f7b10.parquet", new byte[] { 1 });
+
+            var log = await DeltaTransactionReader.ListLog(storage, "t");
+
+            Assert.Equal(3, log.MaxOtherVersion);
+        }
+
+        [Fact]
+        public async Task APublishedCommitWithALongFirstLineIsRecognizedWithoutItsStage()
+        {
+            // The commitInfo line names every created file
+            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{nameof(APublishedCommitWithALongFirstLineIsRecognizedWithoutItsStage)}"));
+            var stageId = Guid.NewGuid().ToString("N");
+            var created = Enumerable.Range(0, 3000).Select(x => $"part-00000-{Guid.NewGuid()}.zstd.parquet").ToList();
+            var actions = new List<DeltaAction>()
+            {
+                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Timestamp = 1, CreatedFiles = created, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
+                Protocol(),
+                Metadata(UserSchema)
+            };
+            var staged = await DeltaTransactionWriter.StageCommit(storage, "t", 0, actions);
+            Assert.True(staged.Bytes.FirstLine()!.Length > 64 * 1024);
+            var pending = new DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length, CheckpointId = 1 };
+            Assert.Equal(PublishOutcome.Published, (await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: false)).Outcome);
+
+            // A restart before the next checkpoint publishes again, the stage is gone and nothing is cached
+            var again = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
+
+            Assert.Equal(PublishOutcome.AlreadyPublished, again.Outcome);
+        }
+
         [Fact]
         public async Task NormalPublishCostsThreeRequests()
         {
             var (storage, staged, pending) = await Stage(nameof(NormalPublishCostsThreeRequests));
             storage.ClearRequests();
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            // The first attempt in the run that staged it, the listing before staging chose the version
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: false);
 
             Assert.Equal(PublishOutcome.Published, result.Outcome);
             Assert.Equal(new[] { $"OpenRead {Target}", $"OpenWrite {Target}", $"Rm /t/_delta_log/{staged.FileName}" }, storage.Requests);
-            Assert.Equal(staged.Bytes, await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged), await ReadBytes(storage, Target));
             Assert.False(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
         }
 
@@ -44,12 +135,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var (storage, staged, pending) = await Stage(nameof(StageIdIsFlushedBeforeTheRestOfTheCommit));
             storage.RecordWritesOf = Target;
 
-            await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: true);
 
             var events = storage.WriteEvents.ToArray();
             Assert.Equal($"W{Prefix(staged).Length}", events[0]);
             Assert.Equal("F", events[1]);
-            Assert.Equal(staged.Bytes.Length - Prefix(staged).Length, events.Skip(2).Where(x => x.StartsWith("W")).Sum(x => int.Parse(x.Substring(1))));
+            Assert.Equal(StagedBytes(staged).Length - Prefix(staged).Length, events.Skip(2).Where(x => x.StartsWith("W")).Sum(x => int.Parse(x.Substring(1))));
         }
 
         [Fact]
@@ -57,22 +148,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var (storage, staged, pending) = await Stage(nameof(PublishAfterARestartReadsTheStage));
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.Published, result.Outcome);
-            Assert.Equal(staged.Bytes, await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged), await ReadBytes(storage, Target));
         }
 
         [Fact]
         public async Task PublishingTwiceIsANoOp()
         {
             var (storage, staged, pending) = await Stage(nameof(PublishingTwiceIsANoOp));
-            await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: true);
 
-            var again = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var again = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.AlreadyPublished, again.Outcome);
-            Assert.Equal(staged.Bytes, await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged), await ReadBytes(storage, Target));
         }
 
         [Theory]
@@ -84,12 +175,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var (storage, staged, pending) = await Stage($"{nameof(TornTargetWithoutTheWholeStageIdFailsClosed)}_{keep}");
             // -1 stops one byte short of the stage id's closing quote
             var length = keep >= 0 ? keep : Prefix(staged).Length - 1;
-            await WriteBytes(storage, Target, staged.Bytes.AsSpan(0, length).ToArray());
+            await WriteBytes(storage, Target, StagedBytes(staged).AsSpan(0, length).ToArray());
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
-            Assert.Equal(staged.Bytes.AsSpan(0, length).ToArray(), await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged).AsSpan(0, length).ToArray(), await ReadBytes(storage, Target));
         }
 
         [Theory]
@@ -99,15 +190,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task TornTargetHoldingTheStageIdIsRepaired(int cut)
         {
             var (storage, staged, pending) = await Stage($"{nameof(TornTargetHoldingTheStageIdIsRepaired)}_{cut}");
-            var firstLine = Array.IndexOf(staged.Bytes, (byte)'\n') + 1;
+            var firstLine = Array.IndexOf(StagedBytes(staged), (byte)'\n') + 1;
             // Right after the stage id, at a line boundary, one byte short of the end
-            var length = cut switch { 0 => Prefix(staged).Length, 1 => firstLine, _ => staged.Bytes.Length - 1 };
-            await WriteBytes(storage, Target, staged.Bytes.AsSpan(0, length).ToArray());
+            var length = cut switch { 0 => Prefix(staged).Length, 1 => firstLine, _ => StagedBytes(staged).Length - 1 };
+            await WriteBytes(storage, Target, StagedBytes(staged).AsSpan(0, length).ToArray());
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.Repaired, result.Outcome);
-            Assert.Equal(staged.Bytes, await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged), await ReadBytes(storage, Target));
             Assert.False(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
         }
 
@@ -115,10 +206,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task FullLengthTargetIsAcknowledgedOnlyWhenItIsOurs()
         {
             var (storage, staged, pending) = await Stage(nameof(FullLengthTargetIsAcknowledgedOnlyWhenItIsOurs));
-            await WriteBytes(storage, Target, staged.Bytes);
+            await WriteBytes(storage, Target, StagedBytes(staged));
             await storage.Rm($"/t/_delta_log/{staged.FileName}");
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.AlreadyPublished, result.Outcome);
         }
@@ -128,11 +219,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var (storage, staged, pending) = await Stage(nameof(MalformedFullLengthTargetWithoutTheStageFailsClosed));
             var prefix = Prefix(staged);
-            var malformed = prefix.Concat(Enumerable.Repeat((byte)'x', staged.Bytes.Length - prefix.Length)).ToArray();
+            var malformed = prefix.Concat(Enumerable.Repeat((byte)'x', StagedBytes(staged).Length - prefix.Length)).ToArray();
             await WriteBytes(storage, Target, malformed);
             await storage.Rm($"/t/_delta_log/{staged.FileName}");
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(malformed, await ReadBytes(storage, Target));
@@ -142,11 +233,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task FullLengthTargetThatDiffersFromTheStageFailsClosed()
         {
             var (storage, staged, pending) = await Stage(nameof(FullLengthTargetThatDiffersFromTheStageFailsClosed));
-            var different = staged.Bytes.ToArray();
+            var different = StagedBytes(staged).ToArray();
             different[^3] = (byte)(different[^3] == (byte)'a' ? 'b' : 'a');
             await WriteBytes(storage, Target, different);
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(different, await ReadBytes(storage, Target));
@@ -157,13 +248,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             // The first line is ours, the rest differs, the damaged stage cannot vouch for it
             var (storage, staged, pending) = await Stage(nameof(FullLengthTargetWithADamagedStageFailsClosed));
-            var different = staged.Bytes.ToArray();
+            var different = StagedBytes(staged).ToArray();
             different[^3] = (byte)(different[^3] == (byte)'a' ? 'b' : 'a');
             await WriteBytes(storage, Target, different);
-            var damaged = staged.Bytes.AsSpan(0, staged.Bytes.Length - 5).ToArray();
+            var damaged = StagedBytes(staged).AsSpan(0, StagedBytes(staged).Length - 5).ToArray();
             await WriteBytes(storage, $"/t/_delta_log/{staged.FileName}", damaged);
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(different, await ReadBytes(storage, Target));
@@ -174,9 +265,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task TruncatedStageFailsClosed()
         {
             var (storage, staged, pending) = await Stage(nameof(TruncatedStageFailsClosed));
-            await WriteBytes(storage, $"/t/_delta_log/{staged.FileName}", staged.Bytes.AsSpan(0, staged.Bytes.Length - 5).ToArray());
+            await WriteBytes(storage, $"/t/_delta_log/{staged.FileName}", StagedBytes(staged).AsSpan(0, StagedBytes(staged).Length - 5).ToArray());
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.False(await storage.Inner.Exists(Target));
@@ -186,11 +277,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task TruncatedStageCannotRepairATornTarget()
         {
             var (storage, staged, pending) = await Stage(nameof(TruncatedStageCannotRepairATornTarget));
-            var torn = staged.Bytes.AsSpan(0, Prefix(staged).Length + 3).ToArray();
+            var torn = StagedBytes(staged).AsSpan(0, Prefix(staged).Length + 3).ToArray();
             await WriteBytes(storage, Target, torn);
-            await WriteBytes(storage, $"/t/_delta_log/{staged.FileName}", staged.Bytes.AsSpan(0, staged.Bytes.Length - 5).ToArray());
+            await WriteBytes(storage, $"/t/_delta_log/{staged.FileName}", StagedBytes(staged).AsSpan(0, StagedBytes(staged).Length - 5).ToArray());
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(torn, await ReadBytes(storage, Target));
@@ -203,7 +294,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WriteCommit(storage, "t", 0, Protocol(), Metadata(UserSchema));
             var foreign = await ReadBytes(storage, Target);
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(foreign, await ReadBytes(storage, Target));
@@ -216,7 +307,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var (storage, staged, pending) = await Stage(nameof(MissingTargetAndMissingStageFailsClosed));
             await storage.Rm($"/t/_delta_log/{staged.FileName}");
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.False(await storage.Inner.Exists(Target));
@@ -227,10 +318,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var (storage, staged, pending) = await StageLegacy(nameof(LegacyPendingPublishesAMissingTarget));
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.Published, result.Outcome);
-            Assert.Equal(staged.Bytes, await ReadBytes(storage, Target));
+            Assert.Equal(StagedBytes(staged), await ReadBytes(storage, Target));
             Assert.False(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
         }
 
@@ -238,9 +329,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task LegacyPendingAcknowledgesAnIdenticalTarget()
         {
             var (storage, staged, pending) = await StageLegacy(nameof(LegacyPendingAcknowledgesAnIdenticalTarget));
-            await WriteBytes(storage, Target, staged.Bytes);
+            await WriteBytes(storage, Target, StagedBytes(staged));
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.AlreadyPublished, result.Outcome);
             Assert.False(await storage.Inner.Exists($"/t/_delta_log/{staged.FileName}"));
@@ -253,7 +344,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WriteCommit(storage, "t", 0, Protocol(), Metadata(UserSchema), new DeltaAction() { Add = new DeltaAddAction() { Path = "foreign.parquet", Size = 1, DataChange = true, PartitionValues = new Dictionary<string, string>() } });
             var foreign = await ReadBytes(storage, Target);
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
             Assert.Equal(foreign, await ReadBytes(storage, Target));
@@ -264,10 +355,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             // The stage is removed right after the copy, before the pending reset is checkpointed
             var (storage, staged, pending) = await StageLegacy(nameof(LegacyPendingWithoutStageAcknowledgesTheTarget));
-            await WriteBytes(storage, Target, staged.Bytes);
+            await WriteBytes(storage, Target, StagedBytes(staged));
             await storage.Rm($"/t/_delta_log/{staged.FileName}");
 
-            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null);
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", pending, null, checkSuccessor: true);
 
             Assert.Equal(PublishOutcome.AlreadyPublished, result.Outcome);
         }

@@ -357,8 +357,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
 
             using var commitData = await storage.OpenRead(new IOPath(deltaLogDir, fileName));
+            // Removed between the check and the read
+            if (commitData == null)
+            {
+                return null;
+            }
 
-            using var textReader = new StreamReader(commitData!);
+            using var textReader = new StreamReader(commitData);
 
             var line = await textReader.ReadLineAsync();
 
@@ -475,6 +480,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return log.Commits.Values.Concat(log.Checkpoints).OrderBy(x => x.Version).ThenBy(x => x.IsCheckpoint ? 0 : 1).ToList();
         }
 
+        // A log compaction {start}.{end}.compacted.json covers up to its second version
+        private static long CoveredVersion(string name, long version)
+        {
+            if (name.Length > 41 && name[20] == '.' && long.TryParse(name.AsSpan(21, 20), out var end))
+            {
+                return Math.Max(version, end);
+            }
+            return version;
+        }
+
         internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
         {
             var log = new LogListing();
@@ -498,6 +513,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     // UUID-named or multi-part checkpoints, log compactions and checksums still prove the table exists
                     log.HasOtherVersionFiles = true;
+                    log.MaxOtherVersion = Math.Max(log.MaxOtherVersion, CoveredVersion(file.Name, version));
                     continue;
                 }
                 log.Head = Math.Max(log.Head, version);
@@ -542,6 +558,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             public long Head { get; set; } = -1;
 
             public bool HasOtherVersionFiles { get; set; }
+
+            // The highest version the other version files cover, -1 without any
+            public long MaxOtherVersion { get; set; } = -1;
         }
     }
 }

@@ -64,8 +64,8 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         /// <summary>
         /// Gets or sets the memory, in bytes, all Delta Lake sinks in the process may use for the statistics they skip files with.
-        /// The first sink that starts fixes the value for the process. Every table gets its first column before any table gets more,
-        /// a table that does not fit keeps its statistics in spillable state instead.
+        /// The first sink that reads its table fixes the value for the process. A table's first column has priority: tables holding more
+        /// columns give them up at their next checkpoint, and the table that did not fit keeps its statistics in spillable state until the stream restarts.
         /// </summary>
         public long PruningMemoryBytes { get; set; } = 1024L * 1024 * 1024;
 

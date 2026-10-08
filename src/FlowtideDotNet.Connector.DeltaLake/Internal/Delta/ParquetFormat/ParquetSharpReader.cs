@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path}");
+                throw new DeltaFileNotFoundException(path);
             }
 
             ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path}");
+                throw new DeltaFileNotFoundException(path);
             }
 
             using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
@@ -264,7 +264,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path}");
+                throw new DeltaFileNotFoundException(path);
             }
 
             using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
@@ -385,7 +385,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             if (stream == null)
             {
-                throw new Exception($"File not found: {path}");
+                throw new DeltaFileNotFoundException(path);
             }
 
             using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);

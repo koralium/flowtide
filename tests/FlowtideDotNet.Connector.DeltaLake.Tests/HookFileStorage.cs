@@ -25,7 +25,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         private readonly IFileStorage _inner;
         private readonly ConcurrentQueue<string> _requests = new ConcurrentQueue<string>();
-        private readonly SemaphoreSlim _readLock = new SemaphoreSlim(1, 1);
+        // Shared by every wrapper, two wrappers over one in-memory store would get the same stream
+        private static readonly SemaphoreSlim s_readLock = new SemaphoreSlim(1, 1);
+        private static readonly AsyncLocal<bool> s_unrecorded = new AsyncLocal<bool>();
 
         public HookFileStorage(IFileStorage inner)
         {
@@ -40,6 +42,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public void ClearRequests()
         {
             _requests.Clear();
+        }
+
+        // The test's own requests inside the scope are not recorded, only storage calls belong in it
+        public IDisposable Unrecorded()
+        {
+            s_unrecorded.Value = true;
+            return new UnrecordedScope();
+        }
+
+        private sealed class UnrecordedScope : IDisposable
+        {
+            public void Dispose()
+            {
+                s_unrecorded.Value = false;
+            }
         }
 
         // The next write of a path ending with this keeps only TearAfterBytes bytes and crashes
@@ -57,9 +74,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Runs before a request, with the verb and the path
         public Func<string, IOPath, Task>? Before { get; set; }
 
+        // Paths this wrapper does not show, as if they were not written yet
+        public Func<IOPath, bool>? Hidden { get; set; }
+
         private async Task Record(string verb, IOPath? path)
         {
-            _requests.Enqueue($"{verb} {path?.Full}");
+            if (!s_unrecorded.Value)
+            {
+                _requests.Enqueue($"{verb} {path?.Full}");
+            }
             if (Before != null && path != null)
             {
                 await Before(verb, path);
@@ -106,13 +129,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task<IReadOnlyCollection<IOEntry>> Ls(IOPath? path = null, bool recurse = false, CancellationToken cancellationToken = default)
         {
             await Record("Ls", path);
-            return await _inner.Ls(path, recurse, cancellationToken);
+            var entries = await _inner.Ls(path, recurse, cancellationToken);
+            var hidden = Hidden;
+            return hidden == null ? entries : entries.Where(x => !hidden(x.Path)).ToList();
         }
 
         public async Task<Stream?> OpenRead(IOPath path, CancellationToken cancellationToken = default)
         {
             await Record("OpenRead", path);
-            await _readLock.WaitAsync(cancellationToken);
+            if (Hidden?.Invoke(path) == true)
+            {
+                return null;
+            }
+            await s_readLock.WaitAsync(cancellationToken);
             try
             {
                 using var stream = await _inner.OpenRead(path, cancellationToken);
@@ -127,7 +156,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             finally
             {
-                _readLock.Release();
+                s_readLock.Release();
             }
         }
 
@@ -150,6 +179,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task<bool> Exists(IOPath path, CancellationToken cancellationToken = default)
         {
             await Record("Exists", path);
+            if (Hidden?.Invoke(path) == true)
+            {
+                return false;
+            }
             return await _inner.Exists(path, cancellationToken);
         }
 

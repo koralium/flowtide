@@ -155,7 +155,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
 
             // The legacy writer threw when it could not publish
-            var published = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, new FlowtideDotNet.Connector.DeltaLake.Internal.DeltaLakePendingCommit() { Version = pendingCommit.Version, StagedFile = pendingCommit.StagedFile }, null);
+            var published = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, new FlowtideDotNet.Connector.DeltaLake.Internal.DeltaLakePendingCommit() { Version = pendingCommit.Version, StagedFile = pendingCommit.StagedFile }, null, checkSuccessor: true);
             if (published.Outcome == PublishOutcome.FailedClosed)
             {
                 throw new InvalidOperationException(published.Reason);

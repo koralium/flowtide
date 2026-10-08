@@ -20,6 +20,9 @@ using KeyContainer = FlowtideDotNet.Storage.Tree.PrimitiveListKeyContainer<int>;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 {
+    /// <param name="ClearTime">Set when the slice finished the migration and cleared the old generation.</param>
+    internal readonly record struct MigrationWork(int Records, long Bytes, TimeSpan SliceTime, TimeSpan? ClearTime);
+
     /// <summary>
     /// An uncommitted tree keyed by file id in two fixed generations.
     /// An uncommitted tree keeps bookkeeping for every page it ever touched, so after enough churn the live records
@@ -72,11 +75,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         public long RecordsMigrated { get; private set; }
 
-        public TimeSpan LastClearTime { get; private set; }
-
-        public TimeSpan LastSliceTime { get; private set; }
+        public long BytesMigrated { get; private set; }
 
         public int Rotations { get; private set; }
+
+        // Migrations that copied everything and cleared the old generation
+        public int Completed { get; private set; }
 
         public async Task Upsert(int id, V value)
         {
@@ -203,14 +207,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         }
 
         /// <summary>
-        /// Copies records into the current generation until either budget is reached, a key already there is newer.
-        /// The old generation is cleared once it is copied.
+        /// Copies records into the current generation within both budgets, a key already there is newer.
+        /// With <paramref name="first"/> a record larger than the byte budget still moves, alone. The old generation is cleared once it is copied.
         /// </summary>
-        public async Task MigrateSlice(int maxRecords, long maxBytes)
+        public async Task<MigrationWork> MigrateSlice(int maxRecords, long maxBytes, bool first = true)
         {
-            if (!_migrating)
+            if (!_migrating || maxRecords <= 0 || maxBytes <= 0)
             {
-                return;
+                return default;
             }
             var started = Stopwatch.GetTimestamp();
             // Copied out first, an iterator must not be held across mutations
@@ -219,29 +223,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             var more = false;
             await foreach (var entry in Entries(Old, _cursor))
             {
-                if (slice.Count >= maxRecords || bytes >= maxBytes)
+                var size = _sizeOf(entry.Value);
+                var fits = slice.Count < maxRecords && bytes + size <= maxBytes;
+                if (!fits && !(first && slice.Count == 0))
                 {
                     more = true;
                     break;
                 }
                 slice.Add(entry);
-                bytes += _sizeOf(entry.Value);
+                bytes += size;
             }
             foreach (var (id, value) in slice)
             {
                 await Current.RMWNoResult(id, value, static (input, current, exists) => exists ? (current, GenericWriteOperation.None) : (input, GenericWriteOperation.Upsert));
             }
             RecordsMigrated += slice.Count;
-            LastSliceTime = Stopwatch.GetElapsedTime(started);
+            BytesMigrated += bytes;
+            var sliceTime = Stopwatch.GetElapsedTime(started);
             if (more)
             {
-                _cursor = slice[^1].Id + 1;
-                return;
+                if (slice.Count > 0)
+                {
+                    _cursor = slice[^1].Id + 1;
+                }
+                return new MigrationWork(slice.Count, bytes, sliceTime, null);
             }
-            var stopwatch = Stopwatch.StartNew();
+            var clearStarted = Stopwatch.GetTimestamp();
             await Old.Clear();
-            LastClearTime = stopwatch.Elapsed;
             _migrating = false;
+            Completed++;
+            return new MigrationWork(slice.Count, bytes, sliceTime, Stopwatch.GetElapsedTime(clearStarted));
         }
 
         public async Task Clear()

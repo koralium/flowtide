@@ -50,6 +50,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private bool _capacityWarned;
         // Tree mode lasts for the run, a later bootstrap does not take the arrays back
         private bool _treeModeForRun;
+        // While both trees migrate the first in line alternates, a cold tree that keeps rotating would starve the bounds
+        private bool _boundsFirst;
 
         private DeltaSinkCatalog(DeltaLakeOptions options, IOPath tablePath, IReadOnlyList<string> writtenColumns, IMemoryAllocator memoryAllocator, ILogger logger, RotatingTree<DeltaFileRecord> cold, RotatingTree<byte[]> bounds)
         {
@@ -95,9 +97,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         public long RecordsMigrated => _cold.RecordsMigrated + _bounds.RecordsMigrated;
 
-        public TimeSpan LastClearTime => _cold.LastClearTime > _bounds.LastClearTime ? _cold.LastClearTime : _bounds.LastClearTime;
+        public long BytesMigrated => _cold.BytesMigrated + _bounds.BytesMigrated;
 
-        public TimeSpan LastSliceTime => _cold.LastSliceTime > _bounds.LastSliceTime ? _cold.LastSliceTime : _bounds.LastSliceTime;
+        internal RotatingTree<DeltaFileRecord> ColdTree => _cold;
+
+        internal RotatingTree<byte[]> BoundsTree => _bounds;
+
+        // Both trees' slices of the latest Maintain that migrated
+        public TimeSpan LastSliceTime { get; private set; }
+
+        // The Clears of the latest Maintain that finished a migration
+        public TimeSpan LastClearTime { get; private set; }
 
         private PruningReservation Reservation => _options.ReservationOverride ?? PruningReservation.Shared;
 
@@ -169,6 +179,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         {
             _layout = PruningLayout.Create(schema, _writtenColumns, _options.StatsPruningColumns);
             _statisticsOptions = StatisticsOptions(schema);
+            LatchTreeMode();
             _projection?.Dispose();
             _projection = PruningProjection.Create(_memoryAllocator, Reservation, _options.PruningMemoryBytes, _bounds, _layout, expectedFiles, _treeModeForRun, out var capacityMismatch);
             if (capacityMismatch && !_capacityWarned)
@@ -176,7 +187,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 _capacityWarned = true;
                 _logger.LogWarning("PruningMemoryBytes {requested} differs from the process wide pruning memory {capacity} fixed by the first Delta sink, the first value is used", _options.PruningMemoryBytes, Reservation.Capacity);
             }
-            if (_projection.TreeMode && !_treeModeForRun)
+            LatchTreeMode();
+        }
+
+        // Before any projection is replaced, growth can move it to the tree at any Set
+        private void LatchTreeMode()
+        {
+            if (_projection != null && _projection.TreeMode && !_treeModeForRun)
             {
                 _treeModeForRun = true;
                 _logger.LogWarning("Delta table {table} keeps its pruning bounds in a spilled tree, the process wide pruning memory is used up", _tablePath.Full);
@@ -204,7 +221,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         /// <summary>
         /// An overwrite replaces every file, its new files take ids from the start.
-        /// Nothing reads the old ids before the overwrite is applied, a failed commit restarts the sink.
+        /// The old ids are never read again: a pending commit, also a halted one, blocks the next SaveData, its publication removes every file
+        /// before a new id is taken, and a thrown failure opens a new catalog.
         /// </summary>
         public void RestartIds()
         {
@@ -303,6 +321,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 await _projection!.Set(id, row);
                 _liveFiles++;
             }
+            LatchTreeMode();
             _head = overlay.Version;
             _adoptedAt = overlay.AdoptedAt;
         }
@@ -312,13 +331,60 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         /// </summary>
         public async Task Maintain()
         {
-            _treeModeForRun |= _projection?.TreeMode == true;
+            LatchTreeMode();
+            var boundsInTree = _projection != null && _projection.TreeMode;
             _cold.RotateIfDue(_liveFiles, _options.CatalogRotationFloor);
-            await _cold.MigrateSlice(_options.CatalogMigrationSlice, _options.CatalogMigrationBytes);
-            if (_projection != null && _projection.TreeMode)
+            if (boundsInTree)
             {
                 _bounds.RotateIfDue(_liveFiles, _options.CatalogRotationFloor);
-                await _bounds.MigrateSlice(_options.CatalogMigrationSlice, _options.CatalogMigrationBytes);
+            }
+
+            var records = _options.CatalogMigrationSlice;
+            var bytes = _options.CatalogMigrationBytes;
+            var sliceTime = TimeSpan.Zero;
+            var clearTime = TimeSpan.Zero;
+            var migrated = false;
+            var cleared = false;
+            void Account(MigrationWork work)
+            {
+                records -= work.Records;
+                bytes -= work.Bytes;
+                // A slice that read a record and refused it still took time
+                sliceTime += work.SliceTime;
+                migrated |= work.Records > 0;
+                if (work.ClearTime.HasValue)
+                {
+                    cleared = true;
+                    clearTime += work.ClearTime.Value;
+                }
+            }
+            // One budget per SaveData, the second tree in line gets what the first left
+            var boundsFirst = false;
+            if (boundsInTree && _cold.Migrating && _bounds.Migrating)
+            {
+                _boundsFirst = !_boundsFirst;
+                boundsFirst = _boundsFirst;
+            }
+            if (boundsFirst)
+            {
+                Account(await _bounds.MigrateSlice(records, bytes));
+                Account(await _cold.MigrateSlice(records, bytes, first: !migrated));
+            }
+            else
+            {
+                Account(await _cold.MigrateSlice(records, bytes));
+                if (boundsInTree)
+                {
+                    Account(await _bounds.MigrateSlice(records, bytes, first: !migrated));
+                }
+            }
+            if (migrated)
+            {
+                LastSliceTime = sliceTime;
+            }
+            if (cleared)
+            {
+                LastClearTime = clearTime;
             }
         }
 
@@ -329,6 +395,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         private async Task ResetFiles()
         {
+            LatchTreeMode();
             await _cold.Clear();
             await _bounds.Clear();
             _freeIds.Clear();

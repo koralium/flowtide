@@ -82,11 +82,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         // True while the committed temporary tree may hold rows that wait for a publication
         private IObjectState<bool>? _bufferDurable;
         // The staged bytes and catalog changes of this run's pending commit
-        private byte[]? _stagedBytes;
+        private CommitBytes? _stagedBytes;
         private CatalogOverlay? _stagedOverlay;
         private DeltaSinkCatalog? _catalog;
         private ProbeBatch? _probes;
         private bool _halted;
+        private string? _haltReason;
         private bool _gaugesCreated;
         private List<string> _createdFiles = new List<string>();
         private readonly HashSet<string> _checkpointSkipReasons = new HashSet<string>();
@@ -159,6 +160,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
                 Metrics.CreateObservableGauge("delta_catalog_rotations", () => _catalog?.Rotations ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_records_migrated", () => _catalog?.RecordsMigrated ?? 0);
+                Metrics.CreateObservableGauge("delta_catalog_bytes_migrated", () => _catalog?.BytesMigrated ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_last_slice_ms", () => _catalog?.LastSliceTime.TotalMilliseconds ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_last_clear_ms", () => _catalog?.LastClearTime.TotalMilliseconds ?? 0);
             }
@@ -286,7 +288,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 return;
             }
 
-            var result = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, pendingCommit, _stagedBytes);
+            // The first attempt of a commit staged in this run follows the listing that chose its version
+            var checkSuccessor = _stagedBytes == null || _halted;
+            var result = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, pendingCommit, _stagedBytes, checkSuccessor);
             if (result.Outcome == PublishOutcome.FailedClosed)
             {
                 Halt(result.Reason!);
@@ -347,13 +351,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         // The sink keeps buffering rows, a later checkpoint publishes once the conflict is gone
         private void Halt(string reason)
         {
-            if (_halted)
+            // Logged again only when the reason changes
+            if (_halted && reason == _haltReason)
             {
                 return;
             }
             _halted = true;
+            _haltReason = reason;
             SetHealth(false);
-            Logger.LogError("Delta table {table} stopped publishing: {reason}. Rows are kept until the commit can be published, remove the conflicting commit file or reset the stream state", _tableName, reason);
+            Logger.LogError("Delta table {table} stopped publishing: {reason}. Rows are kept and publishing is tried again at every checkpoint. Remove the conflicting commit file while no later version exists, or reset the stream state, which writes every row again: INSERT OVERWRITE replaces the table, INSERT INTO appends to it", _tableName, reason);
         }
 
         private DeltaParquetCodec ResolveCodec(IReadOnlyDictionary<string, string>? configuration)

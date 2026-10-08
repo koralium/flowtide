@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
     /// <summary>
     /// The pruning rows of the live files, a scan reads no cold record.
     /// Rows sit in an array indexed by file id under the process-wide reservation, or in a spillable tree when
-    /// even the first column did not fit. The tree mode lasts until the next bootstrap.
+    /// even the first column did not fit. The catalog keeps tree mode for the run, also across a rebootstrap.
     /// </summary>
     internal sealed class PruningProjection : IDisposable
     {
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             if (_fullLayout.Columns.Count > 1 && (long)capacity * _fullLayout.RowSize <= Array.MaxLength && _reservation.TryCharge(_grant, (long)capacity * (_fullLayout.RowSize - first.RowSize), firstColumn: false))
             {
                 _layout = _fullLayout;
-                _reservation.SetExtraColumns(_grant, true);
+                _reservation.SetExtraBytes(_grant, (long)capacity * (_fullLayout.RowSize - first.RowSize));
             }
             _capacity = capacity;
             _rows = _memoryAllocator.AllocateMemory(capacity * _layout.RowSize);
@@ -210,6 +210,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             _rows.Span.Slice((int)oldBytes).Clear();
             _capacity = capacity;
             _reservation.Release(_grant, oldBytes);
+            if (_layout.Columns.Count > 1)
+            {
+                _reservation.SetExtraBytes(_grant, (long)capacity * (_layout.RowSize - _fullLayout.Take(1).RowSize));
+            }
             return true;
         }
 
@@ -237,15 +241,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             _memoryAllocator.Realloc(ref _rows, _capacity * first.RowSize);
             _layout = first;
             _reservation.Release(_grant, (long)_capacity * (oldSize - first.RowSize));
-            _reservation.SetExtraColumns(_grant, false);
+            _reservation.SetExtraBytes(_grant, 0);
         }
 
-        // Once per run, the rows keep the columns the arrays had
+        // Once per run, one row at a time from the unchanged array, the rows keep the columns the arrays had
         private async Task MoveToTree()
         {
-            foreach (var (id, row) in LiveRows())
+            for (int id = 0; id < _capacity; id++)
             {
-                await _tree.Upsert(id, row);
+                var row = CopyLiveRow(id);
+                if (row != null)
+                {
+                    await _tree.Upsert(id, row);
+                }
             }
             _memoryAllocator.Free(ref _rows);
             _reservation.Release(_grant, _grant.Charged);
@@ -253,11 +261,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             _treeMode = true;
         }
 
-        private List<(int Id, byte[] Row)> LiveRows()
+        private byte[]? CopyLiveRow(int id)
         {
-            var rows = new List<(int, byte[])>();
-            ScanArray((id, row) => rows.Add((id, row.ToArray())));
-            return rows;
+            var row = _rows.Span.Slice(id * _layout.RowSize, _layout.RowSize);
+            return (row[0] & Live) == 0 ? null : row.ToArray();
         }
 
         public void Dispose()

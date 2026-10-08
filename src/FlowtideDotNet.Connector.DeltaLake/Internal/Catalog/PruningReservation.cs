@@ -14,8 +14,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 {
     /// <summary>
     /// The memory the pruning arrays of every Delta sink in the process may use.
-    /// Every table gets its first pruning column before any table keeps more: a first column that does not fit
-    /// asks the tables holding more to give them up. Bytes stay charged until their owner frees them.
+    /// A table's first pruning column has priority: a first column that does not fit asks the tables holding more
+    /// to give them up at their next checkpoint. The first registration fixes the capacity, bytes stay charged until their owner frees them.
     /// </summary>
     internal sealed class PruningReservation
     {
@@ -88,10 +88,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 }
                 if (firstColumn)
                 {
-                    // Largest first, applied by each owner at its next checkpoint
-                    foreach (var other in _grants.Where(x => x != grant && x.ExtraColumns && !x.RevokeRequested).OrderByDescending(x => x.Charged))
+                    // Largest first until the shortfall is covered, applied by each owner at its next checkpoint
+                    var shortfall = _charged + bytes - (_capacity ?? 0) - _grants.Where(x => x.RevokeRequested).Sum(x => x.ExtraBytes);
+                    foreach (var other in _grants.Where(x => x != grant && x.ExtraBytes > 0 && !x.RevokeRequested).OrderByDescending(x => x.ExtraBytes))
                     {
+                        if (shortfall <= 0)
+                        {
+                            break;
+                        }
                         other.RevokeRequested = true;
+                        shortfall -= other.ExtraBytes;
                     }
                 }
                 return false;
@@ -112,11 +118,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             }
         }
 
-        public void SetExtraColumns(PruningGrant grant, bool extraColumns)
+        public void SetExtraBytes(PruningGrant grant, long extraBytes)
         {
             lock (_lock)
             {
-                grant.ExtraColumns = extraColumns;
+                grant.ExtraBytes = extraBytes;
             }
         }
 
@@ -138,8 +144,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
     {
         public long Charged { get; internal set; }
 
-        // More than the first pruning column is held in arrays
-        public bool ExtraColumns { get; internal set; }
+        // What the columns after the first hold, a revocation frees them
+        public long ExtraBytes { get; internal set; }
 
         public bool RevokeRequested { get; internal set; }
     }
