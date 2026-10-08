@@ -156,6 +156,27 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         }
 
         [Fact]
+        public void SubstreamWithoutWriteReportsGlobalViewReads()
+        {
+            const string sql = @"
+                CREATE TABLE orders (orderkey int, userkey int);
+                CREATE TABLE users (userkey int, username string);
+                CREATE VIEW active_users AS SELECT userkey, username FROM users WHERE username != 'x';
+                INSERT INTO output
+                SELECT o.orderkey, u.username FROM orders o JOIN active_users u ON o.userkey = u.userkey;
+                ";
+            var distributed = new PlanOptimizerSettings()
+            {
+                DistributedPlanOptions = new DistributedPlanOptions() { SubstreamCount = 2 }
+            };
+
+            // Substream_1 scatters the global view, writes nothing.
+            var producer = LineageTestHelper.ExtractWithSql(sql, distributed, "substream_1");
+            Assert.Empty(producer.Outputs);
+            Assert.Equal(["users"], producer.Inputs.Select(x => x.Key));
+        }
+
+        [Fact]
         public void GetTimestampReadIsSkipped()
         {
             // The real manager throws for the timestamp read.

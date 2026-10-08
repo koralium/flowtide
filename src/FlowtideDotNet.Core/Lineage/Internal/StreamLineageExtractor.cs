@@ -156,12 +156,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 return true;
             }
             var rootSubstream = index.GetRootSubstream(relationId);
-            if (rootSubstream != null)
-            {
-                return rootSubstream == substreamScope;
-            }
-            // Global writes run everywhere, other globals only when reached.
-            return LineagePlanIndex.Unwrap(index.Relations[relationId]) is WriteRelation;
+            // Globals are built in every substream.
+            return rootSubstream == null || rootSubstream == substreamScope;
         }
 
         private static void AddReads(

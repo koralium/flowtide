@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             }
         }
 
-        // A global relation is built by every substream that references it.
+        // A global relation is built in every substream.
         private static HashSet<CheckRelation> GetReplicatedChecks(LineagePlanIndex index)
         {
             var collector = new CheckCollector();

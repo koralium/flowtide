@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
         // Writes downstream of the check, in plan order.
         public required IReadOnlyList<StreamLineageCheckTarget> Targets { get; init; }
 
-        // In a global relation that every referencing substream builds, so the copies see the same rows.
+        // In a global relation every substream builds, copies see the same rows.
         public bool Replicated { get; init; }
     }
 }
