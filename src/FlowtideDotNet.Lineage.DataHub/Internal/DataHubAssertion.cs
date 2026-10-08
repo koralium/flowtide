@@ -19,7 +19,8 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
 
     internal sealed record DataHubCheckPart(long Generation, string CheckId, bool Replicated);
 
-    internal sealed record DataHubAssertionResult(CheckState State, long ActiveIssues, long FailingRows, long TimestampMillis);
+    // Priority is published with the result, so an obsolete snapshot serves the current severity.
+    internal sealed record DataHubAssertionResult(CheckState State, long ActiveIssues, long FailingRows, long TimestampMillis, DataHubIncidentPriority Priority = DataHubIncidentPriority.Medium);
 
     // One assertion per check and target dataset, its parts are the check ids of every substream and partition.
     internal sealed class DataHubAssertion
@@ -46,6 +47,9 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
         public string Namespace { get; }
 
         public string TableName { get; }
+
+        // Severity of its failures and priority of its incident.
+        public DataHubIncidentPriority Priority { get; set; } = DataHubIncidentPriority.Medium;
 
         public List<DataHubCheckPart> Parts { get; } = new List<DataHubCheckPart>();
 

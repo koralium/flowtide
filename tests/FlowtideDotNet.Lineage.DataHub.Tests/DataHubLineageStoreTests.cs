@@ -506,13 +506,17 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
 
             var lineages = FineGrainedLineages(store.GetSnapshot(), JobT);
 
-            // Output column order, sorted upstreams, sorted distinct transformations.
-            Assert.Equal([SchemaField(DatasetT, "total"), SchemaField(DatasetT, "key")], lineages.Select(x => Strings(x.GetProperty("downstreams")).Single()));
+            // Output column order, sorted upstreams, sorted distinct transformations, then the group key for every column.
+            Assert.Equal(3, lineages.Count);
+            Assert.Equal([SchemaField(DatasetT, "total"), SchemaField(DatasetT, "key")], lineages.Take(2).Select(x => Strings(x.GetProperty("downstreams")).Single()));
             Assert.Equal([SchemaField(DatasetS, "a"), SchemaField(DatasetS, "b")], Strings(lineages[0].GetProperty("upstreams")));
             Assert.Equal("DIRECT:AGGREGATION,INDIRECT:CONDITIONAL", lineages[0].GetProperty("transformOperation").GetString());
             Assert.Equal("DIRECT:IDENTITY", lineages[1].GetProperty("transformOperation").GetString());
+            Assert.All(lineages.Take(2), x => Assert.Equal("FIELD", x.GetProperty("downstreamType").GetString()));
             Assert.All(lineages, x => Assert.Equal("FIELD_SET", x.GetProperty("upstreamType").GetString()));
-            Assert.All(lineages, x => Assert.Equal("FIELD", x.GetProperty("downstreamType").GetString()));
+            Assert.Equal(
+                Json($"{{'upstreamType':'FIELD_SET','upstreams':['{SchemaField(DatasetS, "c")}'],'downstreamType':'FIELD_SET','downstreams':['{SchemaField(DatasetT, "key")}','{SchemaField(DatasetT, "total")}'],'transformOperation':'INDIRECT:GROUP_BY','confidenceScore':1}}"),
+                lineages[2].GetRawText());
         }
 
         [Fact]
@@ -545,6 +549,57 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             var inputs = Strings(Aspect(store.GetSnapshot(), JobT, "dataJobInputOutput").GetProperty("inputDatasets"));
 
             Assert.Equal([DatasetS, "urn:li:dataset:(urn:li:dataPlatform:postgres,db.public.filter,PROD)"], inputs);
+            // Column impact analysis follows only column edges, so the filter column needs one to every written column.
+            var filter = Assert.Single(FineGrainedLineages(store.GetSnapshot(), JobT), x => x.GetProperty("downstreamType").GetString() == "FIELD_SET");
+            Assert.Equal([SchemaField("urn:li:dataset:(urn:li:dataPlatform:postgres,db.public.filter,PROD)", "f")], Strings(filter.GetProperty("upstreams")));
+            Assert.Equal([SchemaField(DatasetT, "x")], Strings(filter.GetProperty("downstreams")));
+            Assert.Equal("INDIRECT:FILTER", filter.GetProperty("transformOperation").GetString());
+        }
+
+        [Fact]
+        public void JoinKeysOfRealSqlReachEveryWrittenColumn()
+        {
+            var store = Store(o => o.MapNamespace("mssql", m => m.Database = "shop"));
+            store.Register(ExtractWithSql(@"
+                CREATE TABLE orders (userkey int, amount int);
+                CREATE TABLE users (userkey int, name string);
+                INSERT INTO output
+                SELECT o.amount, u.name FROM orders o INNER JOIN users u ON o.userkey = u.userkey;", "mssql"), "a");
+
+            const string job = "urn:li:dataJob:(urn:li:dataFlow:(flowtide,a,PROD),mssql.shop.dbo.output)";
+            const string orders = "urn:li:dataset:(urn:li:dataPlatform:mssql,shop.dbo.orders,PROD)";
+            const string users = "urn:li:dataset:(urn:li:dataPlatform:mssql,shop.dbo.users,PROD)";
+            const string output = "urn:li:dataset:(urn:li:dataPlatform:mssql,shop.dbo.output,PROD)";
+            var join = Assert.Single(FineGrainedLineages(store.GetSnapshot(), job), x => x.GetProperty("downstreamType").GetString() == "FIELD_SET");
+
+            Assert.Equal([SchemaField(orders, "userkey"), SchemaField(users, "userkey")], Strings(join.GetProperty("upstreams")));
+            Assert.Equal([SchemaField(output, "amount"), SchemaField(output, "name")], Strings(join.GetProperty("downstreams")));
+            Assert.Equal("INDIRECT:JOIN", join.GetProperty("transformOperation").GetString());
+            // The upstream schemas carry the join keys, DataHub draws an edge only between known fields.
+            Assert.Contains("userkey", FieldPaths(store.GetSnapshot(), users));
+        }
+
+        [Fact]
+        public void PartitionCopiesShareTheirDatasetLevelEntry()
+        {
+            var store = Store();
+            foreach (var substream in new[] { "sub0", "sub1" })
+            {
+                store.Register(Snapshot(
+                    [Input("postgres", "s", [Col("x"), Col("k")])],
+                    [Output("postgres", "t", [Col("x")], new() { ["x"] = [Identity("postgres", "s", "x")] }, dataset: [Indirect("postgres", "s", "k", LineageTransformationSubtype.Join)], upstream: ["s"])],
+                    substream), "a");
+            }
+            store.Register(Snapshot(
+                [Input("postgres", "s", [Col("y"), Col("k")])],
+                [Output("postgres", "t", [Col("y")], new() { ["y"] = [Identity("postgres", "s", "y")] }, dataset: [Indirect("postgres", "s", "k", LineageTransformationSubtype.Join)], upstream: ["s"])],
+                "sub2"), "a");
+
+            var entries = FineGrainedLineages(store.GetSnapshot(), JobT).Where(x => x.GetProperty("downstreamType").GetString() == "FIELD_SET").ToList();
+
+            // A key of one substream never links to a column only another substream writes.
+            Assert.Equal([[SchemaField(DatasetT, "x")], [SchemaField(DatasetT, "y")]], entries.Select(x => Strings(x.GetProperty("downstreams"))));
+            Assert.All(entries, x => Assert.Equal([SchemaField(DatasetS, "k")], Strings(x.GetProperty("upstreams"))));
         }
 
         [Fact]

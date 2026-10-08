@@ -65,12 +65,12 @@ namespace FlowtideDotNet.Lineage.DataHub
         public bool RaiseIncidents { get; set; }
 
         /// <summary>
-        /// Priority of raised incidents.
+        /// Priority of raised incidents, and severity of failing checks with critical and high both high.
         /// </summary>
         public DataHubIncidentPriority IncidentPriority { get; set; } = DataHubIncidentPriority.Medium;
 
         /// <summary>
-        /// Overrides the priority of a check's incident, null keeps <see cref="IncidentPriority"/>.
+        /// Overrides the priority and severity of a check, null keeps <see cref="IncidentPriority"/>.
         /// </summary>
         public Func<DataHubIncidentContext, DataHubIncidentPriority?>? IncidentPriorityResolver { get; set; }
 

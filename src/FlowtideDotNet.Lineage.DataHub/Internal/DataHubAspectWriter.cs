@@ -19,7 +19,8 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Lineage.DataHub.Internal
 {
-    internal sealed record DataHubFineGrainedLineage(IReadOnlyList<string> Upstreams, string Downstream, string? TransformOperation);
+    // A field set downstream for columns that affect every written column, such as join keys.
+    internal sealed record DataHubFineGrainedLineage(IReadOnlyList<string> Upstreams, IReadOnlyList<string> Downstreams, bool DownstreamFieldSet, string? TransformOperation);
 
     internal sealed record DataHubSchemaField(string FieldPath, SubstraitBaseType Type);
 
@@ -151,8 +152,8 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                     writer.WriteStartObject();
                     writer.WriteString("upstreamType", "FIELD_SET");
                     WriteStringArray(writer, "upstreams", lineage.Upstreams);
-                    writer.WriteString("downstreamType", "FIELD");
-                    WriteStringArray(writer, "downstreams", [lineage.Downstream]);
+                    writer.WriteString("downstreamType", lineage.DownstreamFieldSet ? "FIELD_SET" : "FIELD");
+                    WriteStringArray(writer, "downstreams", lineage.Downstreams);
                     if (lineage.TransformOperation != null)
                     {
                         writer.WriteString("transformOperation", lineage.TransformOperation);
@@ -227,6 +228,16 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             writer.WriteString("status", "COMPLETE");
             writer.WriteStartObject("result");
             writer.WriteString("type", result.State == CheckState.Failed ? "FAILURE" : "SUCCESS");
+            // DataHub has three severities, critical and high incidents are both high.
+            if (result.State == CheckState.Failed)
+            {
+                writer.WriteString("severity", result.Priority switch
+                {
+                    DataHubIncidentPriority.Critical or DataHubIncidentPriority.High => "HIGH",
+                    DataHubIncidentPriority.Medium => "MEDIUM",
+                    _ => "LOW"
+                });
+            }
             writer.WriteNumber("unexpectedCount", result.FailingRows);
             writer.WriteStartObject("nativeResults");
             writer.WriteString("activeIssues", result.ActiveIssues.ToString(CultureInfo.InvariantCulture));

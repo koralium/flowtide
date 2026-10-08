@@ -148,8 +148,8 @@ app.MapFlowtideDataHubLineage().RequireAuthorization("lineage");
 | PlatformLogoUrl        | `string?`                                               | The Flowtide logo on GitHub    | Logo of the `flowtide` data platform. `null` leaves the logo out.                            |
 | IncludeChecks          | `bool`                                                  | `true`                         | Serves checks as assertions with their latest status. See **Data Quality Checks**.           |
 | RaiseIncidents         | `bool`                                                  | `false`                        | Raises an incident while a check fails and resolves it when the check passes. Needs `IncludeChecks`. See **Incidents**. |
-| IncidentPriority       | `DataHubIncidentPriority`                               | `Medium`                       | Priority of raised incidents: `Critical`, `High`, `Medium` or `Low`.                          |
-| IncidentPriorityResolver | `Func<DataHubIncidentContext, DataHubIncidentPriority?>?` | `null`                     | Overrides the priority per check. Returning `null` keeps `IncidentPriority`.                 |
+| IncidentPriority       | `DataHubIncidentPriority`                               | `Medium`                       | Priority of raised incidents, `Critical`, `High`, `Medium` or `Low`, and the severity of failing checks. |
+| IncidentPriorityResolver | `Func<DataHubIncidentContext, DataHubIncidentPriority?>?` | `null`                     | Overrides the priority and severity per check. Returning `null` keeps `IncidentPriority`.    |
 | IncludeRuns            | `bool`                                                  | `true`                         | Serves a run on each data job per stream, or per substream, with its current state. See **Runs**. |
 
 Configuration binding adds to `ExcludedNamespaces`. `MapNamespace`, `DatasetResolver`, `AspectProvider` and `IncidentPriorityResolver` can only be set in code.
@@ -208,6 +208,16 @@ builder.Services.AddFlowtideDataHubLineage(opt =>
 * **Casing.** Column names follow the connector schema when `IncludeConnectorSchema` is on. DataHub draws a column edge only when the field exists in the dataset schema with the same casing. Columns are matched ignoring case, so two columns of one table that differ only in casing become one field.
 * **Length.** DataHub drops urns longer than 512 characters once URL encoded, without an error. A data job whose urn would be longer gets a hashed id, while a dataset or flow urn that long is dropped by DataHub.
 
+## Column Lineage
+
+Every column a data job writes is linked to the columns it is computed from, with the kind of transformation, such as `DIRECT:IDENTITY` or `DIRECT:AGGREGATION`.
+
+Join keys, filter columns and group by keys decide which rows are written, so they are linked to every column the job writes, as `INDIRECT:JOIN`, `INDIRECT:FILTER` or `INDIRECT:GROUP_BY`.
+Impact analysis on such a column, for example a join key that is never selected, then reaches the table the job writes.
+
+* A column used in several ways is listed once, with the use closest to the written table. A group by key that is also a join key shows as `INDIRECT:GROUP_BY`.
+* DataHub's OpenLineage integration ignores these columns, so a stream sent to DataHub through the [OpenLineage reporter](openlineage.md) does not get them.
+
 ## Dataset Metadata
 
 With `IncludeDatasetMetadata` on, every dataset in the lineage gets a `status` aspect, a `schemaMetadata` aspect built from the connector or plan schema, and a `dataPlatformInstance` aspect when a platform instance is set.
@@ -234,6 +244,8 @@ Its run event carries the status that Flowtide last committed:
 | `NotEvaluated` | `SUCCESS`      | 0                 | `activeIssues`, `failingRows`  |
 | `Passed`       | `SUCCESS`      | 0                 | `activeIssues`, `failingRows`  |
 | `Failed`       | `FAILURE`      | Failing rows      | `activeIssues`, `failingRows`  |
+
+A failing run event also carries a severity, which DataHub shows on the failure. It comes from `IncidentPriority` or `IncidentPriorityResolver`, whether or not incidents are raised. DataHub has three severities, so `Critical` and `High` both become high.
 
 * **Checks need a running stream.** The status comes from the stream that runs the check, so an assertion has no run event until the stream has started.
 * **Only the latest status.** Each run of the ingestion source writes the status at that moment. A check that fails and passes again between two runs shows only the pass. The run event keeps its time until the status changes, so runs without a change add no new event. After a stream or substream is rebuilt, its assertions keep their last result until the rebuilt checks report.

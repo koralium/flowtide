@@ -104,6 +104,9 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             // Keyed by downstream field path.
             public Dictionary<string, FieldEdges> Fields { get; } = new Dictionary<string, FieldEdges>(StringComparer.Ordinal);
 
+            // Columns that affect every written column, keyed by transformation and written columns, so partition copies share one.
+            public SortedDictionary<string, DatasetEdges> DatasetFields { get; } = new SortedDictionary<string, DatasetEdges>(StringComparer.Ordinal);
+
             public void AddInput(string datasetUrn)
             {
                 if (_inputSet.Add(datasetUrn))
@@ -125,6 +128,21 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                     edges.Transformations.Add(FormatTransformation(transformation));
                 }
             }
+        }
+
+        private sealed class DatasetEdges
+        {
+            public DatasetEdges(string transformation, IReadOnlyList<string> downstreams)
+            {
+                Transformation = transformation;
+                Downstreams = downstreams;
+            }
+
+            public string Transformation { get; }
+
+            public IReadOnlyList<string> Downstreams { get; }
+
+            public SortedSet<string> Upstreams { get; } = new SortedSet<string>(StringComparer.Ordinal);
         }
 
         private sealed class FieldEdges
@@ -242,11 +260,24 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                             }
                         }
                     }
+                    // Join keys, filters and group keys affect every column this write produces.
+                    var written = columnLineage.Fields.Keys.Select(target.FieldPath).Distinct().Order(StringComparer.Ordinal).ToList();
                     foreach (var inputField in columnLineage.Dataset)
                     {
                         if (ResolveField(scope, inputField, resolution) is DataHubResolvedDataset upstream)
                         {
                             AddInput(job, inputs, upstream.Urn);
+                            if (written.Count > 0)
+                            {
+                                var transformation = string.Join(",", inputField.Transformations.Select(FormatTransformation).Distinct().Order(StringComparer.Ordinal));
+                                var key = transformation + "\u001f" + string.Join("\u001f", written);
+                                if (!job.DatasetFields.TryGetValue(key, out var edges))
+                                {
+                                    edges = new DatasetEdges(transformation, written);
+                                    job.DatasetFields.Add(key, edges);
+                                }
+                                edges.Upstreams.Add(DataHubUrns.SchemaField(upstream.Urn, datasets[upstream.Urn].FieldPath(inputField.Field)));
+                            }
                         }
                     }
                 }
@@ -300,8 +331,9 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             }
 
             var assertions = settings.IncludeChecks ? GetAssertions(registrations, resolution) : new Dictionary<string, DataHubAssertion>(StringComparer.Ordinal);
-            foreach (var assertion in assertions.Values)
+            foreach (var (assertionUrn, assertion) in assertions)
             {
+                assertion.Priority = GetPriority(assertionUrn, assertion, settings);
                 var builder = assertion.Builder;
                 var checkIds = assertion.Parts.Select(x => x.CheckId).Distinct().Order(StringComparer.Ordinal).ToList();
                 builder.Set("assertionInfo", w => DataHubAspectWriter.WriteAssertionInfo(w, assertion.DatasetUrn, assertion.Message, assertion.StreamName, checkIds));
@@ -386,35 +418,40 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             return runs;
         }
 
+        private static DataHubIncidentPriority GetPriority(string assertionUrn, DataHubAssertion assertion, DataHubSettings settings)
+        {
+            if (settings.IncidentPriorityResolver == null)
+            {
+                return settings.IncidentPriority;
+            }
+            var context = new DataHubIncidentContext(assertion.StreamName, assertion.Message, assertionUrn, assertion.DatasetUrn, assertion.Namespace, assertion.TableName);
+            DataHubIncidentPriority? resolved;
+            try
+            {
+                resolved = settings.IncidentPriorityResolver(context);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"The DataHub incident priority resolver failed for '{assertionUrn}'.", ex);
+            }
+            if (resolved is not DataHubIncidentPriority value)
+            {
+                return settings.IncidentPriority;
+            }
+            if (!Enum.IsDefined(value))
+            {
+                throw new InvalidOperationException($"The DataHub incident priority resolver returned {value} for '{assertionUrn}', which is not a DataHubIncidentPriority.");
+            }
+            return value;
+        }
+
         // Every assertion has a possible incident, served only once its check failed.
         private static Dictionary<string, (DataHubAssertion, DataHubIncidentInfo)> GetIncidents(Dictionary<string, DataHubAssertion> assertions, DataHubSettings settings)
         {
             var incidents = new Dictionary<string, (DataHubAssertion, DataHubIncidentInfo)>(StringComparer.Ordinal);
             foreach (var (assertionUrn, assertion) in assertions)
             {
-                var priority = settings.IncidentPriority;
-                if (settings.IncidentPriorityResolver != null)
-                {
-                    var context = new DataHubIncidentContext(assertion.StreamName, assertion.Message, assertionUrn, assertion.DatasetUrn, assertion.Namespace, assertion.TableName);
-                    DataHubIncidentPriority? resolved;
-                    try
-                    {
-                        resolved = settings.IncidentPriorityResolver(context);
-                    }
-                    catch (Exception ex)
-                    {
-                        throw new InvalidOperationException($"The DataHub incident priority resolver failed for '{assertionUrn}'.", ex);
-                    }
-                    if (resolved is DataHubIncidentPriority value)
-                    {
-                        if (!Enum.IsDefined(value))
-                        {
-                            throw new InvalidOperationException($"The DataHub incident priority resolver returned {value} for '{assertionUrn}', which is not a DataHubIncidentPriority.");
-                        }
-                        priority = value;
-                    }
-                }
-                var info = new DataHubIncidentInfo(assertionUrn, assertion.DatasetUrn, assertion.StreamName, assertion.Message, priority);
+                var info = new DataHubIncidentInfo(assertionUrn, assertion.DatasetUrn, assertion.StreamName, assertion.Message, assertion.Priority);
                 incidents.Add(DataHubUrns.Incident(assertionUrn), (assertion, info));
             }
             return incidents;
@@ -506,14 +543,24 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             {
                 positions.TryAdd(target.FieldPath(column.Name), positions.Count);
             }
-            return job.Fields
+            var lineages = job.Fields
                 .OrderBy(x => positions.TryGetValue(x.Key, out var position) ? position : int.MaxValue)
                 .ThenBy(x => x.Key, StringComparer.Ordinal)
                 .Select(x => new DataHubFineGrainedLineage(
                     x.Value.Upstreams.ToList(),
-                    DataHubUrns.SchemaField(job.Output.Urn, x.Key),
+                    [DataHubUrns.SchemaField(job.Output.Urn, x.Key)],
+                    false,
                     x.Value.Transformations.Count == 0 ? null : string.Join(",", x.Value.Transformations)))
                 .ToList();
+            foreach (var edges in job.DatasetFields.Values)
+            {
+                lineages.Add(new DataHubFineGrainedLineage(
+                    edges.Upstreams.ToList(),
+                    edges.Downstreams.Select(x => DataHubUrns.SchemaField(job.Output.Urn, x)).ToList(),
+                    true,
+                    edges.Transformation.Length == 0 ? null : edges.Transformation));
+            }
+            return lineages;
         }
 
         // Same TYPE:SUBTYPE text as DataHub's OpenLineage converter.
