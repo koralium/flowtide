@@ -616,6 +616,26 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        internal (int GhostKeys, int SmallCapacity, int MainCapacity, int GhostCapacity, int SmallTarget, int CleanupStart) GetQueueShapeForTests()
+        {
+            lock (m_queueLock)
+            {
+                // EnsureCapacity(0) reports the backing size without growing it
+                return (m_ghostKeys.Count, m_smallQueue.EnsureCapacity(0), m_mainQueue.EnsureCapacity(0), m_ghostQueue.EnsureCapacity(0), SmallQueueTargetSize(), Volatile.Read(ref cleanupStart));
+            }
+        }
+
+        internal int ExternalHitCounterCountForTests
+        {
+            get
+            {
+                lock (m_externalHitCounters)
+                {
+                    return m_externalHitCounters.Count;
+                }
+            }
+        }
+
         internal bool IsInGhostForTests(long key)
         {
             lock (m_queueLock)

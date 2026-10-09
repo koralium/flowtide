@@ -38,12 +38,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return new StateManagerSyncClient($"{m_name}_{name}", stateManager, tagList);
         }
 
-        public async ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+        public ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+            where TKeyContainer : IKeyContainer<K>
+            where TValueContainer : IValueContainer<V>
+            => CreateTreeAsync(name, options, ephemeral: false);
+
+        public ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateEphemeralTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+            where TKeyContainer : IKeyContainer<K>
+            where TValueContainer : IValueContainer<V>
+            => CreateTreeAsync(name, options, ephemeral: true);
+
+        private async ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> CreateTreeAsync<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options, bool ephemeral)
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>
         {
             var serializer = new BPlusTreeSerializer<K, V, TKeyContainer, TValueContainer>(options.KeySerializer, options.ValueSerializer, options.MemoryAllocator);
-            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, serializer, options.MemoryAllocator);
+            var stateClient = await CreateStateClient<IBPlusTreeNode, BPlusTreeMetadata>(name, serializer, options.MemoryAllocator, ephemeral);
 
             if (options.BucketSize == null)
             {
@@ -76,22 +86,34 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
 
-        private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer, IMemoryAllocator memoryAllocator)
+        private async ValueTask<IStateClient<V, TMetadata>> CreateStateClient<V, TMetadata>(string name, IStateSerializer<V> serializer, IMemoryAllocator memoryAllocator, bool ephemeral = false)
             where V : ICacheObject
             where TMetadata : class, IStorageMetadata
         {
             var combinedName = $"{m_name}_{name}";
 
+            CompressedStateSerializer<V>? compressedSerializer = null;
             if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
             {
-                serializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.CompressionLevel.HasValue ? stateManager.SerializeOptions.CompressionLevel.Value : 3, memoryAllocator);
+                compressedSerializer = new CompressedStateSerializer<V>(serializer, stateManager.SerializeOptions.CompressionLevel.HasValue ? stateManager.SerializeOptions.CompressionLevel.Value : 3, memoryAllocator);
+                serializer = compressedSerializer;
             }
 
-            var stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
+            IStateClient<V, TMetadata> stateClient;
+            try
             {
-                ValueSerializer = serializer,
-                TagList = tagList
-            }, memoryAllocator);
+                stateClient = await stateManager.CreateClientAsync<V, TMetadata>(combinedName, new StateClientOptions<V>()
+                {
+                    ValueSerializer = serializer,
+                    TagList = tagList
+                }, memoryAllocator, ephemeral);
+            }
+            catch
+            {
+                // Rejected before a client owned it, its compressor is pinned until disposed
+                compressedSerializer?.Dispose();
+                throw;
+            }
             await stateClient.InitializeSerializerAsync();
             return stateClient;
         }

@@ -50,6 +50,9 @@ namespace FlowtideDotNet.Storage.FileCache
             fileStream = new FileStream(fileName, FileMode.Create, FileAccess.ReadWrite, fileCacheOptions.FileShare, 512, FileOptions.DeleteOnClose | FileOptions.RandomAccess);
         }
 
+        // Read through the open handle, the file is DeleteOnClose
+        internal long FileLengthForTests => fileStream.Length;
+
         public void Write(long position, Memory<byte> data)
         {
             semaphoreSlim.Wait();
