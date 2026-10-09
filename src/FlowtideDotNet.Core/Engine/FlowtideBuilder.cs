@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Core.Lineage.Internal;
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Engine.FailureStrategies;
@@ -51,6 +52,7 @@ namespace FlowtideDotNet.Core.Engine
         private bool _isCheckListenerRegistered = false;
         private readonly string _streamName;
         private OpenLineageHttpOptions? _openLineageHttpOptions;
+        private readonly List<IStreamLineageListener> _lineageListeners = new List<IStreamLineageListener>();
         private DistributedOptions? _distributedOptions;
 
         public FlowtideBuilder(string streamName)
@@ -286,6 +288,14 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        // Lineage packages hook in here, the listener gets the lineage after a successful build.
+        internal FlowtideBuilder AddLineageListener(IStreamLineageListener listener)
+        {
+            ArgumentNullException.ThrowIfNull(listener);
+            _lineageListeners.Add(listener);
+            return this;
+        }
+
         private string ComputePlanHash()
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
@@ -311,6 +321,9 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+
+        // The reporter of the last build.
+        internal OpenLineageHttpReporter? OpenLineageReporterForTests { get; private set; }
 
         public FlowtideDotNet.Base.Engine.DataflowStream Build()
         {
@@ -389,9 +402,49 @@ namespace FlowtideDotNet.Core.Engine
                 _taskScheduler,
                 _distributedOptions);
 
-            if (_connectorManager != null && _openLineageHttpOptions != null)
+            StreamLineage? lineage = null;
+            OpenLineageHttpReporter? reporter = null;
+            ILogger lineageLogger = NullLogger.Instance;
+            if (_openLineageHttpOptions != null || _lineageListeners.Count > 0)
             {
-                WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, _streamName, _plan, _connectorManager, _openLineageHttpOptions));
+                lineageLogger = dataflowStreamBuilder.LoggerFactory?.CreateLogger("FlowtideDotNet.Core.Lineage") ?? NullLogger.Instance;
+                if (_connectorManager == null)
+                {
+                    lineageLogger.LogWarning("Lineage requires a connector manager, lineage is disabled for stream '{StreamName}'.", _streamName);
+                }
+                else
+                {
+                    // A missing Url still fails the build.
+                    if (_openLineageHttpOptions != null)
+                    {
+                        OpenLineageHttpReporter.ValidateOptions(_openLineageHttpOptions);
+                    }
+                    try
+                    {
+                        lineage = StreamLineageExtractor.Extract(new StreamLineageExtractionContext()
+                        {
+                            Plan = _plan,
+                            ConnectorManager = _connectorManager,
+                            BuilderStreamName = _streamName,
+                            SubstreamScope = _distributedOptions?.SubstreamName,
+                            IncludeConnectorSchema = (_openLineageHttpOptions?.IncludeSchema ?? false) || _lineageListeners.Any(x => x.IncludeConnectorSchema)
+                        });
+                        if (_openLineageHttpOptions != null)
+                        {
+                            reporter = OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, lineage, _openLineageHttpOptions);
+                            WithStateChangeListener(reporter);
+                            // Stopped only when the stream is disposed.
+                            dataflowStreamBuilder.AddOwnedResource(reporter);
+                            OpenLineageReporterForTests = reporter;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Lineage never stops the stream from building.
+                        lineage = null;
+                        lineageLogger.LogError(ex, "Failed to extract lineage for stream '{StreamName}', lineage is disabled for this build.", _streamName);
+                    }
+                }
             }
 
             if (!_isCheckListenerRegistered)
@@ -405,9 +458,45 @@ namespace FlowtideDotNet.Core.Engine
                 }
             }
 
-            visitor.BuildPlan();
+            FlowtideDotNet.Base.Engine.DataflowStream stream;
+            try
+            {
+                visitor.BuildPlan();
+                stream = dataflowStreamBuilder.Build();
+            }
+            catch
+            {
+                // No stream owns the reporter, nothing is queued.
+                _ = reporter?.DisposeAsync();
+                throw;
+            }
 
-            return dataflowStreamBuilder.Build();
+            // Only a successful build reaches the listeners.
+            if (lineage != null && _lineageListeners.Count > 0)
+            {
+                try
+                {
+                    lineage = lineage.WithChecks(StreamLineageCheckExtractor.Extract(_plan, _connectorManager!, lineage, visitor.BuiltChecks, _distributedOptions != null));
+                }
+                catch (Exception ex)
+                {
+                    lineageLogger.LogError(ex, "Failed to extract the checks of stream '{StreamName}', the lineage has no checks for this build.", _streamName);
+                }
+                var logicalStreamName = LineageStreamNames.GetLogicalStreamName(_streamName, _distributedOptions?.SubstreamName);
+                foreach (var listener in _lineageListeners)
+                {
+                    try
+                    {
+                        listener.OnStreamBuilt(lineage, logicalStreamName);
+                    }
+                    catch (Exception ex)
+                    {
+                        lineageLogger.LogError(ex, "Lineage listener {Listener} failed for stream '{StreamName}'.", listener.GetType().Name, _streamName);
+                    }
+                }
+            }
+
+            return stream;
         }
     }
 }

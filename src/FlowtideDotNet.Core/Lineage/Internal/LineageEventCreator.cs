@@ -11,64 +11,46 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.Lineage.Internal.Models;
-using FlowtideDotNet.Substrait;
-using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal static class LineageEventCreator
     {
-        public static OpenLineageEvent CreateFromPlan(
-            Guid runId,
-            string streamName, 
-            Plan plan, 
-            IConnectorManager connectorManager,
-            bool includeSchema)
+        public static OpenLineageEvent CreateFromLineage(Guid runId, StreamLineage lineage, bool includeSchema)
         {
-            var inputOutputFinder = new LineageInputOutputFinderVisitor(connectorManager, includeSchema);
-
-            for (int i = 0; i < plan.Relations.Count; i++)
+            // Fresh tables per event, column lineage is immutable.
+            var inputTables = new List<LineageInputTable>(lineage.Inputs.Count);
+            foreach (var input in lineage.Inputs)
             {
-                inputOutputFinder.Visit(plan.Relations[i], default!);
+                var inputTable = new LineageInputTable(input.Namespace, input.TableName);
+                if (includeSchema)
+                {
+                    inputTable.Facets.Schema = LineageSchemaConverter.ConvertToFacet(input.SchemaColumns);
+                }
+                inputTables.Add(inputTable);
             }
 
-            var inputTables = inputOutputFinder.InputTables;
-            var outputTables = inputOutputFinder.OutputTables;
-
-            LineageVisitor visitor = new LineageVisitor(plan.Relations, inputTables);
-            
-            for (int i = 0; i < plan.Relations.Count; i++)
+            var outputTables = new List<LineageOutputTable>(lineage.Outputs.Count);
+            foreach (var output in lineage.Outputs)
             {
-                
-                var relation = plan.Relations[i];
-
-                if(relation is PlanRelation planRelation)
+                var outputTable = new LineageOutputTable(output.Namespace, output.TableName);
+                outputTable.Facets.ColumnLineage = output.ColumnLineage;
+                if (includeSchema)
                 {
-                    relation = planRelation.Root.Input;
+                    outputTable.Facets.Schema = LineageSchemaConverter.ConvertToFacet(output.SchemaColumns);
                 }
-                if (relation is RootRelation rootRel)
-                {
-                    relation = rootRel.Input;
-                }
-                if (relation is WriteRelation writeRelation)
-                {
-                    var lineage = visitor.HandleWriteRelation(writeRelation);
-                    if (outputTables.TryGetValue(writeRelation.NamedObject.DotSeperated, out var outputTable))
-                    {
-                        outputTable.Facets.ColumnLineage = lineage;
-                    }
-                }
+                outputTables.Add(outputTable);
             }
 
-            var run = new LineageRun(runId, new LineageRunFacets(new LineageRunProcessingEngineFacet("0.15.0", "Flowtide", "1.0.0")));
+            var run = new LineageRun(runId, new LineageRunFacets(new LineageRunProcessingEngineFacet(OpenLineageConstants.EngineVersion, OpenLineageConstants.EngineName)));
             return new OpenLineageEvent(
                 DateTime.UtcNow,
-                "https://github.com/OpenLineage/OpenLineage/blob/v1-0-0/client",
+                OpenLineageConstants.Producer,
                 LineageEventType.Start,
                 run,
-                new LineageJob("flowtide", streamName, new LineageJobFacets(jobType: new LineageJobTypeFacet(LineageJobProcessingType.Streaming, "flowtide", LineageJobType.Job))),
-                inputTables.Values.ToList(),
-                outputTables.Values.ToList()
+                new LineageJob(OpenLineageConstants.JobNamespace, lineage.BuilderStreamName, new LineageJobFacets(jobType: new LineageJobTypeFacet(LineageJobProcessingType.Streaming, OpenLineageConstants.Integration, LineageJobType.Job))),
+                inputTables,
+                outputTables
                 );
         }
     }

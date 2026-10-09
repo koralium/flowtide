@@ -20,6 +20,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
     {
         private readonly LineageVisitor lineageVisitor;
         private readonly Dictionary<string, LineageInputField> _datasetFields = new Dictionary<string, LineageInputField>();
+        private readonly HashSet<Relation> _followedExchanges = new HashSet<Relation>(ReferenceEqualityComparer.Instance);
 
         public LineageDatasetFieldVisitor(LineageVisitor lineageVisitor)
         {
@@ -262,6 +263,42 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 }
             }
             return base.VisitJoinRelation(joinRelation, state);
+        }
+
+        public override Relation VisitStandardOutputExchangeReferenceRelation(StandardOutputExchangeReferenceRelation standardOutputExchangeReferenceRelation, object state)
+        {
+            if (lineageVisitor.PlanIndex.TryResolve(standardOutputExchangeReferenceRelation, out var exchange))
+            {
+                FollowExchange(exchange, state);
+            }
+            return standardOutputExchangeReferenceRelation;
+        }
+
+        public override Relation VisitSubstreamExchangeReferenceRelation(SubstreamExchangeReferenceRelation substreamExchangeReferenceRelation, object state)
+        {
+            if (lineageVisitor.PlanIndex.TryResolve(substreamExchangeReferenceRelation, out var exchange))
+            {
+                FollowExchange(exchange, state);
+            }
+            return substreamExchangeReferenceRelation;
+        }
+
+        public override Relation VisitPullExchangeReferenceRelation(PullExchangeReferenceRelation pullExchangeReferenceRelation, object state)
+        {
+            if (lineageVisitor.PlanIndex.TryResolve(pullExchangeReferenceRelation, out var exchange))
+            {
+                FollowExchange(exchange, state);
+            }
+            return pullExchangeReferenceRelation;
+        }
+
+        private void FollowExchange(ExchangeRelation exchange, object state)
+        {
+            // Each exchange once, lanes share the same producer.
+            if (_followedExchanges.Add(exchange))
+            {
+                Visit(exchange, state);
+            }
         }
     }
 }

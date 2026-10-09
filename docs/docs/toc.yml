@@ -65,6 +65,8 @@
       href: monitoring/azuremonitor.md
     - name: OpenLineage
       href: monitoring/openlineage.md
+    - name: DataHub
+      href: monitoring/datahub.md
 - name: Operators
   items:
     - name: Projection Operator

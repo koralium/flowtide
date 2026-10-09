@@ -22,6 +22,8 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
     /// </summary>
     internal class GetTimestampVisitor : OptimizerBaseVisitor
     {
+        internal const string GetTimestampTableName = "__gettimestamp";
+
         private readonly Plan plan;
         private readonly PlanOptimizerSettings planOptimizerSettings;
         private int? referenceIndex;
@@ -57,7 +59,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
                     },
                     NamedTable = new NamedTable()
                     {
-                        Names = new List<string>() { "__gettimestamp" },
+                        Names = new List<string>() { GetTimestampTableName },
                     }
                 });
                 return referenceIndex.Value;

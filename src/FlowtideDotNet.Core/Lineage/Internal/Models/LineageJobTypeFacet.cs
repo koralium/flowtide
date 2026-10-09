@@ -33,10 +33,10 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         public LineageJobType JobType { get; }
 
         [JsonPropertyName("_producer")]
-        public string Producer => "https://github.com/OpenLineage/OpenLineage/blob/v1-0-0/client";
+        public string Producer => OpenLineageConstants.Producer;
 
         [JsonPropertyName("_schemaURL")]
-        public string SchemaURL => "https://openlineage.io/spec/facets/2-0-2/JobTypeJobFacet.json";
+        public string SchemaURL => OpenLineageConstants.JobTypeJobFacetSchemaUrl;
 
     }
 }

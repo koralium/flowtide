@@ -101,6 +101,9 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // Once a dispose has claimed the teardown
         private int _disposeClaimed;
 
+        // Disposed last, after the teardown.
+        private readonly IAsyncDisposable[] _ownedResources;
+
         // Failures in a row since the last proven recovery
         internal int _consecutiveFailures;
         // A failure of this stream itself waits to be counted, restarts for a connected stream's recovery are not counted.
@@ -248,7 +251,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             StreamVersionInformation? streamVersionInformation,
             DataflowStreamOptions dataflowStreamOptions,
             IStreamMemoryManager streamMemoryManager,
-            IOptionsMonitor<FlowtidePauseOptions>? pauseMonitor)
+            IOptionsMonitor<FlowtidePauseOptions>? pauseMonitor,
+            IAsyncDisposable[] ownedResources)
         {
             this.streamName = streamName;
             this.version = version;
@@ -265,6 +269,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
             _streamVersionInformation = streamVersionInformation;
             this._dataflowStreamOptions = dataflowStreamOptions;
             _streamMemoryManager = streamMemoryManager;
+            _ownedResources = ownedResources;
             _contextMeter = new Meter($"flowtide.{streamName}");
             _contextMeter.CreateObservableGauge<float>("flowtide_health", () =>
             {
@@ -1087,6 +1092,36 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // A second dispose has nothing left to tear down
                 return;
             }
+            try
+            {
+                await DisposeStreamAsync();
+            }
+            finally
+            {
+                // Last, teardown transitions still reach the listeners.
+                await DisposeOwnedResources();
+            }
+        }
+
+        private async Task DisposeOwnedResources()
+        {
+            foreach (var resource in _ownedResources)
+            {
+                try
+                {
+                    // Blocking hosts would deadlock on a captured context.
+                    await resource.DisposeAsync().ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    // An owned resource never fails the dispose.
+                    _logger.LogWarning(e, "Failed to dispose a resource owned by stream {stream}.", streamName);
+                }
+            }
+        }
+
+        private async Task DisposeStreamAsync()
+        {
             // Marked first, a failing stream would otherwise restart forever
             _disposed = true;
             _disposeCancellation.Cancel();

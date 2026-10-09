@@ -1,6 +1,7 @@
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Lineage.DataHub;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,11 +16,13 @@ builder.Services.AddFlowtideStream("stream")
     .AddStorage(storage =>
     {
         storage.AddTemporaryStorage();
-    });
+    })
+    .AddDataHubLineage();
 
 var app = builder.Build();
 
 app.MapFlowtideTestInformation();
+app.MapFlowtideDataHubLineage();
 
 app.Run();
 
