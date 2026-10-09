@@ -341,13 +341,70 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             var failure = Result(store, urn);
             Assert.Equal("FAILURE", failure.Type);
 
-            // Only the older passing copy is left, the failure is still the newest status.
+            // The rebuilt copy keeps its failure until evaluated.
             var rebuilt = store.Register(Lineage([Check("sub0/2:0", "x is negative", ["t"])], "sub0"), "a");
             Assert.Equal(failure, Result(store, urn));
 
             clock.Now = Start.AddMinutes(2);
             store.RecordCheckStatus(rebuilt, "sub0/2:0", CheckState.Passed, 0, 0);
             Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(2).ToUnixTimeMilliseconds()), Result(store, urn));
+        }
+
+        [Fact]
+        public void FailureMovedToARebuiltCopyIsKept()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock);
+            var sub0 = store.Register(Lineage([Check("sub0/1:0", "x is negative", ["t"])], "sub0"), "a");
+            var sub1 = store.Register(Lineage([Check("sub1/1:0", "x is negative", ["t"])], "sub1"), "a");
+            var urn = AssertionUrn("a", DatasetT, "x is negative", 0);
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Passed, 0, 0);
+            var failure = Result(store, urn);
+            Assert.Equal("FAILURE", failure.Type);
+
+            // The failure moves to the other copy, the served values stay the same.
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Passed, 0, 0);
+            Assert.Equal(failure, Result(store, urn));
+
+            var rebuilt = store.Register(Lineage([Check("sub1/2:0", "x is negative", ["t"])], "sub1"), "a");
+            Assert.Equal(failure, Result(store, urn));
+
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(rebuilt, "sub1/2:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(2).ToUnixTimeMilliseconds()), Result(store, urn));
+        }
+
+        [Fact]
+        public void RebuiltCopiesKeepTheResultsOfTheirOwnAssertions()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock);
+            var sub0 = store.Register(Lineage([Check("sub0/1:0", "x is negative", ["t"]), Check("sub0/2:0", "y is null", ["t"])], "sub0"), "a");
+            var sub1 = store.Register(Lineage([Check("sub1/1:0", "x is negative", ["t"]), Check("sub1/2:0", "y is null", ["t"])], "sub1"), "a");
+            var x = AssertionUrn("a", DatasetT, "x is negative", 0);
+            var y = AssertionUrn("a", DatasetT, "y is null", 0);
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub0, "sub0/2:0", CheckState.Passed, 0, 0);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.NotEvaluated, 0, 0);
+            store.RecordCheckStatus(sub1, "sub1/2:0", CheckState.Failed, 1, 1);
+            var failure = Result(store, x);
+            Assert.Equal("FAILURE", failure.Type);
+            Assert.Equal("FAILURE", Result(store, y).Type);
+
+            // The rebuilt plan swaps the ids of the two checks.
+            var rebuilt = store.Register(Lineage([Check("sub0/2:0", "x is negative", ["t"]), Check("sub0/1:0", "y is null", ["t"])], "sub0"), "a");
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Passed, 0, 0);
+            store.RecordCheckStatus(sub1, "sub1/2:0", CheckState.Passed, 0, 0);
+            Assert.Equal(failure, Result(store, x));
+            Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(1).ToUnixTimeMilliseconds() + 1), Result(store, y));
+
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(rebuilt, "sub0/2:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(2).ToUnixTimeMilliseconds()), Result(store, x));
         }
 
         [Fact]
@@ -690,6 +747,121 @@ namespace FlowtideDotNet.Lineage.DataHub.Tests
             store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
 
             Assert.Equal(("ACTIVE", Start.AddMinutes(2).ToUnixTimeMilliseconds()), (IncidentState(store, incident).State, IncidentState(store, incident).StartedAt));
+        }
+
+        [Fact]
+        public void RebuiltCopyKeepsItsFailureUntilEvaluated()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock, o => o.RaiseIncidents = true);
+            var sub0 = store.Register(Lineage([Check("sub0/1:0", "x is negative", ["t"])], "sub0"), "a");
+            var sub1 = store.Register(Lineage([Check("sub1/1:0", "x is negative", ["t"])], "sub1"), "a");
+            var assertion = AssertionUrn("a", DatasetT, "x is negative", 0);
+            var incident = IncidentUrn(assertion);
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.NotEvaluated, 0, 0);
+            var failure = Result(store, assertion);
+            Assert.Equal("FAILURE", failure.Type);
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            // The other copy passes before the rebuilt one reports.
+            var rebuilt = store.Register(Lineage([Check("sub0/2:0", "x is negative", ["t"])], "sub0"), "a");
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Passed, 0, 0);
+            Assert.Equal(failure, Result(store, assertion));
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            // A fresh build starts not evaluated.
+            store.RecordCheckStatus(rebuilt, "sub0/2:0", CheckState.NotEvaluated, 0, 0);
+            Assert.Equal(failure, Result(store, assertion));
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(rebuilt, "sub0/2:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(2).ToUnixTimeMilliseconds()), Result(store, assertion));
+            Assert.Equal(("RESOLVED", Start.AddMinutes(2).ToUnixTimeMilliseconds()), (IncidentState(store, incident).State, IncidentState(store, incident).LastUpdated));
+        }
+
+        [Fact]
+        public void RebuiltCheckKeepsItsFailureWhileNotEvaluated()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock, o => o.RaiseIncidents = true);
+            var first = store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
+            var assertion = AssertionUrn("a", DatasetT, "x is negative", 0);
+            var incident = IncidentUrn(assertion);
+            store.RecordCheckStatus(first, "1:0", CheckState.Failed, 1, 1);
+            var failure = Result(store, assertion);
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            var rebuilt = store.Register(Lineage([Check("1:0", "x is negative", ["t"])]), "a");
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(rebuilt, "1:0", CheckState.NotEvaluated, 0, 0);
+            Assert.Equal(failure, Result(store, assertion));
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(rebuilt, "1:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("RESOLVED", Start.AddMinutes(2).ToUnixTimeMilliseconds()), (IncidentState(store, incident).State, IncidentState(store, incident).LastUpdated));
+        }
+
+        [Fact]
+        public void CopyRebuiltTwiceKeepsItsFailureUntilEvaluated()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock, o => o.RaiseIncidents = true);
+            var sub0 = store.Register(Lineage([Check("sub0/1:0", "x is negative", ["t"])], "sub0"), "a");
+            var sub1 = store.Register(Lineage([Check("sub1/1:0", "x is negative", ["t"])], "sub1"), "a");
+            var assertion = AssertionUrn("a", DatasetT, "x is negative", 0);
+            var incident = IncidentUrn(assertion);
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.NotEvaluated, 0, 0);
+            var failure = Result(store, assertion);
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            store.Register(Lineage([Check("sub0/2:0", "x is negative", ["t"])], "sub0"), "a");
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Passed, 0, 0);
+            Assert.Equal(failure, Result(store, assertion));
+
+            // Rebuilt again before the first rebuild reported.
+            var rebuilt = store.Register(Lineage([Check("sub0/3:0", "x is negative", ["t"])], "sub0"), "a");
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+            Assert.Equal(failure, Result(store, assertion));
+
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(rebuilt, "sub0/3:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("RESOLVED", Start.AddMinutes(2).ToUnixTimeMilliseconds()), (IncidentState(store, incident).State, IncidentState(store, incident).LastUpdated));
+        }
+
+        [Fact]
+        public void RebuiltCopyNeverHoldsBackTheOtherCopies()
+        {
+            var clock = new ManualClock();
+            var store = Store(clock, o => o.RaiseIncidents = true);
+            var sub0 = store.Register(Lineage([Check("sub0/1:0", "x is negative", ["t"])], "sub0"), "a");
+            var sub1 = store.Register(Lineage([Check("sub1/1:0", "x is negative", ["t"])], "sub1"), "a");
+            var assertion = AssertionUrn("a", DatasetT, "x is negative", 0);
+            var incident = IncidentUrn(assertion);
+            var start = Start.ToUnixTimeMilliseconds();
+            store.RecordCheckStatus(sub0, "sub0/1:0", CheckState.Failed, 1, 1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.NotEvaluated, 0, 0);
+            Assert.Equal("ACTIVE", IncidentState(store, incident).State);
+
+            // The other copy still publishes, the rebuilt one adds its failure.
+            var rebuilt = store.Register(Lineage([Check("sub0/2:0", "x is negative", ["t"])], "sub0"), "a");
+            clock.Now = Start.AddMinutes(1);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Failed, 2, 3);
+            Assert.Equal(("FAILURE", 4L, "2", Start.AddMinutes(1).ToUnixTimeMilliseconds()), Result(store, assertion));
+            clock.Now = Start.AddMinutes(2);
+            store.RecordCheckStatus(sub1, "sub1/1:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("FAILURE", 1L, "1", Start.AddMinutes(2).ToUnixTimeMilliseconds()), Result(store, assertion));
+            Assert.Equal(("ACTIVE", start + 1), (IncidentState(store, incident).State, IncidentState(store, incident).StartedAt));
+
+            clock.Now = Start.AddMinutes(3);
+            store.RecordCheckStatus(rebuilt, "sub0/2:0", CheckState.Passed, 0, 0);
+            Assert.Equal(("SUCCESS", 0L, "0", Start.AddMinutes(3).ToUnixTimeMilliseconds()), Result(store, assertion));
+            Assert.Equal("RESOLVED", IncidentState(store, incident).State);
         }
 
         [Fact]
