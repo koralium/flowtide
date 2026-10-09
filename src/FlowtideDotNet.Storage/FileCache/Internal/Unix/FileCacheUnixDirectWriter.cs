@@ -31,6 +31,17 @@ namespace FlowtideDotNet.Storage.FileCache.Internal.Unix
         private bool disposedValue;
         private readonly object _lock = new object();
 
+        internal int ReadBufferSizeForTests
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return alignedBuffer?.Size ?? 0;
+                }
+            }
+        }
+
         [DllImport("libc", SetLastError = true)]
         private static extern int open([MarshalAs(UnmanagedType.LPStr)] string pathname, int flags, uint mode);
 
