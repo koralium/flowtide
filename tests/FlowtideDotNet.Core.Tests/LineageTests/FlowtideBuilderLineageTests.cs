@@ -96,6 +96,68 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
         }
 
         [Fact]
+        public async Task StreamDisposeShutsDownReporter()
+        {
+            var builder = CreateBuilder(GetPlan(GetTimestampSql), "olDisposeReporter", new ListLoggerProvider())
+                .AddConnectorManager(CreateConnectorManager())
+                .WithOpenLineageHttp(new OpenLineageHttpOptions() { Url = Url });
+            var stream = builder.Build();
+            var reporter = builder.OpenLineageReporterForTests!;
+            Assert.False(reporter.ReportingTask.IsCompleted);
+
+            await stream.DisposeAsync();
+
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task StreamDisposeStopsRetryingReporter()
+        {
+            var logs = new ListLoggerProvider();
+            var builder = CreateBuilder(GetPlan(GetTimestampSql), "olDisposeRetrying", logs)
+                .AddConnectorManager(CreateConnectorManager())
+                .WithOpenLineageHttp(new OpenLineageHttpOptions() { Url = Url });
+            var stream = builder.Build();
+            var reporter = builder.OpenLineageReporterForTests!;
+            var category = typeof(OpenLineageHttpReporter).FullName;
+            try
+            {
+                await stream.StartAsync();
+                // Unreachable, so START retries until the dispose.
+                var stopwatch = Stopwatch.StartNew();
+                while (stopwatch.Elapsed < TimeSpan.FromSeconds(30) &&
+                    !logs.Entries.Any(x => x.Category == category && x.Level == LogLevel.Error))
+                {
+                    await Task.Delay(10);
+                }
+                Assert.Contains(logs.Entries, x => x.Category == category && x.Level == LogLevel.Error);
+            }
+            finally
+            {
+                await stream.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
+            }
+
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+            Assert.Contains("dropped", Assert.Single(logs.Entries, x => x.Category == category && x.Level == LogLevel.Warning).Message);
+        }
+
+        [Fact]
+        public async Task BuildFailureShutsDownReporter()
+        {
+            var connectorManager = new ConnectorManager();
+            // Lineage succeeds, creating the source throws.
+            connectorManager.AddSource(new LineageTestSourceFactory());
+            connectorManager.AddSink(new FailureEgressFactory("*", new FailureEgressOptions()));
+            var builder = CreateBuilder(GetPlan(GetTimestampSql), "olBuildFailure", new ListLoggerProvider())
+                .AddConnectorManager(connectorManager)
+                .WithOpenLineageHttp(new OpenLineageHttpOptions() { Url = Url });
+
+            Assert.Throws<NotSupportedException>(() => builder.Build());
+
+            await builder.OpenLineageReporterForTests!.ReportingTask.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        [Fact]
         public void LineageFailureLogsAndBuildSucceeds()
         {
             var logs = new ListLoggerProvider();

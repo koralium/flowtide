@@ -322,6 +322,9 @@ namespace FlowtideDotNet.Core.Engine
         }
 
 
+        // The reporter of the last build.
+        internal OpenLineageHttpReporter? OpenLineageReporterForTests { get; private set; }
+
         public FlowtideDotNet.Base.Engine.DataflowStream Build()
         {
             if (_plan == null)
@@ -400,6 +403,7 @@ namespace FlowtideDotNet.Core.Engine
                 _distributedOptions);
 
             StreamLineage? lineage = null;
+            OpenLineageHttpReporter? reporter = null;
             ILogger lineageLogger = NullLogger.Instance;
             if (_openLineageHttpOptions != null || _lineageListeners.Count > 0)
             {
@@ -427,7 +431,11 @@ namespace FlowtideDotNet.Core.Engine
                         });
                         if (_openLineageHttpOptions != null)
                         {
-                            WithStateChangeListener(OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, lineage, _openLineageHttpOptions));
+                            reporter = OpenLineageHttpReporter.Create(dataflowStreamBuilder.LoggerFactory, lineage, _openLineageHttpOptions);
+                            WithStateChangeListener(reporter);
+                            // Stopped only when the stream is disposed.
+                            dataflowStreamBuilder.AddOwnedResource(reporter);
+                            OpenLineageReporterForTests = reporter;
                         }
                     }
                     catch (Exception ex)
@@ -450,9 +458,18 @@ namespace FlowtideDotNet.Core.Engine
                 }
             }
 
-            visitor.BuildPlan();
-
-            var stream = dataflowStreamBuilder.Build();
+            FlowtideDotNet.Base.Engine.DataflowStream stream;
+            try
+            {
+                visitor.BuildPlan();
+                stream = dataflowStreamBuilder.Build();
+            }
+            catch
+            {
+                // No stream owns the reporter, nothing is queued.
+                _ = reporter?.DisposeAsync();
+                throw;
+            }
 
             // Only a successful build reaches the listeners.
             if (lineage != null && _lineageListeners.Count > 0)

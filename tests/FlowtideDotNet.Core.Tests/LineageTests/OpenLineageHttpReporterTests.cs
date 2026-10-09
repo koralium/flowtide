@@ -188,6 +188,103 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             Assert.Same(TaskScheduler.Default, Assert.Single(handler.Requests).Scheduler);
         }
 
+        [Fact]
+        public async Task DisposeDrainsQueuedEvents()
+        {
+            var handler = new CapturingHttpMessageHandler(attempt => new HttpResponseMessage(attempt == 0 ? HttpStatusCode.InternalServerError : HttpStatusCode.OK));
+            var logs = new ListLoggerProvider();
+            var reporter = CreateReporter(handler, logger: logs.CreateLogger("test"));
+
+            // Restart after COMPLETE, then the stream is disposed.
+            Notify(reporter, StreamStateValue.Starting, StreamStateValue.Stopping, StreamStateValue.NotStarted, StreamStateValue.Starting);
+            await ShutDown(reporter);
+
+            // Retries still run inside the drain.
+            Assert.Equal(["START", "START", "COMPLETE", "START"], handler.Requests.Select(x => x.EventType));
+            Assert.Equal([1], _delays);
+            Assert.DoesNotContain(logs.Entries, x => x.Level == LogLevel.Warning);
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task DisposeCancelsRetryDelayAfterDrainTimeout()
+        {
+            var handler = new CapturingHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError));
+            var logs = new ListLoggerProvider();
+            // The drain times out inside the hour long delay.
+            var reporter = CreateReporter(handler, logger: logs.CreateLogger("test"), retryDelay: TimeSpan.FromHours(1), drainTimeout: TimeSpan.FromMilliseconds(100));
+
+            Notify(reporter, StreamStateValue.Starting, StreamStateValue.Running);
+            await handler.WaitForRequestsAsync(1);
+            await ShutDown(reporter);
+
+            Assert.Equal(["START"], handler.Requests.Select(x => x.EventType));
+            Assert.Single(logs.Entries, x => x.Level == LogLevel.Error);
+            Assert.Contains("2 OpenLineage events", Assert.Single(logs.Entries, x => x.Level == LogLevel.Warning).Message);
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task DisposeCancelsHungRequestWithoutRetry()
+        {
+            var handler = new CapturingHttpMessageHandler(async (attempt, cancellationToken) =>
+            {
+                // Only the shutdown ends it.
+                await Task.Delay(Timeout.Infinite, cancellationToken);
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+            var logs = new ListLoggerProvider();
+            var reporter = CreateReporter(handler, logger: logs.CreateLogger("test"), drainTimeout: TimeSpan.FromMilliseconds(100));
+
+            Notify(reporter, StreamStateValue.Starting);
+            await handler.WaitForRequestsAsync(1);
+            await ShutDown(reporter);
+
+            Assert.Single(handler.Requests);
+            // Our own cancel is no timeout, nothing retries.
+            Assert.Empty(_delays);
+            Assert.DoesNotContain(logs.Entries, x => x.Level == LogLevel.Error);
+            Assert.Contains("1 OpenLineage events", Assert.Single(logs.Entries, x => x.Level == LogLevel.Warning).Message);
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+        }
+
+        [Fact]
+        public async Task HttpClientTimeoutStillRetries()
+        {
+            var handler = new CapturingHttpMessageHandler(async (attempt, cancellationToken) =>
+            {
+                if (attempt == 0)
+                {
+                    // Hangs until HttpClient.Timeout fires.
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                }
+                return new HttpResponseMessage(HttpStatusCode.OK);
+            });
+            var reporter = CreateReporter(handler, httpTimeout: TimeSpan.FromMilliseconds(100));
+
+            Notify(reporter, StreamStateValue.Starting);
+            await handler.WaitForRequestsAsync(2);
+
+            Assert.Equal(["START", "START"], handler.Requests.Select(x => x.EventType));
+            Assert.Equal([1], _delays);
+            Assert.False(reporter.ReportingTask.IsCompleted);
+        }
+
+        [Fact]
+        public async Task StateChangesAfterDisposeAreIgnored()
+        {
+            var handler = new CapturingHttpMessageHandler();
+            var reporter = CreateReporter(handler);
+
+            await ShutDown(reporter);
+            // A second dispose only waits.
+            await ShutDown(reporter);
+            Notify(reporter, StreamStateValue.Starting);
+
+            Assert.Empty(handler.Requests);
+            Assert.True(reporter.ReportingTask.IsCompletedSuccessfully);
+        }
+
         [Theory]
         [InlineData(StreamStateValue.NotStarted, StreamStateValue.Starting, "Start")]
         [InlineData(StreamStateValue.Starting, StreamStateValue.Running, "Running")]
@@ -228,22 +325,37 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             CapturingHttpMessageHandler handler,
             OpenLineageHttpOptions? options = null,
             ILogger? logger = null,
-            Guid? runId = null)
+            Guid? runId = null,
+            TimeSpan? retryDelay = null,
+            TimeSpan? drainTimeout = null,
+            TimeSpan? httpTimeout = null)
         {
             options ??= new OpenLineageHttpOptions() { Url = Url };
             var lineage = new StreamLineage("stream", null, DateTimeOffset.UnixEpoch, [], []);
             var template = LineageEventCreator.CreateFromLineage(runId ?? Guid.NewGuid(), lineage, false);
+            var httpClient = new HttpClient(handler);
+            if (httpTimeout.HasValue)
+            {
+                httpClient.Timeout = httpTimeout.Value;
+            }
             // Zero delay keeps retries instant, attempts are recorded.
             return new OpenLineageHttpReporter(
                 logger ?? new ListLoggerProvider().CreateLogger("test"),
                 template,
                 options,
-                new HttpClient(handler),
+                httpClient,
                 errorCount =>
                 {
                     _delays.Enqueue(errorCount);
-                    return TimeSpan.Zero;
-                });
+                    return retryDelay ?? TimeSpan.Zero;
+                },
+                drainTimeout ?? TimeSpan.FromSeconds(10));
+        }
+
+        // Guarded, a lost cancellation fails instead of hanging.
+        private static Task ShutDown(OpenLineageHttpReporter reporter)
+        {
+            return reporter.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(30));
         }
 
         private static void Notify(OpenLineageHttpReporter reporter, params StreamStateValue[] states)

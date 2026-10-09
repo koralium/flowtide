@@ -38,14 +38,21 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
     {
         private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
 
-        private readonly Func<int, HttpResponseMessage> _responder;
+        private readonly Func<int, CancellationToken, Task<HttpResponseMessage>> _responder;
         private readonly object _lock = new object();
         private readonly List<CapturedRequest> _requests = new List<CapturedRequest>();
         private readonly List<(int Count, TaskCompletionSource Completion)> _waiters = new List<(int Count, TaskCompletionSource Completion)>();
 
         public CapturingHttpMessageHandler(Func<int, HttpResponseMessage>? responder = null)
         {
-            _responder = responder ?? (_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+            var respond = responder ?? (_ => new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+            _responder = (attempt, _) => Task.FromResult(respond(attempt));
+        }
+
+        // The responder sees the request token.
+        public CapturingHttpMessageHandler(Func<int, CancellationToken, Task<HttpResponseMessage>> responder)
+        {
+            _responder = responder;
         }
 
         public IReadOnlyList<CapturedRequest> Requests
@@ -101,7 +108,7 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                     }
                 }
             }
-            return _responder(attempt);
+            return await _responder(attempt, cancellationToken);
         }
     }
 

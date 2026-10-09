@@ -19,7 +19,7 @@ using System.Threading.Channels;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal sealed class OpenLineageHttpReporter : IStreamStateChangeListener
+    internal sealed class OpenLineageHttpReporter : IStreamStateChangeListener, IAsyncDisposable
     {
         // Shared by every stream, pooled connections follow DNS.
         private static readonly HttpClient s_httpClient = new HttpClient(new SocketsHttpHandler()
@@ -35,6 +35,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         private readonly Func<int, TimeSpan> _retryDelay;
         private readonly string _url;
         private readonly Channel<OpenLineageEvent> _channel;
+        private readonly TimeSpan _drainTimeout;
+        // Aborts sends and retry delays once the drain times out.
+        private readonly CancellationTokenSource _shutdown = new CancellationTokenSource();
         private StreamStateValue _previousState;
         private int _errorCount;
 
@@ -45,7 +48,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             ILogger logger = loggerFactory != null ? loggerFactory.CreateLogger<OpenLineageHttpReporter>() : NullLogger.Instance;
             var ev = LineageEventCreator.CreateFromLineage(openLineageOptions.RunId ?? Guid.NewGuid(), lineage, openLineageOptions.IncludeSchema);
-            return new OpenLineageHttpReporter(logger, ev, openLineageOptions, s_httpClient, DefaultRetryDelay);
+            return new OpenLineageHttpReporter(logger, ev, openLineageOptions, s_httpClient, DefaultRetryDelay, DefaultDrainTimeout);
         }
 
         internal OpenLineageHttpReporter(
@@ -53,7 +56,8 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             OpenLineageEvent ev,
             OpenLineageHttpOptions openLineageOptions,
             HttpClient httpClient,
-            Func<int, TimeSpan> retryDelay)
+            Func<int, TimeSpan> retryDelay,
+            TimeSpan drainTimeout)
         {
             _url = ValidateOptions(openLineageOptions);
             _logger = logger;
@@ -61,6 +65,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             _openLineageOptions = openLineageOptions;
             _httpClient = httpClient;
             _retryDelay = retryDelay;
+            _drainTimeout = drainTimeout;
             // Writers never run the reader inline.
             _channel = Channel.CreateUnbounded<OpenLineageEvent>(new UnboundedChannelOptions()
             {
@@ -72,6 +77,9 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         }
 
         internal Task ReportingTask { get; }
+
+        // Bounds the final flush when the stream is disposed.
+        internal static readonly TimeSpan DefaultDrainTimeout = TimeSpan.FromSeconds(5);
 
         internal static string ValidateOptions(OpenLineageHttpOptions openLineageOptions)
         {
@@ -122,24 +130,59 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             }
         }
 
+        // Permanent stream disposal only, never a stop.
+        public async ValueTask DisposeAsync()
+        {
+            if (!_channel.Writer.TryComplete())
+            {
+                // Already shut down, wait for that drain.
+                await ReportingTask.ConfigureAwait(false);
+                return;
+            }
+            // Queued events still go out, within the bound.
+            _shutdown.CancelAfter(_drainTimeout);
+            await ReportingTask.ConfigureAwait(false);
+            _shutdown.Dispose();
+        }
+
         private async Task ReportingLoop()
         {
-            // Writer never completes, the loop outlives COMPLETE.
-            await foreach (var ev in _channel.Reader.ReadAllAsync().ConfigureAwait(false))
+            var cancellationToken = _shutdown.Token;
+            var inFlight = 0;
+            try
             {
-                try
+                // Ends on dispose only, the loop outlives COMPLETE.
+                await foreach (var ev in _channel.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
                 {
-                    await SendWithRetry(ev).ConfigureAwait(false);
+                    inFlight = 1;
+                    try
+                    {
+                        await SendWithRetry(ev, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // Not transient, retrying would block later events.
+                        _logger.LogError(ex, "Unexpected error while writing the OpenLineage {EventType} event, the event is dropped.", ev.EventType);
+                    }
+                    inFlight = 0;
                 }
-                catch (Exception ex)
+            }
+            catch (Exception) when (cancellationToken.IsCancellationRequested)
+            {
+                // Single reader channels cannot count.
+                var dropped = inFlight;
+                while (_channel.Reader.TryRead(out _))
                 {
-                    // Not transient, retrying would block later events.
-                    _logger.LogError(ex, "Unexpected error while writing the OpenLineage {EventType} event, the event is dropped.", ev.EventType);
+                    dropped++;
+                }
+                if (dropped > 0)
+                {
+                    _logger.LogWarning("The stream was disposed before {Count} OpenLineage events were written, the events are dropped.", dropped);
                 }
             }
         }
 
-        private async Task SendWithRetry(OpenLineageEvent ev)
+        private async Task SendWithRetry(OpenLineageEvent ev, CancellationToken cancellationToken)
         {
             var body = OpenLineageSerializer.SerializeToUtf8Bytes(ev);
             while (true)
@@ -153,7 +196,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     message.Content = new ByteArrayContent(body);
                     message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json") { CharSet = "utf-8" };
                     _openLineageOptions.OnRequest?.Invoke(message);
-                    using var response = await _httpClient.SendAsync(message).ConfigureAwait(false);
+                    using var response = await _httpClient.SendAsync(message, cancellationToken).ConfigureAwait(false);
                     if (response.IsSuccessStatusCode)
                     {
                         _errorCount = 0;
@@ -165,16 +208,18 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                 {
                     error = ex;
                 }
-                catch (OperationCanceledException ex)
+                catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
                 {
-                    // No token passed, so this is a timeout.
+                    // Not our token, so this is a timeout.
                     error = ex;
                 }
 
+                // No retry or error log once shut down.
+                cancellationToken.ThrowIfCancellationRequested();
                 _errorCount++;
                 var waitTime = _retryDelay(_errorCount);
                 _logger.LogError(error, "Error writing to OpenLineage destination, status code: '{StatusCode}', waiting {WaitSeconds} seconds before retrying", statusCode, waitTime.TotalSeconds);
-                await Task.Delay(waitTime).ConfigureAwait(false);
+                await Task.Delay(waitTime, cancellationToken).ConfigureAwait(false);
             }
         }
     }
