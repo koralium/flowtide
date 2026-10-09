@@ -157,7 +157,8 @@ await foreach(var page in iterator) {
 <h2 id="commit">Commit</h2>
 <p>When data has been written, it is not yet persisted. To persist the data one must call <code>Commit</code>.
 This is done in the <code>OnCheckpoint</code> method in an operator.
-But if the tree is used to store temporary data, <code>Commit</code> should not be called.</p>
+But if the tree is used to store temporary data, <code>Commit</code> should not be called.
+A long-lived tree that is never committed should be an <a href="#ephemeral-trees">ephemeral tree</a> instead, so its deleted pages leave no bookkeeping behind.</p>
 <p>Example:</p>
 <pre><code class="lang-csharp">public override async Task&lt;OperatorState&gt; OnCheckpoint()
 {
@@ -165,6 +166,79 @@ But if the tree is used to store temporary data, <code>Commit</code> should not 
     return new OperatorState();
 }
 </code></pre>
+<h2 id="ephemeral-trees">Ephemeral trees</h2>
+<p>An ephemeral tree is a B+ tree that is never persisted. It is created with <code>GetOrCreateEphemeralTree</code> from the <code>IStateManagerClient</code>, with the same options as <code>GetOrCreateTree</code>:</p>
+<pre><code class="lang-csharp">_catalog = await stateManagerClient.GetOrCreateEphemeralTree(&quot;catalog&quot;, options);
+</code></pre>
+<p>An ordinary tree that is never committed keeps a record of every page it ever deleted, waiting for a commit that never comes. An ephemeral tree forgets a deleted page at once, so its bookkeeping follows its live pages.</p>
+<h3 id="who-may-use-it">Who may use it</h3>
+<p>A tree may be ephemeral only if one of these holds:</p>
+<ul>
+<li>it is empty at every checkpoint, or</li>
+<li>after a restart or recovery it is rebuilt in full, from replay or from an external source of truth.</li>
+</ul>
+<p>Its contents never reach a checkpoint. The temporary trees of <code>BulkAggregateOperator</code> and <code>BulkWindowOperator</code> are counterexamples: a checkpoint can arrive while they still hold groups waiting for a watermark, so they are committed, and as ephemeral trees they would lose those groups in a crash. A tree that adopts this mode should come with a crash-and-recover test of its own.</p>
+<h3 id="lifecycle">Lifecycle</h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>State of the tree afterwards</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Commit()</code>, then a checkpoint</td>
+<td>Unchanged in memory and in the spill. Nothing is written for the tree; the manager may still checkpoint the binding of its name</td>
+</tr>
+<tr>
+<td>Reopening the name in the same process</td>
+<td>The same client, with the same contents</td>
+</tr>
+<tr>
+<td><code>Clear()</code></td>
+<td>Empty</td>
+</tr>
+<tr>
+<td>Recovery, including after another client's failed commit</td>
+<td>Empty once reopened</td>
+</tr>
+<tr>
+<td>Stop and start, or a process restart</td>
+<td>Empty</td>
+</tr>
+<tr>
+<td>Another client's commit fails</td>
+<td>The checkpoint fails as it does today, the ephemeral tree does not consume or clear the failure</td>
+</tr>
+<tr>
+<td>Opening a name that has persisted contents</td>
+<td>Throws <code>InvalidOperationException</code></td>
+</tr>
+<tr>
+<td>Opening a name that is open with the other lifecycle, through any factory</td>
+<td>Throws <code>InvalidOperationException</code></td>
+</tr>
+<tr>
+<td>Creation fails after the name is registered</td>
+<td>The registration stays, recovery resets it, and the retry reuses it</td>
+</tr>
+</tbody>
+</table>
+<p>An iterator does not survive a <code>Clear()</code> or a recovery.</p>
+<p>The serializer's <code>InitializeAsync</code> runs when the tree is created, its <code>CheckpointAsync</code> never runs.</p>
+<p><code>StateExists</code> reports a registration, not durable contents. It is true once the name is registered in the current manager. After a restart it is true only when the restored manager checkpoint holds the binding of the name, and the tree still starts empty.</p>
+<p>Use a new name when a tree changes lifecycle. A name that held persisted contents cannot be opened as an ephemeral tree. After a restart, a name that was only ever ephemeral can be opened as an ordinary tree, since nothing was persisted for it.</p>
+<h3 id="spill-and-memory">Spill and memory</h3>
+<p>An ephemeral tree uses the same cache, eviction and spill as an ordinary tree. A live page that is evicted is written to the temporary file cache and read back on demand. A deleted page is removed from the cache and its spill is freed in the same call.</p>
+<p>What is owned follows the current live pages: the page bookkeeping, the spill allocations and the cache entries. Some resources keep the size of the peak instead:</p>
+<ul>
+<li>The capacity of the dictionaries and queues, until the tree's client is disposed by a stop and start or a restart.</li>
+<li>Scratch buffers: the file cache's write buffer, the direct I/O writer's read buffer, serializer buffers, and zstd contexts with page compression. <code>Clear()</code> or an idle cleanup releases them.</li>
+<li>The physical length of the spill file. The file shrinks back only when its last allocation is freed, as at <code>Clear()</code>. With direct I/O on Linux the file stays on disk until the next writer with the same name is created.</li>
+</ul>
+<p>Nothing shrinks back to the current size automatically.</p>
+<p>The bounded spill holds for the built-in file cache. A custom <code>IFileCacheFactory</code> needs reads that complete synchronously and reuse of freed space for the same result, exactly as for ordinary trees.</p>
 
 </article>
 

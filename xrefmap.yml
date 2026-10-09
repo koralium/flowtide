@@ -47624,6 +47624,22 @@ references:
   fullName.vb: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateAppendTree(Of K, V, TKeyContainer, TValueContainer)(String, FlowtideDotNet.Storage.Tree.BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
   nameWithType: IStateManagerClient.GetOrCreateAppendTree<K, V, TKeyContainer, TValueContainer>(string, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>)
   nameWithType.vb: IStateManagerClient.GetOrCreateAppendTree(Of K, V, TKeyContainer, TValueContainer)(String, BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
+- uid: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree*
+  name: GetOrCreateEphemeralTree
+  href: api/FlowtideDotNet.Storage.StateManager.IStateManagerClient.html#FlowtideDotNet_Storage_StateManager_IStateManagerClient_GetOrCreateEphemeralTree_
+  commentId: Overload:FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree
+  isSpec: "True"
+  fullName: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree
+  nameWithType: IStateManagerClient.GetOrCreateEphemeralTree
+- uid: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree``4(System.String,FlowtideDotNet.Storage.Tree.BPlusTreeOptions{``0,``1,``2,``3})
+  name: GetOrCreateEphemeralTree<K, V, TKeyContainer, TValueContainer>(string, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>)
+  href: api/FlowtideDotNet.Storage.StateManager.IStateManagerClient.html#FlowtideDotNet_Storage_StateManager_IStateManagerClient_GetOrCreateEphemeralTree__4_System_String_FlowtideDotNet_Storage_Tree_BPlusTreeOptions___0___1___2___3__
+  commentId: M:FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree``4(System.String,FlowtideDotNet.Storage.Tree.BPlusTreeOptions{``0,``1,``2,``3})
+  name.vb: GetOrCreateEphemeralTree(Of K, V, TKeyContainer, TValueContainer)(String, BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
+  fullName: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree<K, V, TKeyContainer, TValueContainer>(string, FlowtideDotNet.Storage.Tree.BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>)
+  fullName.vb: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateEphemeralTree(Of K, V, TKeyContainer, TValueContainer)(String, FlowtideDotNet.Storage.Tree.BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
+  nameWithType: IStateManagerClient.GetOrCreateEphemeralTree<K, V, TKeyContainer, TValueContainer>(string, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer>)
+  nameWithType.vb: IStateManagerClient.GetOrCreateEphemeralTree(Of K, V, TKeyContainer, TValueContainer)(String, BPlusTreeOptions(Of K, V, TKeyContainer, TValueContainer))
 - uid: FlowtideDotNet.Storage.StateManager.IStateManagerClient.GetOrCreateObjectStateAsync*
   name: GetOrCreateObjectStateAsync
   href: api/FlowtideDotNet.Storage.StateManager.IStateManagerClient.html#FlowtideDotNet_Storage_StateManager_IStateManagerClient_GetOrCreateObjectStateAsync_
