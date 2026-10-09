@@ -424,6 +424,66 @@ namespace FlowtideDotNet.Storage.FileCache
             }
         }
 
+        internal sealed record LayoutForTests(
+            int Alignment,
+            IReadOnlyDictionary<long, (int Size, long AllocatedSize)> Allocations,
+            int AllocationIndexCount,
+            int AllocationIndexCapacity,
+            int MemoryNodeCount,
+            int AllocatedNodeCount,
+            int FreeNodeCount,
+            int FreeIndexCount,
+            long HighestAllocatedEnd,
+            IReadOnlyDictionary<int, long> SegmentLengths,
+            int BufferWriterCapacity,
+            int DirectReadBufferSize);
+
+        // Allocator state read under its lock, segment lengths come from each live writer
+        internal LayoutForTests GetLayoutForTests()
+        {
+            lock (m_lock)
+            {
+                var allocations = new Dictionary<long, (int Size, long AllocatedSize)>();
+                int allocatedNodes = 0;
+                int freeNodes = 0;
+                long highestEnd = 0;
+                for (var node = memoryNodes.First; node != null; node = node.Next)
+                {
+                    if (node.ValueRef.pageKey.HasValue)
+                    {
+                        allocatedNodes++;
+                        allocations[node.ValueRef.pageKey.Value] = (node.ValueRef.size, node.ValueRef.allocatedSize);
+                        highestEnd = Math.Max(highestEnd, node.ValueRef.position + node.ValueRef.allocatedSize);
+                    }
+                    else
+                    {
+                        freeNodes++;
+                    }
+                }
+                var segmentLengths = new Dictionary<int, long>();
+                int directReadBuffer = 0;
+                foreach (var (fileNumber, writer) in segmentWriters)
+                {
+                    if (writer is FileCacheSegmentWriter segmentWriter)
+                    {
+                        segmentLengths[fileNumber] = segmentWriter.FileLengthForTests;
+                    }
+                    else
+                    {
+                        // The direct writer is on Linux, where the path length is coherent with the descriptor
+                        segmentLengths[fileNumber] = new FileInfo(GenerateFileName(fileNumber)).Length;
+                        if (writer is FileCacheUnixDirectWriter directWriter)
+                        {
+                            directReadBuffer = Math.Max(directReadBuffer, directWriter.ReadBufferSizeForTests);
+                        }
+                    }
+                }
+                return new LayoutForTests(m_sectorSize, allocations, allocatedPages.Count, allocatedPages.EnsureCapacity(0), memoryNodes.Count, allocatedNodes, freeNodes, _freePages.Count, highestEnd, segmentLengths, _bufferWriter.CapacityForTests, directReadBuffer);
+            }
+        }
+
+        internal string SegmentFileNameForTests(int fileNumber) => GenerateFileName(fileNumber);
+
         public ValueTask<T> Read<T>(long pageKey, IStateSerializer<T> serializer)
             where T : ICacheObject
         {

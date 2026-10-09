@@ -26,6 +26,14 @@ namespace FlowtideDotNet.Storage.StateManager
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>;
 
+        /// <summary>
+        /// Gets or creates a BPlusTree that is never persisted and starts empty after a restart or recovery.
+        /// </summary>
+        ValueTask<IBPlusTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateEphemeralTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
+            where TKeyContainer : IKeyContainer<K>
+            where TValueContainer : IValueContainer<V>
+            => throw new NotSupportedException("This state manager client does not support ephemeral trees.");
+
         ValueTask<IAppendTree<K, V, TKeyContainer, TValueContainer>> GetOrCreateAppendTree<K, V, TKeyContainer, TValueContainer>(string name, BPlusTreeOptions<K, V, TKeyContainer, TValueContainer> options)
             where TKeyContainer : IKeyContainer<K>
             where TValueContainer : IValueContainer<V>;
