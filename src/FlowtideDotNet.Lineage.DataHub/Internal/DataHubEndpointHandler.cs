@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 return;
             }
 
-            if (!TryGetSnapshot(context, store, logger, out var snapshot))
+            if (!TryGetSnapshot(store, logger, out var snapshot))
             {
                 await WriteMessageAsync(context, StatusCodes.Status500InternalServerError, "Failed to generate the DataHub lineage.");
                 return;
@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 await WriteMessageAsync(context, StatusCodes.Status400BadRequest, "Missing urn.");
                 return;
             }
-            if (!TryGetSnapshot(context, store, logger, out var snapshot))
+            if (!TryGetSnapshot(store, logger, out var snapshot))
             {
                 await WriteMessageAsync(context, StatusCodes.Status500InternalServerError, "Failed to generate the DataHub lineage.");
                 return;
@@ -248,7 +248,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             return int.TryParse(scrollId, NumberStyles.None, CultureInfo.InvariantCulture, out offset);
         }
 
-        private static bool TryGetSnapshot(HttpContext context, DataHubLineageStore store, ILogger logger, out DataHubSnapshot snapshot)
+        private static bool TryGetSnapshot(DataHubLineageStore store, ILogger logger, out DataHubSnapshot snapshot)
         {
             try
             {
@@ -257,7 +257,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to generate the DataHub lineage for {Path}.", context.Request.Path);
+                logger.LogError(ex, "Failed to generate the DataHub lineage.");
                 snapshot = null!;
                 return false;
             }
