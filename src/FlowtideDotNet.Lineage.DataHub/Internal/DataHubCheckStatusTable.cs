@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
         private readonly Dictionary<long, Dictionary<string, DataHubCheckStatus>> _statuses = new Dictionary<long, Dictionary<string, DataHubCheckStatus>>();
         // Keyed by assertion urn.
         private readonly Dictionary<string, DataHubAssertionResult> _published = new Dictionary<string, DataHubAssertionResult>(StringComparer.Ordinal);
+        // Keyed by assertion urn then generation, the statuses behind the served result.
+        private readonly Dictionary<string, Dictionary<long, DataHubCheckStatus>> _publishedParts = new Dictionary<string, Dictionary<long, DataHubCheckStatus>>(StringComparer.Ordinal);
         // Keyed by incident urn, only incidents raised in this process.
         private readonly Dictionary<string, DataHubIncidentState> _incidents = new Dictionary<string, DataHubIncidentState>(StringComparer.Ordinal);
         // Keyed by registration generation, a rebuild starts a new run.
@@ -48,6 +50,14 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 {
                     _statuses.Remove(replaced);
                     _runs.Remove(replaced);
+                    // A rebuilt part keeps its served status until evaluated.
+                    foreach (var parts in _publishedParts.Values)
+                    {
+                        if (parts.Remove(replaced, out var status))
+                        {
+                            parts.Add(generation, status);
+                        }
+                    }
                 }
             }
         }
@@ -217,6 +227,7 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 _incidents[incidentUrn] = current;
                 // A returned check then publishes fresh, even with the values it had before.
                 _published.Remove(current.Info.AssertionUrn);
+                _publishedParts.Remove(current.Info.AssertionUrn);
                 return current;
             }
         }
@@ -245,14 +256,34 @@ namespace FlowtideDotNet.Lineage.DataHub.Internal
                 last = last with { Priority = assertion.Priority };
                 _published[urn] = last;
             }
-            if (assertion.GetResult(GetLocked) is not DataHubAssertionResult computed)
+            _publishedParts.TryGetValue(urn, out var lastParts);
+            var parts = new Dictionary<long, DataHubCheckStatus>();
+            var computed = assertion.GetResult((generation, checkId) =>
+            {
+                var status = GetLocked(generation, checkId);
+                // Not evaluated never replaces a served status.
+                if (status == null || status.State == CheckState.NotEvaluated)
+                {
+                    status = lastParts?.GetValueOrDefault(generation) ?? status;
+                }
+                if (status != null)
+                {
+                    parts[generation] = status;
+                }
+                return status;
+            });
+            if (computed == null)
             {
                 return last;
             }
             var result = computed with { Priority = assertion.Priority };
-            if (last != null &&
-                (result.TimestampMillis <= last.TimestampMillis ||
-                (last.State == result.State && last.ActiveIssues == result.ActiveIssues && last.FailingRows == result.FailingRows)))
+            if (last != null && result.TimestampMillis <= last.TimestampMillis)
+            {
+                return last;
+            }
+            // Same values keep the served time, the parts move on.
+            _publishedParts[urn] = parts;
+            if (last != null && last.State == result.State && last.ActiveIssues == result.ActiveIssues && last.FailingRows == result.FailingRows)
             {
                 return last;
             }
