@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class DecimalStatisticsComparer : IStatisticsComparer
+    internal class DecimalStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private decimal? _minValue;
         private decimal? _maxValue;
@@ -51,6 +51,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Decimal)
+            {
+                PruningCell.WriteDecimal(cell, _minValue, _maxValue, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

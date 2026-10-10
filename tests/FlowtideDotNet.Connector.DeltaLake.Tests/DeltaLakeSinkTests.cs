@@ -1265,7 +1265,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
             });
 
-            var stagedFile = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            var staged = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
@@ -1282,11 +1282,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
 
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            var pending = new Internal.DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length };
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true);
             // Second publish is a no-op, as after a restart.
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            Assert.Equal(PublishOutcome.AlreadyPublished, (await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true)).Outcome);
 
-            Assert.False(await storage.Exists($"/staged/_delta_log/{stagedFile}"));
+            Assert.False(await storage.Exists($"/staged/_delta_log/{staged.FileName}"));
             var table = await DeltaTransactionReader.ReadTable(storage, "staged");
             Assert.NotNull(table);
             Assert.Equal(0, table.Version);

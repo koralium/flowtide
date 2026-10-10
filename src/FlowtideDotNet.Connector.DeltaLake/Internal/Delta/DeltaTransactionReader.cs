@@ -37,8 +37,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// </summary>
         public static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
         {
+            return await ReadTable(storage, tableName, await ListLog(storage, tableName), maxVersion, options);
+        }
+
+        /// <summary>
+        /// Reads from a listing the caller already has, so it is not listed again.
+        /// </summary>
+        internal static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, LogListing log, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
+        {
             options ??= DeltaReadOptions.Default;
-            var log = await ListLog(storage, tableName);
 
             if (log.Head < 0)
             {
@@ -350,8 +357,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
 
             using var commitData = await storage.OpenRead(new IOPath(deltaLogDir, fileName));
+            // Removed between the check and the read
+            if (commitData == null)
+            {
+                return null;
+            }
 
-            using var textReader = new StreamReader(commitData!);
+            using var textReader = new StreamReader(commitData);
 
             var line = await textReader.ReadLineAsync();
 
@@ -442,7 +454,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return log.Commits.Values.Concat(log.Checkpoints).OrderBy(x => x.Version).ThenBy(x => x.IsCheckpoint ? 0 : 1).ToList();
         }
 
-        private static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
+        // A log compaction {start}.{end}.compacted.json covers up to its second version
+        private static long CoveredVersion(string name, long version)
+        {
+            if (name.Length > 41 && name[20] == '.' && long.TryParse(name.AsSpan(21, 20), out var end))
+            {
+                return Math.Max(version, end);
+            }
+            return version;
+        }
+
+        internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
         {
             var log = new LogListing();
             var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
@@ -465,6 +487,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     // UUID-named or multi-part checkpoints, log compactions and checksums still prove the table exists
                     log.HasOtherVersionFiles = true;
+                    log.MaxOtherVersion = Math.Max(log.MaxOtherVersion, CoveredVersion(file.Name, version));
                     continue;
                 }
                 log.Head = Math.Max(log.Head, version);
@@ -496,7 +519,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return long.TryParse(name.AsSpan(0, VersionDigits), NumberStyles.None, CultureInfo.InvariantCulture, out version);
         }
 
-        private sealed class LogListing
+        /// <summary>
+        /// The commits and classic checkpoints of one listing of the log.
+        /// </summary>
+        internal sealed class LogListing
         {
             public Dictionary<long, LogTransactionFile> Commits { get; } = new Dictionary<long, LogTransactionFile>();
 
@@ -506,6 +532,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             public long Head { get; set; } = -1;
 
             public bool HasOtherVersionFiles { get; set; }
+
+            // The highest version the other version files cover, -1 without any
+            public long MaxOtherVersion { get; set; } = -1;
         }
     }
 }

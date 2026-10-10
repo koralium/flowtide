@@ -49,5 +49,32 @@ namespace FlowtideDotNet.Connector.DeltaLake
         /// The default value is set to 100 MB.
         /// </remarks>
         public long MaxFileSizeBytes { get; set; } = 100 * 1024 * 1024; // 100 MB
+
+        /// <summary>
+        /// Gets or sets the compression codec for written Parquet files, it applies to every table this sink writes.
+        /// When null the table property delta.parquet.compression.codec is used, and zstd when the table has none.
+        /// </summary>
+        public DeltaCompressionCodec? CompressionCodec { get; set; }
+
+        /// <summary>
+        /// Gets or sets how many written columns the sink keeps file statistics for, to skip files when deleting rows.
+        /// Columns are taken in the order they are written, structs, lists and maps are skipped.
+        /// </summary>
+        public int StatsPruningColumns { get; set; } = 8;
+
+        /// <summary>
+        /// Gets or sets the memory, in bytes, all Delta Lake sinks in the process may use for the statistics they skip files with.
+        /// The first sink that reads its table fixes the value for the process. A table's first column has priority: tables holding more
+        /// columns give them up at their next checkpoint, and the table that did not fit keeps its statistics in spillable state until the stream restarts.
+        /// </summary>
+        public long PruningMemoryBytes { get; set; } = 1024L * 1024 * 1024;
+
+        /// <summary>
+        /// The clock for every timestamp the sink writes.
+        /// </summary>
+        internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+        // Tests use their own reservation instead of the process wide one
+        internal Internal.Catalog.PruningReservation? ReservationOverride { get; set; }
     }
 }

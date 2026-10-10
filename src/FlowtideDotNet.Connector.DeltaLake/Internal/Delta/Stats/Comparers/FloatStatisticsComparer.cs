@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class FloatStatisticsComparer : IStatisticsComparer
+    internal class FloatStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private double? _minValue;
         private double? _maxValue;
@@ -72,6 +72,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == (_isFloat32 ? PruningType.Float32 : PruningType.Double))
+            {
+                PruningCell.WriteDouble(cell, type, _minValue, _maxValue, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

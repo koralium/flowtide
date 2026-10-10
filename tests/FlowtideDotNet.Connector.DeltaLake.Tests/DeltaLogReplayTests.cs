@@ -766,7 +766,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var hidden = await DeltaTransactionReader.ListHiddenLogFiles(storage, "t");
             var table = await DeltaTransactionReader.ReadTable(storage, "t");
 
-            Assert.Equal(staged, Assert.Single(hidden).Name);
+            Assert.Equal(staged.FileName, Assert.Single(hidden).Name);
             Assert.NotNull(table);
             Assert.Equal(0, table.Version);
         }
