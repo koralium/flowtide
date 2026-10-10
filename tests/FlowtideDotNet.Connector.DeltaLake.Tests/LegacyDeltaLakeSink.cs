@@ -76,8 +76,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly DeltaLakeOptions _options;
         private readonly WriteRelation _writeRelation;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
-        private string _tableName;
-        private IOPath _tablePath;
+        private readonly string _tableName;
+        private readonly IOPath _tablePath;
 
         private IObjectState<bool>? _firstInsertDone;
         private IObjectState<LegacyPendingCommit>? _pendingCommit;
@@ -433,8 +433,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                             Weight = weight
                         };
 
+                        if (table == null)
+                        {
+                            throw new InvalidOperationException("Table should not be null when delete is found");
+                        }
                         bool foundFile = false;
-                        for (int f = 0; f < table!.Files.Count; f++)
+                        for (int f = 0; f < table.Files.Count; f++)
                         {
                             var file = table.Files[f];
                             if (file.CanBeInFile(rowRef, _writeRelation.TableSchema.Names))

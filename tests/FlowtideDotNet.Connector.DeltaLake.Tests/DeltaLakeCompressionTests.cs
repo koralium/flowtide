@@ -163,7 +163,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             finally
             {
-                try { Directory.Delete(tempPath, true); } catch { }
+                try { Directory.Delete(tempPath, true); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             }
         }
 

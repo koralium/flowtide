@@ -30,13 +30,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var content = read switch
             {
-                "OpenRead" => await new StreamReader((await storage.OpenRead("/test/a.json"))!).ReadToEndAsync(),
+                "OpenRead" => await ReadToEnd((await storage.OpenRead("/test/a.json"))!),
                 "ReadText" => await storage.ReadText("/test/a.json"),
                 _ => JsonSerializer.Serialize(await storage.ReadAsJson<string>("/test/a.json"))
             };
 
             Assert.Equal("\"foreign\"", content);
             Assert.False(await memory.Exists("/test/a.json"));
+        }
+
+        private static async Task<string> ReadToEnd(Stream stream)
+        {
+            using var reader = new StreamReader(stream);
+            return await reader.ReadToEndAsync();
         }
 
         // A test removes the file while a stream reads it
@@ -64,7 +70,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public async Task<string?> ReadText(IOPath path, Encoding? encoding = null, CancellationToken cancellationToken = default)
             {
                 using var stream = await OpenRead(path, cancellationToken);
-                return stream == null ? null : await new StreamReader(stream, encoding ?? Encoding.UTF8).ReadToEndAsync(cancellationToken);
+                if (stream == null)
+                {
+                    return null;
+                }
+                using var reader = new StreamReader(stream, encoding ?? Encoding.UTF8);
+                return await reader.ReadToEndAsync(cancellationToken);
             }
 
             public Task WriteText(IOPath path, string contents, Encoding? encoding = null, CancellationToken cancellationToken = default) => _inner.WriteText(path, contents, encoding, cancellationToken);
