@@ -76,12 +76,5 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         // Tests use their own reservation instead of the process wide one
         internal Internal.Catalog.PruningReservation? ReservationOverride { get; set; }
-
-        // Catalog trees rotate once mutations exceed twice the live files and this floor
-        internal long CatalogRotationFloor { get; set; } = 64 * 1024;
-
-        internal int CatalogMigrationSlice { get; set; } = 16 * 1024;
-
-        internal long CatalogMigrationBytes { get; set; } = 8 * 1024 * 1024;
     }
 }

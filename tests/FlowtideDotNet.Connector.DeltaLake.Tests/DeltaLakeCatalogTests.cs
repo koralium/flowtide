@@ -16,6 +16,8 @@ using FlowtideDotNet.Connector.DeltaLake.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Core.ColumnStore;
 using Stowage;
 using System.Collections.Concurrent;
 using System.Diagnostics.Metrics;
@@ -37,18 +39,55 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static string Insert(string table) => UserInsert.Replace("test", table);
 
         [Theory]
-        [InlineData(false)]
-        [InlineData(true)]
-        public async Task CatalogEqualsTheLogUnderARandomWorkload(bool changeData)
+        [InlineData(false, false)]
+        [InlineData(true, false)]
+        [InlineData(false, true)]
+        [InlineData(true, true)]
+        public async Task CatalogEqualsTheLogUnderARandomWorkload(bool changeData, bool treeMode)
         {
-            var table = $"catalog_equiv_{(changeData ? "cdf" : "plain")}";
+            var table = $"catalog_equiv_{(changeData ? "cdf" : "plain")}_{(treeMode ? "tree" : "array")}";
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
             var check = new CatalogCheck(storage, table);
-            using var registration = check.Register();
+            // Armed in round 8: another writer's commit, written before the sink's next listing
+            var foreignArmed = 0;
+            var foreignVersion = new TaskCompletionSource<long>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var registration = check.Register(capture: async catalog =>
+            {
+                if (catalog.Header == null || Interlocked.Exchange(ref foreignArmed, 0) == 0)
+                {
+                    return;
+                }
+                try
+                {
+                    var version = catalog.Head + 1;
+                    if (await storage.Exists(CommitPath(table, version)))
+                    {
+                        throw new InvalidOperationException($"version {version} exists, the catalog head is stale");
+                    }
+                    await WriteCommit(storage, table, version, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                    foreignVersion.TrySetResult(version);
+                }
+                catch (Exception e)
+                {
+                    foreignVersion.TrySetException(e);
+                }
+            });
+            var reservation = new PruningReservation();
+            var states = new ConcurrentQueue<CountingPersistentStorage>();
             await using var stream = new DeltaLakeSinkStream(table, storage, options =>
             {
                 options.WriteChangeDataOnNewTables = changeData;
                 options.MaxFileSizeBytes = 2048;
+                options.ReservationOverride = reservation;
+                if (treeMode)
+                {
+                    options.PruningMemoryBytes = 1;
+                }
+            }, wrapState: x =>
+            {
+                var counting = new CountingPersistentStorage(x);
+                states.Enqueue(counting);
+                return counting;
             });
             stream.WaitForUpdateDoesNotRequireDataChange();
             stream.Generate(100);
@@ -72,16 +111,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 if (round == 8)
                 {
-                    // Another writer commits between checkpoints, the sink reads the table again
-                    var head = (await DeltaTransactionReader.ReadTable(storage, table))!.Version;
-                    await WriteCommit(storage, table, head + 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                    // Another writer commits between the sink's commits, the sink reads the table again
+                    Volatile.Write(ref foreignArmed, 1);
+                    var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+                    while (!foreignVersion.Task.IsCompleted && DateTime.UtcNow < deadline)
+                    {
+                        await RunCheckpoints(stream, 0);
+                    }
+                    await foreignVersion.Task.WaitAsync(TimeSpan.FromSeconds(1));
                 }
             }
             stream.Generate(1);
             await RunCheckpoints(stream, 2);
 
             check.AssertClean(minimumChecks: 10);
+            Assert.Equal(treeMode, check.SawTreeMode);
             await AssertTableHolds(table, storage, stream);
+            var foreign = await foreignVersion.Task;
+            Assert.Equal("FOREIGN", Assert.Single(await ReadCommitActions(storage, table, foreign), x => x.CommitInfo != null).CommitInfo!.Data!["operation"].ToString());
+            Assert.True((await DeltaTransactionReader.ReadTable(storage, table))!.Version > foreign, "the sink wrote nothing after the foreign commit");
+            // Across the recovery the catalog opened sessions and wrote nothing, while the rest of the state did write
+            Assert.True(states.Sum(x => x.SessionsOf(CountingPersistentStorage.IsCatalogSession)) > 0, "no catalog session");
+            Assert.Equal(0, states.Sum(x => x.WritesOf(CountingPersistentStorage.IsCatalogSession)));
+            Assert.True(states.Sum(x => x.WritesOf(origin => !CountingPersistentStorage.IsCatalogSession(origin))) > 0, "no state was written");
         }
 
         [Fact]
@@ -200,7 +252,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public async Task TreeModeDeletesCorrectlyAndRotates()
+        public async Task TreeModeDeletesCorrectly()
         {
             // No room for even the first column, the bounds live in the spillable tree
             const string table = "catalog_tree_mode";
@@ -212,8 +264,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 options.ReservationOverride = new PruningReservation();
                 options.PruningMemoryBytes = 1;
                 options.MaxFileSizeBytes = 512;
-                options.CatalogRotationFloor = 30;
-                options.CatalogMigrationSlice = 7;
             });
             stream.WaitForUpdateDoesNotRequireDataChange();
             stream.Generate(400);
@@ -235,41 +285,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             check.AssertClean(minimumChecks: 10);
             Assert.True(check.SawTreeMode);
-            Assert.True(check.MaxRotations > 0, "no rotation");
-            await AssertTableHolds(table, storage, stream);
-        }
-
-        [Fact]
-        public async Task RotationKeepsTheCatalogEqualToTheLog()
-        {
-            const string table = "catalog_rotation";
-            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
-            var check = new CatalogCheck(storage, table);
-            using var registration = check.Register();
-            await using var stream = new DeltaLakeSinkStream(table, storage, options =>
-            {
-                options.MaxFileSizeBytes = 512;
-                options.CatalogRotationFloor = 30;
-                options.CatalogMigrationSlice = 5;
-            });
-            stream.WaitForUpdateDoesNotRequireDataChange();
-            stream.Generate(300);
-            await stream.StartStream(Insert(table));
-            await WaitForVersion(storage, table, stream, 0);
-
-            var random = new Random(25);
-            for (int round = 0; round < 20; round++)
-            {
-                foreach (var user in stream.Users.OrderBy(_ => random.Next()).Take(round % 3 == 0 ? 30 : 1).ToList())
-                {
-                    stream.DeleteUser(user);
-                }
-                stream.Generate(random.Next(5, 25));
-                await RunCheckpoints(stream, 2);
-            }
-
-            check.AssertClean(minimumChecks: 15);
-            Assert.True(check.MaxRotations >= 2, $"rotations {check.MaxRotations}");
             await AssertTableHolds(table, storage, stream);
         }
 
@@ -354,6 +369,127 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertTableHolds(second, secondStorage, secondStream);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task UnpublishedOverlayLeavesTheCatalogUnchangedWhilePublicationIsBlocked(bool treeMode)
+        {
+            var table = $"catalog_unpublished_{(treeMode ? "tree" : "array")}";
+            var inner = Files.Of.InternalMemory($"./{table}");
+            var storage = new HookFileStorage(inner);
+            var logs = new TestLogCollector();
+            var failures = new ConcurrentQueue<Exception>();
+            DeltaSinkCatalog? current = null;
+            CatalogSnapshot? beforeStaging = null;
+            var v0Files = -1;
+            var check = new CatalogCheck(storage, table);
+            // Every SaveData keeps its catalog, the last one before the block is the one that staged v1
+            using var registration = check.Register(capture: async catalog =>
+            {
+                try
+                {
+                    current = catalog;
+                    beforeStaging = await Snapshot(catalog);
+                    // Read on the sink's thread, a test thread read overlapping the check's read came back truncated
+                    if (catalog.Head == 0)
+                    {
+                        v0Files = (await DeltaTransactionReader.ReadTable(inner, table, 0))!.AddFiles.Count;
+                    }
+                }
+                catch (Exception e)
+                {
+                    failures.Enqueue(e);
+                }
+            });
+            var reservation = new PruningReservation();
+            await using var stream = new DeltaLakeSinkStream(table, storage, options =>
+            {
+                options.MaxFileSizeBytes = 512;
+                options.ReservationOverride = reservation;
+                if (treeMode)
+                {
+                    options.PruningMemoryBytes = 1;
+                }
+            });
+            stream.AddLoggerProvider(logs);
+            stream.WaitForUpdateDoesNotRequireDataChange();
+            stream.Generate(60);
+            await stream.StartStream(Insert(table));
+            await WaitForVersion(storage, table, stream, 0);
+            await SettlePublications(stream);
+
+            // A foreign commit takes v1, every blocked publication attempt snapshots the catalog
+            var seen = new ConcurrentQueue<CatalogSnapshot>();
+            var written = 0;
+            storage.Before = async (verb, path) =>
+            {
+                if (verb != "OpenRead" || !path.Full.EndsWith(CommitPath(table, 1)))
+                {
+                    return;
+                }
+                try
+                {
+                    if (Interlocked.Exchange(ref written, 1) == 0)
+                    {
+                        await WriteCommit(inner, table, 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
+                    }
+                    seen.Enqueue(await Snapshot(current!));
+                }
+                catch (Exception e)
+                {
+                    failures.Enqueue(e);
+                }
+            };
+            // The staged v1 would change the live files, no rows follow it
+            foreach (var user in stream.Users.Take(5).ToList())
+            {
+                stream.DeleteUser(user);
+            }
+            stream.Generate(10);
+            await WaitUntil(stream, () => logs.Errors.Count >= 1);
+            await RunCheckpoints(stream, 3);
+
+            Assert.Empty(failures);
+            Assert.True(v0Files > 0, "v0 was never read");
+            Assert.True(seen.Count >= 2, $"{seen.Count} blocked attempts");
+            Assert.All(seen, x =>
+            {
+                Assert.Equal(0, x.Head);
+                Assert.Equal(v0Files, x.LiveFiles);
+                Assert.Equal(beforeStaging!.Records, x.Records);
+                Assert.Equal(beforeStaging.Rows, x.Rows);
+            });
+
+            // Nothing is at or after v1 once the conflict is gone, so the halted retry publishes
+            storage.Before = null;
+            var checksWhileBlocked = check.Checks;
+            await inner.Rm(CommitPath(table, 1));
+            await WaitForVersionCheckpointing(storage, table, stream, 1);
+            await RunCheckpoints(stream, 2);
+
+            Assert.Empty(failures);
+            check.AssertClean(minimumChecks: 2);
+            // The catalog that applied v1 was compared with the log
+            Assert.True(check.Checks > checksWhileBlocked, "no check after the resume");
+            await AssertTableHolds(table, storage, stream);
+            Assert.Equal(treeMode, check.SawTreeMode);
+        }
+
+        private sealed record CatalogSnapshot(long Head, int LiveFiles, List<string> Records, List<string> Rows);
+
+        // Copies out every cold record and bounds row, the scans dispose their iterators
+        private static async Task<CatalogSnapshot> Snapshot(DeltaSinkCatalog catalog)
+        {
+            var records = new List<string>();
+            await foreach (var (id, record) in catalog.ScanFiles())
+            {
+                records.Add($"{id} {JsonSerializer.Serialize(record.ToAdd())}");
+            }
+            var rows = new List<string>();
+            await catalog.ScanBounds((id, row) => rows.Add($"{id} {Convert.ToHexString(row.ToArray())}"));
+            return new CatalogSnapshot(catalog.Head, catalog.LiveFiles, records, rows);
+        }
+
         private static void DeleteOneAndAddOne(FlowtideTestStream stream)
         {
             foreach (var user in stream.Users.Take(1).ToList())
@@ -399,6 +535,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.Generate(5);
             await WaitForVersion(storage, table, stream, 4);
             Assert.Single(storage.Requests, x => x.StartsWith("Ls ") && x.Contains("_delta_log"));
+            // The foreign head is read once, by the catalog's bootstrap
+            Assert.Single(storage.Requests, x => x.StartsWith("OpenRead ") && x.EndsWith(CommitPath(table, 3)));
             await AssertTableHolds(table, storage, stream);
         }
 
@@ -529,14 +667,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // Reported, not asserted, the allocation figure is process wide so run it alone
             var table = $"{(legacySink ? "churn_legacy" : "catalog_churn")}_{cachePages}";
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
-            DeltaSinkCatalog? catalog = null;
-            using var registration = new Registration(table, c => { catalog = c; return Task.CompletedTask; });
             var stream = new DeltaLakeSinkStream(table, storage, options =>
             {
                 options.MaxFileSizeBytes = 1024;
                 options.CheckpointInterval = 0;
-                options.CatalogRotationFloor = 200;
-                options.CatalogMigrationSlice = 50;
             }, legacySink: legacySink);
             var running = true;
             try
@@ -586,7 +720,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     }
                     files = (await DeltaTransactionReader.ReadTable(storage, table))!.AddFiles.Count;
                 }
-                _output.WriteLine($"{(legacySink ? "legacy" : "catalog")} cache {cachePages}: files {files}, rotations {catalog?.Rotations}, migrated {catalog?.RecordsMigrated}, last clear {catalog?.LastClearTime}, " +
+                _output.WriteLine($"{(legacySink ? "legacy" : "catalog")} cache {cachePages}: files {files}, " +
                     $"worst round {worstRound.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms, allocated {allocated / 1024 / 1024} MiB, peak catalog spill {peakSpill / 1024} KiB, requests {requests.Count}, " +
                     $"listings {requests.Count(x => x.StartsWith("Ls "))}, log reads {requests.Count(x => x.StartsWith("OpenRead ") && x.Contains("_delta_log"))}, " +
                     $"data reads {requests.Count(x => x.StartsWith("OpenRead ") && x.EndsWith(".parquet") && !x.Contains("_delta_log"))}");
@@ -738,17 +872,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             public int MaxLiveFiles { get; private set; }
 
-            public int MaxRotations { get; private set; }
-
             public bool SawTreeMode { get; private set; }
 
             public bool LastTreeMode { get; private set; }
 
             public int LastScanColumns { get; private set; }
 
-            public Registration Register()
+            // Probes the candidate check compared, zero means the check never ran
+            public int CandidateProbes { get; private set; }
+
+            public int Checks => Volatile.Read(ref _checks);
+
+            // The capture runs first, in the same hook, so it sees the catalog the check compares
+            public Registration Register(Func<DeltaSinkCatalog, Task>? capture = null)
             {
-                return new Registration(_table, Check);
+                return new Registration(_table, async catalog =>
+                {
+                    if (capture != null)
+                    {
+                        await capture(catalog);
+                    }
+                    await Check(catalog);
+                });
             }
 
             private async Task Check(DeltaSinkCatalog catalog)
@@ -759,12 +904,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     {
                         return;
                     }
-                    var snapshot = await DeltaTransactionReader.ReadTable(_storage, _table, catalog.Head);
-                    var expected = snapshot!.AddFiles.ToDictionary(x => x.Path!, x => Normalize(x));
+                    var snapshot = (await DeltaTransactionReader.ReadTable(_storage, _table, catalog.Head))!;
+                    var logAdds = snapshot.AddFiles.ToDictionary(x => x.Path!);
+                    var expected = snapshot.AddFiles.ToDictionary(x => x.Path!, x => Normalize(x));
                     var actual = new Dictionary<string, string>();
-                    await foreach (var (_, record) in catalog.ScanFiles())
+                    var paths = new Dictionary<int, string>();
+                    var ids = new List<int>();
+                    var duplicates = new List<string>();
+                    await foreach (var (id, record) in catalog.ScanFiles())
                     {
-                        actual[record.Path] = Normalize(record.ToAdd());
+                        ids.Add(id);
+                        paths[id] = record.Path;
+                        if (!actual.TryAdd(record.Path, Normalize(record.ToAdd())))
+                        {
+                            duplicates.Add(record.Path);
+                        }
                     }
                     var missing = expected.Keys.Where(x => !actual.ContainsKey(x)).ToList();
                     var extra = actual.Keys.Where(x => !expected.ContainsKey(x)).ToList();
@@ -773,8 +927,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     {
                         _failures.Enqueue($"version {catalog.Head}: missing [{string.Join(",", missing)}] extra [{string.Join(",", extra)}] changed [{string.Join(" | ", changed)}]");
                     }
+                    if (ids.Zip(ids.Skip(1)).Any(x => x.Second <= x.First))
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: ids not strictly ascending [{string.Join(",", ids)}]");
+                    }
+                    if (duplicates.Count > 0)
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: paths held twice [{string.Join(",", duplicates)}]");
+                    }
+                    if (ids.Count != catalog.LiveFiles)
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: scanned {ids.Count} files, {catalog.LiveFiles} live files counted");
+                    }
+                    var statisticsOptions = new JsonSerializerOptions();
+                    statisticsOptions.Converters.Add(new DeltaStatisticsConverter(snapshot.Schema));
+                    await CheckBounds(catalog, statisticsOptions, logAdds, paths);
+                    await CheckCandidates(catalog, snapshot, statisticsOptions, logAdds, paths);
                     MaxLiveFiles = Math.Max(MaxLiveFiles, catalog.LiveFiles);
-                    MaxRotations = Math.Max(MaxRotations, catalog.Rotations);
                     SawTreeMode |= catalog.TreeMode;
                     LastTreeMode = catalog.TreeMode;
                     LastScanColumns = catalog.ScanLayout.Columns.Count;
@@ -787,6 +956,113 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 catch (Exception e)
                 {
                     _failures.Enqueue(e.ToString());
+                }
+            }
+
+            // One row per cold id, each equal to the row the log's statistics give, only the storage flag may differ
+            private async Task CheckBounds(DeltaSinkCatalog catalog, JsonSerializerOptions statisticsOptions, Dictionary<string, DeltaAddAction> logAdds, Dictionary<int, string> paths)
+            {
+                var layout = catalog.ScanLayout;
+                var rows = new Dictionary<int, byte[]>();
+                var duplicateRows = new List<int>();
+                await catalog.ScanBounds((id, row) =>
+                {
+                    if (!rows.TryAdd(id, row.ToArray()))
+                    {
+                        duplicateRows.Add(id);
+                    }
+                });
+                if (duplicateRows.Count > 0)
+                {
+                    _failures.Enqueue($"version {catalog.Head}: bounds rows twice for ids [{string.Join(",", duplicateRows)}]");
+                }
+                if (!rows.Keys.Order().SequenceEqual(paths.Keys.Order()))
+                {
+                    _failures.Enqueue($"version {catalog.Head}: bounds ids [{string.Join(",", rows.Keys.Order())}] cold ids [{string.Join(",", paths.Keys.Order())}]");
+                }
+                var expected = new byte[layout.RowSize];
+                foreach (var (id, row) in rows)
+                {
+                    if (row.Length != layout.RowSize)
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: bounds row of id {id} has {row.Length} bytes, the layout {layout.RowSize}");
+                        continue;
+                    }
+                    if (!paths.TryGetValue(id, out var path) || !logAdds.TryGetValue(path, out var add))
+                    {
+                        continue;
+                    }
+                    layout.WriteRow(CatalogOverlay.ParseStatistics(add.Statistics, statisticsOptions), expected);
+                    if ((row[0] & ~PruningProjection.Live) != expected[0] || !row.AsSpan(1).SequenceEqual(expected.AsSpan(1)))
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: bounds row of {path} is {Convert.ToHexString(row)}, the log gives {Convert.ToHexString(expected)}");
+                    }
+                    if (!catalog.TreeMode && (row[0] & PruningProjection.Live) == 0)
+                    {
+                        _failures.Enqueue($"version {catalog.Head}: array row of {path} is not marked live");
+                    }
+                }
+            }
+
+            // Probes from sampled files' own bounds and mixes of them, every file the oracle admits must be a candidate
+            private async Task CheckCandidates(DeltaSinkCatalog catalog, Internal.Delta.DeltaTable snapshot, JsonSerializerOptions statisticsOptions, Dictionary<string, DeltaAddAction> logAdds, Dictionary<int, string> paths)
+            {
+                var layout = catalog.ScanLayout;
+                if (layout.Columns.Count == 0)
+                {
+                    return;
+                }
+                var random = new Random((int)catalog.Head);
+                var live = paths.Where(x => logAdds.ContainsKey(x.Value)).Select(x => (Id: x.Key, Add: logAdds[x.Value])).ToList();
+                var sampled = live
+                    .Select(x => (Min: CatalogOracle.Bound(x.Add.Statistics, snapshot.Schema, layout, "minValues"), Max: CatalogOracle.Bound(x.Add.Statistics, snapshot.Schema, layout, "maxValues")))
+                    .Where(x => x.Min != null && x.Max != null)
+                    .OrderBy(_ => random.Next())
+                    .Take(32)
+                    .ToList();
+                if (sampled.Count == 0)
+                {
+                    return;
+                }
+                var probes = new List<IDataValue[]>();
+                foreach (var (min, max) in sampled)
+                {
+                    probes.Add(min!);
+                    probes.Add(max!);
+                }
+                for (int i = 0; i < 16; i++)
+                {
+                    var mixed = new IDataValue[layout.Columns.Count];
+                    for (int c = 0; c < mixed.Length; c++)
+                    {
+                        var file = sampled[random.Next(sampled.Count)];
+                        mixed[c] = (random.Next(2) == 0 ? file.Min! : file.Max!)[c];
+                    }
+                    probes.Add(mixed);
+                }
+                var batch = new ProbeBatch(layout);
+                foreach (var probe in probes)
+                {
+                    batch.Add(probe);
+                }
+                var candidates = await catalog.FindCandidates(batch);
+                CandidateProbes += probes.Count;
+                var missed = new List<string>();
+                foreach (var (id, add) in live)
+                {
+                    var statistics = CatalogOverlay.ParseStatistics(add.Statistics, statisticsOptions);
+                    candidates.TryGetValue(id, out var matched);
+                    for (int p = 0; p < probes.Count; p++)
+                    {
+                        if (CatalogOracle.MayHold(statistics, layout, probes[p]) && (matched == null || !matched.Contains(p)))
+                        {
+                            missed.Add($"{add.Path} probe {p}");
+                        }
+                    }
+                }
+                if (missed.Count > 0)
+                {
+                    _failures.Enqueue($"version {catalog.Head}: {missed.Count} candidates missed [{string.Join(", ", missed.Take(10))}]");
                 }
             }
 
@@ -803,6 +1079,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Assert.True(_failures.IsEmpty, string.Join("\n", _failures));
                 Assert.True(Volatile.Read(ref _checks) >= minimumChecks, $"{_checks} checks");
+                Assert.True(CandidateProbes > 0, "the candidate check never compared a probe");
             }
         }
     }

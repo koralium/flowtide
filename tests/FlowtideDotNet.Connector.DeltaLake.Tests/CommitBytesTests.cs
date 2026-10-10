@@ -61,6 +61,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.True(bytes.StartsWith(Data));
             Assert.False(bytes.StartsWith(changed));
             Assert.False(bytes.StartsWith(Data.Append((byte)'x').ToArray()));
+            // The unused tail of a chunk is zero, an overlong prefix ending in zero must still fail
+            Assert.False(bytes.StartsWith(Data.Append((byte)0).ToArray()));
 
             Assert.True(bytes.ContentEquals(otherChunks));
             Assert.False(bytes.ContentEquals(Of(changed, 3)));
@@ -149,7 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var stageId = Guid.NewGuid().ToString("N");
             var actions = new List<DeltaAction>()
             {
-                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Timestamp = 1, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
+                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
                 Protocol(),
                 Metadata(UserSchema)
             };

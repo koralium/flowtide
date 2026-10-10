@@ -16,31 +16,6 @@ using System.Text.Json.Serialization;
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
 {
     // commitInfo is free form, a value of another type reads as null instead of failing the log line
-    internal sealed class LenientInt64Converter : JsonConverter<long?>
-    {
-        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType == JsonTokenType.Number && reader.TryGetInt64(out var value))
-            {
-                return value;
-            }
-            reader.Skip();
-            return null;
-        }
-
-        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
-        {
-            if (value.HasValue)
-            {
-                writer.WriteNumberValue(value.Value);
-            }
-            else
-            {
-                writer.WriteNullValue();
-            }
-        }
-    }
-
     internal sealed class LenientStringConverter : JsonConverter<string?>
     {
         public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -56,48 +31,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
         {
             writer.WriteStringValue(value);
-        }
-    }
-
-    internal sealed class LenientStringListConverter : JsonConverter<List<string>?>
-    {
-        public override List<string>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
-        {
-            if (reader.TokenType != JsonTokenType.StartArray)
-            {
-                reader.Skip();
-                return null;
-            }
-            var list = new List<string>();
-            bool valid = true;
-            while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
-            {
-                if (reader.TokenType == JsonTokenType.String)
-                {
-                    list.Add(reader.GetString()!);
-                }
-                else
-                {
-                    valid = false;
-                    reader.Skip();
-                }
-            }
-            return valid ? list : null;
-        }
-
-        public override void Write(Utf8JsonWriter writer, List<string>? value, JsonSerializerOptions options)
-        {
-            if (value == null)
-            {
-                writer.WriteNullValue();
-                return;
-            }
-            writer.WriteStartArray();
-            foreach (var item in value)
-            {
-                writer.WriteStringValue(item);
-            }
-            writer.WriteEndArray();
         }
     }
 }

@@ -38,10 +38,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public const byte HasMin = 1;
         public const byte HasMax = 2;
         public const byte MayContainNull = 4;
-        public const byte MinComplete = 8;
         public const byte MaxComplete = 16;
 
         public const int PrefixLength = 16;
+
+        // The comparers' epsilons, PruningKernelTests checks that both copies agree
+        private const double FloatEpsilon = 1e-8;
+        private const decimal DecimalEpsilon = 0.000000001m;
 
         public static PruningType? TypeOf(SchemaBaseType type)
         {
@@ -85,7 +88,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
         private static byte NullFlag(int? nullCount)
         {
-            return PruningKernels.NullMayMatch(nullCount) ? MayContainNull : (byte)0;
+            return NullMayMatch(nullCount) ? MayContainNull : (byte)0;
+        }
+
+        // A null value can only be in a file whose null count is unknown or above zero
+        private static bool NullMayMatch(int? nullCount)
+        {
+            return !nullCount.HasValue || nullCount.Value > 0;
         }
 
         public static void WriteInt64(Span<byte> cell, PruningType type, long? min, long? max, int? nullCount)
@@ -127,10 +136,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             if (min != null)
             {
                 flags |= HasMin;
-                if (min.Length <= PrefixLength)
-                {
-                    flags |= MinComplete;
-                }
                 WritePrefix(cell.Slice(1, 1 + PrefixLength), min);
             }
             if (max != null)
@@ -180,7 +185,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public static bool MatchInt64(ReadOnlySpan<byte> cell, PruningType type, long probe)
         {
             var flags = cell[0];
-            return PruningKernels.Int64(
+            return Int64InBounds(
                 (flags & HasMin) != 0, BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1, 8)),
                 (flags & HasMax) != 0, BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1 + BoundSize(type), 8)),
                 probe);
@@ -189,7 +194,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public static bool MatchDouble(ReadOnlySpan<byte> cell, PruningType type, double probe)
         {
             var flags = cell[0];
-            return PruningKernels.Double(
+            return DoubleInBounds(
                 (flags & HasMin) != 0, BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1, 8)),
                 (flags & HasMax) != 0, BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1 + BoundSize(type), 8)),
                 probe);
@@ -198,7 +203,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public static bool MatchDecimal(ReadOnlySpan<byte> cell, decimal probe)
         {
             var flags = cell[0];
-            return PruningKernels.Decimal(
+            return DecimalInBounds(
                 (flags & HasMin) != 0, ReadDecimal(cell.Slice(1, 16)),
                 (flags & HasMax) != 0, ReadDecimal(cell.Slice(17, 16)),
                 probe);
@@ -207,7 +212,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         public static bool MatchBool(ReadOnlySpan<byte> cell, bool probe)
         {
             var flags = cell[0];
-            return PruningKernels.Bool((flags & HasMin) != 0, cell[1] != 0, (flags & HasMax) != 0, cell[2] != 0, probe);
+            return BoolInBounds((flags & HasMin) != 0, cell[1] != 0, (flags & HasMax) != 0, cell[2] != 0, probe);
+        }
+
+        // A missing bound admits every probe on its side
+        private static bool Int64InBounds(bool hasMin, long min, bool hasMax, long max, long probe)
+        {
+            return !(hasMin && min > probe) && !(hasMax && max < probe);
+        }
+
+        // Widened by the comparer's epsilon on both sides
+        private static bool DoubleInBounds(bool hasMin, double min, bool hasMax, double max, double probe)
+        {
+            return !(hasMin && (min - FloatEpsilon) > probe) && !(hasMax && (max + FloatEpsilon) < probe);
+        }
+
+        // Widened by the comparer's epsilon on both sides
+        private static bool DecimalInBounds(bool hasMin, decimal min, bool hasMax, decimal max, decimal probe)
+        {
+            return !(hasMin && (min - DecimalEpsilon) > probe) && !(hasMax && (max + DecimalEpsilon) < probe);
+        }
+
+        // False sorts before true
+        private static bool BoolInBounds(bool hasMin, bool min, bool hasMax, bool max, bool probe)
+        {
+            return !(hasMin && min.CompareTo(probe) > 0) && !(hasMax && max.CompareTo(probe) < 0);
         }
 
         /// <summary>

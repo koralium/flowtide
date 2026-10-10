@@ -439,32 +439,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// <summary>
         /// Files in the log directory whose names start with a dot, such as staged commits.
         /// </summary>
-        /// <summary>
-        /// The commitInfo on the first line of a commit, null when the commit is missing or the line is not one.
-        /// </summary>
-        public static async Task<DeltaCommitInfoAction?> ReadFirstCommitInfo(IFileStorage storage, IOPath tableName, long version)
-        {
-            using var stream = await storage.OpenRead(tableName.Combine(DeltaLogDirName).Combine($"{version:D20}.json"));
-            if (stream == null)
-            {
-                return null;
-            }
-            using var reader = new StreamReader(stream);
-            var line = await reader.ReadLineAsync();
-            if (line == null)
-            {
-                return null;
-            }
-            try
-            {
-                return JsonSerializer.Deserialize<DeltaAction>(line)?.CommitInfo;
-            }
-            catch (JsonException)
-            {
-                return null;
-            }
-        }
-
         public static async Task<IReadOnlyList<IOEntry>> ListHiddenLogFiles(IFileStorage storage, IOPath tableName)
         {
             var files = await storage.Ls(tableName.Combine(DeltaLogDirName));

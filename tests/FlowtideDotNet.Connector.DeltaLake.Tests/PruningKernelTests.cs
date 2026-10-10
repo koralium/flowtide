@@ -13,7 +13,6 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
-using FlowtideDotNet.Connector.DeltaLake.Tests.PruningOracle;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System.Text;
@@ -25,7 +24,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private const int Cases = 4000;
 
         [Fact]
-        public void Int64MatchesTheOracle()
+        public void Int64MatchesTheComparer()
         {
             var random = new Random(1);
             for (int i = 0; i < Cases; i++)
@@ -33,15 +32,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = Bounds(random, () => (long)random.Next(-5, 6));
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new Int64Value(random.Next(-7, 8));
-                var oracle = new OracleInt64Comparer(min, max, nullCount).IsInBetween(probe);
-                AssertSame(oracle, new Int64StatisticsComparer(min, max, nullCount), PruningType.Int64, probe, exact: true);
+                AssertSame(new Int64StatisticsComparer(min, max, nullCount), PruningType.Int64, probe, exact: true);
             }
         }
 
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
-        public void FloatingPointMatchesTheOracle(bool isFloat32)
+        public void FloatingPointMatchesTheComparer(bool isFloat32)
         {
             var random = new Random(isFloat32 ? 3 : 2);
             double[] values = { -0.0, 0.0, 1e-9, -1e-9, 0.1, 1.0 / 3, 0.5, 1.5, 1e40, -1e40, 2.0000000099, 2.0, 16777217, 0.30000001192092896 };
@@ -56,13 +54,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     2 => new Int64Value(random.Next(-2, 3)),
                     _ => new DoubleValue(values[random.Next(values.Length)] + (random.Next(3) - 1) * 5e-9)
                 };
-                var oracle = new OracleFloatComparer(min, max, nullCount, isFloat32).IsInBetween(probe);
-                AssertSame(oracle, new FloatStatisticsComparer(min, max, nullCount, isFloat32), isFloat32 ? PruningType.Float32 : PruningType.Double, probe, exact: true);
+                AssertSame(new FloatStatisticsComparer(min, max, nullCount, isFloat32), isFloat32 ? PruningType.Float32 : PruningType.Double, probe, exact: true);
             }
         }
 
         [Fact]
-        public void DecimalMatchesTheOracle()
+        public void DecimalMatchesTheComparer()
         {
             var random = new Random(4);
             for (int i = 0; i < Cases; i++)
@@ -70,13 +67,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = Bounds(random, () => random.Next(-300, 300) / 100m);
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new DecimalValue(random.Next(-3100, 3100) / 1000m);
-                var oracle = new OracleDecimalComparer(min, max, nullCount).IsInBetween(probe);
-                AssertSame(oracle, new DecimalStatisticsComparer(min, max, nullCount), PruningType.Decimal, probe, exact: true);
+                AssertSame(new DecimalStatisticsComparer(min, max, nullCount), PruningType.Decimal, probe, exact: true);
+            }
+            // Probes inside and outside the epsilon, so the cell's copy of the epsilon follows the comparer's
+            foreach (var bound in new[] { -1.5m, 0m, 2.25m })
+            {
+                foreach (var offset in new[] { -0.000000002m, -0.0000000005m, 0m, 0.0000000005m, 0.000000002m })
+                {
+                    AssertSame(new DecimalStatisticsComparer(bound, bound, 0), PruningType.Decimal, new DecimalValue(bound + offset), exact: true);
+                }
             }
         }
 
         [Fact]
-        public void DateMatchesTheOracle()
+        public void DateMatchesTheComparer()
         {
             var random = new Random(5);
             var start = new DateTime(2024, 1, 1);
@@ -85,13 +89,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = Bounds(random, () => start.AddDays(random.Next(0, 6)).AddHours(random.Next(0, 24)));
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new TimestampTzValue(start.AddDays(random.Next(-1, 7)).AddMinutes(random.Next(0, 1440)));
-                var oracle = new OracleDateComparer(min, max, nullCount).IsInBetween(probe);
-                AssertSame(oracle, new DateStatisticsComparer(min, max, nullCount), PruningType.Date, probe, exact: true);
+                AssertSame(new DateStatisticsComparer(min, max, nullCount), PruningType.Date, probe, exact: true);
             }
         }
 
         [Fact]
-        public void TimestampMatchesTheOracle()
+        public void TimestampMatchesTheComparer()
         {
             var random = new Random(6);
             var start = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
@@ -103,13 +106,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 IDataValue probe = random.Next(8) == 0
                     ? NullValue.Instance
                     : new TimestampTzValue(start.AddTicks(random.Next(-10_000, 60_000)).ToOffset(TimeSpan.FromMinutes(random.Next(-2, 3) * 60)));
-                var oracle = new OracleTimestampComparer(min, max, nullCount).IsInBetween(probe);
-                AssertSame(oracle, new TimestampStatisticsComparer(min, max, nullCount), PruningType.Timestamp, probe, exact: true);
+                AssertSame(new TimestampStatisticsComparer(min, max, nullCount), PruningType.Timestamp, probe, exact: true);
             }
         }
 
         [Fact]
-        public void BoolMatchesTheOracle()
+        public void BoolMatchesTheComparer()
         {
             var random = new Random(7);
             for (int i = 0; i < Cases; i++)
@@ -117,13 +119,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = Bounds(random, () => random.Next(2) == 1);
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(6) == 0 ? NullValue.Instance : new BoolValue(random.Next(2) == 1);
-                var oracle = new OracleBoolComparer(min, max, nullCount).IsInBetween(probe);
-                AssertSame(oracle, new BoolStatisticsComparer(min, max, nullCount), PruningType.Bool, probe, exact: true);
+                AssertSame(new BoolStatisticsComparer(min, max, nullCount), PruningType.Bool, probe, exact: true);
             }
         }
 
         [Fact]
-        public void StringMatchesTheOracleExactlyForShortBoundsAndNeverPrunesMore()
+        public void StringMatchesTheComparerExactlyForShortBoundsAndNeverPrunesMore()
         {
             var random = new Random(8);
             string[] alphabet = { "a", "b", "z", "\0", "é", "€", "𝄞" };
@@ -144,14 +145,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = RefBounds(random, () => Encoding.UTF8.GetBytes(shared + Text(5)));
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new StringValue(shared + Text(6));
-                var oracle = new OracleStringComparer(min, max, nullCount).IsInBetween(probe);
                 var exact = (min == null || min.Length <= PruningCell.PrefixLength) && (max == null || max.Length <= PruningCell.PrefixLength);
-                AssertSame(oracle, new StringStatisticsComparer(min, max, nullCount), PruningType.String, probe, exact);
+                AssertSame(new StringStatisticsComparer(min, max, nullCount), PruningType.String, probe, exact);
             }
         }
 
         [Fact]
-        public void BinaryMatchesTheOracleExactlyForShortBoundsAndNeverPrunesMore()
+        public void BinaryMatchesTheComparerExactlyForShortBoundsAndNeverPrunesMore()
         {
             var random = new Random(9);
             byte[] Bytes(int maxLength)
@@ -168,9 +168,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var (min, max) = RefBounds(random, () => Bytes(20));
                 var nullCount = NullCount(random);
                 IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new BinaryValue(Bytes(20));
-                var oracle = new OracleBinaryComparer(min, max, nullCount).IsInBetween(probe);
                 var exact = (min == null || min.Length <= PruningCell.PrefixLength) && (max == null || max.Length <= PruningCell.PrefixLength);
-                AssertSame(oracle, new BinaryStatisticsComparer(min, max, nullCount), PruningType.Binary, probe, exact);
+                AssertSame(new BinaryStatisticsComparer(min, max, nullCount), PruningType.Binary, probe, exact);
             }
         }
 
@@ -214,7 +213,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             batch.Add(new IDataValue[] { new StringValue("text") });
 
             Assert.True(batch.Matches(row, 0));
-            Assert.Throws<InvalidOperationException>(() => new OracleFloatComparer(1, 2, 0).IsInBetween(new StringValue("text")));
+            Assert.Throws<InvalidOperationException>(() => new FloatStatisticsComparer(1, 2, 0).IsInBetween(new StringValue("text")));
         }
 
         private static (T? Min, T? Max) RefBounds<T>(Random random, Func<T> next)
@@ -246,11 +245,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return row;
         }
 
-        private static void AssertSame(bool oracle, IStatisticsComparer comparer, PruningType type, IDataValue probe, bool exact)
+        private static void AssertSame(IStatisticsComparer comparer, PruningType type, IDataValue probe, bool exact)
         {
-            // The refactored comparer still decides like the frozen one
-            Assert.Equal(oracle, comparer.IsInBetween(probe));
-
+            var expected = comparer.IsInBetween(probe);
             var layout = new PruningLayout(new[] { new PruningColumn(0, "c", type, 1) });
             var row = Row(layout, comparer);
             var batch = new ProbeBatch(layout);
@@ -258,9 +255,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var projected = batch.Matches(row, 0);
             if (exact)
             {
-                Assert.Equal(oracle, projected);
+                Assert.Equal(expected, projected);
             }
-            else if (oracle)
+            else if (expected)
             {
                 // A truncated bound may keep more files, never fewer
                 Assert.True(projected);

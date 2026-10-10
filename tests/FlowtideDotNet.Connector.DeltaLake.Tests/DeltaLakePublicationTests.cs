@@ -92,13 +92,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task APublishedCommitWithALongFirstLineIsRecognizedWithoutItsStage()
         {
-            // The commitInfo line names every created file
+            // The commitInfo the branch wrote before Phase 4, longer than 64 KiB
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{nameof(APublishedCommitWithALongFirstLineIsRecognizedWithoutItsStage)}"));
             var stageId = Guid.NewGuid().ToString("N");
             var created = Enumerable.Range(0, 3000).Select(x => $"part-00000-{Guid.NewGuid()}.zstd.parquet").ToList();
             var actions = new List<DeltaAction>()
             {
-                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Timestamp = 1, CreatedFiles = created, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
+                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Data = new Dictionary<string, object>() { ["operation"] = "WRITE", ["timestamp"] = 1L, ["flowtide.adoptedAt"] = 0L, ["flowtide.createdFiles"] = created } } },
                 Protocol(),
                 Metadata(UserSchema)
             };
@@ -386,7 +386,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var stageId = Guid.NewGuid().ToString("N");
             var actions = new List<DeltaAction>()
             {
-                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Timestamp = 1, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
+                new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = stageId, Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } },
                 Protocol(),
                 Metadata(UserSchema),
                 new DeltaAction() { Add = new DeltaAddAction() { Path = "a.parquet", Size = 1, DataChange = true, PartitionValues = new Dictionary<string, string>() } }

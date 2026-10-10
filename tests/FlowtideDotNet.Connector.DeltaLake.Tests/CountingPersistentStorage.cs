@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly ConcurrentDictionary<long, byte> _livePages = new ConcurrentDictionary<long, byte>();
         private readonly ConcurrentDictionary<long, int> _pageSession = new ConcurrentDictionary<long, int>();
         private readonly ConcurrentDictionary<int, string> _sessionOrigins = new ConcurrentDictionary<int, string>();
+        // Every write a session made, a later delete does not take it back
+        private readonly ConcurrentDictionary<int, int> _sessionWrites = new ConcurrentDictionary<int, int>();
         private int _sessions;
 
         public CountingPersistentStorage(IPersistentStorage inner)
@@ -35,6 +37,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         public int LivePages => _livePages.Count;
+
+        // Session ids run from 1 to this count
+        public int Sessions => Volatile.Read(ref _sessions);
+
+        // Empty while the session's origin is still being recorded
+        public string OriginOf(int session) => _sessionOrigins.TryGetValue(session, out var origin) ? origin : string.Empty;
+
+        public int WritesOfSession(int session) => _sessionWrites.TryGetValue(session, out var writes) ? writes : 0;
+
+        public int SessionsOf(Func<string, bool> origin) => _sessionOrigins.Values.Count(origin);
+
+        public int WritesOf(Func<string, bool> origin) => _sessionWrites.Where(x => origin(_sessionOrigins[x.Key])).Sum(x => x.Value);
+
+        // The catalog opens its trees from its own namespace
+        public static bool IsCatalogSession(string origin) => origin.Contains("DeltaLake.Internal.Catalog.");
 
         public bool SupportsDistributedCheckpoints => _inner.SupportsDistributedCheckpoints;
 
@@ -51,7 +68,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var id = Interlocked.Increment(ref _sessions);
             _sessionOrigins[id] = Environment.StackTrace;
-            return new CountingSession(_inner.CreateSession(), _livePages, _pageSession, id);
+            return new CountingSession(_inner.CreateSession(), _livePages, _pageSession, _sessionWrites, id);
         }
 
         // Live pages written by sessions whose opening stack matches
@@ -81,13 +98,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             private readonly IPersistentStorageSession _inner;
             private readonly ConcurrentDictionary<long, byte> _livePages;
             private readonly ConcurrentDictionary<long, int> _pageSession;
+            private readonly ConcurrentDictionary<int, int> _sessionWrites;
             private readonly int _id;
 
-            public CountingSession(IPersistentStorageSession inner, ConcurrentDictionary<long, byte> livePages, ConcurrentDictionary<long, int> pageSession, int id)
+            public CountingSession(IPersistentStorageSession inner, ConcurrentDictionary<long, byte> livePages, ConcurrentDictionary<long, int> pageSession, ConcurrentDictionary<int, int> sessionWrites, int id)
             {
                 _inner = inner;
                 _livePages = livePages;
                 _pageSession = pageSession;
+                _sessionWrites = sessionWrites;
                 _id = id;
             }
 
@@ -111,6 +130,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 _livePages[key] = 0;
                 _pageSession[key] = _id;
+                _sessionWrites.AddOrUpdate(_id, 1, static (_, writes) => writes + 1);
                 return _inner.Write(key, value);
             }
         }

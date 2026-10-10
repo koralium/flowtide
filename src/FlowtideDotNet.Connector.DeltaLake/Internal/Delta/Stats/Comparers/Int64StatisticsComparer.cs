@@ -32,9 +32,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                // Check if there are any null values in the column
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            return PruningKernels.Int64(_minValue.HasValue, _minValue ?? 0, _maxValue.HasValue, _maxValue ?? 0, value.AsLong);
+            var longValue = value.AsLong;
+
+            if (_minValue != null && _minValue > longValue)
+            {
+                return false;
+            }
+            if (_maxValue != null && _maxValue < longValue)
+            {
+                return false;
+            }
+            return true;
         }
 
         public void WriteBounds(PruningType type, Span<byte> cell)

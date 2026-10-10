@@ -91,24 +91,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         public bool StartsWith(ReadOnlySpan<byte> prefix)
         {
-            if (prefix.Length > _length)
-            {
-                return false;
-            }
-            foreach (var segment in Segments())
-            {
-                var count = Math.Min(prefix.Length, segment.Length);
-                if (!segment.Span.Slice(0, count).SequenceEqual(prefix.Slice(0, count)))
-                {
-                    return false;
-                }
-                prefix = prefix.Slice(count);
-                if (prefix.IsEmpty)
-                {
-                    return true;
-                }
-            }
-            return prefix.IsEmpty;
+            return prefix.Length <= _length && StartsWithAt(prefix, 0);
         }
 
         // Every byte of the other commit is this commit's at the same position

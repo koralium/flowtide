@@ -89,7 +89,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private bool _halted;
         private string? _haltReason;
         private bool _gaugesCreated;
-        private List<string> _createdFiles = new List<string>();
         private readonly HashSet<string> _checkpointSkipReasons = new HashSet<string>();
         private readonly HashSet<string> _reportedCheckpointFailures = new HashSet<string>();
         private readonly HashSet<string> _unknownCodecs = new HashSet<string>();
@@ -158,11 +157,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_catalog_pruning_columns", () => _catalog?.ScanLayout.Columns.Count ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_pruning_bytes", () => _catalog?.PruningBytes ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
-                Metrics.CreateObservableGauge("delta_catalog_rotations", () => _catalog?.Rotations ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_records_migrated", () => _catalog?.RecordsMigrated ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_bytes_migrated", () => _catalog?.BytesMigrated ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_last_slice_ms", () => _catalog?.LastSliceTime.TotalMilliseconds ?? 0);
-                Metrics.CreateObservableGauge("delta_catalog_last_clear_ms", () => _catalog?.LastClearTime.TotalMilliseconds ?? 0);
             }
         }
 
@@ -438,7 +432,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             {
                 await ClearRows();
                 _firstInsertDone.Value = true;
-                await _catalog.Maintain();
                 return;
             }
             // Before the version, the codec or any file is chosen, another writer may have moved the head
@@ -456,8 +449,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             List<DeltaAction> actions = new List<DeltaAction>();
             var currentTime = _options.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
             var stageId = Guid.NewGuid().ToString("N");
-            _createdFiles = new List<string>();
-            long adoptedAt;
 
             bool changeDataEnabled = false;
             bool deletionVectorEnabled = false;
@@ -480,17 +471,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 jsonOptions.Converters.Add(new TypeConverter());
                 var schemaString = JsonSerializer.Serialize(schema as SchemaBaseType, jsonOptions);
 
-                adoptedAt = 0;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
                     {
                         StageId = stageId,
-                        Timestamp = currentTime,
-                        AdoptedAt = adoptedAt,
-                        CreatedFiles = _createdFiles,
                         Data = new Dictionary<string, object>()
                         {
+                            { "timestamp", currentTime },
                             { "operation", "CREATE TABLE" }
                         }
                     }
@@ -572,16 +560,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 nextVersion = _catalog.Head + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
 
-                adoptedAt = _catalog.AdoptedAt;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
                     {
                         StageId = stageId,
-                        Timestamp = currentTime,
-                        AdoptedAt = adoptedAt,
-                        CreatedFiles = _createdFiles,
-                        Data = new Dictionary<string, object>() { { "operation", "WRITE" } }
+                        Data = new Dictionary<string, object>() { { "timestamp", currentTime }, { "operation", "WRITE" } }
                     }
                 });
 
@@ -592,7 +576,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             }
 
-            var overlay = _catalog.BeginCommit(nextVersion, adoptedAt, newHeader);
+            var overlay = _catalog.BeginCommit(nextVersion, newHeader);
             if (table != null && overwrite)
             {
                 await foreach (var (_, record) in _catalog.ScanFiles())
@@ -764,7 +748,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             await ClearRows();
             // Set that the first insert is done, this is used to determine if we need to write delete files for overwrite writes
             _firstInsertDone.Value = true;
-            await _catalog.Maintain();
         }
 
         // A commit without file, metadata or protocol actions is not written
@@ -788,7 +771,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 if (action.Cdc != null)
                 {
                     await _options.StorageLocation.Rm(_tablePath.Combine(action.Cdc.Path));
-                    _createdFiles.Remove(action.Cdc.Path!);
                     actions.RemoveAt(i);
                     i--;
                 }
@@ -835,7 +817,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Write delete vector here to file
                     var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
 
-                    _createdFiles.Add(deletePath);
                     var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
 
                     var reAdded = existingFile.ToAdd().WithDeletionVector(new DeletionVector()
@@ -942,7 +923,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         {
             string addFilePath = $"_change_data/cdc-00000-{Guid.NewGuid().ToString()}{_fileExtension}";
 
-            _createdFiles.Add(addFilePath);
             var fileSize = await cdcWriter.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             actions.Add(new DeltaAction()
             {
@@ -971,7 +951,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             var stats = writer.GetStatistics();
             var statsString = JsonSerializer.Serialize(stats, overlay.StatisticsOptions);
 
-            _createdFiles.Add(addFilePath);
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             var add = new DeltaAddAction()
             {

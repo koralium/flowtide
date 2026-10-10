@@ -121,10 +121,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 await current.StopStream();
             }
 
-            // The legacy head starts a new epoch
+            // The legacy stage is published as it was written, the first commit after it carries a stage id
+            Assert.Null((await ReadCommitActions(storage, "test", 2))[0].CommitInfo?.StageId);
             var first = (await ReadCommitActions(storage, "test", 3))[0].CommitInfo!;
             Assert.NotNull(first.StageId);
-            Assert.Equal(3, first.AdoptedAt);
             await AssertTableHolds(testName, storage, Users.Take(20));
         }
 

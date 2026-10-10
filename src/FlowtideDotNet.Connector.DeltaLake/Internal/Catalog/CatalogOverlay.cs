@@ -26,18 +26,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         // Writes and reads statistics for the commit's schema
         public JsonSerializerOptions StatisticsOptions => _statisticsOptions;
 
-        public CatalogOverlay(long version, long adoptedAt, PruningLayout layout, JsonSerializerOptions statisticsOptions, DeltaTable? newHeader)
+        public CatalogOverlay(long version, PruningLayout layout, JsonSerializerOptions statisticsOptions, DeltaTable? newHeader)
         {
             Version = version;
-            AdoptedAt = adoptedAt;
             Layout = layout;
             _statisticsOptions = statisticsOptions;
             NewHeader = newHeader;
         }
 
         public long Version { get; }
-
-        public long AdoptedAt { get; }
 
         // The pruning columns of the rows built for this commit
         public PruningLayout Layout { get; }

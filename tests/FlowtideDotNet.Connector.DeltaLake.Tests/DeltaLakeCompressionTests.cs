@@ -22,12 +22,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task NewTablesWriteZstdFiles()
         {
-            var storage = Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}");
+            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}"));
+            DeltaLakeOptions? sinkOptions = null;
             await using var stream = new DeltaLakeSinkStream(nameof(NewTablesWriteZstdFiles), storage, options =>
             {
                 options.CheckpointInterval = 2;
                 options.WriteChangeDataOnNewTables = true;
+                sinkOptions = options;
             });
+            stream.WaitForUpdateDoesNotRequireDataChange();
             stream.Generate(10);
             await stream.StartStream(UserInsert);
             await WaitForVersion(storage, "test", stream, 0);
@@ -36,6 +39,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.DeleteUser(stream.Users[0]);
             stream.DeleteUser(stream.Users[1]);
             await WaitForVersion(storage, "test", stream, 1);
+            await SettlePublications(stream);
+
+            // The sink reads the size on every row, so the insert only v2 fills change data files it must remove again
+            sinkOptions!.MaxFileSizeBytes = 1;
+            var offset = storage.Requests.Count;
             stream.Generate(5);
             await WaitForVersion(storage, "test", stream, 2);
             await WaitForCheckpoint(storage, "test", stream, 2);
@@ -46,6 +54,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.NotEmpty(rewritten);
             var changeData = rewrite.Where(x => x.Cdc != null).Select(x => x.Cdc!.Path!).ToList();
             Assert.NotEmpty(changeData);
+            Assert.DoesNotContain(await ReadCommitActions(storage, "test", 0), x => x.Cdc != null);
+            Assert.DoesNotContain(await ReadCommitActions(storage, "test", 2), x => x.Cdc != null);
+
+            // Every change data file v2 wrote was removed after it was written, only v1's remain
+            var requests = storage.Requests.Skip(offset).ToList();
+            var cdcWrites = requests.Select((x, i) => (Request: x, Index: i)).Where(x => x.Request.StartsWith("OpenWrite /test/_change_data/")).ToList();
+            Assert.NotEmpty(cdcWrites);
+            Assert.All(cdcWrites, x => Assert.Contains("Rm " + x.Request.Substring("OpenWrite ".Length), requests.Skip(x.Index + 1)));
+            var remaining = (await storage.Ls("/test/_change_data/")).Where(x => !x.Path.IsFolder).Select(x => "_change_data/" + x.Name).Order();
+            Assert.Equal(changeData.Order(), remaining);
 
             var dataFiles = (await storage.Ls("/test/")).Where(x => !x.Path.IsFolder && x.Name.EndsWith(".parquet")).Select(x => x.Name).ToList();
             Assert.NotEmpty(dataFiles);

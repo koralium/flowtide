@@ -11,9 +11,13 @@
 // limitations under the License.
 
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Tree;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 {
+    // The row must not be kept past the call, and the projection must not change during the scan
+    internal delegate void BoundsVisitor(int id, ReadOnlySpan<byte> row);
+
     /// <summary>
     /// The pruning rows of the live files, a scan reads no cold record.
     /// Rows sit in an array indexed by file id under the process-wide reservation, or in a spillable tree when
@@ -22,13 +26,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
     internal sealed class PruningProjection : IDisposable
     {
         // Set in the first byte of a row that holds a live file
-        private const byte Live = 2;
+        internal const byte Live = 2;
         private const int MinimumCapacity = 64;
 
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly PruningReservation _reservation;
         private readonly PruningGrant _grant = new PruningGrant();
-        private readonly RotatingTree<byte[]> _tree;
+        private readonly IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> _tree;
         private readonly PruningLayout _fullLayout;
         private PruningLayout _layout;
         private FlowtideMemory _rows;
@@ -36,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private bool _treeMode;
         private bool _disposed;
 
-        private PruningProjection(IMemoryAllocator memoryAllocator, PruningReservation reservation, RotatingTree<byte[]> tree, PruningLayout layout)
+        private PruningProjection(IMemoryAllocator memoryAllocator, PruningReservation reservation, IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> tree, PruningLayout layout)
         {
             _memoryAllocator = memoryAllocator;
             _reservation = reservation;
@@ -46,9 +50,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         }
 
         /// <summary>
-        /// Sized for the expected number of files, the tree is cleared and owned by this projection.
+        /// Sized for the expected number of files, the tree must be empty.
         /// </summary>
-        public static PruningProjection Create(IMemoryAllocator memoryAllocator, PruningReservation reservation, long capacityRequest, RotatingTree<byte[]> tree, PruningLayout layout, int expectedFiles, bool treeMode, out bool capacityMismatch)
+        public static PruningProjection Create(IMemoryAllocator memoryAllocator, PruningReservation reservation, long capacityRequest, IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> tree, PruningLayout layout, int expectedFiles, bool treeMode, out bool capacityMismatch)
         {
             var projection = new PruningProjection(memoryAllocator, reservation, tree, layout);
             capacityMismatch = !reservation.Register(projection._grant, capacityRequest);
@@ -71,8 +75,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         public bool TreeMode => _treeMode;
 
         public long ChargedBytes => _grant.Charged;
-
-        public RotatingTree<byte[]> Tree => _tree;
 
         private void Reserve(int expectedFiles)
         {
@@ -144,23 +146,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         /// <summary>
         /// Visits every live file's row, the projection must not change during the scan.
         /// </summary>
-        public async Task Scan(Action<int, ReadOnlyMemory<byte>> visit)
+        public ValueTask Scan(BoundsVisitor visit)
         {
             if (_treeMode)
             {
-                await foreach (var (id, row) in _tree.ScanAll())
-                {
-                    visit(id, row);
-                }
-                return;
+                return ScanTree(visit);
             }
             ScanArray(visit);
+            return default;
         }
 
-        private void ScanArray(Action<int, ReadOnlyMemory<byte>> visit)
+        private async ValueTask ScanTree(BoundsVisitor visit)
+        {
+            using var iterator = _tree.CreateIterator();
+            await iterator.SeekFirst();
+            await foreach (var page in iterator)
+            {
+                VisitPage(page, visit);
+            }
+        }
+
+        // One page, synchronously
+        private static void VisitPage(IBPlusTreePageIterator<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> page, BoundsVisitor visit)
+        {
+            foreach (var kv in page)
+            {
+                visit(kv.Key, kv.Value);
+            }
+        }
+
+        private void ScanArray(BoundsVisitor visit)
         {
             var rowSize = _layout.RowSize;
-            var buffer = new byte[rowSize];
             for (int id = 0; id < _capacity; id++)
             {
                 var row = _rows.Span.Slice(id * rowSize, rowSize);
@@ -168,8 +185,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 {
                     continue;
                 }
-                row.CopyTo(buffer);
-                visit(id, buffer);
+                visit(id, row);
             }
         }
 

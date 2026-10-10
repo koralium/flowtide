@@ -23,24 +23,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         [JsonConverter(typeof(LenientStringConverter))]
         public string? StageId { get; set; }
 
-        [JsonPropertyName("timestamp")]
-        [JsonConverter(typeof(LenientInt64Converter))]
-        public long? Timestamp { get; set; }
-
-        /// <summary>
-        /// The first version from which only stage id writing Flowtide sinks have committed.
-        /// </summary>
-        [JsonPropertyName("flowtide.adoptedAt")]
-        [JsonConverter(typeof(LenientInt64Converter))]
-        public long? AdoptedAt { get; set; }
-
-        /// <summary>
-        /// Data, change data and deletion vector files this commit created.
-        /// </summary>
-        [JsonPropertyName("flowtide.createdFiles")]
-        [JsonConverter(typeof(LenientStringListConverter))]
-        public List<string>? CreatedFiles { get; set; }
-
         [JsonExtensionData]
         public Dictionary<string, object>? Data { get; set; }
     }

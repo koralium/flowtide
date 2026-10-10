@@ -84,9 +84,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 _requests.Enqueue($"{verb} {path?.Full}");
             }
-            if (Before != null && path != null)
+            // Read once, a test may clear the hook while a request is in flight
+            var before = Before;
+            if (before != null && path != null)
             {
-                await Before(verb, path);
+                await before(verb, path);
             }
         }
 

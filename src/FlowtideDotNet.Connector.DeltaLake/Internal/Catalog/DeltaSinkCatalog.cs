@@ -14,8 +14,11 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging;
 using Stowage;
 using System.Text.Json;
@@ -34,8 +37,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private readonly IReadOnlyList<string> _writtenColumns;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly ILogger _logger;
-        private readonly RotatingTree<DeltaFileRecord> _cold;
-        private readonly RotatingTree<byte[]> _bounds;
+        private readonly IBPlusTree<int, DeltaFileRecord, PrimitiveListKeyContainer<int>, ManagedValueContainer<DeltaFileRecord>> _cold;
+        private readonly IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> _bounds;
+        private readonly PrimitiveListComparer<int> _comparer = new PrimitiveListComparer<int>();
         private readonly Stack<int> _freeIds = new Stack<int>();
         private PruningProjection? _projection;
         private PruningLayout _layout = new PruningLayout(Array.Empty<PruningColumn>());
@@ -44,16 +48,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private CatalogOverlay? _published;
         private bool _ready;
         private long _head = -1;
-        private long _adoptedAt;
         private int _nextId;
         private int _liveFiles;
         private bool _capacityWarned;
         // Tree mode lasts for the run, a later bootstrap does not take the arrays back
         private bool _treeModeForRun;
-        // While both trees migrate the first in line alternates, a cold tree that keeps rotating would starve the bounds
-        private bool _boundsFirst;
 
-        private DeltaSinkCatalog(DeltaLakeOptions options, IOPath tablePath, IReadOnlyList<string> writtenColumns, IMemoryAllocator memoryAllocator, ILogger logger, RotatingTree<DeltaFileRecord> cold, RotatingTree<byte[]> bounds)
+        private DeltaSinkCatalog(DeltaLakeOptions options, IOPath tablePath, IReadOnlyList<string> writtenColumns, IMemoryAllocator memoryAllocator, ILogger logger, IBPlusTree<int, DeltaFileRecord, PrimitiveListKeyContainer<int>, ManagedValueContainer<DeltaFileRecord>> cold, IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> bounds)
         {
             _options = options;
             _tablePath = tablePath;
@@ -64,10 +65,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             _bounds = bounds;
         }
 
+        // Both catalog trees: file ids as keys, values sized in bytes
+        internal static BPlusTreeOptions<int, V, PrimitiveListKeyContainer<int>, ManagedValueContainer<V>> TreeOptions<V>(IBplusTreeValueSerializer<V, ManagedValueContainer<V>> serializer, IMemoryAllocator memoryAllocator)
+        {
+            return new BPlusTreeOptions<int, V, PrimitiveListKeyContainer<int>, ManagedValueContainer<V>>()
+            {
+                Comparer = new PrimitiveListComparer<int>(),
+                KeySerializer = new PrimitiveListKeyContainerSerializer<int>(memoryAllocator),
+                ValueSerializer = serializer,
+                MemoryAllocator = memoryAllocator,
+                UseByteBasedPageSizes = true
+            };
+        }
+
         public static async Task<DeltaSinkCatalog> Open(IStateManagerClient stateManagerClient, DeltaLakeOptions options, IOPath tablePath, IReadOnlyList<string> writtenColumns, IMemoryAllocator memoryAllocator, ILogger logger)
         {
-            var cold = await RotatingTree<DeltaFileRecord>.Open(stateManagerClient, "catalog_cold", new DeltaFileRecordSerializer(), memoryAllocator);
-            var bounds = await RotatingTree<byte[]>.Open(stateManagerClient, "catalog_bounds", new BoundsRowSerializer(), memoryAllocator);
+            var cold = await stateManagerClient.GetOrCreateEphemeralTree("catalog_cold", TreeOptions(new DeltaFileRecordSerializer(), memoryAllocator));
+            var bounds = await stateManagerClient.GetOrCreateEphemeralTree("catalog_bounds", TreeOptions(new BoundsRowSerializer(), memoryAllocator));
+            // A reopen in the same process keeps the contents
+            await cold.Clear();
+            await bounds.Clear();
             return new DeltaSinkCatalog(options, tablePath, writtenColumns, memoryAllocator, logger, cold, bounds);
         }
 
@@ -80,8 +97,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         public long Head => _head;
 
-        public long AdoptedAt => _adoptedAt;
-
         public int LiveFiles => _liveFiles;
 
         /// <summary>
@@ -92,22 +107,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         public bool TreeMode => _projection?.TreeMode ?? false;
 
         public long PruningBytes => _projection?.ChargedBytes ?? 0;
-
-        public int Rotations => _cold.Rotations + _bounds.Rotations;
-
-        public long RecordsMigrated => _cold.RecordsMigrated + _bounds.RecordsMigrated;
-
-        public long BytesMigrated => _cold.BytesMigrated + _bounds.BytesMigrated;
-
-        internal RotatingTree<DeltaFileRecord> ColdTree => _cold;
-
-        internal RotatingTree<byte[]> BoundsTree => _bounds;
-
-        // Both trees' slices of the latest Maintain that migrated
-        public TimeSpan LastSliceTime { get; private set; }
-
-        // The Clears of the latest Maintain that finished a migration
-        public TimeSpan LastClearTime { get; private set; }
 
         private PruningReservation Reservation => _options.ReservationOverride ?? PruningReservation.Shared;
 
@@ -143,7 +142,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             }
             _header = WithoutFiles(table);
             _head = table.Version;
-            _adoptedAt = await ResolveAdoptedAt(table.Version);
             SetSchema(table.Schema, table.AddFiles.Count);
 
             var row = new byte[_layout.RowSize];
@@ -157,17 +155,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 _liveFiles++;
             }
             _ready = true;
-        }
-
-        // The epoch continues only from a head that a Flowtide sink with stage ids wrote
-        private async Task<long> ResolveAdoptedAt(long head)
-        {
-            var commitInfo = await DeltaTransactionReader.ReadFirstCommitInfo(_options.StorageLocation, _tablePath, head);
-            if (commitInfo?.StageId != null && commitInfo.AdoptedAt.HasValue)
-            {
-                return commitInfo.AdoptedAt.Value;
-            }
-            return head + 1;
         }
 
         private static DeltaTable WithoutFiles(DeltaTable table)
@@ -210,13 +197,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         /// <summary>
         /// A commit on the current head, or the commit that creates the table.
         /// </summary>
-        public CatalogOverlay BeginCommit(long version, long adoptedAt, DeltaTable? newHeader)
+        public CatalogOverlay BeginCommit(long version, DeltaTable? newHeader)
         {
             if (newHeader != null)
             {
-                return new CatalogOverlay(version, adoptedAt, PruningLayout.Create(newHeader.Schema, _writtenColumns, _options.StatsPruningColumns), StatisticsOptions(newHeader.Schema), newHeader);
+                return new CatalogOverlay(version, PruningLayout.Create(newHeader.Schema, _writtenColumns, _options.StatsPruningColumns), StatisticsOptions(newHeader.Schema), newHeader);
             }
-            return new CatalogOverlay(version, adoptedAt, _layout, _statisticsOptions!, null);
+            return new CatalogOverlay(version, _layout, _statisticsOptions!, null);
         }
 
         /// <summary>
@@ -236,14 +223,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             return _freeIds.Count > 0 ? _freeIds.Pop() : _nextId++;
         }
 
-        public IAsyncEnumerable<(int Id, DeltaFileRecord Record)> ScanFiles()
+        // Every record in id order, the catalog must not change during the scan
+        public async IAsyncEnumerable<(int Id, DeltaFileRecord Record)> ScanFiles()
         {
-            return _cold.ScanAll();
+            using var iterator = _cold.CreateIterator();
+            await iterator.SeekFirst();
+            await foreach (var page in iterator)
+            {
+                foreach (var kv in page)
+                {
+                    yield return (kv.Key, kv.Value);
+                }
+            }
         }
 
-        public Task<Dictionary<int, DeltaFileRecord>> GetFiles(IReadOnlyCollection<int> ids)
+        // The records of the ids that exist
+        public async Task<Dictionary<int, DeltaFileRecord>> GetFiles(IReadOnlyCollection<int> ids)
         {
-            return _cold.Get(ids);
+            var found = new Dictionary<int, DeltaFileRecord>(ids.Count);
+            if (ids.Count == 0)
+            {
+                return found;
+            }
+            var keys = ids.ToArray();
+            using var searcher = _cold.CreateBulkSearcher(_comparer);
+            await searcher.Start(keys, keys.Length);
+            while (await searcher.MoveNextLeaf())
+            {
+                var leaf = searcher.CurrentLeaf;
+                foreach (var result in searcher.CurrentResults)
+                {
+                    if (result.Found)
+                    {
+                        found[keys[result.KeyIndex]] = leaf.values.Get(result.LowerBound);
+                    }
+                }
+            }
+            return found;
         }
 
         /// <summary>
@@ -252,16 +268,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         public async Task<Dictionary<int, List<int>>> FindCandidates(ProbeBatch probes)
         {
             var candidates = new Dictionary<int, List<int>>();
-            if (probes.Count == 0 || _projection == null)
+            if (probes.Count == 0)
             {
                 return candidates;
             }
-            await _projection.Scan((id, row) =>
+            await ScanBounds((id, row) =>
             {
                 List<int>? matches = null;
                 for (int p = 0; p < probes.Count; p++)
                 {
-                    if (probes.Matches(row.Span, p))
+                    if (probes.Matches(row, p))
                     {
                         matches ??= new List<int>();
                         matches.Add(p);
@@ -273,6 +289,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 }
             });
             return candidates;
+        }
+
+        // Every live file's bounds row, nothing while no schema is set
+        internal ValueTask ScanBounds(BoundsVisitor visit)
+        {
+            var projection = _projection;
+            return projection == null ? default : projection.Scan(visit);
         }
 
         public void MarkPublished(CatalogOverlay overlay)
@@ -323,69 +346,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             }
             LatchTreeMode();
             _head = overlay.Version;
-            _adoptedAt = overlay.AdoptedAt;
-        }
-
-        /// <summary>
-        /// A bounded slice of rotation work, and the extra columns another table asked for.
-        /// </summary>
-        public async Task Maintain()
-        {
-            LatchTreeMode();
-            var boundsInTree = _projection != null && _projection.TreeMode;
-            _cold.RotateIfDue(_liveFiles, _options.CatalogRotationFloor);
-            if (boundsInTree)
-            {
-                _bounds.RotateIfDue(_liveFiles, _options.CatalogRotationFloor);
-            }
-
-            var records = _options.CatalogMigrationSlice;
-            var bytes = _options.CatalogMigrationBytes;
-            var sliceTime = TimeSpan.Zero;
-            var clearTime = TimeSpan.Zero;
-            var migrated = false;
-            var cleared = false;
-            void Account(MigrationWork work)
-            {
-                records -= work.Records;
-                bytes -= work.Bytes;
-                // A slice that read a record and refused it still took time
-                sliceTime += work.SliceTime;
-                migrated |= work.Records > 0;
-                if (work.ClearTime.HasValue)
-                {
-                    cleared = true;
-                    clearTime += work.ClearTime.Value;
-                }
-            }
-            // One budget per SaveData, the second tree in line gets what the first left
-            var boundsFirst = false;
-            if (boundsInTree && _cold.Migrating && _bounds.Migrating)
-            {
-                _boundsFirst = !_boundsFirst;
-                boundsFirst = _boundsFirst;
-            }
-            if (boundsFirst)
-            {
-                Account(await _bounds.MigrateSlice(records, bytes));
-                Account(await _cold.MigrateSlice(records, bytes, first: !migrated));
-            }
-            else
-            {
-                Account(await _cold.MigrateSlice(records, bytes));
-                if (boundsInTree)
-                {
-                    Account(await _bounds.MigrateSlice(records, bytes, first: !migrated));
-                }
-            }
-            if (migrated)
-            {
-                LastSliceTime = sliceTime;
-            }
-            if (cleared)
-            {
-                LastClearTime = clearTime;
-            }
         }
 
         public void ApplyRevocation()

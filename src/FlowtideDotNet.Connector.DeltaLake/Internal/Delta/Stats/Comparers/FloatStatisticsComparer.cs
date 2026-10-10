@@ -36,13 +36,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            if (!PruningKernels.TryDoubleProbe(value, _isFloat32, out var floatValue))
+
+            double floatValue;
+            if (value.Type == ArrowTypeId.Double)
+            {
+                floatValue = value.AsDouble;
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                floatValue = value.AsLong;
+            }
+            else
             {
                 throw new InvalidOperationException($"Unsupported data type {value.Type} for FloatStatisticsComparer.");
             }
-            return PruningKernels.Double(_minValue.HasValue, _minValue ?? 0, _maxValue.HasValue, _maxValue ?? 0, floatValue);
+
+            if (_isFloat32)
+            {
+                floatValue = StoredValue.Float32(floatValue);
+            }
+
+            if (_minValue != null && (_minValue - Epsilon) > floatValue)
+            {
+                return false;
+            }
+
+            if (_maxValue != null && (_maxValue + Epsilon) < floatValue)
+            {
+                return false;
+            }
+            return true;
         }
 
         public void WriteBounds(PruningType type, Span<byte> cell)

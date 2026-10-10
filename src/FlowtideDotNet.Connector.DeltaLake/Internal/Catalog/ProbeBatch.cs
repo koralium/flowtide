@@ -50,8 +50,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         public int Count => _count;
 
-        public PruningLayout Layout => _layout;
-
         // Only between batches, the captured values follow the layout's columns
         public void SetLayout(PruningLayout layout)
         {
@@ -126,7 +124,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                     break;
                 case PruningType.Double:
                 case PruningType.Float32:
-                    if (PruningKernels.TryDoubleProbe(value, type == PruningType.Float32, out var doubleValue))
+                    if (TryDoubleProbe(value, type == PruningType.Float32, out var doubleValue))
                     {
                         column.Doubles[probe] = doubleValue;
                         return;
@@ -142,14 +140,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 case PruningType.Date:
                     if (value.Type == ArrowTypeId.Timestamp)
                     {
-                        column.Longs[probe] = PruningKernels.DateProbe(value);
+                        column.Longs[probe] = DateProbe(value);
                         return;
                     }
                     break;
                 case PruningType.Timestamp:
                     if (value.Type == ArrowTypeId.Timestamp)
                     {
-                        column.Longs[probe] = PruningKernels.TimestampProbe(value);
+                        column.Longs[probe] = TimestampProbe(value);
                         return;
                     }
                     break;
@@ -176,6 +174,44 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                     break;
             }
             column.Status[probe] = Unsupported;
+        }
+
+        // Stored double for float and double columns, int64 probes are accepted like the comparer always did
+        private static bool TryDoubleProbe<T>(in T value, bool isFloat32, out double probe)
+            where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Double)
+            {
+                probe = value.AsDouble;
+            }
+            else if (value.Type == ArrowTypeId.Int64)
+            {
+                probe = value.AsLong;
+            }
+            else
+            {
+                probe = 0;
+                return false;
+            }
+            if (isFloat32)
+            {
+                probe = StoredValue.Float32(probe);
+            }
+            return true;
+        }
+
+        // Ticks of the stored date
+        private static long DateProbe<T>(in T value)
+            where T : IDataValue
+        {
+            return StoredValue.Date(value.AsTimestamp.ToDateTimeOffset().DateTime).Ticks;
+        }
+
+        // Milliseconds of the stored timestamp
+        private static long TimestampProbe<T>(in T value)
+            where T : IDataValue
+        {
+            return StoredValue.TimestampMilliseconds(value.AsTimestamp);
         }
 
         private static void CapturePrefix(ColumnValues column, int probe, ReadOnlySpan<byte> bytes)

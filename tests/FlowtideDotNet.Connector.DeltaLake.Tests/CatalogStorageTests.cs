@@ -16,11 +16,16 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stowage;
 using System.Buffers;
@@ -81,118 +86,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
-        [Fact]
-        public async Task RotationKeepsTheLiveRecordsUnderChurnAndSpill()
-        {
-            using var stateManager = new StateManagerSync<object>(new StateManagerOptions()
-            {
-                CachePageCount = 16,
-                MinCachePageCount = 4,
-                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
-            }, NullLoggerFactory.Instance, new Meter(nameof(RotationKeepsTheLiveRecordsUnderChurnAndSpill)), nameof(RotationKeepsTheLiveRecordsUnderChurnAndSpill), GlobalMemoryManager.Instance);
-            await stateManager.InitializeAsync();
-            var client = stateManager.GetOrCreateClient("catalog");
-            var tree = await RotatingTree<DeltaFileRecord>.Open(client, "cold", new DeltaFileRecordSerializer(), GlobalMemoryManager.Instance);
-
-            var model = new Dictionary<int, DeltaFileRecord>();
-            var random = new Random(11);
-            var nextId = 0;
-            DeltaFileRecord Record(int id) => new DeltaFileRecord() { Path = $"part-{id}-{random.Next()}.parquet", Statistics = new string('x', random.Next(100, 900)), NumRecords = id };
-
-            for (int i = 0; i < 2000; i++)
-            {
-                var record = Record(nextId);
-                model[nextId] = record;
-                await tree.Upsert(nextId++, record);
-            }
-            await AssertSame(tree, model);
-
-            var rotations = 0;
-            for (int round = 0; round < 40; round++)
-            {
-                // Constant live count: remove some, replace some deletion vectors, add new files
-                foreach (var id in model.Keys.OrderBy(_ => random.Next()).Take(150).ToList())
-                {
-                    model.Remove(id);
-                    await tree.Delete(id);
-                }
-                foreach (var id in model.Keys.OrderBy(_ => random.Next()).Take(50).ToList())
-                {
-                    var replaced = Record(id);
-                    model[id] = replaced;
-                    await tree.Upsert(id, replaced);
-                }
-                for (int i = 0; i < 150; i++)
-                {
-                    var record = Record(nextId);
-                    model[nextId] = record;
-                    await tree.Upsert(nextId++, record);
-                }
-
-                tree.RotateIfDue(model.Count, floor: 1000);
-                if (tree.Migrating)
-                {
-                    rotations++;
-                }
-                await tree.MigrateSlice(maxRecords: 150, maxBytes: long.MaxValue);
-                await AssertSame(tree, model);
-            }
-
-            Assert.True(tree.Rotations >= 2, $"rotations {tree.Rotations}");
-            Assert.True(tree.RecordsMigrated > 0);
-        }
-
-        [Theory]
-        [InlineData(10_000)]
-        [InlineData(1)]
-        public async Task AMigrationSliceStaysWithinItsByteBudget(long budget)
-        {
-            using var stateManager = new StateManagerSync<object>(new StateManagerOptions()
-            {
-                CachePageCount = 64,
-                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
-            }, NullLoggerFactory.Instance, new Meter(nameof(AMigrationSliceStaysWithinItsByteBudget)), nameof(AMigrationSliceStaysWithinItsByteBudget), GlobalMemoryManager.Instance);
-            await stateManager.InitializeAsync();
-            var client = stateManager.GetOrCreateClient("catalog");
-            var tree = await RotatingTree<DeltaFileRecord>.Open(client, "cold", new DeltaFileRecordSerializer(), GlobalMemoryManager.Instance);
-
-            // Uneven records, some alone take most of the budget
-            var random = new Random(9);
-            var model = new Dictionary<int, DeltaFileRecord>();
-            for (int round = 0; round < 3; round++)
-            {
-                for (int id = 0; id < 200; id++)
-                {
-                    model[id] = new DeltaFileRecord() { Path = $"part-{id}-{round}.parquet", Statistics = new string('x', random.Next(100, 4500)), NumRecords = id };
-                    await tree.Upsert(id, model[id]);
-                }
-            }
-            tree.RotateIfDue(model.Count, floor: 100);
-            Assert.True(tree.Migrating);
-
-            var none = await tree.MigrateSlice(maxRecords: 0, maxBytes: budget);
-            Assert.Equal(0, none.Records);
-            Assert.True(tree.Migrating);
-            // After another tree used part of the budget, a record that does not fit waits
-            var waiting = await tree.MigrateSlice(maxRecords: 1000, maxBytes: 1, first: false);
-            Assert.Equal(0, waiting.Records);
-            Assert.True(tree.Migrating);
-
-            var slices = 0;
-            while (tree.Migrating && slices < 1000)
-            {
-                var work = await tree.MigrateSlice(maxRecords: 1000, maxBytes: budget);
-                // A record larger than the whole budget still moves, alone
-                Assert.True(work.Records == 1 || work.Bytes <= budget, $"{work.Records} records, {work.Bytes} bytes");
-                Assert.True(work.Records >= 1, "a slice made no progress");
-                slices++;
-            }
-            Assert.False(tree.Migrating);
-            Assert.Equal(model.Count, tree.RecordsMigrated);
-            Assert.True(slices > 1);
-            await AssertSame(tree, model);
-        }
-
         [Theory]
         [InlineData(true)]
         [InlineData(false)]
@@ -204,7 +97,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
             }, NullLoggerFactory.Instance, new Meter(nameof(GrowingChargesTheOldAndTheNewArrayDuringTheCopy)), nameof(GrowingChargesTheOldAndTheNewArrayDuringTheCopy), GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
-            var tree = await RotatingTree<byte[]>.Open(stateManager.GetOrCreateClient("catalog"), "bounds", new BoundsRowSerializer(), GlobalMemoryManager.Instance);
+            var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
             var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1) });
             var reservation = new PruningReservation();
             // 64 rows fit, doubling holds 64 and 128 rows at once
@@ -263,7 +156,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
             }, NullLoggerFactory.Instance, new Meter(nameof(ARevocationKeepsTheFirstColumnOfEveryFile)), nameof(ARevocationKeepsTheFirstColumnOfEveryFile), GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
-            var tree = await RotatingTree<byte[]>.Open(stateManager.GetOrCreateClient("catalog"), "bounds", new BoundsRowSerializer(), GlobalMemoryManager.Instance);
+            var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
             var cell = PruningCell.CellSize(PruningType.Int64);
             var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1), new PruningColumn(1, "b", PruningType.Int64, 1 + cell) });
             var reservation = new PruningReservation();
@@ -290,10 +183,60 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var seen = new List<int>();
             await projection.Scan((id, row) =>
             {
-                Assert.Equal(rows[id].AsSpan(1, cell).ToArray(), row.Span.Slice(1, cell).ToArray());
+                Assert.Equal(rows[id].AsSpan(1, cell).ToArray(), row.Slice(1, cell).ToArray());
                 seen.Add(id);
             });
             Assert.Equal(Enumerable.Range(0, 64), seen);
+        }
+
+        [Fact]
+        public async Task ArrayScanAllocatesNoManagedMemory()
+        {
+            using var persistence = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            using var stateManager = new StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 64,
+                PersistentStorage = persistence
+            }, NullLoggerFactory.Instance, new Meter(nameof(ArrayScanAllocatesNoManagedMemory)), nameof(ArrayScanAllocatesNoManagedMemory), GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+            var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
+            var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1) });
+            using var projection = PruningProjection.Create(GlobalMemoryManager.Instance, new PruningReservation(), 1L << 20, tree, layout, expectedFiles: 1000, treeMode: false, out _);
+            for (int id = 0; id < 1000; id++)
+            {
+                await projection.Set(id, new byte[layout.RowSize]);
+            }
+            Assert.False(projection.TreeMode);
+            var counter = new VisitCounter();
+            for (int i = 0; i < 10; i++)
+            {
+                Assert.True(projection.Scan(counter.Visit).IsCompletedSuccessfully);
+            }
+
+            counter.Count = 0;
+            var before = GC.GetAllocatedBytesForCurrentThread();
+            for (int i = 0; i < 100; i++)
+            {
+                // Never awaited, an array scan completes synchronously
+                Assert.True(projection.Scan(counter.Visit).IsCompletedSuccessfully);
+            }
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+            Assert.Equal(0, allocated);
+            Assert.Equal(100_000, counter.Count);
+        }
+
+        // The visitor is created once, so the scan loop allocates nothing of its own
+        private sealed class VisitCounter
+        {
+            public int Count;
+
+            public VisitCounter()
+            {
+                Visit = (_, _) => Count++;
+            }
+
+            public BoundsVisitor Visit { get; }
         }
 
         [Fact]
@@ -304,7 +247,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var storage = Files.Of.InternalMemory($"./{table}");
             await WriteCommit(storage, table, 0, TableWithFiles(64));
             var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation(), PruningMemoryBytes = 3000, StatsPruningColumns = 1 };
-            var (stateManager, catalog) = await OpenCatalog(table, options);
+            var (stateManager, catalog, persistence) = await OpenCatalog(table, options);
+            using var persistenceScope = persistence;
             using var stateManagerScope = stateManager;
             using var catalogScope = catalog;
             var readOptions = new DeltaReadOptions() { SkipTombstones = true };
@@ -314,7 +258,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // Publishing the 65th file needs the 65th slot
             var add = FileAdd(64);
             await WriteCommit(storage, table, 1, new DeltaAction() { Add = add });
-            var overlay = catalog.BeginCommit(1, catalog.AdoptedAt, null);
+            var overlay = catalog.BeginCommit(1, null);
             overlay.Add(catalog.AllocateId(), add);
             catalog.MarkPublished(overlay);
             await catalog.ApplyPublished();
@@ -329,113 +273,286 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.True(catalog.TreeMode);
         }
 
-        [Theory]
-        [InlineData(7, 8 * 1024 * 1024)]
-        [InlineData(1000, 1500)]
-        public async Task BothCatalogTreesShareOneMigrationBudget(int sliceRecords, long sliceBytes)
+        [Fact]
+        public async Task CatalogTreesNeverWritePersistentState()
         {
-            // No room for any column, cold records and bounds both live in trees and rotate together
-            var table = $"catalog_shared_budget_{sliceRecords}";
+            const string table = "catalog_never_persisted";
             var storage = Files.Of.InternalMemory($"./{table}");
             await WriteCommit(storage, table, 0, TableWithFiles(40));
-            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation(), PruningMemoryBytes = 1, CatalogRotationFloor = 10, CatalogMigrationSlice = sliceRecords, CatalogMigrationBytes = sliceBytes };
-            var (stateManager, catalog) = await OpenCatalog(table, options);
-            using var stateManagerScope = stateManager;
-            using var catalogScope = catalog;
+            // The manager does not dispose a storage it was given, declared first so it is disposed last
+            using var state = new CountingPersistentStorage(new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() }));
+            using var stateManager = new StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 4,
+                MinCachePageCount = 1,
+                PersistentStorage = state
+            }, NullLoggerFactory.Instance, new Meter(table), table, GlobalMemoryManager.Instance);
+            await stateManager.InitializeAsync();
+            // No room for any column, the bounds also live in a tree
+            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation(), PruningMemoryBytes = 1 };
+
+            var s0 = state.Sessions;
+            using var catalog = await DeltaSinkCatalog.Open(stateManager.GetOrCreateClient("catalog"), options, table, new[] { "userkey", "name" }, GlobalMemoryManager.Instance, NullLogger.Instance);
+            var catalogSessions = Enumerable.Range(s0 + 1, state.Sessions - s0).ToList();
+            Assert.Equal(2, catalogSessions.Count);
+            Assert.All(catalogSessions, x => Assert.True(CountingPersistentStorage.IsCatalogSession(state.OriginOf(x)), state.OriginOf(x)));
+
             await catalog.Validate(new DeltaReadOptions() { SkipTombstones = true });
             Assert.True(catalog.TreeMode);
-
-            var live = Enumerable.Range(0, 40).ToDictionary(i => i, i => $"part-{i}.parquet");
+            var live = Enumerable.Range(0, 40).ToList();
             var next = 40;
-            long largestStep = 0;
-            var overBudget = new List<string>();
             for (int version = 1; version <= 40; version++)
             {
                 // Constant live count, removed ids come back from the free list
-                var overlay = catalog.BeginCommit(version, catalog.AdoptedAt, null);
-                foreach (var id in live.Keys.Take(5).ToList())
+                var overlay = catalog.BeginCommit(version, null);
+                foreach (var id in live.Take(5).ToList())
                 {
                     overlay.Removes.Add(id);
                     live.Remove(id);
                 }
                 for (int i = 0; i < 5; i++)
                 {
-                    var add = FileAdd(next++);
                     var id = catalog.AllocateId();
-                    overlay.Add(id, add);
-                    live[id] = add.Path!;
+                    overlay.Add(id, FileAdd(next++));
+                    live.Add(id);
                 }
                 catalog.MarkPublished(overlay);
                 await catalog.ApplyPublished();
-
-                var before = catalog.RecordsMigrated;
-                var bytesBefore = catalog.BytesMigrated;
-                await catalog.Maintain();
-                var step = catalog.RecordsMigrated - before;
-                var bytes = catalog.BytesMigrated - bytesBefore;
-                largestStep = Math.Max(largestStep, step);
-                // Only a single record larger than the whole budget may exceed it
-                if (bytes > sliceBytes && step != 1)
-                {
-                    overBudget.Add($"version {version}: {step} records, {bytes} bytes");
-                }
             }
 
-            Assert.True(catalog.Rotations >= 2, $"rotations {catalog.Rotations}");
-            Assert.InRange(largestStep, 1, sliceRecords);
-            Assert.Empty(overBudget);
-            var scanned = new List<string>();
-            await foreach (var (_, record) in catalog.ScanFiles())
-            {
-                scanned.Add(record.Path);
-            }
-            Assert.Equal(live.Values.Order(), scanned.Order());
+            // A committed tree on the same manager writes, so a counter that sees nothing fails here
+            var c0 = state.Sessions;
+            var control = await stateManager.GetOrCreateClient("control").GetOrCreateTree("control", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
+            var controlSessions = Enumerable.Range(c0 + 1, state.Sessions - c0).ToList();
+            await control.Upsert(1, new byte[] { 1, 2, 3 });
+            await control.Commit();
+            await stateManager.CheckpointAsync();
+
+            Assert.Equal(0, catalogSessions.Sum(state.WritesOfSession));
+            Assert.True(controlSessions.Sum(state.WritesOfSession) > 0, "the control tree wrote nothing");
         }
 
         [Fact]
-        public async Task BoundsMigrationFinishesWhileTheColdTreeKeepsRotating()
+        public async Task CatalogTreesAreEphemeral()
         {
-            // 15 files never change and the other 25 are replaced every commit, so a finished cold migration is due again at once
-            const string table = "catalog_no_starvation";
+            const string table = "catalog_ephemeral";
             var storage = Files.Of.InternalMemory($"./{table}");
-            await WriteCommit(storage, table, 0, TableWithFiles(40));
-            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation(), PruningMemoryBytes = 1, CatalogRotationFloor = 10, CatalogMigrationSlice = 1 };
-            var (stateManager, catalog) = await OpenCatalog(table, options);
+            await WriteCommit(storage, table, 0, TableWithFiles(4));
+            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation() };
+            var (stateManager, catalog, persistence) = await OpenCatalog(table, options);
+            using var persistenceScope = persistence;
+            using var stateManagerScope = stateManager;
+            using var catalogScope = catalog;
+            var client = stateManager.GetOrCreateClient("catalog");
+
+            // Each name, opened again as an ordinary tree, collides with the catalog's ephemeral tree
+            var cold = await Assert.ThrowsAsync<InvalidOperationException>(async () => await client.GetOrCreateTree("catalog_cold", DeltaSinkCatalog.TreeOptions(new DeltaFileRecordSerializer(), GlobalMemoryManager.Instance)));
+            Assert.Contains("other lifecycle", cold.Message);
+            var bounds = await Assert.ThrowsAsync<InvalidOperationException>(async () => await client.GetOrCreateTree("catalog_bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance)));
+            Assert.Contains("other lifecycle", bounds.Message);
+        }
+
+        [Fact]
+        public void CandidateOracleMatchesTheProjectionOnPartialStatistics()
+        {
+            var schema = new StructType(new List<StructField>()
+            {
+                new StructField("userkey", new LongType(), true, new Dictionary<string, object>()),
+                new StructField("name", new StringType(), true, new Dictionary<string, object>())
+            });
+            var layout = PruningLayout.Create(schema, new[] { "userkey", "name" }, 8);
+            Assert.Equal(2, layout.Columns.Count);
+            // Bounds for userkey only, the name cell is written as unknown
+            var partial = new DeltaStatistics() { NumRecords = 2, ValueComparers = new Dictionary<string, IStatisticsComparer>() { ["userkey"] = new Int64StatisticsComparer(1, 2, 0) } };
+            var cases = new (DeltaStatistics? Statistics, long Key, bool Expected)[]
+            {
+                (null, 10, true),
+                (partial, 10, false),
+                (partial, 1, true)
+            };
+            var probes = new ProbeBatch(layout);
+            var row = new byte[layout.RowSize];
+            foreach (var (statistics, key, expected) in cases)
+            {
+                // Every probe has a name, so a row with statistics reads its unknown name cell
+                var probe = new IDataValue[] { new Int64Value(key), new StringValue("m") };
+                probes.Clear();
+                probes.Add(probe);
+                layout.WriteRow(statistics, row);
+                Assert.Equal(expected, CatalogOracle.MayHold(statistics, layout, probe));
+                Assert.Equal(expected, probes.Matches(row, 0));
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CatalogMatchesAModelUnderChurnAndSpill(bool treeMode)
+        {
+            var table = $"catalog_model_{(treeMode ? "tree" : "array")}";
+            var storage = Files.Of.InternalMemory($"./{table}");
+            var random = new Random(11);
+            DeltaAddAction Add(int key) => new DeltaAddAction()
+            {
+                Path = $"part-{key}.parquet",
+                PartitionValues = new Dictionary<string, string>(),
+                Size = 100,
+                ModificationTime = 1,
+                DataChange = true,
+                Statistics = $"{{\"numRecords\":1,\"minValues\":{{\"userkey\":{key},\"name\":\"{new string('a', random.Next(100, 900))}\"}},\"maxValues\":{{\"userkey\":{key},\"name\":\"{new string('z', random.Next(100, 900))}\"}},\"nullCount\":{{\"userkey\":0,\"name\":0}}}}"
+            };
+            var initial = Enumerable.Range(0, 2000).Select(Add).ToList();
+            await WriteCommit(storage, table, 0, new[] { Protocol(), Metadata(UserSchema) }.Concat(initial.Select(x => new DeltaAction() { Add = x })).ToArray());
+            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation() };
+            if (treeMode)
+            {
+                options.PruningMemoryBytes = 1;
+            }
+            // Spill is counted through the factory in a directory of its own
+            var spill = new WriteCountingFileCacheFactory(new DefaultFileCacheFactory(new FileCacheOptions() { DirectoryPath = $"./data/tempFiles/{table}" }));
+            var (stateManager, catalog, persistence) = await OpenCatalog(table, options, cachePages: 16, minCachePages: 4, fileCacheFactory: spill);
+            using var persistenceScope = persistence;
             using var stateManagerScope = stateManager;
             using var catalogScope = catalog;
             await catalog.Validate(new DeltaReadOptions() { SkipTombstones = true });
-            Assert.True(catalog.TreeMode);
+            Assert.Equal(treeMode, catalog.TreeMode);
+            var statisticsOptions = new JsonSerializerOptions();
+            statisticsOptions.Converters.Add(new DeltaStatisticsConverter(catalog.Header!.Schema));
+            var expectedRows = new Dictionary<string, byte[]>();
 
-            var live = Enumerable.Range(0, 40).ToDictionary(i => i, i => $"part-{i}.parquet");
-            var next = 40;
-            for (int version = 1; version <= 120; version++)
+            var model = initial.Select((add, id) => (id, add)).ToDictionary(x => x.id, x => (x.add.Path!, x.add.Statistics!, (string?)null));
+            var freed = new HashSet<int>();
+            var reused = false;
+            var next = 2000;
+            for (int version = 1; version <= 40; version++)
             {
-                var overlay = catalog.BeginCommit(version, catalog.AdoptedAt, null);
-                foreach (var id in live.Keys.Where(x => x >= 15).ToList())
+                var overlay = catalog.BeginCommit(version, null);
+                var removed = model.Keys.OrderBy(_ => random.Next()).Take(150).ToList();
+                foreach (var id in removed)
                 {
                     overlay.Removes.Add(id);
-                    live.Remove(id);
+                    model.Remove(id);
                 }
-                for (int i = 0; i < 25; i++)
+                // A new deletion vector keeps path and statistics, only the tags change here
+                var current = await catalog.GetFiles(model.Keys.OrderBy(_ => random.Next()).Take(50).ToList());
+                foreach (var (id, record) in current)
                 {
-                    var add = FileAdd(next++);
+                    var add = record.ToAdd();
+                    add.Tags = new Dictionary<string, string>() { ["v"] = version.ToString() };
+                    overlay.Updates.Add((id, DeltaFileRecord.FromAdd(add, record.NumRecords)));
+                    model[id] = (model[id].Item1, model[id].Item2, version.ToString());
+                }
+                for (int i = 0; i < 150; i++)
+                {
                     var id = catalog.AllocateId();
+                    reused |= freed.Contains(id);
+                    var add = Add(next++);
                     overlay.Add(id, add);
-                    live[id] = add.Path!;
+                    model[id] = (add.Path!, add.Statistics!, null);
                 }
                 catalog.MarkPublished(overlay);
                 await catalog.ApplyPublished();
-                await catalog.Maintain();
+                foreach (var id in removed)
+                {
+                    freed.Add(id);
+                }
+
+                var scanned = new List<(int Id, DeltaFileRecord Record)>();
+                await foreach (var entry in catalog.ScanFiles())
+                {
+                    scanned.Add(entry);
+                }
+                Assert.Equal(model.Keys.Order(), scanned.Select(x => x.Id));
+                foreach (var (id, record) in scanned)
+                {
+                    Assert.Equal(model[id].Item1, record.Path);
+                    Assert.Equal(model[id].Item2, record.Statistics);
+                    Assert.Equal(model[id].Item3, record.Tags?.GetValueOrDefault("v"));
+                }
+                var probe = model.Keys.Where(x => x % 7 == 0).Concat(current.Keys).Concat(removed).Append(-5).Append(int.MaxValue).Distinct().ToList();
+                var found = await catalog.GetFiles(probe);
+                Assert.Equal(probe.Where(model.ContainsKey).Order(), found.Keys.Order());
+                foreach (var (id, record) in found)
+                {
+                    Assert.Equal(model[id].Item1, record.Path);
+                    Assert.Equal(model[id].Item2, record.Statistics);
+                    Assert.Equal(model[id].Item3, record.Tags?.GetValueOrDefault("v"));
+                }
+                Assert.Contains(found.Values, record => record.Tags?.GetValueOrDefault("v") == version.ToString());
+                var bounds = new List<(int Id, byte[] Row)>();
+                await catalog.ScanBounds((id, row) => bounds.Add((id, row.ToArray())));
+                Assert.Equal(model.Keys.Order(), bounds.Select(x => x.Id));
+                // Rows read back after a spill equal the rows the statistics give, apart from the storage flag
+                foreach (var (id, row) in bounds)
+                {
+                    if (!expectedRows.TryGetValue(model[id].Item2, out var expected))
+                    {
+                        expected = new byte[catalog.ScanLayout.RowSize];
+                        catalog.ScanLayout.WriteRow(CatalogOverlay.ParseStatistics(model[id].Item2, statisticsOptions), expected);
+                        expectedRows[model[id].Item2] = expected;
+                    }
+                    if ((row[0] & ~PruningProjection.Live) != expected[0] || !row.AsSpan(1).SequenceEqual(expected.AsSpan(1)))
+                    {
+                        Assert.Fail($"version {version}: bounds row of id {id} is {Convert.ToHexString(row)}, the statistics give {Convert.ToHexString(expected)}");
+                    }
+                }
+            }
+            Assert.True(reused, "no freed id was handed out again");
+            Assert.True(spill.WritesOf(x => x.Contains("catalog_")) > 0, "the catalog never spilled");
+            if (treeMode)
+            {
+                Assert.True(spill.WritesOf(x => x.EndsWith("catalog_bounds")) > 0, "the bounds tree never spilled");
+            }
+        }
+
+        [Fact]
+        public async Task ReopeningTheCatalogEmptiesBothTrees()
+        {
+            const string table = "catalog_reopen";
+            var storage = Files.Of.InternalMemory($"./{table}");
+            await WriteCommit(storage, table, 0, TableWithFiles(40));
+            var options = new DeltaLakeOptions() { StorageLocation = storage, ReservationOverride = new PruningReservation(), PruningMemoryBytes = 1 };
+            var (stateManager, catalog, persistence) = await OpenCatalog(table, options);
+            using var persistenceScope = persistence;
+            using var stateManagerScope = stateManager;
+            var client = stateManager.GetOrCreateClient("catalog");
+            var readOptions = new DeltaReadOptions() { SkipTombstones = true };
+            using (catalog)
+            {
+                await catalog.Validate(readOptions);
+                Assert.True(catalog.TreeMode);
+                // A second open of an ephemeral name sees the same tree
+                Assert.Equal(40, await CountEntries(await client.GetOrCreateEphemeralTree("catalog_cold", DeltaSinkCatalog.TreeOptions(new DeltaFileRecordSerializer(), GlobalMemoryManager.Instance))));
+                Assert.Equal(40, await CountEntries(await client.GetOrCreateEphemeralTree("catalog_bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance))));
             }
 
-            Assert.True(catalog.ColdTree.Completed >= 2, $"cold migrations {catalog.ColdTree.Completed}");
-            Assert.True(catalog.BoundsTree.Completed >= 2, $"bounds migrations {catalog.BoundsTree.Completed}");
-            var scanned = new List<string>();
-            await foreach (var (_, record) in catalog.ScanFiles())
+            using var reopened = await DeltaSinkCatalog.Open(client, options, table, new[] { "userkey", "name" }, GlobalMemoryManager.Instance, NullLogger.Instance);
+
+            Assert.Equal(0, await CountEntries(await client.GetOrCreateEphemeralTree("catalog_cold", DeltaSinkCatalog.TreeOptions(new DeltaFileRecordSerializer(), GlobalMemoryManager.Instance))));
+            Assert.Equal(0, await CountEntries(await client.GetOrCreateEphemeralTree("catalog_bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance))));
+            await reopened.Validate(readOptions);
+            Assert.Equal(40, reopened.LiveFiles);
+            var paths = new List<string>();
+            await foreach (var (_, record) in reopened.ScanFiles())
             {
-                scanned.Add(record.Path);
+                paths.Add(record.Path);
             }
-            Assert.Equal(live.Values.Order(), scanned.Order());
+            Assert.Equal(Enumerable.Range(0, 40).Select(x => $"part-{x}.parquet").Order(), paths.Order());
+        }
+
+        private static async Task<int> CountEntries<V>(IBPlusTree<int, V, PrimitiveListKeyContainer<int>, ManagedValueContainer<V>> tree)
+        {
+            var count = 0;
+            using var iterator = tree.CreateIterator();
+            await iterator.SeekFirst();
+            await foreach (var page in iterator)
+            {
+                foreach (var _ in page)
+                {
+                    count++;
+                }
+            }
+            return count;
         }
 
         [Fact]
@@ -445,7 +562,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var statisticsOptions = new JsonSerializerOptions();
             statisticsOptions.Converters.Add(new DeltaStatisticsConverter(schema));
             var layout = PruningLayout.Create(schema, new[] { "userkey" }, 8);
-            var overlay = new CatalogOverlay(1, 1, layout, statisticsOptions, null);
+            var overlay = new CatalogOverlay(1, layout, statisticsOptions, null);
 
             overlay.Add(0, new DeltaAddAction() { Path = "large.parquet", Statistics = "{\"numRecords\":3000000000,\"minValues\":{\"userkey\":1},\"maxValues\":{\"userkey\":2},\"nullCount\":{\"userkey\":0}}" });
             // A bound outside the column's range prunes nothing instead of failing the commit
@@ -456,16 +573,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(0, overlay.Adds[1].Row[0]);
         }
 
-        private static async Task<(StateManagerSync<object> StateManager, DeltaSinkCatalog Catalog)> OpenCatalog(string name, DeltaLakeOptions options)
+        // The manager does not dispose a storage it was given, the caller disposes it last
+        private static async Task<(StateManagerSync<object> StateManager, DeltaSinkCatalog Catalog, ReservoirPersistentStorage Persistence)> OpenCatalog(string name, DeltaLakeOptions options, int cachePages = 64, int minCachePages = 1000, IFileCacheFactory? fileCacheFactory = null)
         {
+            var persistence = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
             var stateManager = new StateManagerSync<object>(new StateManagerOptions()
             {
-                CachePageCount = 64,
-                PersistentStorage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() })
+                CachePageCount = cachePages,
+                MinCachePageCount = minCachePages,
+                FileCacheFactory = fileCacheFactory,
+                PersistentStorage = persistence
             }, NullLoggerFactory.Instance, new Meter(name), name, GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             var catalog = await DeltaSinkCatalog.Open(stateManager.GetOrCreateClient("catalog"), options, name, new[] { "userkey", "name" }, GlobalMemoryManager.Instance, NullLogger.Instance);
-            return (stateManager, catalog);
+            return (stateManager, catalog, persistence);
         }
 
         private static DeltaAction[] TableWithFiles(int count)
@@ -486,27 +607,5 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             };
         }
 
-        private static async Task AssertSame(RotatingTree<DeltaFileRecord> tree, Dictionary<int, DeltaFileRecord> model)
-        {
-            var scanned = new List<(int Id, DeltaFileRecord Value)>();
-            await foreach (var entry in tree.ScanAll())
-            {
-                scanned.Add(entry);
-            }
-            Assert.Equal(model.Keys.Order(), scanned.Select(x => x.Id));
-            foreach (var (id, value) in scanned)
-            {
-                Assert.Equal(model[id].Path, value.Path);
-                Assert.Equal(model[id].Statistics, value.Statistics);
-            }
-
-            var probe = model.Keys.Where(x => x % 7 == 0).Append(-5).Append(int.MaxValue).ToList();
-            var found = await tree.Get(probe);
-            Assert.Equal(probe.Where(model.ContainsKey).Order(), found.Keys.Order());
-            foreach (var (id, value) in found)
-            {
-                Assert.Equal(model[id].Path, value.Path);
-            }
-        }
     }
 }

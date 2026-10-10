@@ -31,8 +31,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         internal List<T> Values => _values;
 
-        internal Func<T, int> SizeOf => _sizeOf;
-
         public int Count => _values.Count;
 
         internal void Add(T value)

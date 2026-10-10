@@ -33,9 +33,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (value.IsNull)
             {
-                return PruningKernels.NullMayMatch(_nullCount);
+                if ((!_nullCount.HasValue) || _nullCount.Value > 0)
+                {
+                    return true;
+                }
+                return false;
             }
-            return PruningKernels.Decimal(_minValue.HasValue, _minValue ?? 0, _maxValue.HasValue, _maxValue ?? 0, value.AsDecimal);
+            var decimalValue = value.AsDecimal;
+
+            if (_minValue != null && (_minValue - Epsilon) > decimalValue)
+            {
+                return false;
+            }
+
+            if (_maxValue != null && (_maxValue + Epsilon) < decimalValue)
+            {
+                return false;
+            }
+            return true;
         }
 
         public void WriteBounds(PruningType type, Span<byte> cell)
