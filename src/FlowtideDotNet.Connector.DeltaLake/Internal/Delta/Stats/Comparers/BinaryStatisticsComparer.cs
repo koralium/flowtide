@@ -16,7 +16,7 @@ using System.Text.Unicode;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class BinaryStatisticsComparer : IStatisticsComparer
+    internal class BinaryStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private byte[]? _minValue;
         private byte[]? _maxValue;
@@ -50,6 +50,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Binary)
+            {
+                PruningCell.WriteBytes(cell, _minValue, _maxValue, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)

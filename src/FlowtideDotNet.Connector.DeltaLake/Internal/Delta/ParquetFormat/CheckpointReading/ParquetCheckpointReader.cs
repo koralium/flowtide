@@ -46,7 +46,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                 throw new FileNotFoundException($"File not found: {path.Path}");
             }
 
-            using ParquetSharp.Arrow.FileReader fileReader = new ParquetSharp.Arrow.FileReader(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             var columns = SnapshotColumns(fileReader.SchemaManifest, includeRemoves);
             if (columns.Length == 0)

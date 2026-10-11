@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class BoolStatisticsComparer : IStatisticsComparer
+    internal class BoolStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private bool? _minValue;
         private bool? _maxValue;
@@ -51,6 +51,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             }
 
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Bool)
+            {
+                PruningCell.WriteBool(cell, _minValue, _maxValue, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

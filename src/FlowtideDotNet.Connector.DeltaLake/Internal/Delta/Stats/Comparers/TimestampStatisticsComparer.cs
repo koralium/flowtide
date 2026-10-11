@@ -15,7 +15,7 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class TimestampStatisticsComparer : IStatisticsComparer
+    internal class TimestampStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private DateTimeOffset? _minValue;
         private DateTimeOffset? _maxValue;
@@ -60,6 +60,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Timestamp)
+            {
+                PruningCell.WriteInt64(cell, type, _minMilliseconds, _maxMilliseconds, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)
