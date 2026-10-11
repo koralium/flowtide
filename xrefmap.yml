@@ -10289,6 +10289,42 @@ references:
   commentId: N:FlowtideDotNet.Connector.DeltaLake
   fullName: FlowtideDotNet.Connector.DeltaLake
   nameWithType: FlowtideDotNet.Connector.DeltaLake
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec
+  name: DeltaCompressionCodec
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html
+  commentId: T:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec
+  nameWithType: DeltaCompressionCodec
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Gzip
+  name: Gzip
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html#FlowtideDotNet_Connector_DeltaLake_DeltaCompressionCodec_Gzip
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Gzip
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Gzip
+  nameWithType: DeltaCompressionCodec.Gzip
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Lz4Raw
+  name: Lz4Raw
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html#FlowtideDotNet_Connector_DeltaLake_DeltaCompressionCodec_Lz4Raw
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Lz4Raw
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Lz4Raw
+  nameWithType: DeltaCompressionCodec.Lz4Raw
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Snappy
+  name: Snappy
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html#FlowtideDotNet_Connector_DeltaLake_DeltaCompressionCodec_Snappy
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Snappy
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Snappy
+  nameWithType: DeltaCompressionCodec.Snappy
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Uncompressed
+  name: Uncompressed
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html#FlowtideDotNet_Connector_DeltaLake_DeltaCompressionCodec_Uncompressed
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Uncompressed
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Uncompressed
+  nameWithType: DeltaCompressionCodec.Uncompressed
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Zstd
+  name: Zstd
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html#FlowtideDotNet_Connector_DeltaLake_DeltaCompressionCodec_Zstd
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Zstd
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Zstd
+  nameWithType: DeltaCompressionCodec.Zstd
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   name: DeltaLakeOptions
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html
@@ -10308,6 +10344,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
   nameWithType: DeltaLakeOptions.CheckpointInterval
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
+  name: CompressionCodec
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
+  nameWithType: DeltaLakeOptions.CompressionCodec
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec*
+  name: CompressionCodec
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
+  nameWithType: DeltaLakeOptions.CompressionCodec
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval
   name: DeltaCheckInterval
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval
@@ -10373,6 +10422,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OneVersionPerCheckpoint
   nameWithType: DeltaLakeOptions.OneVersionPerCheckpoint
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
+  name: PruningMemoryBytes
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
+  nameWithType: DeltaLakeOptions.PruningMemoryBytes
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes*
+  name: PruningMemoryBytes
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
+  nameWithType: DeltaLakeOptions.PruningMemoryBytes
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
+  name: StatsPruningColumns
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
+  nameWithType: DeltaLakeOptions.StatsPruningColumns
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns*
+  name: StatsPruningColumns
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
+  nameWithType: DeltaLakeOptions.StatsPruningColumns
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StorageLocation
   name: StorageLocation
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StorageLocation

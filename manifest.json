@@ -1595,6 +1595,20 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.yml\" sourcestartlinenumber=\"1\">Compression codec for the Parquet files the Delta Lake sink writes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.yml",
       "output": {
         ".html": {

@@ -186,6 +186,39 @@ Setting this to 0 or a negative value disables checkpoint writing.</p>
 
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec">
+  CompressionCodec
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the compression codec for written Parquet files, it applies to every table this sink writes.
+When null the table property delta.parquet.compression.codec is used, and zstd when the table has none.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public DeltaCompressionCodec? CompressionCodec { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.html">DeltaCompressionCodec</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval">
@@ -340,6 +373,73 @@ The default value is set to 100 MB.</p>
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes">
+  PruningMemoryBytes
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the memory, in bytes, all Delta Lake sinks in the process may use for the statistics they skip files with.
+The first sink that reads its table fixes the value for the process. A table's first column has priority: tables holding more
+columns give them up at their next checkpoint, and the table that did not fit keeps its statistics in spillable state until the stream restarts.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long PruningMemoryBytes { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns">
+  StatsPruningColumns
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets how many written columns the sink keeps file statistics for, to skip files when deleting rows.
+Columns are taken in the order they are written, structs, lists and maps are skipped.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int StatsPruningColumns { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd></dd>
   </dl>
 

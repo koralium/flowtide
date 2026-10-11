@@ -145,8 +145,45 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 <td>True</td>
 <td>No</td>
 </tr>
+<tr>
+<td>EnableColumnMappingOnNewTables</td>
+<td>If new tables created by the connector should use column mapping by name</td>
+<td>True</td>
+<td>No</td>
+</tr>
+<tr>
+<td>CheckpointInterval</td>
+<td>Only used for writing, a Delta checkpoint file is written every this many versions, 0 turns checkpoint files off</td>
+<td>20</td>
+<td>No</td>
+</tr>
+<tr>
+<td>MaxFileSizeBytes</td>
+<td>Only used for writing, the size at which the sink starts a new data file</td>
+<td>100 MB</td>
+<td>No</td>
+</tr>
+<tr>
+<td>CompressionCodec</td>
+<td>Only used for writing, the codec of written Parquet files, see <a href="#compression">Compression</a></td>
+<td>Null</td>
+<td>No</td>
+</tr>
+<tr>
+<td>StatsPruningColumns</td>
+<td>Only used for writing, how many written columns the sink keeps file statistics for to skip files when deleting rows</td>
+<td>8</td>
+<td>No</td>
+</tr>
+<tr>
+<td>PruningMemoryBytes</td>
+<td>Only used for writing, memory all Delta Lake sinks in the process share for those statistics, the first sink fixes the value</td>
+<td>1 GB</td>
+<td>No</td>
+</tr>
 </tbody>
 </table>
+<p>The options given to <code>AddDeltaLakeCatalog</code> apply to every table the catalog reads or writes.</p>
 <h2 id="delta-lake-source">Delta Lake Source</h2>
 <p>The delta lake source allows ingesting data from a delta lake table. To connect to a delta lake table, use <code>AddDeltaLake</code> method on the connector manager.</p>
 <pre><code class="lang-csharp">connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
@@ -175,6 +212,19 @@ SELECT * FROM my_folder.my_delta_lake_table
 <li>Partitioned data</li>
 <li>Column mapping</li>
 </ul>
+<p>Commits that only rearrange files, where every action has <code>dataChange</code> set to false such as an <code>OPTIMIZE</code>, are skipped.</p>
+<h3 id="when-the-source-stops-reading">When the source stops reading</h3>
+<p>After its first load the source reads the table's log one version at a time, so it needs every commit after its own position. If those are removed
+before the source reads them, the source stops reading the table instead of skipping data:</p>
+<ul>
+<li>The next commit is gone while later versions exist, for example after log retention removed it while the stream was stopped.</li>
+<li>A data or change data file of a version the source has not read yet was removed, for example by <code>VACUUM</code>.</li>
+</ul>
+<p>The source then logs an error, reports itself unhealthy (<code>flowtide_health</code> is 0) and keeps its position, the rest of the stream keeps running.
+To read the table again, reset the stream state so the source starts from the latest snapshot, this needs a table whose latest version can still be read.
+The stream then sends every row of the table again, so sinks that append, such as a Delta Lake sink with <code>INSERT INTO</code>, need their tables emptied first.
+A file missing during the first load fails the stream instead, which then retries from the latest snapshot.
+Keep the table's log and file retention longer than the longest time a stream can be stopped to avoid this.</p>
 <h3 id="replaying-delta-changes">Replaying delta changes</h3>
 <p>One feature of the delta lake source is the possibility to replay the log where each commit to the delta table is sent separately once per checkpoint.
 This can be useful in unit tests, but also if one wants to send historic data to a destination system such as a time-series database and not skip over a commit.</p>
@@ -223,6 +273,31 @@ This means that the write frequency can be modified by changing how often a chec
 <h5>Warning</h5>
 <p>The delta lake sink does not yet support partitioned tables.</p>
 </div>
+<p>A checkpoint that changes no rows writes no new version of the table, unless it creates the table or starts an <code>INSERT OVERWRITE</code>.</p>
+<h3 id="compression">Compression</h3>
+<p>Data and change data files are compressed with zstd by default. The codec is chosen in this order:</p>
+<ol>
+<li>The <code>CompressionCodec</code> option, it applies to every table the sink writes.</li>
+<li>The table property <code>delta.parquet.compression.codec</code> (<code>uncompressed</code>, <code>snappy</code>, <code>gzip</code>, <code>lz4</code>, <code>lz4_raw</code> or <code>zstd</code>).</li>
+<li>zstd. An unknown value of the table property also gives zstd and logs a warning.</li>
+</ol>
+<p>The file names carry the codec, for example <code>part-00000-{guid}.zstd.parquet</code> or <code>part-00000-{guid}.snappy.parquet</code>, uncompressed files end in <code>.parquet</code>.
+Earlier versions of the connector wrote uncompressed files named <code>.snappy.parquet</code>. Readers take the codec from the file itself, so those files stay readable.</p>
+<h3 id="deleting-rows">Deleting rows</h3>
+<p>To find the files that can hold a deleted row, the sink keeps the statistics of the first <code>StatsPruningColumns</code> written columns of every file in memory,
+up to <code>PruningMemoryBytes</code> shared by all Delta Lake sinks in the process. A table's first column has priority over other tables' extra columns: when it does
+not fit, the tables holding extra columns give them up at their next checkpoint. The table that did not fit keeps its statistics in the stream's state,
+which can spill to disk, until the stream restarts.</p>
+<h3 id="other-writers">Other writers</h3>
+<p>The sink expects to be the only writer of its table. Before each commit it lists the table's log once, commits that another writer added between two
+checkpoints, such as an <code>OPTIMIZE</code>, are read and kept.</p>
+<p>If another writer commits the version the sink is publishing, the sink stops publishing instead of overwriting it. It then logs an error, reports itself
+unhealthy (<code>flowtide_health</code> is 0) and keeps every row it receives in the stream's state. It tries again at every later checkpoint, which needs new data
+or a restart of the stream, and continues once the conflicting <code>_delta_log/{version}.json</code> file has been removed.
+Remove it only while the other writer has not committed a later version. When it retries after stopping, and when it publishes after a restart, the sink
+first lists the log and stays stopped if the log holds a later version or a checkpoint at that version.
+Resetting the stream state also recovers, the stream then writes every row again. With <code>INSERT OVERWRITE</code> that replaces the table, with <code>INSERT INTO</code>
+the rows are appended, so empty or recreate the table first.</p>
 <h3 id="change-data-feed">Change data feed</h3>
 <p>It is possible to enable flowtide to write change data files which can help speed up change data readers.
 This is done by setting the flag <code>WriteChangeDataOnNewTables</code> to <code>true</code> in the options when configuring the delta lake connector.
