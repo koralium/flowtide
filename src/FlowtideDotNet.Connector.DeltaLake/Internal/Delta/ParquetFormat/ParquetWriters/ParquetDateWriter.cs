@@ -66,6 +66,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public void NewBatch()
         {
             _builder = new Date32Array.Builder();
+            _minValue = null;
+            _maxValue = null;
+            _nullCount = 0;
         }
 
         public void WriteNull()

@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         void AddRow(ColumnRowReference row, bool isDelete = false);
 
-        Task<int> WriteData(IFileStorage storage, IOPath tablePath, string fileName);
+        Task<long> WriteData(IFileStorage storage, IOPath tablePath, string fileName);
 
         int WrittenCount { get; }
     }

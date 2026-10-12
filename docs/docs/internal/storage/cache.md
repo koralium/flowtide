@@ -43,3 +43,13 @@ To try and reduce memory usage an extra rule is added which is to look at the gh
 If many small queue pages travel the entire ghost queue without any reuse at all, the small queue is reduced in size and allows the main queue to grow. If the stream is mostly recency based, this then allows the stream to utilize less memory. The main queue is also aged based on number of inserts into the queue, meaning elements in main will lose frequency even if the main queue is not full. This allows elements to be evicted from main if they have not been used for a long time, to help reduce memory usage.
 
 During testing of a stream which works on recency, such as joining the latest events based on timestamp or similar, this can help heavily to reduce memory usage since usually only the rightmost leaf page in the B+ trees is required to be updated, together with the rightmost parent nodes.
+
+### Deleted pages and queue compaction
+
+Deleting a page marks its slot in the small or main queue as stale, the slot is only dropped when a scan reaches it. Under sustained pressure the scans can stay in the main queue, so stale slots in the small queue are never reached.
+
+Every cleanup pass therefore checks the stale slots before it selects victims, and compacts only a queue that has stale slots. When there are at least 1024 of them and at least as many as live slots, the queues are compacted in chunks of 256 entries. Each stale slot is removed once, so the work is paid for by the deletes that left it. A pass holds the cache's full lock, so a producer that waits for room also waits for a compaction that pass runs. A compaction between chunks can let a concurrent insert land ahead of entries that are still to be moved, which shifts the FIFO order slightly.
+
+### Ghost queue trimming
+
+An evicted page adds a ghost record, and the same operation trims the oldest records back to the ghost capacity. A pass spends its operation budget on requeued victims first, so when pages held by their callers use it up, the pass takes further chunks of 256 operations until the ghost queue is back within its capacity.

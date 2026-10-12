@@ -25,14 +25,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
             _comparers = comparers;
         }
 
-        public int FindOccurance(int toFindIndex, RecordBatch toFindFrom, RecordBatch searchIn, int globalOffset, IDeleteVector deleteVector)
+        public int FindOccurance(int toFindIndex, RecordBatch toFindFrom, RecordBatch searchIn, int globalOffset, IDeleteVector deleteVector, int startIndex = 0)
         {
             if (_comparers.Length == 0)
             {
-                return 0;
+                return startIndex < searchIn.Length ? startIndex : -1;
             }
-
-            int startIndex = 0;
 
             while (true)
             {

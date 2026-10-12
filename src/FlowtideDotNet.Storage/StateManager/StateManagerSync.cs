@@ -100,6 +100,25 @@ namespace FlowtideDotNet.Storage.StateManager
         /// </summary>
         internal Func<string, long, Task>? PageWriteHookForTests { get; set; }
 
+        internal StateClient? RegisteredClientForTests(string client)
+        {
+            lock (m_lock)
+            {
+                return _stateClients.TryGetValue(client, out var stateClient) ? stateClient : null;
+            }
+        }
+
+        internal int RegisteredClientCountForTests
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    return _stateClients.Count;
+                }
+            }
+        }
+
         /// <summary>
         /// True while a client's background commit is still writing. A walk starts at the
         /// operator's Commit and is only joined by the checkpoint, a teardown drains it here.
@@ -381,6 +400,10 @@ namespace FlowtideDotNet.Storage.StateManager
 
             if (foundStateClient)
             {
+                if (cachedClient is IEphemeralStateClient)
+                {
+                    throw LifecycleCollision(client);
+                }
                 return ValueTask.FromResult((cachedClient as IObjectState<T>)!);
             }
 
@@ -450,7 +473,7 @@ namespace FlowtideDotNet.Storage.StateManager
             }
         }
 
-        internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options, IMemoryAllocator memoryAllocator)
+        internal ValueTask<IStateClient<TValue, TMetadata>> CreateClientAsync<TValue, TMetadata>(string client, StateClientOptions<TValue> options, IMemoryAllocator memoryAllocator, bool ephemeral = false)
             where TValue : ICacheObject
             where TMetadata : class, IStorageMetadata
         {
@@ -463,6 +486,11 @@ namespace FlowtideDotNet.Storage.StateManager
             if (_stateClients.TryGetValue(client, out var cachedClient))
             {
                 Monitor.Exit(m_lock);
+                // Thrown after the exit, a throw under Monitor.Enter would wedge the manager
+                if ((cachedClient is IEphemeralStateClient) != ephemeral)
+                {
+                    throw LifecycleCollision(client);
+                }
                 return ValueTask.FromResult<IStateClient<TValue, TMetadata>>((cachedClient as SyncStateClient<TValue, TMetadata>)!);
             }
             if (m_metadata.ClientMetadataLocations.TryGetValue(client, out var location))
@@ -470,9 +498,13 @@ namespace FlowtideDotNet.Storage.StateManager
                 Monitor.Exit(m_lock);
                 if (m_persistentStorage.TryGetValue(location, out var bytes))
                 {
+                    if (ephemeral)
+                    {
+                        throw new InvalidOperationException($"State '{client}' has persisted contents and cannot be opened as an ephemeral tree, use a new name.");
+                    }
                     var metadata = StateClientMetadataSerializer.Deserialize<TMetadata>(bytes.Value, bytes.Value.Length);
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, metadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = NewSyncStateClient(ephemeral, client, location, metadata, persistentSession, options, memoryAllocator);
 
                     lock (m_lock)
                     {
@@ -485,7 +517,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     // Temporary tree or similar, return an empty metadata with the same id
                     var clientMetadata = new StateClientMetadata<TMetadata>();
                     var persistentSession = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, location, clientMetadata, persistentSession, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = NewSyncStateClient(ephemeral, client, location, clientMetadata, persistentSession, options, memoryAllocator);
                     lock (m_lock)
                     {
                         _stateClients.Add(client, stateClient);
@@ -504,11 +536,28 @@ namespace FlowtideDotNet.Storage.StateManager
                 lock (m_lock)
                 {
                     var session = m_persistentStorage.CreateSession();
-                    var stateClient = new SyncStateClient<TValue, TMetadata>(this, client, clientMetadataPageId, clientMetadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+                    var stateClient = NewSyncStateClient(ephemeral, client, clientMetadataPageId, clientMetadata, session, options, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
                 }
             }
+        }
+
+        private static InvalidOperationException LifecycleCollision(string client)
+        {
+            return new InvalidOperationException($"State '{client}' is already open with the other lifecycle, ephemeral and persisted state cannot share a name.");
+        }
+
+        private SyncStateClient<TValue, TMetadata> NewSyncStateClient<TValue, TMetadata>(bool ephemeral, string client, long metadataId, StateClientMetadata<TMetadata> metadata, IPersistentStorageSession session, StateClientOptions<TValue> options, IMemoryAllocator memoryAllocator)
+            where TValue : ICacheObject
+            where TMetadata : class, IStorageMetadata
+        {
+            Debug.Assert(m_fileCacheFactory != null);
+            if (ephemeral)
+            {
+                return new EphemeralSyncStateClient<TValue, TMetadata>(this, client, metadataId, metadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
+            }
+            return new SyncStateClient<TValue, TMetadata>(this, client, metadataId, metadata, session, options, m_fileCacheFactory, meter, this.options.UseReadCache, this.options.BackgroundCommit, this.options.DefaultBPlusTreePageSize, this.options.DefaultBPlusTreePageSizeBytes, memoryAllocator);
         }
 
         public IStateManagerClient GetOrCreateClient(string name, TagList tagList = default)

@@ -20,11 +20,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
     {
         private double? _minValue;
         private double? _maxValue;
-        private int _nullCount;
+        private int? _nullCount;
+        private readonly bool _isFloat32;
+
+        public FloatStatisticsParser(bool isFloat32 = false)
+        {
+            _isFloat32 = isFloat32;
+        }
+
+        public void Reset()
+        {
+            _minValue = null;
+            _maxValue = null;
+            _nullCount = null;
+        }
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new FloatStatisticsComparer(_minValue, _maxValue, _nullCount, _isFloat32);
         }
 
         public IDataValue GetValue(ref Utf8JsonReader reader)

@@ -32,13 +32,21 @@ As with all other connectors you can ofcourse read and write from and to any oth
 
 These are the options that can be configured when adding the delta lake connector:
 
-| Name                             | Description                                                                            | Default    | Required |
-| -------------------------------- | -------------------------------------------------------------------------------------- | ---------- | -------- |
-| StorageLocation                  | Connection where the tables are located                                                | Null       | Yes      |
-| OneVersionPerCheckpoint          | Only used for reading, it then makes sure that each commit is sent once per checkpoint | False      | No       |
-| DeltaCheckInterval               | Only used for reading, how often it should be checked if a new commit exists           | 10 seconds | No       |
-| WriteChangeDataOnNewTables       | If new tables created by the connector should enable change feed                       | False      | No       |
-| EnableDeletionVectorsOnNewTables | If new tables created by the connector should enable deletion vectors                  | True       | No       |
+| Name                             | Description                                                                                                                  | Default    | Required |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
+| StorageLocation                  | Connection where the tables are located                                                                                      | Null       | Yes      |
+| OneVersionPerCheckpoint          | Only used for reading, it then makes sure that each commit is sent once per checkpoint                                       | False      | No       |
+| DeltaCheckInterval               | Only used for reading, how often it should be checked if a new commit exists                                                 | 10 seconds | No       |
+| WriteChangeDataOnNewTables       | If new tables created by the connector should enable change feed                                                             | False      | No       |
+| EnableDeletionVectorsOnNewTables | If new tables created by the connector should enable deletion vectors                                                        | True       | No       |
+| EnableColumnMappingOnNewTables   | If new tables created by the connector should use column mapping by name                                                     | True       | No       |
+| CheckpointInterval               | Only used for writing, a Delta checkpoint file is written every this many versions, 0 turns checkpoint files off             | 20         | No       |
+| MaxFileSizeBytes                 | Only used for writing, the size at which the sink starts a new data file                                                     | 100 MB     | No       |
+| CompressionCodec                 | Only used for writing, the codec of written Parquet files, see [Compression](#compression)                                   | Null       | No       |
+| StatsPruningColumns              | Only used for writing, how many written columns the sink keeps file statistics for to skip files when deleting rows         | 8          | No       |
+| PruningMemoryBytes               | Only used for writing, memory all Delta Lake sinks in the process share for those statistics, the first sink fixes the value | 1 GB       | No       |
+
+The options given to `AddDeltaLakeCatalog` apply to every table the catalog reads or writes.
 
 
 ## Delta Lake Source
@@ -83,6 +91,22 @@ The delta lake source can calculate all the changes from the table, so no additi
 * Deletion vectors
 * Partitioned data
 * Column mapping
+
+Commits that only rearrange files, where every action has `dataChange` set to false such as an `OPTIMIZE`, are skipped.
+
+### When the source stops reading
+
+After its first load the source reads the table's log one version at a time, so it needs every commit after its own position. If those are removed
+before the source reads them, the source stops reading the table instead of skipping data:
+
+* The next commit is gone while later versions exist, for example after log retention removed it while the stream was stopped.
+* A data or change data file of a version the source has not read yet was removed, for example by `VACUUM`.
+
+The source then logs an error, reports itself unhealthy (`flowtide_health` is 0) and keeps its position, the rest of the stream keeps running.
+To read the table again, reset the stream state so the source starts from the latest snapshot, this needs a table whose latest version can still be read.
+The stream then sends every row of the table again, so sinks that append, such as a Delta Lake sink with `INSERT INTO`, need their tables emptied first.
+A file missing during the first load fails the stream instead, which then retries from the latest snapshot.
+Keep the table's log and file retention longer than the longest time a stream can be stopped to avoid this.
 
 ### Replaying delta changes
 
@@ -150,6 +174,39 @@ Delta Lake Features:
 
 > [!WARNING]
 > The delta lake sink does not yet support partitioned tables.
+
+A checkpoint that changes no rows writes no new version of the table, unless it creates the table or starts an `INSERT OVERWRITE`.
+
+### Compression
+
+Data and change data files are compressed with zstd by default. The codec is chosen in this order:
+
+1. The `CompressionCodec` option, it applies to every table the sink writes.
+2. The table property `delta.parquet.compression.codec` (`uncompressed`, `snappy`, `gzip`, `lz4`, `lz4_raw` or `zstd`).
+3. zstd. An unknown value of the table property also gives zstd and logs a warning.
+
+The file names carry the codec, for example `part-00000-{guid}.zstd.parquet` or `part-00000-{guid}.snappy.parquet`, uncompressed files end in `.parquet`.
+Earlier versions of the connector wrote uncompressed files named `.snappy.parquet`. Readers take the codec from the file itself, so those files stay readable.
+
+### Deleting rows
+
+To find the files that can hold a deleted row, the sink keeps the statistics of the first `StatsPruningColumns` written columns of every file in memory,
+up to `PruningMemoryBytes` shared by all Delta Lake sinks in the process. A table's first column has priority over other tables' extra columns: when it does
+not fit, the tables holding extra columns give them up at their next checkpoint. The table that did not fit keeps its statistics in the stream's state,
+which can spill to disk, until the stream restarts.
+
+### Other writers
+
+The sink expects to be the only writer of its table. Before each commit it lists the table's log once, commits that another writer added between two
+checkpoints, such as an `OPTIMIZE`, are read and kept.
+
+If another writer commits the version the sink is publishing, the sink stops publishing instead of overwriting it. It then logs an error, reports itself
+unhealthy (`flowtide_health` is 0) and keeps every row it receives in the stream's state. It tries again at every later checkpoint, which needs new data
+or a restart of the stream, and continues once the conflicting `_delta_log/{version}.json` file has been removed.
+Remove it only while the other writer has not committed a later version. When it retries after stopping, and when it publishes after a restart, the sink
+first lists the log and stays stopped if the log holds a later version or a checkpoint at that version.
+Resetting the stream state also recovers, the stream then writes every row again. With `INSERT OVERWRITE` that replaces the table, with `INSERT INTO`
+the rows are appended, so empty or recreate the table first.
 
 
 ### Change data feed

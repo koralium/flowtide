@@ -88,6 +88,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
@@ -933,12 +937,48 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
                     }
                 }
             });
+        }
+
+        private async Task WaitForCheckpoint(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(1);
+            while (true)
+            {
+                try
+                {
+                    using var lastCheckpoint = await storage.OpenRead($"/{tableName}/_delta_log/_last_checkpoint");
+                    if (lastCheckpoint != null)
+                    {
+                        using var reader = new StreamReader(lastCheckpoint);
+                        var info = JsonSerializer.Deserialize<LastCheckpointInfo>(await reader.ReadToEndAsync());
+                        if (info != null && info.Version >= version)
+                        {
+                            return;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Not written yet, or caught mid-write
+                }
+
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException($"Checkpoint {version} of {tableName} was not written in time");
+                }
+                await stream.SchedulerTick();
+                await Task.Delay(100);
+            }
         }
 
         private async Task WaitForVersion(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)
@@ -1096,6 +1136,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // The checkpoint is written after the commit is published
+            await WaitForCheckpoint(storage, "test", stream, 2);
 
             // Verify that checkpoint file exists in storage!
             var checkpointExists = await storage.Exists("/test/_delta_log/00000000000000000002.checkpoint.parquet");
@@ -1167,6 +1209,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // Without the checkpoint DuckDB would only read the json log
+            await WaitForCheckpoint(storage, "test", stream, 2);
 
             await stream.DisposeAsync();
 
@@ -1221,8 +1265,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
             });
 
-            var stagedFile = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            var staged = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
             {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
                 new Internal.Delta.Actions.DeltaAction()
                 {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
@@ -1234,11 +1282,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
 
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            var pending = new Internal.DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length };
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true);
             // Second publish is a no-op, as after a restart.
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            Assert.Equal(PublishOutcome.AlreadyPublished, (await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true)).Outcome);
 
-            Assert.False(await storage.Exists($"/staged/_delta_log/{stagedFile}"));
+            Assert.False(await storage.Exists($"/staged/_delta_log/{staged.FileName}"));
             var table = await DeltaTransactionReader.ReadTable(storage, "staged");
             Assert.NotNull(table);
             Assert.Equal(0, table.Version);
@@ -1309,7 +1358,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await DeltaCheckpointWriter.WriteCheckpoint(storage, "fields", table);
 
             var checkpointFile = (await DeltaTransactionReader.ReadTransactionLog(storage, "fields")).Single(x => x.IsCheckpoint);
-            var checkpointActions = await new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry);
+            var checkpointActions = new List<Internal.Delta.Actions.DeltaAction>();
+            await foreach (var action in new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry))
+            {
+                checkpointActions.Add(action);
+            }
             var add = checkpointActions.Single(x => x.Add != null).Add!;
 
             Assert.Equal(42, add.BaseRowId);
