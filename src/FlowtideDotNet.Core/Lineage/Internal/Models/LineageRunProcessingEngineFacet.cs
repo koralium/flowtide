@@ -10,21 +10,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text.Json.Serialization;
+
 namespace FlowtideDotNet.Core.Lineage.Internal.Models
 {
     internal class LineageRunProcessingEngineFacet
     {
-        public LineageRunProcessingEngineFacet(string version, string name, string openlineageAdapterVersion)
+        public LineageRunProcessingEngineFacet(string version, string name, string? openlineageAdapterVersion = default)
         {
             Version = version;
             Name = name;
             OpenlineageAdapterVersion = openlineageAdapterVersion;
         }
 
+        [JsonPropertyName("_producer")]
+        public string Producer => OpenLineageConstants.Producer;
+
+        [JsonPropertyName("_schemaURL")]
+        public string SchemaURL => OpenLineageConstants.ProcessingEngineRunFacetSchemaUrl;
+
+        [JsonPropertyName("version")]
         public string Version { get; }
 
+        [JsonPropertyName("name")]
         public string Name { get; }
 
-        public string OpenlineageAdapterVersion { get; }
+        [JsonPropertyName("openlineageAdapterVersion")]
+        public string? OpenlineageAdapterVersion { get; }
     }
 }

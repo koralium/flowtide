@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\FlowtideDotNet.AspNetCore\FlowtideDotNet.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\FlowtideDotNet.Connector.SqlServer\FlowtideDotNet.Connector.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\FlowtideDotNet.Lineage.DataHub\FlowtideDotNet.Lineage.DataHub.csproj" />
   </ItemGroup>
 
 </Project>

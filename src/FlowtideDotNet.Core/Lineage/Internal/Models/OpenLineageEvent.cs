@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
         public string Producer { get; }
 
         [JsonPropertyName("schemaURL")]
-        public string SchemaURL => "https://openlineage.io/spec/0-0-1/OpenLineage.json";
+        public string SchemaURL => OpenLineageConstants.RunEventSchemaUrl;
 
         [JsonPropertyName("eventType")]
         public LineageEventType EventType { get; }
@@ -60,7 +60,12 @@ namespace FlowtideDotNet.Core.Lineage.Internal.Models
 
         public OpenLineageEvent ChangeEventType(LineageEventType eventType)
         {
-            return new OpenLineageEvent(DateTime.UtcNow, Producer, eventType, Run, Job, Inputs, Outputs);
+            return ChangeEventType(eventType, DateTime.UtcNow);
+        }
+
+        public OpenLineageEvent ChangeEventType(LineageEventType eventType, DateTime eventTime)
+        {
+            return new OpenLineageEvent(eventTime, Producer, eventType, Run, Job, Inputs, Outputs);
         }
     }
 }

@@ -62,6 +62,8 @@ namespace FlowtideDotNet.Base.Engine
         private readonly DataflowStreamOptions _dataflowStreamOptions;
         private IOptionsMonitor<FlowtidePauseOptions>? _pauseMonitor;
         private readonly StreamNotificationReceiver _streamNotificationReceiver;
+        // Engine created, the built stream disposes them.
+        private readonly List<IAsyncDisposable> _ownedResources = new List<IAsyncDisposable>();
 
         internal StreamNotificationReceiver StreamNotificationReceiver => _streamNotificationReceiver;
         internal ILoggerFactory? LoggerFactory => _loggerFactory;
@@ -433,7 +435,10 @@ namespace FlowtideDotNet.Base.Engine
                 _streamVersionInformation,
                 _dataflowStreamOptions,
                 new StreamMemoryManager(_streamName),
-                _pauseMonitor);
+                _pauseMonitor,
+                _ownedResources.ToArray());
+            // Owned by this stream only.
+            _ownedResources.Clear();
 
             return new DataflowStream(streamContext);
         }
@@ -441,5 +446,12 @@ namespace FlowtideDotNet.Base.Engine
         private bool _requiresDistributedCheckpointRecovery;
 
         internal void RequireDistributedCheckpointRecovery() => _requiresDistributedCheckpointRecovery = true;
+
+        // Disposed after the built stream's teardown.
+        internal DataflowStreamBuilder AddOwnedResource(IAsyncDisposable resource)
+        {
+            _ownedResources.Add(resource);
+            return this;
+        }
     }
 }
