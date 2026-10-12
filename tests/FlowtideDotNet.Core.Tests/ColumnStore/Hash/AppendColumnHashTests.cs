@@ -17,6 +17,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO.Hashing;
 using System.Linq;
 using System.Text;
@@ -177,6 +178,64 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
                 new DecimalValue(Decimal.MaxValue),
                 new DecimalValue(Decimal.MinValue)
                );
+        }
+
+        // Indexed, theory serialization drops the sign of negative zero
+        private static readonly (decimal canonical, decimal[] equalValues)[] EqualDecimals =
+        [
+            (1m, [1.0m, 1.00m, 1.0000000000000000000000000000m]),
+            (0m, [0.00m, new decimal(0, 0, 0, true, 0), new decimal(0, 0, 0, true, 5)]),
+            (-12.5m, [-12.50m, -12.5000m]),
+            (100m, [100.0m, 100.000m]),
+            (7922816251426433759354395033m, [decimal.Parse("7922816251426433759354395033.0", CultureInfo.InvariantCulture)])
+        ];
+
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(4)]
+        public void EqualDecimalsHashEqual(int caseIndex)
+        {
+            var (canonical, equalValues) = EqualDecimals[caseIndex];
+            var values = new IDataValue[equalValues.Length + 1];
+            values[0] = new DecimalValue(canonical);
+            for (int i = 0; i < equalValues.Length; i++)
+            {
+                // Different representation, same value
+                Assert.Equal(canonical, equalValues[i]);
+                Assert.NotEqual(decimal.GetBits(canonical), decimal.GetBits(equalValues[i]));
+                values[i + 1] = new DecimalValue(equalValues[i]);
+            }
+
+            // Canonical value keeps the hash it had before
+            XxHash32 expectedHasher = new XxHash32();
+            new DecimalValue(canonical).AddToHash(expectedHasher);
+            var expected = expectedHasher.GetCurrentHashAsUInt32();
+
+            var col = CreateColumn(values);
+            var length = values.Length;
+
+            var destination = new uint[length];
+            col.ToXxHash32(CreateIndices(length), default, destination, new int[length]);
+
+            var states = CreateHashStates(length);
+            col.AppendToXxHash32(CreateIndices(length), default, states, new int[length]);
+
+            // Union column hashes through AppendXxHash32Single
+            var unionCol = CreateColumn(values.Append(new StringValue("x")).ToArray());
+
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < length; i++)
+            {
+                Assert.Equal(expected, destination[i]);
+                Assert.Equal(expected, XxHash32Implementation.GetCurrentHashAsUInt32(ref states[i]));
+
+                state.Init();
+                unionCol.AppendXxHash32Single(i, default, ref state);
+                Assert.Equal(expected, XxHash32Implementation.GetCurrentHashAsUInt32(ref state));
+            }
         }
 
         [Fact]

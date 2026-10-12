@@ -204,8 +204,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
 
                 h32 += (uint)length;
 
-                // 4-bytes chunks
-                while (ptr <= end - 4)
+                // 4-bytes chunks, length based since pointer may be null
+                while (end - ptr >= 4)
                 {
                     h32 += ReadUInt32LE(ptr) * Prime32_3;
                     h32 = BitOperations.RotateLeft(h32, 17) * Prime32_4;
@@ -281,10 +281,71 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             return h32;
         }
 
+        /// <summary>
+        /// Removes trailing zeros and negative zero, equal decimals hash equal.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static decimal CanonicalizeDecimal(in decimal value)
+        {
+            if (value.Scale == 0)
+            {
+                // Only negative zero differs at scale zero
+                return value == decimal.Zero ? decimal.Zero : value;
+            }
+            return CanonicalizeScaledDecimal(value);
+        }
+
+        private static decimal CanonicalizeScaledDecimal(decimal value)
+        {
+            Span<int> bits = stackalloc int[4];
+            decimal.GetBits(value, bits);
+
+            uint hi = (uint)bits[2];
+            ulong lo = (uint)bits[0] | ((ulong)(uint)bits[1] << 32);
+            if ((hi | lo) == 0)
+            {
+                return decimal.Zero;
+            }
+
+            byte scale = value.Scale;
+            while (scale > 0 && TryDivideBy10(ref hi, ref lo))
+            {
+                scale--;
+            }
+            return new decimal((int)(uint)lo, (int)(uint)(lo >> 32), (int)hi, bits[3] < 0, scale);
+        }
+
+        /// <summary>
+        /// Divides 96 bit mantissa by 10 if no remainder.
+        /// </summary>
+        private static bool TryDivideBy10(ref uint hi, ref ulong lo)
+        {
+            if ((lo & 1) != 0)
+            {
+                return false;
+            }
+            ulong hiQ = hi / 10u;
+            ulong rem = hi - hiQ * 10;
+            ulong t = (rem << 32) | (lo >> 32);
+            ulong midQ = t / 10;
+            rem = t - midQ * 10;
+            t = (rem << 32) | (uint)lo;
+            ulong lowQ = t / 10;
+            rem = t - lowQ * 10;
+            if (rem != 0)
+            {
+                return false;
+            }
+            hi = (uint)hiQ;
+            lo = (midQ << 32) | lowQ;
+            return true;
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe uint HashDecimal(in decimal value)
         {
-            ref uint ptr = ref Unsafe.As<decimal, uint>(ref Unsafe.AsRef(in value));
+            decimal canonical = CanonicalizeDecimal(in value);
+            ref uint ptr = ref Unsafe.As<decimal, uint>(ref canonical);
 
             uint w0 = ptr;
             uint w1 = Unsafe.Add(ref ptr, 1);
@@ -327,7 +388,8 @@ namespace FlowtideDotNet.Core.ColumnStore.Hash
             int holdbackOffset = (int)(state.Length & 15);
             state.Length += 16;
 
-            ref byte pVal = ref Unsafe.As<decimal, byte>(ref Unsafe.AsRef(in value));
+            decimal canonical = CanonicalizeDecimal(in value);
+            ref byte pVal = ref Unsafe.As<decimal, byte>(ref canonical);
             if (holdbackOffset == 0)
             {
                 fixed (byte* ptr = &pVal)

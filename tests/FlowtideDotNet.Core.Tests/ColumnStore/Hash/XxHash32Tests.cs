@@ -14,8 +14,10 @@ using FlowtideDotNet.Core.ColumnStore.Hash;
 using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO.Hashing;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -100,6 +102,87 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
             HashByteArray(arr);
         }
 
+
+        [Fact]
+        public void HashOneShotMatchesForAllLengths()
+        {
+            byte[] arr = new byte[64];
+            new Random(42).NextBytes(arr);
+
+            for (int length = 0; length <= arr.Length; length++)
+            {
+                var span = arr.AsSpan(0, length);
+                Assert.Equal(XxHash32.HashToUInt32(span), XxHash32Implementation.Hash(span));
+            }
+        }
+
+        [Fact]
+        public unsafe void HashOneShotEmptySpanWithNullPointer()
+        {
+            var expected = XxHash32.HashToUInt32(Array.Empty<byte>());
+
+            Assert.Equal(expected, XxHash32Implementation.Hash(ReadOnlySpan<byte>.Empty));
+            // Same shape as BinaryList.Get on unallocated memory
+            Assert.Equal(expected, XxHash32Implementation.Hash(new Span<byte>(null, 0).Slice(0, 0)));
+        }
+
+        [Theory]
+        [InlineData("1.00", "1")]
+        [InlineData("12.50", "12.5")]
+        [InlineData("-12.500", "-12.5")]
+        [InlineData("0.000", "0")]
+        [InlineData("-0.0", "0")]
+        [InlineData("100", "100")]
+        [InlineData("100.00", "100")]
+        [InlineData("1.0000000000000000000000000000", "1")]
+        [InlineData("0.0000000000000000000000000010", "0.000000000000000000000000001")]
+        [InlineData("7922816251426433759354395033.0", "7922816251426433759354395033")]
+        [InlineData("79228162514264337593543950335", "79228162514264337593543950335")]
+        [InlineData("-79228162514264337593543950335", "-79228162514264337593543950335")]
+        [InlineData("123.4", "123.4")]
+        public void CanonicalizeDecimal(string input, string expected)
+        {
+            var value = decimal.Parse(input, CultureInfo.InvariantCulture);
+            var expectedValue = decimal.Parse(expected, CultureInfo.InvariantCulture);
+
+            var actual = XxHash32Implementation.CanonicalizeDecimal(value);
+
+            Assert.Equal(decimal.GetBits(expectedValue), decimal.GetBits(actual));
+        }
+
+        [Fact]
+        public void CanonicalizeNegativeZeroScaleZero()
+        {
+            var negativeZero = new decimal(0, 0, 0, true, 0);
+            Assert.Equal(decimal.GetBits(0m), decimal.GetBits(XxHash32Implementation.CanonicalizeDecimal(negativeZero)));
+        }
+
+        [Fact]
+        public void HashDecimalMatchesAppendDecimalAtAllOffsets()
+        {
+            var value = 12.50m;
+            var canonicalBytes = new byte[16];
+            MemoryMarshal.Write(canonicalBytes, 12.5m);
+
+            Span<byte> prefix = stackalloc byte[15];
+            prefix.Fill(7);
+
+            for (int offset = 0; offset < 16; offset++)
+            {
+                Xxh32RowState state = new Xxh32RowState();
+                state.Init();
+                XxHash32Implementation.Append(prefix.Slice(0, offset), ref state);
+                XxHash32Implementation.AppendDecimal(value, ref state);
+
+                XxHash32 expected = new XxHash32();
+                expected.Append(prefix.Slice(0, offset));
+                expected.Append(canonicalBytes);
+
+                Assert.Equal(expected.GetCurrentHashAsUInt32(), XxHash32Implementation.GetCurrentHashAsUInt32(ref state));
+            }
+
+            Assert.Equal(XxHash32.HashToUInt32(canonicalBytes), XxHash32Implementation.HashDecimal(value));
+        }
 
         [Theory]
         [InlineData(3)]

@@ -598,6 +598,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (child is StructReferenceSegment structReferenceSegment)
             {
+                if (structReferenceSegment.Field >= _columns.Length)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        if (indices[i] == -1)
+                        {
+                            continue;
+                        }
+                        XxHash32Implementation.AppendByte(0, ref states[i]);
+                    }
+                    return;
+                }
                 var col = _columns[structReferenceSegment.Field];
                 for (int i = 0; i < indices.Length; i++)
                 {
@@ -631,6 +644,12 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             if (child is StructReferenceSegment structReferenceSegment)
             {
+                if (structReferenceSegment.Field >= _columns.Length)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    XxHash32Implementation.AppendByte(0, ref state);
+                    return;
+                }
                 _columns[structReferenceSegment.Field].AppendXxHash32Single(index, structReferenceSegment.Child, ref state);
             }
             else
@@ -647,6 +666,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             Xxh32RowState state = new Xxh32RowState();
             if (child is StructReferenceSegment structReferenceSegment)
             {
+                if (structReferenceSegment.Field >= _columns.Length)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        if (indices[i] == -1)
+                        {
+                            continue;
+                        }
+                        destination[i] = XxHash32Implementation.HashNullByte();
+                    }
+                    return;
+                }
                 var col = _columns[structReferenceSegment.Field];
                 for (int i = 0; i < indices.Length; i++)
                 {

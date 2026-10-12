@@ -138,6 +138,88 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore.Hash
         }
 
         [Fact]
+        public void SingleKeyOnlyEmptyStrings()
+        {
+            // Only empty strings leaves string memory unallocated
+            var col = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            col.Add(new StringValue(""));
+            col.Add(NullValue.Instance);
+            col.Add(new StringValue(""));
+
+            var batch = new EventBatchData(new IColumn[] { col });
+            var hasher = new BatchHasher(new int[] { 0 });
+
+            var actual = hasher.HashBatch(batch);
+            Assert.Equal(3, actual.Length);
+
+            var expectedHasher = new XxHash32();
+            for (int i = 0; i < 3; i++)
+            {
+                expectedHasher.Reset();
+                col.AddToHash(i, default, expectedHasher);
+                Assert.Equal(expectedHasher.GetCurrentHashAsUInt32(), actual[i]);
+            }
+        }
+
+        [Fact]
+        public void SingleKeyStructFieldMissingInVariantHashesAsNull()
+        {
+            // Different headers become a union of struct columns
+            var col = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            col.Add(new StructValue(StructHeader.Create("a"), new Int64Value(1)));
+            col.Add(new StructValue(StructHeader.Create("a", "b"), new Int64Value(1), new Int64Value(2)));
+            col.Add(NullValue.Instance);
+
+            var child = new StructReferenceSegment { Field = 1 };
+            var batch = new EventBatchData(new IColumn[] { col });
+            var hasher = new BatchHasher(new List<FieldReference>
+            {
+                new DirectFieldReference { ReferenceSegment = new StructReferenceSegment { Field = 0, Child = child } }
+            });
+
+            var actual = hasher.HashBatch(batch);
+            Assert.Equal(3, actual.Length);
+
+            var expectedHasher = new XxHash32();
+            for (int i = 0; i < 3; i++)
+            {
+                expectedHasher.Reset();
+                col.GetValueAt(i, child).AddToHash(expectedHasher);
+                Assert.Equal(expectedHasher.GetCurrentHashAsUInt32(), actual[i]);
+            }
+        }
+
+        [Fact]
+        public void MultiKeyStructFieldMissingInVariantHashesAsNull()
+        {
+            var col = ColumnFactory.Get(GlobalMemoryManager.Instance);
+            col.Add(new StructValue(StructHeader.Create("a"), new Int64Value(1)));
+            col.Add(new StructValue(StructHeader.Create("a", "b"), new Int64Value(1), new Int64Value(2)));
+            col.Add(NullValue.Instance);
+
+            var missingChild = new StructReferenceSegment { Field = 1 };
+            var existingChild = new StructReferenceSegment { Field = 0 };
+            var batch = new EventBatchData(new IColumn[] { col });
+            var hasher = new BatchHasher(new List<FieldReference>
+            {
+                new DirectFieldReference { ReferenceSegment = new StructReferenceSegment { Field = 0, Child = missingChild } },
+                new DirectFieldReference { ReferenceSegment = new StructReferenceSegment { Field = 0, Child = existingChild } }
+            });
+
+            var actual = hasher.HashBatch(batch);
+            Assert.Equal(3, actual.Length);
+
+            var expectedHasher = new XxHash32();
+            for (int i = 0; i < 3; i++)
+            {
+                expectedHasher.Reset();
+                col.GetValueAt(i, missingChild).AddToHash(expectedHasher);
+                col.GetValueAt(i, existingChild).AddToHash(expectedHasher);
+                Assert.Equal(expectedHasher.GetCurrentHashAsUInt32(), actual[i]);
+            }
+        }
+
+        [Fact]
         public void EmptyBatchReturnsEmptySpan()
         {
             var col = ColumnFactory.Get(GlobalMemoryManager.Instance);
