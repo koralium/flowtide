@@ -60,6 +60,14 @@ namespace FlowtideDotNet.Core.Tests
             await InitializeOperatorCore(@operator, wireEgressFunctions: false);
         }
 
+        /// <summary>
+        /// Options for the state manager, the default shares one storage directory per process.
+        /// </summary>
+        protected virtual StateManagerOptions CreateStateManagerOptions()
+        {
+            return new StateManagerOptions();
+        }
+
         private async Task InitializeOperatorCore(IStreamVertex @operator, bool wireEgressFunctions)
         {
             @operator.Setup("stream", "1");
@@ -67,9 +75,7 @@ namespace FlowtideDotNet.Core.Tests
             @operator.Link();
 
             var statemanagermeter = new Meter("statemanager");
-            _stateManager = new StateManagerSync<StreamState>(new StateManagerOptions()
-            {
-            }, NullLoggerFactory.Instance, statemanagermeter, "stream", GlobalMemoryManager.Instance);
+            _stateManager = new StateManagerSync<StreamState>(CreateStateManagerOptions(), NullLoggerFactory.Instance, statemanagermeter, "stream", GlobalMemoryManager.Instance);
             await _stateManager.InitializeAsync();
             if (wireEgressFunctions)
             {

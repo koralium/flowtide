@@ -90,6 +90,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public S3FifoQueueLocation Location;
 
         /// <summary>
+        /// Set by the owning client while the page owes its checkpoint write, read lock-free by its fast paths.
+        /// </summary>
+        public bool OwesCheckpointWrite;
+
+        /// <summary>
         /// Lock-free rent and access record. False is treated as a cache miss.
         /// A rent only fails once the count reaches zero, which is when eviction claimed the
         /// sole reference, so the caller reloads as the new owner. Count corruption is caught

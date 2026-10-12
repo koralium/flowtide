@@ -178,5 +178,11 @@ namespace FlowtideDotNet.Substrait.Modifier
         {
             return substreamExchangeReferenceRelation;
         }
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object? state)
+        {
+            checkRelation.Input = Visit(checkRelation.Input, state);
+            return checkRelation;
+        }
     }
 }

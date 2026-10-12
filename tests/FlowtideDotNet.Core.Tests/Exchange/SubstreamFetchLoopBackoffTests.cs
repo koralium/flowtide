@@ -38,8 +38,8 @@ namespace FlowtideDotNet.Core.Tests.Exchange
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> targetInitializeRequest,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> targetInitializeRequest,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
@@ -53,11 +53,17 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             }
 
             public Task<IReadOnlyList<SubstreamEventData>> GetData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken = default) => throw new NotImplementedException();
-            public Task SendFailAndRecover(long restoreVersion) => Task.CompletedTask;
-            public Task FailAndRecover(long restorePoint) => Task.CompletedTask;
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken) => Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
-            public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff) => throw new NotImplementedException();
+            public Task SendFailAndRecover(RecoveryWave wave) => Task.CompletedTask;
+            public Task FailAndRecover(RecoveryWave wave) => Task.CompletedTask;
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken) => Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
+            public Task<SubstreamInitializeResponse> TargetInitializeRequest(long restoreVersion, long peerCheckpointEpoch, bool cleanHandoff, RecoveryWave wave) => throw new NotImplementedException();
             public Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier) => Task.CompletedTask;
+
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
             public Task TargetCheckpointDone(long checkpointVersion, long checkpointEpoch, bool coversPeerStopBarrier) => throw new NotImplementedException();
         }
 

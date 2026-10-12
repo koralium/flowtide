@@ -158,10 +158,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private async Task CleanupCore(int currentCount, int toBeRemovedCount, bool isCleanup)
         {
+            // Evicting passes too, sustained pressure never reaches an idle pass
+            CompactQueuesIfNeeded();
             var smallQueueOverflow = 0;
             if (toBeRemovedCount <= 0)
             {
-                CompactQueuesIfNeeded();
                 if (!tableOptions.DrainSmallQueueEarly)
                 {
                     // Nothing to free, evicting here throws away configured capacity.
@@ -228,8 +229,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             var index = 0;
             var ghostIndex = 0;
-            while (index < scratch.Victims.Count || ghostIndex < scratch.GhostInserts.Count)
+            while (true)
             {
+                bool done;
                 lock (m_queueLock)
                 {
                     var operationBudget = SelectionOperationBudget;
@@ -264,11 +266,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                         // A record already applied by the phase that threw is replaced, not doubled.
                         AddToGhost(ghostInsert.Key, ghostInsert.Reused, ghostInsert.FromMain, ref operationBudget);
                     }
+                    done = index >= scratch.Victims.Count
+                        && ghostIndex >= scratch.GhostInserts.Count
+                        && (!GhostOverCapacity() || TrimGhost(ref operationBudget));
                 }
-                if (index < scratch.Victims.Count || ghostIndex < scratch.GhostInserts.Count)
+                if (done)
                 {
-                    Thread.Yield();
+                    break;
                 }
+                Thread.Yield();
             }
         }
 
@@ -280,7 +286,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             public readonly List<EvictionCandidate> Victims = new List<EvictionCandidate>();
             public readonly Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>> VictimsByHandler = new Dictionary<ICacheEvictHandler, List<(S3FifoCacheEntry, long)>>();
-            public readonly List<Task<bool>> EvictTasks = new List<Task<bool>>();
+            public readonly List<Task<int>> EvictTasks = new List<Task<int>>();
             public readonly List<List<(S3FifoCacheEntry, long)>> EvictTaskGroups = new List<List<(S3FifoCacheEntry, long)>>();
             public readonly List<S3FifoCacheEntry> RequeueToSmall = new List<S3FifoCacheEntry>();
             public readonly List<S3FifoCacheEntry> RequeueToMain = new List<S3FifoCacheEntry>();
@@ -468,14 +474,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             foreach (var group in groupedValues)
             {
                 evictTaskGroups.Add(group.Value);
-                // The state overload spares a closure per handler.
+                // The state overload spares a closure per handler, the handlers wait for their locks without a thread.
                 evictTasks.Add(Task.Factory.StartNew(
                     static state =>
                     {
                         var (handler, victimsForHandler, cleanup) = ((ICacheEvictHandler, List<(S3FifoCacheEntry, long)>, bool))state!;
                         return handler.Evict(victimsForHandler, cleanup);
                     },
-                    (group.Key, group.Value, isCleanup)));
+                    (group.Key, group.Value, isCleanup)).Unwrap());
             }
 
             Exception? evictException = null;
@@ -488,17 +494,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 evictException = e;
             }
 
-            // Failed and declined victims were never serialized, so keep them cached.
+            // Victims past what the handler got to were never serialized, so keep them cached.
             HashSet<S3FifoCacheEntry>? failedVictims = null;
             for (int i = 0; i < evictTasks.Count; i++)
             {
-                if (!evictTasks[i].IsCompletedSuccessfully || !evictTasks[i].Result)
+                var group = evictTaskGroups[i];
+                // A faulted handler vouches for nothing.
+                var handled = evictTasks[i].IsCompletedSuccessfully ? evictTasks[i].Result : 0;
+                for (int j = handled; j < group.Count; j++)
                 {
                     failedVictims ??= new HashSet<S3FifoCacheEntry>();
-                    foreach (var value in evictTaskGroups[i])
-                    {
-                        failedVictims.Add(value.Item1);
-                    }
+                    failedVictims.Add(group[j].Item1);
                 }
             }
             return (failedVictims, evictException);
@@ -615,6 +621,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 int ghostIndex = 0;
                 while (true)
                 {
+                    bool done;
                     lock (m_queueLock)
                     {
                         var operationBudget = SelectionOperationBudget;
@@ -652,10 +659,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                             var ghostInsert = ghostInserts[ghostIndex++];
                             AddToGhost(ghostInsert.Key, ghostInsert.Reused, ghostInsert.FromMain, ref operationBudget);
                         }
+                        // Requeues can spend the budget the inserts trim with, the pass finishes that trim
+                        done = smallIndex >= requeueToSmall.Count
+                            && mainIndex >= requeueToMain.Count
+                            && ghostIndex >= ghostInserts.Count
+                            && (!GhostOverCapacity() || TrimGhost(ref operationBudget));
                     }
-                    if (smallIndex >= requeueToSmall.Count
-                        && mainIndex >= requeueToMain.Count
-                        && ghostIndex >= ghostInserts.Count)
+                    if (done)
                     {
                         break;
                     }
@@ -817,7 +827,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
-        /// The trim is bounded by the budget, the excess trims on later inserts.
+        /// The trim is bounded by the budget, the pass finishes the excess.
         /// Must be called under the queue lock.
         /// </summary>
         private void AddToGhost(long key, bool reused, bool fromMain, ref int operationBudget)
@@ -846,9 +856,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 m_smallEvictionsSeen++;
             }
             m_ghostQueue.Enqueue(new GhostRecord(key, sequence));
+            TrimGhost(ref operationBudget);
+        }
+
+        /// <summary>
+        /// Trims the oldest records back to capacity, false when the budget ran out first.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private bool TrimGhost(ref int operationBudget)
+        {
             var capacity = GhostCapacity();
-            while (m_ghostQueue.Count > 0 && operationBudget > 0)
+            while (m_ghostQueue.Count > 0)
             {
+                if (operationBudget <= 0)
+                {
+                    return false;
+                }
                 var oldest = m_ghostQueue.Peek();
                 if (!m_ghostKeys.TryGetValue(oldest.Key, out var storedValue) || storedValue.Sequence != oldest.Sequence)
                 {
@@ -873,6 +896,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     RecordGhostExpiry();
                 }
             }
+            return true;
+        }
+
+        /// <summary>
+        /// True when inserts that ran out of budget left the ghost over capacity.
+        /// Must be called under the queue lock.
+        /// </summary>
+        private bool GhostOverCapacity()
+        {
+            var capacity = GhostCapacity();
+            return m_ghostKeys.Count > capacity || m_ghostQueue.Count > capacity * 2;
         }
 
         /// <summary>
@@ -912,6 +946,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private void CompactQueuesIfNeeded()
         {
+            bool compactSmall;
+            bool compactMain;
             lock (m_queueLock)
             {
                 var stale = m_smallStaleCount + m_mainStaleCount;
@@ -924,9 +960,18 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     return;
                 }
+                // A queue without stale slots is not rotated, its FIFO order stays put
+                compactSmall = m_smallStaleCount > 0;
+                compactMain = m_mainStaleCount > 0;
             }
-            CompactQueue(m_smallQueue, small: true);
-            CompactQueue(m_mainQueue, small: false);
+            if (compactSmall)
+            {
+                CompactQueue(m_smallQueue, small: true);
+            }
+            if (compactMain)
+            {
+                CompactQueue(m_mainQueue, small: false);
+            }
         }
 
         /// <summary>

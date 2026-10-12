@@ -20,16 +20,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         public List<DeltaCdcAction> CdcFiles { get; }
         public DeltaMetadataAction? UpdatedMetadata { get; }
 
+        public DeltaCommitInfoAction? CommitInfo { get; }
+
         public DeltaCommit(
             List<DeltaAddAction> addedFiles,
             List<DeltaRemoveFileAction> removedFiles,
             List<DeltaCdcAction> cdcFiles,
-            DeltaMetadataAction? updatedMetadata)
+            DeltaMetadataAction? updatedMetadata,
+            DeltaCommitInfoAction? commitInfo = null)
         {
             AddedFiles = addedFiles;
             RemovedFiles = removedFiles;
             CdcFiles = cdcFiles;
             UpdatedMetadata = updatedMetadata;
+            CommitInfo = commitInfo;
         }
     }
 }

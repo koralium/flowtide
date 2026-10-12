@@ -20,8 +20,9 @@ namespace FlowtideDotNet.Base.Engine.Internal
 
         /// <summary>
         /// How long a stopping stream waits for vertices that exchange data with other
-        /// substreams to drain before it finishes stopping anyway. Protects the stop from
-        /// waiting forever when another substream has crashed or never started.
+        /// substreams to drain before it begins teardown. Active callbacks and storage
+        /// operations retain ownership until they settle, even after this timeout.
+        /// Every teardown also waits at most this long for background commits, then asks them to stop at their next page.
         /// </summary>
         public TimeSpan StopDrainTimeout { get; set; } = TimeSpan.FromSeconds(30);
 

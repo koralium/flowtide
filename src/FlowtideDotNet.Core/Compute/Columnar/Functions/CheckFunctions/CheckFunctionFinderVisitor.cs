@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.Optimizer;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.FunctionExtensions;
+using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using System;
 using System.Collections.Generic;
@@ -39,13 +40,21 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions
     internal class CheckFunctionFinderVisitor : BaseRelationExpressionVisitor<bool>
     {
         private CheckFunctionFinderExpressionVisitor _visitor;
+        private bool _foundCheckRelation;
         public CheckFunctionFinderVisitor()
         {
             _visitor = new CheckFunctionFinderExpressionVisitor();
         }
         public override ExpressionVisitor<bool, object> Visitor => _visitor;
 
-        public bool ContainsCheckFunctions => _visitor.FoundCheckUsage;
+        public bool ContainsCheckFunctions => _foundCheckRelation || _visitor.FoundCheckUsage;
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            // Extracted checks count as check usage.
+            _foundCheckRelation = true;
+            return checkRelation;
+        }
     }
 
     internal static class CheckFunctionFinder

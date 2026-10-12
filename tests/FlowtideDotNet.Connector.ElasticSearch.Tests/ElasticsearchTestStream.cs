@@ -27,30 +27,35 @@ namespace FlowtideDotNet.Connector.ElasticSearch.Tests
         private readonly Action<Properties>? customMapping;
         private readonly Func<ElasticsearchClient, WriteRelation, string, Task>? onInitialDataSent;
         private readonly Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent;
+        private readonly Action<FlowtideElasticsearchOptions>? configureOptions;
 
         public ElasticsearchTestStream(
             ElasticSearchFixture elasticSearchFixture,
             string testName,
             Action<Properties>? customMapping = null,
             Func<ElasticsearchClient, WriteRelation, string, Task>? onInitialDataSent = null,
-            Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent = null)
+            Func<ElasticsearchClient, WriteRelation, string, Watermark, Task>? onDataSent = null,
+            Action<FlowtideElasticsearchOptions>? configureOptions = null)
             : base(testName)
         {
             this.elasticSearchFixture = elasticSearchFixture;
             this.customMapping = customMapping;
             this.onInitialDataSent = onInitialDataSent;
             this.onDataSent = onDataSent;
+            this.configureOptions = configureOptions;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManager)
         {
-            connectorManager.AddElasticsearchSink("*", new FlowtideElasticsearchOptions()
+            var options = new FlowtideElasticsearchOptions()
             {
                 ConnectionSettings = elasticSearchFixture.GetConnectionSettings,
                 CustomMappings = customMapping,
                 OnDataSent = onDataSent,
                 OnInitialDataSent = onInitialDataSent
-            });
+            };
+            configureOptions?.Invoke(options);
+            connectorManager.AddElasticsearchSink("*", options);
         }
     }
 }

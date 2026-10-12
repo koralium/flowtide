@@ -34,7 +34,14 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             // First optimize the input
             filterRelation.Input = Visit(filterRelation.Input, state);
+            return DecorrelateCondition(filterRelation);
+        }
 
+        /// <summary>
+        /// Replaces the subqueries in a filter condition with mark joins below the filter.
+        /// </summary>
+        internal static FilterRelation DecorrelateCondition(FilterRelation filterRelation)
+        {
             // Extract subqueries from the filter condition
             var extractor = new SubqueryExtractor();
             extractor.Visit(filterRelation.Condition, null!);
@@ -273,6 +280,12 @@ namespace FlowtideDotNet.Core.Optimizer
             public override object? VisitFilterRelation(FilterRelation filterRelation, object? state)
             {
                 Visit(filterRelation.Input, state);
+                return null;
+            }
+
+            public override object? VisitCheckRelation(CheckRelation checkRelation, object? state)
+            {
+                Visit(checkRelation.Input, state);
                 return null;
             }
 

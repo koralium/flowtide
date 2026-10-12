@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             public Task<GetEventsResponse> GetEventsAsync(GetEventsRequest request) => throw new NotImplementedException();
             public Task FailAndRecoverAsync(FailAndRecoverRequest request) => throw new NotImplementedException();
             public Task CheckpointDone(CheckpointDoneRequest request) => throw new NotImplementedException();
+            public Task DurabilityClaim(DurabilityClaimRequest request) => throw new NotImplementedException();
             public Task StopStreamAsync() => throw new NotImplementedException();
             public Task DeleteStreamAsync() => throw new NotImplementedException();
             public Task MigrateAsync() => throw new NotImplementedException();
@@ -101,7 +102,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             handler.Initialize(
                 (targets, count, ct) => Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>()),
                 _ => Task.CompletedTask,
-                (restoreVersion, checkpointEpoch, cleanHandoff) =>
+                (restoreVersion, checkpointEpoch, cleanHandoff, wave) =>
                 {
                     onTargetInitialize?.Invoke(restoreVersion, checkpointEpoch, cleanHandoff);
                     return Task.FromResult(pointResponse);

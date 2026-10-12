@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// managing triggers, and forwarding locking events. Derived classes must implement 
     /// custom data source reading logic and use <see cref="IngressOutput{TData}"/> to emit events.
     /// </remarks>
-    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex
+    public abstract class IngressVertex<TData> : ISourceBlock<IStreamEvent>, IStreamIngressVertex, IStreamVertexCancellation
     {
         private readonly object _stateLock;
         private readonly DataflowBlockOptions options;
@@ -152,15 +152,18 @@ namespace FlowtideDotNet.Base.Vertices
                 _ingressState._sourceBlock = source;
                 _ingressState._output = new IngressOutput<TData>(_ingressState, _ingressState._block);
                 _ingressState._tokenSource = new CancellationTokenSource();
-                _ingressState._block.Completion.ContinueWith(t =>
+                // Completion may be dispatched after recovery created another run.
+                // Its cancellation and task gate belong to this block's state only.
+                var ingressState = _ingressState;
+                ingressState._block.Completion.ContinueWith(t =>
                 {
                     Logger.LogDebug(t.Exception, "Block failure");
                     lock (_stateLock)
                     {
-                        _ingressState._taskEnabled = false;
+                        ingressState._taskEnabled = false;
                     }
 
-                    _ingressState._tokenSource.Cancel();
+                    ingressState._tokenSource.Cancel();
                 });
             }
         }
@@ -225,6 +228,9 @@ namespace FlowtideDotNet.Base.Vertices
 
             return _ingressState._sourceBlock.ConsumeMessage(messageHeader, target, out messageConsumed);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() =>
+            _ingressState?._tokenSource?.CancelAsync() ?? Task.CompletedTask;
 
         /// <summary>
         /// Causes the dataflow block to complete in a <see cref="TaskStatus.Faulted"/> state.

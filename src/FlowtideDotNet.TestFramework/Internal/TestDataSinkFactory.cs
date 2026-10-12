@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -36,12 +36,15 @@ namespace FlowtideDotNet.TestFramework.Internal
 
         public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
         {
-            return new TestDataSinkImpl(writeRelation, dataflowBlockOptions, sink.OnDataUpdate);
+            sink.PrimaryKeyNames = writeRelation.PrimaryKeyNames;
+            return new TestDataSinkImpl(writeRelation, dataflowBlockOptions, sink.OnDataUpdate, sink.OnError);
         }
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
         {
             return new TableLineageMetadata("test", writeRelation.NamedObject.DotSeperated, default);
         }
+
+        public override bool SupportsPrimaryKeyDeclaration => true;
     }
 }

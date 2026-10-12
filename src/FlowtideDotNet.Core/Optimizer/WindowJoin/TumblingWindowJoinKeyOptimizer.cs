@@ -333,6 +333,9 @@ namespace FlowtideDotNet.Core.Optimizer.WindowJoin
                     case FilterRelation filter:
                         relation = filter.Input;
                         continue;
+                    case CheckRelation check:
+                        relation = check.Input;
+                        continue;
                     case ProjectRelation project:
                         if (index < project.Input.OutputLength)
                         {

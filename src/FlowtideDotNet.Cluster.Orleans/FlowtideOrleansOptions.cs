@@ -26,5 +26,12 @@ namespace FlowtideDotNet.Cluster.Orleans
         /// or per substream.
         /// </summary>
         public Action<string, string, FlowtideBuilder>? ConfigureBuilder { get; set; }
+
+        /// <summary>
+        /// Consecutive keep alive ticks, one per minute, a substream may spend waiting for the
+        /// start version agreement before its grain is recreated. Defaults to 10, at least 1,
+        /// <see cref="int.MaxValue"/> disables it.
+        /// </summary>
+        public int AgreementWaitReminderTicks { get; set; } = 10;
     }
 }

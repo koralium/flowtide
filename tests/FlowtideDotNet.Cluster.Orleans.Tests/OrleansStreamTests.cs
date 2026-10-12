@@ -56,7 +56,9 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
                 }
                 await Task.Delay(100);
             }
-            Assert.Fail($"Sink {sink} did not produce the expected result, expected [{string.Join(",", expected)}], got [{string.Join(",", result ?? new List<long>())}]");
+            // Load dependent, the dump shows the run that failed.
+            var dump = SharedRingBufferLogger.Dump($"result_timeout_{sink}_{DateTime.UtcNow:HHmmss}.log");
+            Assert.Fail($"Sink {sink} did not produce the expected result, expected [{string.Join(",", expected)}], got [{string.Join(",", result ?? new List<long>())}]. Log dump: {dump}");
         }
 
         /// <summary>
@@ -265,7 +267,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // models the failed peer's post-failure bump, above any announcement, so the
             // fetch epoch fence accepts the injected request.
             var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>(Internal.SubStreamGrainKey.Create("orleans_stoprec", "substream_0"));
-            await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0, fetchEpoch: long.MaxValue));
+            await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0, Guid.NewGuid(), fetchEpoch: long.MaxValue));
 
             // Stop while the recovery runs.
             var stopTask = streamGrain.StopStreamAsync();
@@ -311,7 +313,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             var stopTask = streamGrain.StopStreamAsync();
             await Task.Delay(50);
             var substreamGrain = _fixture.Cluster.GrainFactory.GetGrain<ISubStreamGrain>(Internal.SubStreamGrainKey.Create("orleans_recstop", "substream_0"));
-            await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0, fetchEpoch: long.MaxValue));
+            await substreamGrain.FailAndRecoverAsync(new FailAndRecoverRequest("substream_1", 0, Guid.NewGuid(), fetchEpoch: long.MaxValue));
 
             var finished = await Task.WhenAny(stopTask, Task.Delay(TimeSpan.FromSeconds(90)));
             Assert.True(finished == stopTask, "The coordinated stop did not complete after a recovery landed mid drain");

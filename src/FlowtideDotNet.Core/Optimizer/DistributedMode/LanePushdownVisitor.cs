@@ -52,6 +52,25 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             return filterRelation;
         }
 
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            checkRelation.Input = Visit(checkRelation.Input, state);
+            if (checkRelation.Input is SetRelation union && _laneUnions.TryGetValue(union, out var lane))
+            {
+                PushIntoLanes(lane, input => new CheckRelation()
+                {
+                    Checks = checkRelation.Checks,
+                    Input = input,
+                    Emit = checkRelation.Emit,
+                    Hint = checkRelation.Hint
+                });
+                // Columns only move through the emit
+                lane.PartitionKeyColumns = MapColumnsThroughEmit(lane.PartitionKeyColumns, checkRelation.Emit);
+                return union;
+            }
+            return checkRelation;
+        }
+
         public override Relation VisitProjectRelation(ProjectRelation projectRelation, object state)
         {
             projectRelation.Input = Visit(projectRelation.Input, state);

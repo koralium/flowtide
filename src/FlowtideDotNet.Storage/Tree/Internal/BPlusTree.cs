@@ -64,14 +64,20 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         {
             Debug.Assert(m_stateClient.Metadata != null);
             var root = (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(m_stateClient.Metadata.Root))!;
-
-            var builder = new StringBuilder();
-            builder.AppendLine("digraph g {");
-            builder.AppendLine("splines=line");
-            builder.AppendLine("node [shape = none,height=.1];");
-            await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id))!);
-            builder.AppendLine("}");
-            return builder.ToString();
+            try
+            {
+                var builder = new StringBuilder();
+                builder.AppendLine("digraph g {");
+                builder.AppendLine("splines=line");
+                builder.AppendLine("node [shape = none,height=.1];");
+                await root.Print(builder, async (id) => (BaseNode<K, TKeyContainer>)(await m_stateClient.GetValue(id))!);
+                builder.AppendLine("}");
+                return builder.ToString();
+            }
+            finally
+            {
+                root.Return();
+            }
         }
 
         public ValueTask Upsert(in K key, in V value)

@@ -23,7 +23,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             if (vector.StorageType == "u" || vector.StorageType == "p")
             {
                 var deletionVectorStream = await storage.OpenRead(table.Combine(vector.AbsolutePath));
-                return ReadVector(deletionVectorStream!, vector.Offset);
+                if (deletionVectorStream == null)
+                {
+                    throw new DeltaFileNotFoundException(vector.AbsolutePath!);
+                }
+                return ReadVector(deletionVectorStream, vector.Offset);
             }
             throw new NotImplementedException();
         }

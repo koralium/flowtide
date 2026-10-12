@@ -67,6 +67,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             // Set right node returns the previous node
             SetRightNode(newRightNode);
+            m_stateClient.AddOrUpdate(newRightNode.Id, newRightNode);
 
             bool updatedParent = true;
             // Iterate over the internal nodes but not the root node since that requires special handling.

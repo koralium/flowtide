@@ -55,7 +55,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 var childId = children[i];
                 var node = await lookupFunc(childId);
-                await node.Print(stringBuilder, lookupFunc);
+                try
+                {
+                    await node.Print(stringBuilder, lookupFunc);
+                }
+                finally
+                {
+                    node.Return();
+                }
                 stringBuilder.AppendLine($"\"node{Id}\":f{i} -> \"node{childId}\"");
             }
 
@@ -63,7 +70,14 @@ namespace FlowtideDotNet.Storage.Tree.Internal
             {
                 var childId = children[i];
                 var node = await lookupFunc(childId);
-                await node.PrintNextPointers(stringBuilder);
+                try
+                {
+                    await node.PrintNextPointers(stringBuilder);
+                }
+                finally
+                {
+                    node.Return();
+                }
             }
         }
 

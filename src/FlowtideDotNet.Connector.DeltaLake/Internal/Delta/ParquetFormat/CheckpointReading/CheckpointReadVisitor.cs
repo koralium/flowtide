@@ -50,6 +50,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             fieldStack.Push(field);
         }
 
+        /// <summary>
+        /// Points the visitor at another cell so one instance can read a whole file.
+        /// </summary>
+        public void Reset(Field field, int index)
+        {
+            indexStack.Clear();
+            fieldStack.Clear();
+            indexStack.Push(index);
+            fieldStack.Push(field);
+            result = null;
+        }
+
         public void Visit(StructArray array)
         {
             var field = fieldStack.Peek();
@@ -74,6 +86,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             {
                 VisitDeletionVector(field, array);
             }
+            else if (field.Name.Equals("remove", StringComparison.OrdinalIgnoreCase))
+            {
+                VisitRemove(field, array);
+            }
+            else if (field.Name.Equals("txn", StringComparison.OrdinalIgnoreCase))
+            {
+                VisitTxn(field, array);
+            }
+            else if (field.Name.Equals("domainMetadata", StringComparison.OrdinalIgnoreCase))
+            {
+                VisitDomainMetadata(field, array);
+            }
             else
             {
                 throw new NotImplementedException($"Struct field '{field.Name}' not implemented in CheckpointReadVisitor.");
@@ -85,6 +109,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             var index = indexStack.Peek();
             DeltaAddAction addAction = new DeltaAddAction();
             var structType = (field.DataType as StructType)!;
+            long? parsedRecordCount = null;
 
             for (int c = 0; c < structType.Fields.Count; c++)
             {
@@ -168,10 +193,188 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                     array.Fields[c].Accept(this);
                     addAction.Statistics = (string?)result;
                 }
+                else if (structType.Fields[c].Name.Equals("stats_parsed", StringComparison.OrdinalIgnoreCase))
+                {
+                    parsedRecordCount = ReadParsedRecordCount(structType.Fields[c], (StructArray)array.Fields[c], index);
+                }
 
                 fieldStack.Pop();
             }
+            // Without JSON stats the parsed record count still describes the file
+            if (addAction.Statistics == null && parsedRecordCount.HasValue)
+            {
+                addAction.Statistics = "{\"numRecords\":" + parsedRecordCount.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
+            }
             result = addAction;
+        }
+
+        private long? ReadParsedRecordCount(Field field, StructArray array, int index)
+        {
+            if (array.IsNull(index))
+            {
+                return null;
+            }
+            var structType = (StructType)field.DataType;
+            for (int c = 0; c < structType.Fields.Count; c++)
+            {
+                if (structType.Fields[c].Name.Equals("numRecords", StringComparison.OrdinalIgnoreCase))
+                {
+                    fieldStack.Push(structType.Fields[c]);
+                    array.Fields[c].Accept(this);
+                    fieldStack.Pop();
+                    return result != null ? System.Convert.ToInt64(result) : null;
+                }
+            }
+            return null;
+        }
+
+        private void VisitRemove(Field field, StructArray array)
+        {
+            var index = indexStack.Peek();
+            DeltaRemoveFileAction removeAction = new DeltaRemoveFileAction();
+            var structType = (field.DataType as StructType)!;
+
+            for (int c = 0; c < structType.Fields.Count; c++)
+            {
+                var name = structType.Fields[c].Name;
+                fieldStack.Push(structType.Fields[c]);
+
+                if (name.Equals("path", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.Path = (string?)result;
+                }
+                else if (name.Equals("deletionTimestamp", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.DeletionTimestamp = result != null ? System.Convert.ToInt64(result) : null;
+                }
+                else if (name.Equals("dataChange", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    if (result != null)
+                    {
+                        removeAction.DataChange = System.Convert.ToBoolean(result);
+                    }
+                }
+                else if (name.Equals("extendedFileMetadata", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    if (result != null)
+                    {
+                        removeAction.ExtendedFileMetadata = System.Convert.ToBoolean(result);
+                    }
+                }
+                else if (name.Equals("partitionValues", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.PartitionValues = (Dictionary<string, string>?)result;
+                }
+                else if (name.Equals("size", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.Size = result != null ? System.Convert.ToInt64(result) : null;
+                }
+                else if (name.Equals("stats", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.Stats = (string?)result;
+                }
+                else if (name.Equals("tags", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.Tags = (Dictionary<string, string>?)result;
+                }
+                else if (name.Equals("deletionVector", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!array.Fields[c].IsNull(index))
+                    {
+                        array.Fields[c].Accept(this);
+                        removeAction.DeletionVector = (DeletionVector?)result;
+                    }
+                }
+                else if (name.Equals("baseRowId", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.BaseRowId = result != null ? System.Convert.ToInt64(result) : null;
+                }
+                else if (name.Equals("defaultRowCommitVersion", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    removeAction.DefaultRowCommitVersion = result != null ? System.Convert.ToInt64(result) : null;
+                }
+
+                fieldStack.Pop();
+            }
+            result = removeAction;
+        }
+
+        private void VisitTxn(Field field, StructArray array)
+        {
+            DeltaTransactionAction transactionAction = new DeltaTransactionAction();
+            var structType = (field.DataType as StructType)!;
+
+            for (int c = 0; c < structType.Fields.Count; c++)
+            {
+                var name = structType.Fields[c].Name;
+                fieldStack.Push(structType.Fields[c]);
+
+                if (name.Equals("appId", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    transactionAction.AppId = (string?)result;
+                }
+                else if (name.Equals("version", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    if (result != null)
+                    {
+                        transactionAction.Version = System.Convert.ToInt64(result);
+                    }
+                }
+                else if (name.Equals("lastUpdated", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    transactionAction.LastUpdated = result != null ? System.Convert.ToInt64(result) : null;
+                }
+
+                fieldStack.Pop();
+            }
+            result = transactionAction;
+        }
+
+        private void VisitDomainMetadata(Field field, StructArray array)
+        {
+            DeltaDomainMetadataAction domainMetadataAction = new DeltaDomainMetadataAction();
+            var structType = (field.DataType as StructType)!;
+
+            for (int c = 0; c < structType.Fields.Count; c++)
+            {
+                var name = structType.Fields[c].Name;
+                fieldStack.Push(structType.Fields[c]);
+
+                if (name.Equals("domain", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    domainMetadataAction.Domain = (string?)result;
+                }
+                else if (name.Equals("configuration", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    domainMetadataAction.Configuration = (string?)result;
+                }
+                else if (name.Equals("removed", StringComparison.OrdinalIgnoreCase))
+                {
+                    array.Fields[c].Accept(this);
+                    if (result != null)
+                    {
+                        domainMetadataAction.Removed = System.Convert.ToBoolean(result);
+                    }
+                }
+
+                fieldStack.Pop();
+            }
+            result = domainMetadataAction;
         }
 
         private void VisitDeletionVector(Field field, StructArray array)
@@ -386,6 +589,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
             {
                 action.Protocol = protocol;
             }
+            else if (result is DeltaRemoveFileAction remove)
+            {
+                action.Remove = remove;
+            }
+            else if (result is DeltaTransactionAction transaction)
+            {
+                action.Txn = transaction;
+            }
+            else if (result is DeltaDomainMetadataAction domainMetadata)
+            {
+                action.DomainMetadata = domainMetadata;
+            }
             else
             {
                 return default;
@@ -394,9 +609,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         }
 
 
+        // Arrow sends every array type without its own Visit here, accepting again would recurse forever
         public void Visit(IArrowArray array)
         {
-            array.Accept(this);
+            var field = fieldStack.Peek();
+            throw new CheckpointUnusableException($"Checkpoint field '{field.Name}' has unsupported type {array.Data.DataType.Name}.");
         }
 
         public void Visit(Int32Array array)
@@ -419,6 +636,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         public void Visit(ListArray array)
         {
             var index = indexStack.Peek();
+            // A null list, such as the feature lists of an older protocol, stays null
+            if (array.IsNull(index))
+            {
+                result = null;
+                return;
+            }
             var field = fieldStack.Peek();
             var offset = array.ValueOffsets[index];
             var length = array.GetValueLength(index);

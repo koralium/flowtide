@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using System;
@@ -78,6 +79,18 @@ namespace FlowtideDotNet.Core.Optimizer
         {
             Visitor.Visit(filterRelation.Condition, state);
             return base.VisitFilterRelation(filterRelation, state);
+        }
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            foreach (var check in checkRelation.Checks)
+            {
+                foreach (var expression in CheckFunctionMatcher.GetExpressions(check))
+                {
+                    Visitor.Visit(expression, state);
+                }
+            }
+            return base.VisitCheckRelation(checkRelation, state);
         }
 
         public override Relation VisitJoinRelation(JoinRelation joinRelation, object state)

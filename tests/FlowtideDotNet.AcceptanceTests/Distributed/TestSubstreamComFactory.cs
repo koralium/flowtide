@@ -25,7 +25,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         public TestSubstreamComFactory(
             Func<long, long, Task> sendCheckpointDone,
-            Func<long, Task> sendFailAndRecover,
+            Func<RecoveryWave, Task> sendFailAndRecover,
             Func<long, long, Task<SubstreamInitializeResponse>> sendInitializeRequest)
         {
             ComHandler = new TestSubstreamComHandler(sendCheckpointDone, sendFailAndRecover, sendInitializeRequest);

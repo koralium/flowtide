@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Core.Optimizer.FilterPushdown;
 using FlowtideDotNet.Core.Optimizer.GetTimestamp;
 using FlowtideDotNet.Core.Optimizer.WatermarkOutput;
@@ -27,6 +28,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 settings = new PlanOptimizerSettings();
             }
 
+            // Before gettimestamp turns filters into joins
+            plan = CheckExtractor.Extract(plan);
+
             // Start with timestamp to join since its actual logic and not only optimization
             if (settings.GetTimestampToJoin)
             {
@@ -34,6 +38,9 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             plan = SubqueryDecorrelationVisitor.Optimize(plan);
+
+            // Again for checks exposed by decorrelation, before filter pushdown
+            plan = CheckExtractor.Extract(plan);
 
             for (int i = 0; i < plan.Relations.Count; i++)
             {

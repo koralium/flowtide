@@ -17,6 +17,14 @@ namespace FlowtideDotNet.Storage.Persistence
     public interface IPersistentStorage : IDisposable
     {
         /// <summary>
+        /// Whether this configuration supports distributed checkpoint recovery: the current
+        /// and previous completed cuts survive compaction, and recovery/reset durably retires
+        /// the discarded timeline before returning. Wrappers must preserve these guarantees.
+        /// Reservoir with a listing provider is the supported built-in implementation.
+        /// </summary>
+        bool SupportsDistributedCheckpoints => false;
+
+        /// <summary>
         /// Returns the current version of the persistent storage
         /// </summary>
         long CurrentVersion { get; }

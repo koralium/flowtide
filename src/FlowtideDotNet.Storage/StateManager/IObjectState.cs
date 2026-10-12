@@ -20,7 +20,8 @@ namespace FlowtideDotNet.Storage.StateManager
         T? Value { get; set; }
 
         /// <summary>
-        /// Commits the value to persistent storage.
+        /// Captures the value for the next checkpoint. Durability requires
+        /// <see cref="IStateManager.CheckpointAsync"/>.
         /// </summary>
         /// <returns></returns>
         ValueTask Commit();

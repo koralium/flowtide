@@ -249,6 +249,12 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         private static async Task AssertNoFailures(IStreamGrain streamGrain)
         {
             var status = await streamGrain.GetStatusAsync();
+            if (status.Substreams.Any(s => s.Error != null || s.LastFailure != null))
+            {
+                // Load dependent, the dump shows the run that failed.
+                var dump = SharedRingBufferLogger.Dump($"migration_failure_{DateTime.UtcNow:HHmmss}.log");
+                Assert.Fail($"A substream failed during a planned migration: {string.Join(" | ", status.Substreams.Select(s => $"{s.SubstreamName}: {s.Error ?? s.LastFailure}"))}. Log dump: {dump}");
+            }
             foreach (var substream in status.Substreams)
             {
                 Assert.True(substream.Error == null, $"Substream {substream.SubstreamName} was unreachable after the migration: {substream.Error}");

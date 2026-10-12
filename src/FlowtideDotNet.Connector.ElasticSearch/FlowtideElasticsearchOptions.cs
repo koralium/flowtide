@@ -30,11 +30,25 @@ namespace FlowtideDotNet.Connector.ElasticSearch
         /// Action to apply custom mappings to the index
         /// This will be called on startup.
         /// 
-        /// If the index does not exist the properties will be empty.
+        /// If the index does not exist the properties will be empty, and they are sent in the create index request.
         /// </summary>
         public Action<Properties>? CustomMappings { get; set; }
 
+        /// <summary>
+        /// Returns the index name for a write relation, defaults to the table name.
+        /// </summary>
         public Func<WriteRelation, string>? GetIndexNameFunc { get; set; }
+
+        /// <summary>
+        /// Called before the sink creates an index that does not exist.
+        /// Change the request in the context to set settings such as shards, replicas, refresh interval and analyzers, aliases or mappings.
+        ///
+        /// Not called if the index already exists, settings are never applied to an existing index.
+        /// Runs on startup after <see cref="CustomMappings"/>, it can run concurrently and in multiple processes for the same index.
+        /// If another process creates the index first, only the mapping properties are applied.
+        /// Settings, aliases and other mapping options such as Dynamic are discarded.
+        /// </summary>
+        public Func<FlowtideElasticsearchIndexCreationContext, Task>? OnIndexCreation { get; set; }
 
         /// <summary>
         /// Function that gets called after the initial data has been saved to elasticsearch.

@@ -148,5 +148,10 @@ namespace FlowtideDotNet.Substrait.Relations
         {
             throw new NotImplementedException("SubstreamExchangeReferenceRelation is not implemented");
         }
+
+        public virtual TReturn VisitCheckRelation(CheckRelation checkRelation, TState state)
+        {
+            throw new NotImplementedException("Check relation is not implemented");
+        }
     }
 }

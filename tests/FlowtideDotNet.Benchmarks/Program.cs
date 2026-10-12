@@ -42,4 +42,9 @@ using FlowtideDotNet.Benchmarks.Stream;
 //await bPlusTreeBulkInsertBenchmark.BulkInsert_Batched();
 
 //Console.WriteLine("hello");
+if (args.FirstOrDefault() == "--checkpoint-finality")
+{
+    await CheckpointFinalityProbe.Run(args);
+    return;
+}
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);

@@ -10,6 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Type;
+
 namespace FlowtideDotNet.Substrait.Tests
 {
     public class ModifierTests
@@ -248,6 +252,63 @@ namespace FlowtideDotNet.Substrait.Tests
 #pragma warning restore CS0618 // Type or member is obsolete
             var modifiedPlan = planModifier.Modify();
 
+        }
+
+        [Fact]
+        public void CheckRelationInputIsModified()
+        {
+            var view = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Names = new List<string>() { "a" },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new NamedStruct() { Names = new List<string>() { "a" } },
+                            NamedTable = new NamedTable() { Names = new List<string>() { "basetable" } }
+                        }
+                    }
+                }
+            };
+            var root = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Names = new List<string>() { "a" },
+                        Input = new CheckRelation()
+                        {
+                            Input = new ReadRelation()
+                            {
+                                BaseSchema = new NamedStruct() { Names = new List<string>() { "a" } },
+                                NamedTable = new NamedTable() { Names = new List<string>() { "viewtable" } }
+                            },
+                            Checks = new List<CheckDefinition>()
+                            {
+                                new CheckDefinition()
+                                {
+                                    Condition = new BoolLiteral() { Value = true },
+                                    Message = "failed",
+                                    Tags = new List<CheckTag>(),
+                                    Guards = new List<CheckGuard>()
+                                }
+                            }
+                        }
+                    }
+                }
+            };
+
+            var modifiedPlan = new PlanModifier()
+                .AddPlanAsView("viewtable", view)
+                .AddRootPlan(root)
+                .Modify();
+
+            var check = Assert.IsType<CheckRelation>(modifiedPlan.Relations[1]);
+            var reference = Assert.IsType<ReferenceRelation>(check.Input);
+            Assert.Equal(0, reference.RelationId);
         }
     }
 }

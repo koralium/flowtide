@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             private LeafNode<K, V, TKeyContainer, TValueContainer> _node;
             private int _index;
             private bool _started;
+            private bool _disposed;
 
             public Enumerator(AppendTree<K, V, TKeyContainer, TValueContainer> tree, LeafNode<K, V, TKeyContainer, TValueContainer> node, int index)
             {
@@ -45,8 +46,10 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             public ValueTask DisposeAsync()
             {
-                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
+                // Each enumerator returns its leaf rent only once.
+                if (!_disposed)
                 {
+                    _disposed = true;
                     _node.Return();
                 }
                 return ValueTask.CompletedTask;
@@ -75,11 +78,11 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
             private async ValueTask<bool> FetchNewPage()
             {
-                if (_node.Id != _tree.m_stateClient.Metadata!.Right)
-                {
-                    _node.Return();
-                }
-                _node = ((await _tree.GetChildNode(_node.next)) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
+                var nextId = _node.next;
+                var nextNode = ((await _tree.GetChildNode(nextId)) as LeafNode<K, V, TKeyContainer, TValueContainer>)!;
+                // Keep the current leaf rented until replacement succeeds.
+                _node.Return();
+                _node = nextNode;
                 _index = 0;
                 if (_node.keys.Count == 0)
                 {
@@ -92,6 +95,7 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
         private readonly AppendTree<K, V, TKeyContainer, TValueContainer> _tree;
         private LeafNode<K, V, TKeyContainer, TValueContainer>? _node;
         private int? _index;
+        private bool _enumeratorCreated;
 
         public AppendTreeIterator(AppendTree<K, V, TKeyContainer, TValueContainer> tree)
         {
@@ -103,6 +107,18 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
             if (_node == null || _index == null)
             {
                 throw new NotSupportedException("You must call seek before iterating");
+            }
+            if (_enumeratorCreated)
+            {
+                // Rent additional reference to prevent double-return on multiple enumerations.
+                if (!_node.TryRent())
+                {
+                    throw new InvalidOperationException("Cannot rent leaf node");
+                }
+            }
+            else
+            {
+                _enumeratorCreated = true;
             }
             return new Enumerator(_tree, _node, _index.Value);
         }
@@ -116,6 +132,14 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         private async ValueTask Seek_Slow(K key, IBplusTreeComparer<K, TKeyContainer> searchComparer)
         {
+            if (!_enumeratorCreated && _node != null)
+            {
+                // Release previously rented leaf node before seeking next.
+                _node.Return();
+            }
+            _enumeratorCreated = false;
+            _node = null;
+            _index = null;
             _node = await _tree.FindLeafNode(key, searchComparer);
             _node.EnterWriteLock();
             var i = searchComparer.FindIndex(key, _node.keys);
@@ -129,6 +153,12 @@ namespace FlowtideDotNet.Storage.AppendTree.Internal
 
         public void Dispose()
         {
+            if (!_enumeratorCreated && _node != null)
+            {
+                // Release rented leaf node when abandoned before enumeration.
+                _node.Return();
+                _node = null;
+            }
         }
     }
 }

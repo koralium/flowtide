@@ -72,7 +72,7 @@ namespace FlowtideDotNet.DependencyInjection
         }
 
         /// <summary>
-        /// Adds check failures as an activity with name FlowtideDotNet.CheckFailures.CheckFailure
+        /// Reports check failures and resolutions as CheckFailure and CheckResolved activities on the FlowtideDotNet.CheckFailures source.
         /// </summary>
         /// <returns></returns>
         public static IFlowtideDIBuilder WriteCheckFailuresAsActivity(this IFlowtideDIBuilder builder)

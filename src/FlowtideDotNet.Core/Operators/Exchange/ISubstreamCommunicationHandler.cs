@@ -48,8 +48,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// consuming this substreams stop barriers.</param>
         void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, bool, Task> callRecieveCheckpointDone);
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             int numberOfEvents,
             CancellationToken cancellationToken);
 
-        Task SendFailAndRecover(long restoreVersion);
+        Task SendFailAndRecover(RecoveryWave wave);
 
         /// <summary>
         /// Runs the initialize handshake against the other substream.
@@ -73,7 +73,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="cleanHandoff">This substream resumes from a clean handoff stop (a planned
         /// migration), so the other substream can accept the reconnect without rolling back.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken);
+        Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken);
 
         /// <summary>
         /// Notifies the other substream that a checkpoint has completed in this substream.
@@ -83,5 +83,29 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// <param name="coversPeerStopBarrier">True when the committed cycle covers consuming the
         /// receiving substreams stop barriers, confirming a stop drain.</param>
         Task SendCheckpointDone(long checkpointVersion, long targetCheckpointEpoch, bool coversPeerStopBarrier);
+
+        /// <summary>
+        /// Registers the callback for durability claims the other substream sends: the version,
+        /// the radius, the senders checkpoint epoch and the epoch it believes this substream is on.
+        /// </summary>
+        void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim);
+
+        /// <summary>
+        /// Tells the other substream that every substream within <paramref name="radius"/> hops of
+        /// this one is durable at the version. Never completes a checkpoint dependency.
+        /// </summary>
+        /// <param name="version">The version the claim is about.</param>
+        /// <param name="radius">0 is this substream alone.</param>
+        /// <param name="senderCheckpointEpoch">This substreams current checkpoint epoch, the receiver drops a claim sent before a restart of the sender.</param>
+        /// <param name="targetCheckpointEpoch">The receiving substream's checkpoint epoch as last learned through the handshake.</param>
+        /// <param name="requestReply">The sender still waits for an agreement, the receiver answers with everything it claims. A reply never asks for one.</param>
+        /// <remarks>
+        /// The returned task must represent the actual transport operation until it settles
+        /// or its resources are retired. Do not return a cancellable wrapper that abandons
+        /// an underlying live call. The receiver must enqueue replies and return without
+        /// waiting for reverse RPCs or group agreement.
+        /// </remarks>
+        /// <param name="cancellationToken">Requests cancellation; it does not release the sender's operation slot until the returned task settles.</param>
+        Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken);
     }
 }

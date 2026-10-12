@@ -69,7 +69,8 @@ namespace FlowtideDotNet.AcceptanceTests
             bool ignoreSameDataCheck = false,
             ICheckFailureListener? failureListener = default,
             PlanOptimizerSettings? planOptimizerSettings = default,
-            DistributedOptions? distributedOptions = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings, distributedOptions: distributedOptions);
+            DistributedOptions? distributedOptions = default,
+            ICheckStatusListener? statusListener = default) => flowtideTestStream.StartStream(sql, parallelism, stateSerializeOptions, default, pageSize, ignoreSameDataCheck, failureListener, planOptimizerSettings, distributedOptions: distributedOptions, checkStatusListener: statusListener);
 
 
         protected Task StopStream() => flowtideTestStream.StopStream();
@@ -127,6 +128,10 @@ namespace FlowtideDotNet.AcceptanceTests
         protected TimeSpan? StopDrainTimeout { set => flowtideTestStream.StopDrainTimeout = value; }
 
         public EventBatchData GetActualRows() => flowtideTestStream.GetActualRowsAsVectors();
+
+        protected FlowtideDotNet.Base.Metrics.StreamGraph GetDiagnosticsGraph() => flowtideTestStream.GetDiagnosticsGraph();
+
+        protected string StreamName => flowtideTestStream.StreamName;
 
         /// <summary>
         /// Rows sent to the sink, not the state.

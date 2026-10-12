@@ -1232,6 +1232,69 @@ namespace FlowtideDotNet.Substrait
                 };
             }
 
+            public override Rel VisitCheckRelation(CheckRelation checkRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+                var checkRel = new CustomProtobuf.CheckRelation();
+                var exprVisitor = new SerializerExpressionVisitor();
+
+                foreach (var check in checkRelation.Checks)
+                {
+                    var protoCheck = new CustomProtobuf.CheckRelation.Types.Check()
+                    {
+                        Condition = exprVisitor.Visit(check.Condition, state),
+                        Message = check.Message
+                    };
+                    foreach (var tag in check.Tags)
+                    {
+                        protoCheck.Tags.Add(new CustomProtobuf.CheckRelation.Types.Tag()
+                        {
+                            Key = tag.Key,
+                            Value = exprVisitor.Visit(tag.Value, state)
+                        });
+                    }
+                    foreach (var guard in check.Guards)
+                    {
+                        protoCheck.Guards.Add(new CustomProtobuf.CheckRelation.Types.Guard()
+                        {
+                            Expression = exprVisitor.Visit(guard.Expression, state),
+                            Kind = GetCheckGuardKind(guard.Kind)
+                        });
+                    }
+                    checkRel.Checks.Add(protoCheck);
+                }
+
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(checkRel);
+
+                if (checkRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(checkRelation.Emit);
+                }
+                rel.Input = Visit(checkRelation.Input, state);
+
+                return new Protobuf.Rel()
+                {
+                    ExtensionSingle = rel
+                };
+            }
+
+            private static CustomProtobuf.CheckRelation.Types.Guard.Types.Kind GetCheckGuardKind(CheckGuardKind kind)
+            {
+                switch (kind)
+                {
+                    case CheckGuardKind.IsTrue:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsTrue;
+                    case CheckGuardKind.IsNotTrue:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNotTrue;
+                    case CheckGuardKind.IsNull:
+                        return CustomProtobuf.CheckRelation.Types.Guard.Types.Kind.IsNull;
+                    default:
+                        throw new NotSupportedException($"Check guard kind {kind} is not supported.");
+                }
+            }
+
             public override Rel VisitSetRelation(SetRelation setRelation, SerializerVisitorState state)
             {
                 var rel = new Protobuf.SetRel();

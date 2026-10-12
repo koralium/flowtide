@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Storage.Tree
         /// <summary>
         /// Called on each checkpoint, its primary function is to allow a serializer to write any potential metadata
         /// such as schema information, global dictionaries and similar.
+        /// Runs before the checkpoint's pages are serialized, so the metadata must not depend on those calls.
         /// </summary>
         /// <param name="context"></param>
         /// <returns></returns>

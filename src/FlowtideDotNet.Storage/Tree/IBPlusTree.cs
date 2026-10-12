@@ -121,7 +121,9 @@ namespace FlowtideDotNet.Storage.Tree
         internal Task<string> Print();
 
         /// <summary>
-        /// Persists pending changes through the underlying state client.
+        /// Captures pending changes for the next checkpoint. With background commits enabled,
+        /// page writes may continue after this returns. Durability requires
+        /// <see cref="StateManager.IStateManager.CheckpointAsync"/>.
         /// </summary>
         ValueTask Commit();
 

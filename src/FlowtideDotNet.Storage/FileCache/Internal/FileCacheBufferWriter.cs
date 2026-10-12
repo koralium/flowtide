@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Storage.FileCache.Internal
 
         public int Position => _position;
 
+        internal int CapacityForTests => _memory?.Memory.Length ?? 0;
+
         private Memory<byte> SliceMemory()
         {
             var alignedLength = (_position + sectorSize - 1) / sectorSize * sectorSize;

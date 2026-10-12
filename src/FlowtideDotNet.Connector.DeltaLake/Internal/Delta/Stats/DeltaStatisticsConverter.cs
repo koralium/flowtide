@@ -46,7 +46,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
         public override DeltaStatistics? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            int numRecords = 0;
+            // Stats of the previous file must not leak into this one
+            foreach (var parser in parsers.Values)
+            {
+                parser.Reset();
+            }
+
+            long numRecords = 0;
             bool tightBounds = false;
 
             while (true)
@@ -70,7 +76,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                 switch (propertyName)
                 {
                     case "numRecords":
-                        numRecords = reader.GetInt32();
+                        numRecords = reader.GetInt64();
                         break;
                     case "tightBounds":
                         tightBounds = reader.GetBoolean();

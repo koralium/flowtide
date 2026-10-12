@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
                 case NormalizationRelation:
                 case TableFunctionRelation:
                 case ConsistentPartitionWindowRelation:
+                case CheckRelation:
                     return true;
                 default:
                     return false;
@@ -121,6 +122,9 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
                     break;
                 case ConsistentPartitionWindowRelation window:
                     yield return window.Input;
+                    break;
+                case CheckRelation check:
+                    yield return check.Input;
                     break;
             }
         }

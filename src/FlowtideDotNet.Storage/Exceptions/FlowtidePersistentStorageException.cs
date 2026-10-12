@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Storage.Exceptions
         {
         }
 
-        public FlowtidePersistentStorageException(string message, Exception innerException) : base(message, innerException)
+        public FlowtidePersistentStorageException(string message, Exception? innerException) : base(message, innerException)
         {
         }
     }

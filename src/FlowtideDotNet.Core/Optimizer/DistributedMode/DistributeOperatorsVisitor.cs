@@ -566,6 +566,11 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                     currentColumns = MapColumnsDownThroughEmit(currentColumns, filterRelation.Emit);
                     current = filterRelation.Input;
                 }
+                else if (current is CheckRelation checkRelation)
+                {
+                    currentColumns = MapColumnsDownThroughEmit(currentColumns, checkRelation.Emit);
+                    current = checkRelation.Input;
+                }
                 else if (current is ProjectRelation projectRelation)
                 {
                     currentColumns = MapColumnsDownThroughProject(currentColumns, projectRelation);

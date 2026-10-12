@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private IFlowtideQueue<IStreamEvent, StreamEventValueContainer>? _queue;
         private IMemoryAllocator? _memoryAllocator;
         private readonly SemaphoreSlim _lockSemaphore;
-        private Func<long, Task>? _failAndRecoverFunc;
+        private Func<long?, Task>? _failAndRecoverFunc;
 
         // False between a failure and the next initialize: the queue still holds aborted-epoch events
         // until the rollback and regeneration, serving them would deliver stale events.
@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState state,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout)
         {
             _failAndRecoverFunc = failAndRecoverFunc;
@@ -414,22 +414,22 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             _substreamCommunication.OnStreamFailure();
             // Best effort notification that must not delay the failure handling here, see
             // NotifyFailAndRecover.
-            _substreamCommunication.NotifyFailAndRecover(recoveryPoint);
+            _substreamCommunication.NotifyFailAndRecover();
         }
 
         /// <summary>
-        /// True once initialize wired the rollback. A registered but not yet initialized
-        /// target silently no-ops a rollback, routing must skip it.
+        /// True once this run's exchange wired the rollback. An unwired target silently no-ops
+        /// a rollback, routing must skip it.
         /// </summary>
         public bool CanFailAndRecover => _failAndRecoverFunc != null;
 
-        public Task FailAndRecover(long recoveryPoint)
+        /// <summary>Null between runs: a peer's wave must not reach an ended run.</summary>
+        public void SetRollback(Func<long?, Task>? failAndRecoverFunc) => _failAndRecoverFunc = failAndRecoverFunc;
+
+        public Task FailAndRecover(long? recoveryPoint)
         {
-            if (_failAndRecoverFunc == null)
-            {
-                return Task.CompletedTask;
-            }
-            return _failAndRecoverFunc(recoveryPoint);
+            var func = _failAndRecoverFunc;
+            return func == null ? Task.CompletedTask : func(recoveryPoint);
         }
 
         public Task TargetSubstreamCheckpointDone(long checkpointVersion, bool coversPeerStopBarrier)

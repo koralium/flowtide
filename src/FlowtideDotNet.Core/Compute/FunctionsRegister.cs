@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlexBuffers;
-using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations;
@@ -244,11 +243,6 @@ namespace FlowtideDotNet.Core.Compute
             }
             windowFunc = default;
             return false;
-        }
-
-        public void SetCheckNotificationReceiver(ICheckNotificationReceiver checkNotificationReceiver)
-        {
-            _functionServices.SetCheckNotificationReceiver(checkNotificationReceiver);
         }
 
         public void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition)

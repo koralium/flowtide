@@ -222,5 +222,38 @@ namespace FlowtideDotNet.Storage.Tests
                 Assert.Equal(i * 3, value);
             }
         }
+
+        [Fact]
+        public async Task EveryRecoveryOnTheDefaultStorageStartsFromEmptyAndKeepsTheClientsUsable()
+        {
+            using var stateManager = new StateManagerSync<object>(new StateManagerOptions()
+            {
+                CachePageCount = 1000,
+                MinCachePageCount = 100,
+                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = "./data/restart_default_storage/temp" }
+            }, NullLoggerFactory.Instance, new Meter("restart_default_storage"), "restart_default_storage", GlobalMemoryManager.Instance);
+
+            await stateManager.InitializeAsync();
+            for (var epoch = 1; epoch <= 3; epoch++)
+            {
+                var tree = await CreateTree(stateManager.GetOrCreateClient("node1"), "tree");
+                if (epoch > 1)
+                {
+                    // The file cache overwrites pages in place, it cannot hand back a checkpoint.
+                    var (previousFound, _) = await tree.GetValue(epoch - 1);
+                    Assert.False(previousFound, $"Recovery {epoch - 1} kept the pages of the epoch before it");
+                }
+                await tree.Upsert(epoch, epoch);
+                await tree.Commit();
+                await stateManager.CheckpointAsync();
+                var (found, value) = await tree.GetValue(epoch);
+                Assert.True(found);
+                Assert.Equal(epoch, value);
+
+                // A failure recovery initializes again without a dispose, the clients keep their sessions.
+                await stateManager.InitializeAsync();
+                Assert.Equal(0, stateManager.LastCompletedCheckpointVersion);
+            }
+        }
     }
 }

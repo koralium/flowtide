@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Core.Tests
     {
         private class RecordingHandler : ISubstreamCommunicationHandler
         {
-            public Func<long, Task>? CallFailAndRecover;
+            public Func<RecoveryWave, Task>? CallFailAndRecover;
             public int SendFailAndRecoverCalls;
 
             public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
@@ -41,8 +41,8 @@ namespace FlowtideDotNet.Core.Tests
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
                 CallFailAndRecover = callFailAndRecover;
@@ -53,13 +53,19 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task SendFailAndRecover(long restoreVersion)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave)
             {
                 Interlocked.Increment(ref SendFailAndRecoverCalls);
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }
@@ -78,7 +84,7 @@ namespace FlowtideDotNet.Core.Tests
             var communicationPoint = new SubstreamCommunicationPoint(NullLogger.Instance, "substream_0", "substream_1", handler);
 
             Assert.NotNull(handler.CallFailAndRecover);
-            await handler.CallFailAndRecover!(5);
+            await handler.CallFailAndRecover!(new RecoveryWave(5, Guid.NewGuid()));
         }
 
         /// <summary>
@@ -96,7 +102,7 @@ namespace FlowtideDotNet.Core.Tests
             var target = new SubstreamTarget(1, 1, communicationPoint, () => { });
 
             Assert.NotNull(handler.CallFailAndRecover);
-            await handler.CallFailAndRecover!(5);
+            await handler.CallFailAndRecover!(new RecoveryWave(5, Guid.NewGuid()));
         }
 
         /// <summary>
@@ -112,7 +118,7 @@ namespace FlowtideDotNet.Core.Tests
 
             for (int i = 0; i < 10; i++)
             {
-                communicationPoint.NotifyFailAndRecover(7);
+                communicationPoint.NotifyFailAndRecover();
             }
 
             // The notifications run fire-and-forget on the thread pool. Wait until the send
@@ -150,8 +156,8 @@ namespace FlowtideDotNet.Core.Tests
 
             public void Initialize(
                 Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-                Func<long, Task> callFailAndRecover,
-                Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+                Func<RecoveryWave, Task> callFailAndRecover,
+                Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
                 Func<long, long, bool, Task> callRecieveCheckpointDone)
             {
             }
@@ -161,12 +167,18 @@ namespace FlowtideDotNet.Core.Tests
                 return Task.CompletedTask;
             }
 
-            public Task SendFailAndRecover(long restoreVersion)
+            public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+            {
+            }
+
+            public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken) => Task.CompletedTask;
+
+            public Task SendFailAndRecover(RecoveryWave wave)
             {
                 return Task.CompletedTask;
             }
 
-            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+            public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
             {
                 return Task.FromResult(new SubstreamInitializeResponse(false, true, restoreVersion));
             }

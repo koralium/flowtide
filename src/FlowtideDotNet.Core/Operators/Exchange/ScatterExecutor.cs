@@ -180,7 +180,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             IStateManagerClient stateManagerClient,
             ExchangeOperatorState exchangeOperatorState,
             IMemoryAllocator memoryAllocator,
-            Func<long, Task> failAndRecoverFunc,
+            Func<long?, Task> failAndRecoverFunc,
             TimeSpan stopDrainTimeout)
         {
             for (int i = 0; i < _targets.Length; i++)
@@ -344,6 +344,14 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 tasks.Add(target.CheckpointDone(checkpointVersion));
             }
             return Task.WhenAll(tasks);
+        }
+
+        public void SetRollbacks(Func<long?, Task>? failAndRecoverFunc)
+        {
+            foreach (var target in _targets)
+            {
+                (target as SubstreamTarget)?.SetRollback(failAndRecoverFunc);
+            }
         }
 
         public bool ReadyToStop

@@ -16,6 +16,7 @@ using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Buffers.Binary;
 using System.IO.Pipelines;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
@@ -44,6 +45,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private readonly object _lock = new object();
         private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();
         private ulong _crc64;
+        private bool _layoutFinished;
 
         private int _rentCounter;
 
@@ -92,6 +94,11 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public override ulong Crc64 => _crc64;
 
+        /// <summary>
+        /// Runs right before the file is summed, so a test can hold the checksum open.
+        /// </summary>
+        internal Action? ChecksumHookForTests { get; set; }
+
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
         {
             lock (_lock)
@@ -100,7 +107,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 var startSegment = CurrentSegment;
                 var segmentPosition = CurrentIndex;
                 crc.Reset();
-                value.Serialize(this);
+                if (value.PreSerializedData is { } data)
+                {
+                    WriteSerialized(data.Span);
+                }
+                else
+                {
+                    value.Serialize(this);
+                }
                 var endSegment = CurrentSegment;
                 var endSegmentPosition = CurrentIndex;
                 var crcNumber = crc.GetCurrentHashAsUInt32();
@@ -110,7 +124,32 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
             }
         }
-        
+
+        private void WriteSerialized(ReadOnlySpan<byte> data)
+        {
+            if (data.IsEmpty && !_finished)
+            {
+                return;
+            }
+
+            do
+            {
+                var available = _end.AvailableMemory.Length - endIndex;
+                var sizeHint = Math.Min(data.Length, available);
+                if (available == 0 && data.Length > InitialSegmentSize)
+                {
+                    // Large chunks must fit without unused pooled capacity.
+                    sizeHint = 1 << BitOperations.Log2((uint)data.Length);
+                }
+
+                var destination = GetSpan(sizeHint);
+                var count = Math.Min(data.Length, destination.Length);
+                data.Slice(0, count).CopyTo(destination);
+                Advance(count);
+                data = data.Slice(count);
+            } while (!data.IsEmpty);
+        }
+
         public void Advance(int count)
         {
             crc.Append(_end.AvailableMemory.Slice(endIndex, count).Span);
@@ -125,12 +164,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             { 
                 throw new InvalidOperationException("Cannot write to BlobFileWriter after it has been finished.");
             }
-            if (endIndex + sizeHint >= _end.AvailableMemory.Length)
+            var available = _end.AvailableMemory.Length - endIndex;
+            if (available == 0 || sizeHint > available)
             {
                 var segmentSize = Math.Max(sizeHint, InitialSegmentSize);
                 var newSegment = new BufferSegment(_memoryPool.Rent(segmentSize), segmentSize);
-                _end.SetNext(newSegment);
+                // Truncate before linking so running index calculates correctly.
                 _end.End = endIndex;
+                _end.SetNext(newSegment);
                 _end = newSegment;
                 endIndex = 0;
             }
@@ -144,6 +185,15 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public void Finish()
         {
+            FinishLayout();
+            ComputeChecksum();
+        }
+
+        /// <summary>
+        /// Builds the header and settles the segment indices, readers of the pages must be held out.
+        /// </summary>
+        internal void FinishLayout()
+        {
             lock (_lock)
             {
                 if (_finished)
@@ -153,6 +203,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 // add the last offset
                 _pageOffset.Add(WrittenLength);
                 _finished = true;
+                // Truncate final segment before calculating running indices.
+                _end.End = endIndex;
 
                 _pageIdsSegment.UpdateMemory_Unsafe(_pageIds.SlicedMemory);
                 _pageOffsetsSegment.UpdateMemory_Unsafe(_pageOffset.SlicedMemory);
@@ -196,14 +248,27 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
                 // Write offset to page data start
                 BinaryPrimitives.WriteInt32LittleEndian(headerData, idsAndOffsetsOffset);
-
-                System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
-                foreach(var segment in WrittenData)
-                {
-                    crc64.Append(segment.Span);
-                }
-                _crc64 = crc64.GetCurrentHashAsUInt64();
+                _layoutFinished = true;
             }
+        }
+
+        /// <summary>
+        /// Sums the finished file, its bytes no longer change so page reads go on meanwhile.
+        /// </summary>
+        internal void ComputeChecksum()
+        {
+            // FinishDataOnly marks a file finished without a layout, that file is never summed here.
+            if (!_layoutFinished)
+            {
+                throw new FlowtidePersistentStorageException("Tried to sum a file before its layout was finished");
+            }
+            ChecksumHookForTests?.Invoke();
+            System.IO.Hashing.Crc64 crc64 = new System.IO.Hashing.Crc64();
+            foreach (var segment in WrittenData)
+            {
+                crc64.Append(segment.Span);
+            }
+            _crc64 = crc64.GetCurrentHashAsUInt64();
         }
 
         public Memory<byte> GetMemory(int sizeHint = 0)

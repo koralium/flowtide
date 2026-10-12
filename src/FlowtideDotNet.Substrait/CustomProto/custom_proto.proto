@@ -119,3 +119,41 @@ message PullBucketExchangeTarget {
     // Identifier used when the data is pulled.
     int32 exchange_target_id = 1;
 }
+
+// Passes its input through and tracks the issues raised by its checks.
+// Packed into the detail of an extension single rel.
+message CheckRelation {
+    repeated Check checks = 1;
+
+    message Check {
+        // Raises an issue when it evaluates to boolean false.
+        substrait.Expression condition = 1;
+
+        // Check name template, placeholders like {tag} are left unrendered.
+        string message = 2;
+
+        repeated Tag tags = 3;
+
+        // Must all hold before the check is evaluated, empty means always.
+        repeated Guard guards = 4;
+    }
+
+    message Tag {
+        string key = 1;
+        substrait.Expression value = 2;
+    }
+
+    message Guard {
+        substrait.Expression expression = 1;
+        Kind kind = 2;
+
+        enum Kind {
+            // The expression is true, the CASE branch was taken.
+            KIND_IS_TRUE = 0;
+            // The expression is not true, an earlier CASE branch was not taken.
+            KIND_IS_NOT_TRUE = 1;
+            // The expression is null, an earlier COALESCE argument was null.
+            KIND_IS_NULL = 2;
+        }
+    }
+}

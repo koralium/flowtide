@@ -28,9 +28,10 @@ namespace FlowtideDotNet.Core.Engine.Distributed
         private readonly string _targetSubstreamName;
 
         private Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>>? _getDataFunction;
-        private Func<long, Task>? _callFailAndRecover;
-        private Func<long, long, bool, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
+        private Func<RecoveryWave, Task>? _callFailAndRecover;
+        private Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>>? _initializeFromTarget;
         private Func<long, long, bool, Task>? _callRecieveCheckpointDone;
+        private Func<long, int, long, RecoveryWave, long, long, bool, Task>? _callReceiveDurabilityClaim;
 
         public LocalSubstreamCommunicationHandler(LocalSubstreamCommunicationHub hub, string selfSubstreamName, string targetSubstreamName)
         {
@@ -46,8 +47,8 @@ namespace FlowtideDotNet.Core.Engine.Distributed
 
         public void Initialize(
             Func<IReadOnlySet<int>, int, CancellationToken, Task<IReadOnlyList<SubstreamEventData>>> getDataFunction,
-            Func<long, Task> callFailAndRecover,
-            Func<long, long, bool, Task<SubstreamInitializeResponse>> initializeFromTarget,
+            Func<RecoveryWave, Task> callFailAndRecover,
+            Func<long, long, bool, RecoveryWave, Task<SubstreamInitializeResponse>> initializeFromTarget,
             Func<long, long, bool, Task> callRecieveCheckpointDone)
         {
             _getDataFunction = getDataFunction;
@@ -66,24 +67,40 @@ namespace FlowtideDotNet.Core.Engine.Distributed
             return Task.FromResult<IReadOnlyList<SubstreamEventData>>(new List<SubstreamEventData>());
         }
 
-        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, CancellationToken cancellationToken)
+        public Task<SubstreamInitializeResponse> SendInitializeRequest(long restoreVersion, long checkpointEpoch, bool cleanHandoff, RecoveryWave wave, CancellationToken cancellationToken)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._initializeFromTarget != null)
             {
-                return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff);
+                return peer._initializeFromTarget(restoreVersion, checkpointEpoch, cleanHandoff, wave);
             }
             return Task.FromResult(new SubstreamInitializeResponse(true, false, restoreVersion));
         }
 
-        public Task SendFailAndRecover(long restoreVersion)
+        public Task SendFailAndRecover(RecoveryWave wave)
         {
             if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
                 peer._callFailAndRecover != null)
             {
-                return peer._callFailAndRecover(restoreVersion);
+                return peer._callFailAndRecover(wave);
             }
             // The other substream has not started yet, there is nothing to recover.
+            return Task.CompletedTask;
+        }
+
+        public void InitializeDurabilityClaims(Func<long, int, long, RecoveryWave, long, long, bool, Task> callReceiveDurabilityClaim)
+        {
+            _callReceiveDurabilityClaim = callReceiveDurabilityClaim;
+        }
+
+        public Task SendDurabilityClaim(long version, int radius, long initVersion, RecoveryWave wave, long senderCheckpointEpoch, long targetCheckpointEpoch, bool requestReply, CancellationToken cancellationToken)
+        {
+            if (_hub.TryGetPeerHandler(_selfSubstreamName, _targetSubstreamName, out var peer) &&
+                peer._callReceiveDurabilityClaim != null)
+            {
+                return peer._callReceiveDurabilityClaim(version, radius, initVersion, wave, senderCheckpointEpoch, targetCheckpointEpoch, requestReply);
+            }
+            // The other substream has not been built yet, the claim is sent again later.
             return Task.CompletedTask;
         }
 

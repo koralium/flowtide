@@ -154,6 +154,7 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 await block.DeleteAsync();
             });
 
+            await _context.WaitForStateManagerToSettle("Delete");
             _context._stateManager.Dispose();
 
             await TransitionTo(StreamStateValue.Deleted);

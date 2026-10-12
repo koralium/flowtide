@@ -23,6 +23,7 @@ using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Sql;
+using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -43,6 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
         private readonly MockDatabase _db = new MockDatabase();
         private DistributedFlowtideStream? _stream;
+        private readonly RingBufferLoggerProvider _logs = new();
 
         public OrphanedStartRecoveryTests()
         {
@@ -84,6 +86,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
 
             public long CurrentVersion => _inner.CurrentVersion;
+            public bool SupportsDistributedCheckpoints => _inner.SupportsDistributedCheckpoints;
 
             // High-water mark of overlapping inits.
             public int MaxConcurrent => Volatile.Read(ref _maxConcurrent);
@@ -161,6 +164,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                     substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
@@ -214,6 +218,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                     substreamBuilder.AddConnectorManager(connectorManager);
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                    substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                     substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                 })
                 .DistributeAutomatically(2)
@@ -287,6 +292,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -360,6 +366,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -454,6 +461,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
                         substreamBuilder.AddConnectorManager(connectorManager);
                         substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
+                        substreamBuilder.WithLoggerFactory(LoggerFactory.Create(b => b.SetMinimumLevel(LogLevel.Debug).AddProvider(_logs)));
                         substreamBuilder.SetStopDrainTimeout(FastEngineTimings.StopDrainTimeout);
                     })
                     .DistributeAutomatically(2)
@@ -477,16 +485,27 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
                 // The superseded start wakes with the successor's blocks owning the created
                 // flag; its abandon must leave them alone.
+                var abandonsBefore = SupersededAbandons();
+                var failuresBeforeRelease = failures.Select(f => f.Exception).ToHashSet();
                 releaseFirstRestart.TrySetResult();
+                var stopwatch = Stopwatch.StartNew();
+                while (SupersededAbandons() == abandonsBefore)
+                {
+                    Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(30), "The superseded start never observed its abort");
+                    await Task.Delay(20);
+                }
                 await Task.Delay(200);
+                // Still the successor's claim: the superseded start neither reset nor tore down its blocks.
+                Assert.Equal(1, substream0.BlocksCreatedForTests);
                 releaseSuccessor.TrySetResult();
 
                 generator.Generate(100);
                 await WaitForCount(latestData, "substream_0", ExpectedCount(generator), failures);
 
-                var supersededFault = failures.FirstOrDefault(f => f.Exception?.ToString().Contains("The start was superseded by a failure.") == true);
-                Assert.True(supersededFault.Exception == null,
-                    $"The abandoned start tore down its successor's blocks: a block fault from the abandon surfaced as a stream failure on {supersededFault.Substream}: {supersededFault.Exception}");
+                // A stop fault on the successor's blocks, whatever its text, would surface wrapped as a stream failure.
+                var stopFault = failures.FirstOrDefault(f => f.Substream == "substream_0" && !failuresBeforeRelease.Contains(f.Exception) && f.Exception?.ToString().Contains(nameof(Base.Exceptions.BlockStopException)) == true);
+                Assert.True(stopFault.Exception == null,
+                    $"The abandoned start tore down its successor's blocks: a block stop fault surfaced as a stream failure on {stopFault.Substream}: {stopFault.Exception}");
             }
             finally
             {
@@ -494,6 +513,11 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 releaseFirstRestart.TrySetResult();
                 releaseSuccessor.TrySetResult();
             }
+        }
+
+        private int SupersededAbandons()
+        {
+            return _logs.LinesContaining("was superseded by a failure, abandoning it").Count(l => l.Contains("substream_0"));
         }
 
         private int ExpectedCount(DatasetGenerator generator)
@@ -537,7 +561,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             }
         }
 
-        private static async Task WaitForCount(
+        private async Task WaitForCount(
             ConcurrentDictionary<string, int> latestData,
             string key,
             int expectedCount,
@@ -554,9 +578,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 {
                     var runningTasks = failures.Count(f => f.Exception?.ToString().Contains("Initialize while there are running tasks") == true);
                     latestData.TryGetValue(key, out var last);
+                    _logs.WriteToFile("./debugwrite/orphaned_start.log");
                     throw new TimeoutException(
                         $"The result did not reach {expectedCount} rows, last {last}. " +
-                        $"Failures containing 'Initialize while there are running tasks': {runningTasks} - the failure during the restart orphaned the running start.");
+                        $"Failures containing 'Initialize while there are running tasks': {runningTasks}. " +
+                        $"States: {string.Join(", ", _stream!.Substreams.Select(s => $"{s.Key}: {s.Value.State}"))}. " +
+                        $"Recent failures: {string.Join("; ", failures.Take(6).Select(f => $"{f.Substream}: {f.Exception}"))}");
                 }
                 await Task.Delay(20);
             }

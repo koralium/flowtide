@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -38,6 +38,15 @@ namespace FlowtideDotNet.TestFramework
         {
             lock (_lock)
             {
+                if (notification.Exception is AggregateException aggregateException)
+                {
+                    var flattened = aggregateException.Flatten();
+                    if (flattened.InnerExceptions.Count == 1)
+                    {
+                        exception = flattened.InnerExceptions[0];
+                        return;
+                    }
+                }
                 exception = notification.Exception;
             }
         }

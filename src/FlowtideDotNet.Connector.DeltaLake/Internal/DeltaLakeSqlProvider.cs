@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         private async Task<TableMetadata?> GetTableMetadata(string tableName)
         {
-            var table = await DeltaTransactionReader.ReadTable(deltaLakeOptions.StorageLocation, tableName);
+            var table = await DeltaTransactionReader.ReadTable(deltaLakeOptions.StorageLocation, tableName, options: new DeltaReadOptions() { SkipTombstones = true });
 
             if (table == null)
             {

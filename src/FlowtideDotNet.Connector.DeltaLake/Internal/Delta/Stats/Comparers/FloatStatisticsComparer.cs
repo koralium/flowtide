@@ -15,17 +15,20 @@ using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class FloatStatisticsComparer : IStatisticsComparer
+    internal class FloatStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private double? _minValue;
         private double? _maxValue;
         private readonly int? _nullCount;
+        private readonly bool _isFloat32;
         private const double Epsilon = 1e-8;
 
-        public FloatStatisticsComparer(double? minValue, double? maxValue, int? nullCount)
+        public FloatStatisticsComparer(double? minValue, double? maxValue, int? nullCount, bool isFloat32 = false)
         {
-            _minValue = minValue;
-            _maxValue = maxValue;
+            _isFloat32 = isFloat32;
+            // Float columns compare at the stored float precision
+            _minValue = isFloat32 && minValue.HasValue ? StoredValue.Float32(minValue.Value) : minValue;
+            _maxValue = isFloat32 && maxValue.HasValue ? StoredValue.Float32(maxValue.Value) : maxValue;
             _nullCount = nullCount;
         }
 
@@ -54,6 +57,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 throw new InvalidOperationException($"Unsupported data type {value.Type} for FloatStatisticsComparer.");
             }
 
+            if (_isFloat32)
+            {
+                floatValue = StoredValue.Float32(floatValue);
+            }
+
             if (_minValue != null && (_minValue - Epsilon) > floatValue)
             {
                 return false;
@@ -64,6 +72,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 return false;
             }
             return true;
+        }
+
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == (_isFloat32 ? PruningType.Float32 : PruningType.Double))
+            {
+                PruningCell.WriteDouble(cell, type, _minValue, _maxValue, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)

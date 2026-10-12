@@ -62,7 +62,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new StringStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new BinaryStatisticsComparer(_minValue, _maxValue, _nullCount);
         }
 
         public void NewBatch()

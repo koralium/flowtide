@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Optimizer.CheckExtraction;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
@@ -722,6 +723,76 @@ namespace FlowtideDotNet.Core.Optimizer.EmitPushdown
 
             }
             return base.VisitFilterRelation(filterRelation, state);
+        }
+
+        public override Relation VisitCheckRelation(CheckRelation checkRelation, object state)
+        {
+            if (checkRelation.Input is ReferenceRelation)
+            {
+                return checkRelation;
+            }
+            if (checkRelation.Input is IterationReferenceReadRelation)
+            {
+                return checkRelation;
+            }
+            if (checkRelation.Input is IterationRelation)
+            {
+                return checkRelation;
+            }
+            if (checkRelation.EmitSet && checkRelation.Input.OutputLength >= checkRelation.OutputLength)
+            {
+                var input = checkRelation.Input;
+
+                // Keep check fields alongside the emitted fields
+                var usageVisitor = new ExpressionFieldUsageVisitor(input.OutputLength);
+                foreach (var check in checkRelation.Checks)
+                {
+                    foreach (var expression in CheckFunctionMatcher.GetExpressions(check))
+                    {
+                        usageVisitor.Visit(expression, default);
+                    }
+                }
+
+                if (usageVisitor.CanOptimize)
+                {
+                    var usedFields = usageVisitor.UsedFieldsLeft.Distinct().ToList();
+                    foreach (var field in checkRelation.Emit)
+                    {
+                        if (field < input.OutputLength && !usedFields.Contains(field))
+                        {
+                            usedFields.Add(field);
+                        }
+                    }
+
+                    if (usedFields.Count <= input.OutputLength)
+                    {
+                        var inputEmitResult = CreateInputEmitList(input, usedFields);
+                        var replaceVisitor = new ExpressionFieldReplaceVisitor(inputEmitResult.OldToNew);
+                        foreach (var check in checkRelation.Checks)
+                        {
+                            foreach (var expression in CheckFunctionMatcher.GetExpressions(check))
+                            {
+                                replaceVisitor.Visit(expression, default);
+                            }
+                        }
+
+                        for (int i = 0; i < checkRelation.Emit.Count; i++)
+                        {
+                            if (inputEmitResult.OldToNew.TryGetValue(checkRelation.Emit[i], out var newMapping))
+                            {
+                                checkRelation.Emit[i] = newMapping;
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException("Could not find new mapping during optmization.");
+                            }
+                        }
+
+                        input.Emit = inputEmitResult.Emit;
+                    }
+                }
+            }
+            return base.VisitCheckRelation(checkRelation, state);
         }
 
         public override Relation VisitBufferRelation(BufferRelation bufferRelation, object state)

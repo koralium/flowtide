@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         public void FailAndRecoverRequestRoundTripsFetchEpoch()
         {
             var serializer = CreateSerializer();
-            var original = new FailAndRecoverRequest("substream_1", recoveryPoint: 7, fetchEpoch: 42);
+            var original = new FailAndRecoverRequest("substream_1", waveCounter: 7, waveId: Guid.NewGuid(), fetchEpoch: 42);
 
             var bytes = serializer.SerializeToArray(original);
             var roundTripped = serializer.Deserialize<FailAndRecoverRequest>(bytes);
@@ -77,7 +77,8 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
             // cross-silo recovery notification would be refused as stale.
             Assert.Equal(42, roundTripped.FetchEpoch);
             Assert.Equal("substream_1", roundTripped.Requestor);
-            Assert.Equal(7, roundTripped.RecoveryPoint);
+            Assert.Equal(7, roundTripped.WaveCounter);
+            Assert.Equal(original.WaveId, roundTripped.WaveId);
         }
 
         [Fact]
