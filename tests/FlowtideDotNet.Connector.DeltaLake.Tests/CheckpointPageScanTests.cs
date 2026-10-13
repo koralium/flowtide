@@ -232,7 +232,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var limits = new CheckpointWriterLimits()
             {
-                PropertiesForTests = compression => new WriterPropertiesBuilder().Compression(compression).DisableDictionary().Encoding(column, encoding).Build()
+                PropertiesForTests = compression => DeltaTestKit.Properties(b => b.Compression(compression).DisableDictionary().Encoding(column, encoding))
             };
             var declined = Declines(WriteOwn(RealisticRecords(100), limits));
             Assert.Contains("encoding", declined.Message);

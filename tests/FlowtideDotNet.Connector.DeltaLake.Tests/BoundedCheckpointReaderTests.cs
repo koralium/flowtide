@@ -122,11 +122,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             inputs.Add(WriteOwn(CheckpointPageScanTests.RealisticRecords(20_000)));
             inputs.Add(WriteOwn(CheckpointPageScanTests.RealisticRecords(5_000), new CheckpointWriterLimits()
             {
-                PropertiesForTests = c => new WriterPropertiesBuilder().Compression(c).DataPageVersion(ParquetDataPageVersion.V2).EnableDictionary().DisableStatistics().DataPagesize(4096).Build()
+                PropertiesForTests = c => DeltaTestKit.Properties(b => b.Compression(c).DataPageVersion(ParquetDataPageVersion.V2).EnableDictionary().DisableStatistics().DataPagesize(4096))
             }));
             inputs.Add(WriteOwn(CheckpointPageScanTests.RealisticRecords(5_000), new CheckpointWriterLimits()
             {
-                PropertiesForTests = c => new WriterPropertiesBuilder().Compression(c).DataPageVersion(ParquetDataPageVersion.V2).DisableDictionary().DisableStatistics().DataPagesize(1024).Build()
+                PropertiesForTests = c => DeltaTestKit.Properties(b => b.Compression(c).DataPageVersion(ParquetDataPageVersion.V2).DisableDictionary().DisableStatistics().DataPagesize(1024))
             }, Compression.Snappy));
 
             foreach (var input in inputs)
@@ -187,7 +187,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var records = Enumerable.Range(0, 3000).SelectMany(i => TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = $"file-{i:D6}-{new string((char)('a' + i % 26), 40)}", Size = i } })).ToList();
             var path = WriteOwn(records, new CheckpointWriterLimits()
             {
-                PropertiesForTests = c => new WriterPropertiesBuilder().Compression(c).DisableDictionary().DisableStatistics().DataPagesize(512).WriteBatchSize(16).Build()
+                PropertiesForTests = c => DeltaTestKit.Properties(b => b.Compression(c).DisableDictionary().DisableStatistics().DataPagesize(512).WriteBatchSize(16))
             });
             var read = ReadBounded(path);
             Assert.Equal(records.Select(x => Convert.ToHexString(x)).Order(), read.Select(x => Convert.ToHexString(x)).Order());
@@ -214,8 +214,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var records = actions.SelectMany(x => TestRecords.FromAction(x)).ToList();
             var path = WriteOwn(records, new CheckpointWriterLimits()
             {
-                PropertiesForTests = c => new WriterPropertiesBuilder().Compression(c).DisableDictionary().DisableStatistics().DataPagesize(512).WriteBatchSize(16)
-                    .DataPageVersion(v2 ? ParquetDataPageVersion.V2 : ParquetDataPageVersion.V1).Build()
+                PropertiesForTests = c => DeltaTestKit.Properties(b => b.Compression(c).DisableDictionary().DisableStatistics().DataPagesize(512).WriteBatchSize(16)
+                    .DataPageVersion(v2 ? ParquetDataPageVersion.V2 : ParquetDataPageVersion.V1))
             });
             var read = ReadBounded(path);
             Assert.Equal(records.Select(x => Convert.ToHexString(x)), read.Select(x => Convert.ToHexString(x)));
@@ -385,7 +385,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var records = Enumerable.Range(0, 200).SelectMany(i => TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = "p" + (i % 5), Size = i } })).ToList();
             var path = WriteOwn(records, new CheckpointWriterLimits()
             {
-                PropertiesForTests = c => new WriterPropertiesBuilder().Compression(Compression.Uncompressed).EnableDictionary().DisableStatistics().Build()
+                PropertiesForTests = c => DeltaTestKit.Properties(b => b.Compression(Compression.Uncompressed).EnableDictionary().DisableStatistics())
             }, Compression.Uncompressed);
             var scan = CheckpointPageScan.Scan(path, new JobMemory());
             var leaf = scan.Projection.Leaves.Single(x => x.Role == ProjectedRole.Field && x.Field == Leaf.AddPath);
@@ -695,9 +695,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             };
             var settings = new Func<Compression, WriterProperties>[]
             {
-                c => new WriterPropertiesBuilder().Compression(c).EnableDictionary().DisableStatistics().Build(),
-                c => new WriterPropertiesBuilder().Compression(c).DisableDictionary().DisableStatistics().Build(),
-                c => new WriterPropertiesBuilder().Compression(c).DisableDictionary().DisableStatistics().DataPagesize(128).WriteBatchSize(8).Build()
+                c => DeltaTestKit.Properties(b => b.Compression(c).EnableDictionary().DisableStatistics()),
+                c => DeltaTestKit.Properties(b => b.Compression(c).DisableDictionary().DisableStatistics()),
+                c => DeltaTestKit.Properties(b => b.Compression(c).DisableDictionary().DisableStatistics().DataPagesize(128).WriteBatchSize(8))
             };
             for (int i = 0; i < fixtures.Count; i++)
             {

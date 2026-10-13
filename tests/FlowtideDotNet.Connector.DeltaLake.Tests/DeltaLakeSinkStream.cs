@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             while (await TickOnceAsync(deadline - DateTime.UtcNow))
             {
+                // Until a tick starts no job
             }
         }
 

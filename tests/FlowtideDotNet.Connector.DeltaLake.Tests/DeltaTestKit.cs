@@ -246,6 +246,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return DeltaTransactionWriter.WriteCommit(storage, table, version, actions.ToList());
         }
 
+        // The properties a configured builder produces; the builder is disposed
+        public static WriterProperties Properties(Func<WriterPropertiesBuilder, WriterPropertiesBuilder> configure)
+        {
+            using var builder = new WriterPropertiesBuilder();
+            return configure(builder).Build();
+        }
+
         public static DeltaAction Protocol()
         {
             return new DeltaAction() { Protocol = new DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 } };

@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 return (new LocalCheckpoint() { Path = native, Owned = false, Identity = identity, Version = file.Version, Length = info.Length }, null);
             }
             // A cached copy only under the identity the listing shows now
-            if (cache?.Cache.TryGet(cache, identity) is { } lease)
+            if (cache is { } scope && scope.Cache.TryGet(scope, identity) is { } lease)
             {
                 long cachedLength;
                 try
@@ -110,7 +110,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 }
                 // A copy whose length is not the listed size is not this object
                 lease.Dispose();
-                cache.Cache.Drop(cache, identity);
+                scope.Cache.Drop(scope, identity);
             }
 
             // Declined before the download, whose chunked reservations would each fit and evict every cached root first

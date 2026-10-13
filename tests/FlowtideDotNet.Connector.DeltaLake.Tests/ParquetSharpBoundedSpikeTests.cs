@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private string WriteStrings(int count, Action<WriterPropertiesBuilder>? configure = null)
         {
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".parquet");
-            var builder = new WriterPropertiesBuilder().Compression(Compression.Zstd).DisableDictionary().DataPagesize(1024).WriteBatchSize(32);
+            using var builder = new WriterPropertiesBuilder().Compression(Compression.Zstd).DisableDictionary().DataPagesize(1024).WriteBatchSize(32);
             configure?.Invoke(builder);
             using var properties = builder.Build();
             using (var file = new ParquetFileWriter(path, new ParquetSharp.Column[] { new ParquetSharp.Column<string>("s") }, properties))
@@ -155,13 +155,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".parquet");
             var schema = MarkedSchema();
-            var arrowBuilder = new ArrowWriterPropertiesBuilder().UseThreads(false);
+            using var arrowBuilder = new ArrowWriterPropertiesBuilder().UseThreads(false);
             arrow(arrowBuilder);
             using var arrowProperties = arrowBuilder.Build();
-            var parquetBuilder = new WriterPropertiesBuilder();
+            using var parquetBuilder = new WriterPropertiesBuilder();
             parquet?.Invoke(parquetBuilder);
             using var properties = parquetBuilder.Build();
-            var batch = new RecordBatch(schema, new IArrowArray[] { new Int64Array.Builder().AppendRange(Enumerable.Range(0, 5000).Select(x => (long)x)).Build() }, 5000);
+            using var batch = new RecordBatch(schema, new IArrowArray[] { new Int64Array.Builder().AppendRange(Enumerable.Range(0, 5000).Select(x => (long)x)).Build() }, 5000);
             using (var stream = File.Create(path))
             using (var writer = new FileWriter(stream, schema, properties, arrowProperties))
             {
@@ -224,7 +224,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public void ColumnEncodingProducesDeltaFixtures()
         {
             var path = Path.Combine(_directory, "delta.parquet");
-            using (var properties = new WriterPropertiesBuilder().DisableDictionary().Encoding("v", ParquetSharp.Encoding.DeltaBinaryPacked).Build())
+            using (var properties = DeltaTestKit.Properties(b => b.DisableDictionary().Encoding("v", ParquetSharp.Encoding.DeltaBinaryPacked)))
             using (var file = new ParquetFileWriter(path, new ParquetSharp.Column[] { new ParquetSharp.Column<long>("v") }, properties))
             {
                 using (var rowGroup = file.AppendRowGroup())

@@ -221,7 +221,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     break;
                 case "upload torn":
                     hooks!.TearWriteOf = $"{6:D20}.checkpoint.parquet";
-                    hooks.TearAfterBytes = 100;
+                    hooks!.TearAfterBytes = 100;
                     break;
                 case "size check":
                     hooks!.Before = (verb, path) => verb == "Stat" ? throw new IOException("stat fault") : Task.CompletedTask;
