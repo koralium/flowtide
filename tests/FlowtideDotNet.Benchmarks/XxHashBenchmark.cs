@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Benchmarks
         private IColumn[] columns = null!;
         private EventBatchData data = null!;
 
-        private XxHash32 _xxhash = new XxHash32();
+        private readonly XxHash32 _xxhash = new XxHash32();
 
         private BatchHasher? _batchHasher;
         private Func<EventBatchData, int, uint>? _hashFunction;
