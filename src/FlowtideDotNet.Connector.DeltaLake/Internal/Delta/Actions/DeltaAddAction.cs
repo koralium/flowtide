@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -93,7 +94,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
 
         public DeltaFileKey GetKey()
         {
-            return new DeltaFileKey(Path!, DeletionVector?.UniqueId);
+            return DeltaReconcileRules.FileKey(Path!, DeletionVector);
         }
     }
 }

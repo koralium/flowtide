@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
@@ -19,6 +20,54 @@ using Stowage;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
+    /// <summary>
+    /// A stream's manual maintenance budget: background checkpoints run only when a test ticks it.
+    /// </summary>
+    internal sealed class MaintenanceKit
+    {
+        public MaintenanceKit(string testName)
+        {
+            Budget = new DeltaMaintenanceBudget(new MaintenanceBudgetSettings(MaintenanceBudgetSettings.DefaultConcurrentJobs, Path.Combine(AppContext.BaseDirectory, "maintenance", testName)),
+                TimeProvider.System, manualTick: true);
+        }
+
+        public DeltaMaintenanceBudget Budget { get; }
+
+        public IReadOnlyList<DeltaMaintenanceWorker> Workers => Budget.WorkersForTests.OfType<DeltaMaintenanceWorker>().ToList();
+
+        /// <summary>
+        /// Waits until a worker's target reaches the version, since the commit file is visible before the hand-off, then ticks until a tick starts no job.
+        /// </summary>
+        public async Task TickAndSettleAsync(long minTarget, TimeSpan? timeout = null)
+        {
+            var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(1));
+            while (!Workers.Any(x => x.Target >= minTarget))
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException($"No maintenance worker reached version {minTarget}");
+                }
+                await Task.Delay(10);
+            }
+            while (await TickOnceAsync(deadline - DateTime.UtcNow))
+            {
+            }
+        }
+
+        // One tick and the jobs it started; false when it started none
+        public async Task<bool> TickOnceAsync(TimeSpan? timeout = null)
+        {
+            Budget.TickNow();
+            var jobs = Workers.Select(x => x.CurrentJob).Where(x => !x.IsCompleted).ToList();
+            if (jobs.Count == 0)
+            {
+                return false;
+            }
+            await Task.WhenAll(jobs).WaitAsync(timeout is { } t && t > TimeSpan.Zero ? t : TimeSpan.FromMinutes(1));
+            return true;
+        }
+    }
+
     internal class DeltaLakeSinkStream : FlowtideTestStream
     {
         private readonly IFileStorage storage;
@@ -43,13 +92,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             this.stateFiles = stateFiles;
             this.wrapState = wrapState;
             this.legacySink = legacySink;
+            Maintenance = new MaintenanceKit(testName);
         }
+
+        public MaintenanceKit Maintenance { get; }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManger)
         {
             var options = new DeltaLakeOptions()
             {
-                StorageLocation = storage
+                StorageLocation = storage,
+                MaintenanceBudgetOverride = Maintenance.Budget
             };
             configureOptions?.Invoke(options);
             if (legacySink)

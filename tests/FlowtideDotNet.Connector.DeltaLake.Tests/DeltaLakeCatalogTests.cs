@@ -558,7 +558,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 await WriteCommit(storage, table, version, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "FOREIGN" } } });
             }
-            await DeltaCheckpointWriter.WriteCheckpoint(storage, table, (await DeltaTransactionReader.ReadTable(storage, table, 3))!);
+            await LegacyCheckpointWriter.WriteCheckpoint(storage, table, (await DeltaTransactionReader.ReadTable(storage, table, 3))!);
             await storage.Rm(CommitPath(table, 1));
             await storage.Rm(CommitPath(table, 2));
             await storage.Rm($"/{table}/_delta_log/00000000000000000000.json");

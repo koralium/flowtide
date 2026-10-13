@@ -12,7 +12,10 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Logging;
 using ParquetSharp;
 using Stowage;
@@ -48,6 +51,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 await stream.SchedulerTick();
                 await Task.Delay(50);
+            }
+        }
+
+        /// <summary>
+        /// Reads the table with a new source stream until it holds the expected rows; counting updates hangs when one wait sees two versions.
+        /// </summary>
+        public static async Task AssertReaderResult<T>(string testName, IFileStorage storage, string tableName, IEnumerable<T> expected)
+        {
+            var rows = expected.ToList();
+            var stream = new DeltaLakeTestStream(testName + "_compare", storage);
+            try
+            {
+                await stream.StartStream($"INSERT INTO result SELECT * FROM {tableName}");
+                // Includes the new reader's initial load, which a loaded machine slows
+                var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(3);
+                while (true)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                    try
+                    {
+                        stream.AssertCurrentDataEqual(rows);
+                        return;
+                    }
+                    catch (Exception) when (DateTime.UtcNow < deadline)
+                    {
+                    }
+                }
+            }
+            finally
+            {
+                await stream.DisposeAsync();
             }
         }
 
@@ -97,17 +132,54 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await stream.TriggerCheckpoint();
         }
 
-        public static async Task WaitForCheckpoint(IFileStorage storage, string table, FlowtideTestStream stream, long version)
+        /// <summary>
+        /// Waits until the hint names a checkpoint at or above <paramref name="minVersion"/> whose file exists, and returns the hinted version.
+        /// With <paramref name="content"/>, the hinted checkpoint must also pass that check.
+        /// </summary>
+        public static async Task<long> WaitForCheckpoint(IFileStorage storage, string table, FlowtideTestStream stream, long minVersion, TimeSpan? timeout = null, Func<long, Task<bool>>? content = null)
         {
-            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
-            while (!await storage.Exists($"/{table}/_delta_log/{version:D20}.checkpoint.parquet") || !await storage.Exists($"/{table}/_delta_log/_last_checkpoint"))
+            var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(2));
+            while (true)
             {
+                try
+                {
+                    var text = await storage.ReadText($"/{table}/_delta_log/_last_checkpoint");
+                    var hint = text == null ? null : JsonSerializer.Deserialize<LastCheckpointInfo>(text);
+                    if (hint != null && hint.Version >= minVersion
+                        && await storage.Exists($"/{table}/_delta_log/{hint.Version:D20}.checkpoint.parquet")
+                        && (content == null || await content(hint.Version)))
+                    {
+                        return hint.Version;
+                    }
+                }
+                catch (Exception e) when (e is IOException || e is JsonException)
+                {
+                    // Caught mid-write
+                }
                 if (DateTime.UtcNow > deadline)
                 {
-                    throw new TimeoutException($"Checkpoint {version} of {table} was not written in time");
+                    throw new TimeoutException($"No checkpoint at or above {minVersion} of {table} was written in time");
+                }
+                // Checkpoints are built in the background, which the stream's manual budget runs only when ticked
+                if (stream is DeltaLakeSinkStream delta)
+                {
+                    await delta.Maintenance.TickOnceAsync();
                 }
                 await stream.SchedulerTick();
                 await Task.Delay(50);
+            }
+        }
+
+        // DuckDB moves a downloaded extension into its folder, so parallel installs into one shared folder are serialized
+        private static readonly object s_duckDbInstall = new object();
+
+        public static void LoadDuckDbDelta(DuckDB.NET.Data.DuckDBConnection connection, string extensionsDir)
+        {
+            lock (s_duckDbInstall)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
+                command.ExecuteNonQuery();
             }
         }
 
@@ -118,6 +190,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var memory = new MemoryStream();
             await read.CopyToAsync(memory);
             return memory.ToArray();
+        }
+
+        // A published checkpoint's records as canonical lines, read without the reader model that maps a null map to an empty one
+        public static async Task<List<string>> CheckpointLines(IFileStorage storage, string table, long version)
+        {
+            var path = Path.Combine(Path.GetTempPath(), $"checkpoint-lines-{Guid.NewGuid():N}.parquet");
+            try
+            {
+                await File.WriteAllBytesAsync(path, await ReadBytes(storage, $"/{table}/_delta_log/{version:D20}.checkpoint.parquet"));
+                var memory = new JobMemory();
+                var scan = CheckpointPageScan.Scan(path, memory);
+                var records = new List<byte[]>();
+                using (var reader = new BoundedCheckpointReader(path, scan, memory))
+                {
+                    reader.Read(record => records.Add(record.ToArray()));
+                }
+                memory.Release(scan.ModelBytes);
+                return CheckpointOracle.Canonical(records.Select(x => CheckpointRecord.ToAction(x)));
+            }
+            finally
+            {
+                File.Delete(path);
+            }
         }
 
         // Codec of every column chunk in the file
@@ -154,6 +249,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public static DeltaAction Protocol()
         {
             return new DeltaAction() { Protocol = new DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 } };
+        }
+
+        private static readonly HashSet<string> s_readerWriterFeatures = new HashSet<string>()
+        {
+            "columnMapping", "deletionVectors", "timestampNtz", "v2Checkpoint", "catalogManaged", "vacuumProtocolCheck",
+            "typeWidening", "typeWidening-preview", "variantType", "variantType-preview"
+        };
+
+        // Reader 3 and writer 7 with the named writer features; the reader features are the ones the spec shares with readers
+        public static DeltaAction ProtocolWith(params string[] writerFeatures)
+        {
+            return new DeltaAction()
+            {
+                Protocol = new DeltaProtocolAction()
+                {
+                    MinReaderVersion = 3,
+                    MinWriterVersion = 7,
+                    ReaderFeatures = writerFeatures.Where(s_readerWriterFeatures.Contains).ToList(),
+                    WriterFeatures = writerFeatures.ToList()
+                }
+            };
         }
 
         public static DeltaAction Metadata(string schema, Dictionary<string, string>? configuration = null)

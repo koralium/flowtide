@@ -36,7 +36,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(inner, "test", writer, 2);
             await SettlePublications(writer);
             // Cleanup after a checkpoint at the version the source reads next
-            await DeltaCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 2))!);
+            await LegacyCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 2))!);
             await inner.Rm(CommitPath("test", 0));
             await inner.Rm(CommitPath("test", 1));
 
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(inner, "test", writer, 3);
             await SettlePublications(writer);
             // Retention removed the commit the source reads next, a checkpoint keeps the table readable
-            await DeltaCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 3))!);
+            await LegacyCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 3))!);
             for (int version = 0; version <= 2; version++)
             {
                 await inner.Rm(CommitPath("test", version));
@@ -329,7 +329,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
 
             // Retention removes everything below a checkpoint at the last skipped version
-            await DeltaCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 4))!);
+            await LegacyCheckpointWriter.WriteCheckpoint(inner, "test", (await DeltaTransactionReader.ReadTable(inner, "test", 4))!);
             for (int version = 0; version <= 3; version++)
             {
                 await inner.Rm(CommitPath("test", version));
