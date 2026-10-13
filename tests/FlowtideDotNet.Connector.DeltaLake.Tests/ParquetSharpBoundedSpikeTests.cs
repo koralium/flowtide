@@ -120,11 +120,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(Path.Combine(_directory, "a.txt"), local.ToNativeLocalPath("/a.txt"));
         }
 
-        // Only the system pool exists in this build, so pool figures are process-wide and measured in fresh processes
+        // The Windows build has only the system pool, so pool figures there are process-wide and measured in fresh processes; the Linux build also has mimalloc
         [Fact]
         public void WriterRoutesToTheSystemPool()
         {
-            Assert.Throws<ParquetException>(() => MemoryPool.MimallocMemoryPool());
+            if (OperatingSystem.IsWindows())
+            {
+                Assert.Throws<ParquetException>(() => MemoryPool.MimallocMemoryPool());
+            }
             string jemalloc;
             try
             {
