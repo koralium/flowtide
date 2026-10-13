@@ -51,9 +51,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var random = new Random(7);
             var pieces = new[] { "{\"add\":{\"path\":\"a\"}}", "", " ", "\t", "åäö€😀", new string('x', 70_000), "{}" };
             var endings = new[] { "\n", "\r\n", "\r", "" };
+            var text = new StringBuilder();
             for (int run = 0; run < 200; run++)
             {
-                var text = new StringBuilder();
+                text.Clear();
                 var count = random.Next(0, 8);
                 for (int i = 0; i < count; i++)
                 {

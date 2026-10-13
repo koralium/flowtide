@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         internal static async Task OutOfEnvelopeRoot(IFileStorage storage, string table, long version)
         {
             var state = (await DeltaTransactionReader.ReadTable(storage, table, version))!;
-            using var properties = new WriterPropertiesBuilder().DisableDictionary().Encoding("add.size", ParquetSharp.Encoding.DeltaBinaryPacked).Build();
+            using var properties = DeltaTestKit.Properties(b => b.DisableDictionary().Encoding("add.size", ParquetSharp.Encoding.DeltaBinaryPacked));
             await LegacyCheckpointWriter.WriteCheckpoint(storage, table, state, properties);
         }
 

@@ -60,7 +60,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private string WriteStrings(int count, Action<WriterPropertiesBuilder>? configure = null)
         {
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".parquet");
-            using var builder = new WriterPropertiesBuilder().Compression(Compression.Zstd).DisableDictionary().DataPagesize(1024).WriteBatchSize(32);
+            using var builder = new WriterPropertiesBuilder();
+            builder.Compression(Compression.Zstd).DisableDictionary().DataPagesize(1024).WriteBatchSize(32);
             configure?.Invoke(builder);
             using var properties = builder.Build();
             using (var file = new ParquetFileWriter(path, new ParquetSharp.Column[] { new ParquetSharp.Column<string>("s") }, properties))
@@ -155,7 +156,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".parquet");
             var schema = MarkedSchema();
-            using var arrowBuilder = new ArrowWriterPropertiesBuilder().UseThreads(false);
+            using var arrowBuilder = new ArrowWriterPropertiesBuilder();
+            arrowBuilder.UseThreads(false);
             arrow(arrowBuilder);
             using var arrowProperties = arrowBuilder.Build();
             using var parquetBuilder = new WriterPropertiesBuilder();

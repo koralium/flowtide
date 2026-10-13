@@ -224,12 +224,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             // One listing; never read or write above the target
             var segment = await _context.Transport.ListAsync(cancellationToken);
             var hint = await _context.Transport.ReadHintAsync(cancellationToken);
-            if (target < 0 || target > segment.Head || !segment.Listing.Commits.ContainsKey(target))
+            if (target < 0 || target > segment.Head || !segment.Listing.Commits.TryGetValue(target, out var targetFile))
             {
                 return Result(BuildStatus.Failed, MaintenanceReason.TargetNotInLog, detail: $"Version {target} is not in the log, whose head is {segment.Head}");
             }
             _candidates = segment.RootCandidates(target, target).Select(x => ObjectIdentity.Of(_context.Table, x)).ToList();
-            _targetCommit = ObjectIdentity.Of(_context.Table, segment.Listing.Commits[target]);
+            _targetCommit = ObjectIdentity.Of(_context.Table, targetFile);
 
             // A checkpoint already listed at the target
             var existing = segment.Listing.Checkpoints.FirstOrDefault(x => x.Version == target);

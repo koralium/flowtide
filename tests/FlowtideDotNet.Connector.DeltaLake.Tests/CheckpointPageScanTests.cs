@@ -208,7 +208,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 PropertiesForTests = compression =>
                 {
-                    using var builder = new WriterPropertiesBuilder().Compression(compression).DataPageVersion(ParquetDataPageVersion.V2).DisableStatistics();
+                    using var builder = new WriterPropertiesBuilder();
+                    builder.Compression(compression).DataPageVersion(ParquetDataPageVersion.V2).DisableStatistics();
                     if (dictionary)
                     {
                         builder.EnableDictionary();
