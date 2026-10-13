@@ -303,11 +303,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public void ReachingKDeclines()
+        public void ReachingTheMetadataCapDeclines()
         {
-            var limits = new CheckpointWriterLimits() { GroupValueBytes = 1L << 20, MaxRowGroups = 2 };
+            // Two groups' footer fits; opening the third passes the cap
+            var limits = new CheckpointWriterLimits() { GroupValueBytes = 1L << 20, MetadataCap = CheckpointFileWriter.ProjectedMetadata(2) + (1L << 20) };
             var declined = Assert.Throws<CheckpointDeclinedException>(() => Write(Records(Protocol(), MetaData()).Concat(WideAdds(5_000, 1000)), limits: limits));
-            Assert.Equal(MaintenanceReason.RowGroupCap, declined.Reason);
+            Assert.Equal(MaintenanceReason.MetadataCap, declined.Reason);
+            Assert.Contains("The footer of 3 row groups", declined.Message);
         }
 
         [Fact]
@@ -412,6 +414,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var limits = new CheckpointWriterLimits() { WriterReservation = EmptyWriterBound() + (1L << 20) };
             var declined = Assert.Throws<CheckpointDeclinedException>(() => Write(Records(Protocol(), MetaData()).Concat(WideAdds(2_000, 1000)), limits: limits));
             Assert.Equal(MaintenanceReason.NativeMemoryCap, declined.Reason);
+            Assert.Contains("One batch projects", declined.Message);
+        }
+
+        [Fact]
+        public void OneBatchOverTheDecodeReservationDeclines()
+        {
+            var limits = new CheckpointWriterLimits() { DecodeCap = (8L << 20) + EmptyDecodeBound() + (1L << 20) };
+            var declined = Assert.Throws<CheckpointDeclinedException>(() => Write(Records(Protocol(), MetaData()).Concat(WideAdds(2_000, 1000)), limits: limits));
+            Assert.Equal(MaintenanceReason.DecodeCap, declined.Reason);
             Assert.Contains("One batch projects", declined.Message);
         }
 

@@ -130,9 +130,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         // Admits downloads and commits by listed size; none in tests that do not share a budget
         public TransferAllowance? Transfer { get; init; }
 
-        // Where failed scratch deletions keep their charges
-        public ScratchDirectory? Directory { get; init; }
-
         // Local roots; used only when the request knows the table id
         public RootCache? Cache { get; init; }
 
@@ -457,7 +454,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 _memory = memory;
             }
 
-            public TailReducer? Map { get; set; }
+            public required TailReducer Map { get; init; }
 
             public CheckpointSorter? Sorter { get; set; }
 
@@ -519,8 +516,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
             public void Dispose()
             {
-                Map?.Dispose();
-                Map = null;
+                Map.Dispose();
                 Sorter?.Dispose();
                 Sorter = null;
                 if (Protocol != null)
@@ -552,7 +548,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var rootVersion = root?.Version ?? -1;
             using var tail = new TailState(memory) { Map = new TailReducer(memory, _context.ArenaCap) };
 
-            // The tail, latest record per key, into the map until it overflows into sort mode
+            // The tail, latest record per key, into the map; an overflow drains it as a run and starts sort mode
             using (var encoder = new TailRecordEncoder(memory))
             {
                 for (long version = rootVersion + 1; version <= target; version++)
@@ -617,7 +613,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var writerFeatures = CheckpointCapability.Check(protocol, metaData);
 
             // A root we did not write may repeat a key, which only sort mode resolves last-row-wins before expiry
-            if (root != null && root.Marker == null && tail.Sorter == null)
+            if (root != null && root.Marker == null)
             {
                 StartSort(tail);
             }
@@ -649,14 +645,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                         ReadRoot(root, record =>
                         {
                             var kind = CheckpointRecord.Kind(record);
-                            if (kind is RecordKind.Protocol or RecordKind.MetaData || tail.Map!.Contains(KeyOf(record)) || Dropped(kind, record, cutoffTicks))
+                            if (kind is RecordKind.Protocol or RecordKind.MetaData || tail.Map.Contains(KeyOf(record)) || Dropped(kind, record, cutoffTicks))
                             {
                                 return;
                             }
                             Emit(record);
                         }, cancellationToken);
                     }
-                    tail.Map!.ForEach((in ArenaEntry entry) =>
+                    tail.Map.ForEach((in ArenaEntry entry) =>
                     {
                         var kind = CheckpointRecord.Kind(entry.Record);
                         if (kind is RecordKind.Protocol or RecordKind.MetaData || Dropped(kind, entry.Record, cutoffTicks))
@@ -672,9 +668,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     if (root != null)
                     {
                         long rowOrdinal = 0;
-                        ReadRoot(root, record => sorter.Add(KeyOf(record), rootVersion, rowOrdinal++, record), cancellationToken);
+                        ReadRoot(root, record => Add(tail, rootVersion, rowOrdinal++, record), cancellationToken);
                     }
-                    sorter.Reduce((in ArenaEntry entry) =>
+                    sorter.Reduce(tail.Map, (in ArenaEntry entry) =>
                     {
                         if (!Dropped(CheckpointRecord.Kind(entry.Record), entry.Record, cutoffTicks))
                         {
@@ -707,7 +703,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var descriptor = new CheckpointDescriptor(target, output, written.OutputBytes, written.Actions, written.AddFiles, marker, written.Sha256);
             if (_context.Publish)
             {
-                var published = await CheckpointPublisher.PublishAsync(_context.Transport, _context.Scratch, _context.Directory, memory, descriptor, _context.FreeSpaceForTests, cancellationToken, _context.PublishFaultForTests, _cache);
+                var published = await CheckpointPublisher.PublishAsync(_context.Transport, _context.Scratch, memory, descriptor, _context.FreeSpaceForTests, cancellationToken, _context.PublishFaultForTests, _cache);
                 if (_context.Transport.NativePath(_context.Transport.Table) == null)
                 {
                     _transferBytes += descriptor.SizeInBytes;
@@ -733,33 +729,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             };
         }
 
+        // A full map drains as a sorted run, then takes the record into its emptied arena
         private void Add(TailState tail, long version, long ordinal, ReadOnlySpan<byte> record)
         {
             var key = KeyOf(record);
-            if (tail.Sorter == null && tail.Map!.TryAdd(key, version, ordinal, record))
+            if (!tail.Map.TryAdd(key, version, ordinal, record))
             {
-                return;
+                StartSort(tail).Spill(tail.Map);
+                // An empty reducer takes any record
+                if (!tail.Map.TryAdd(key, version, ordinal, record))
+                {
+                    throw new InvalidOperationException("The emptied tail reducer refused a record");
+                }
             }
-            if (tail.Sorter == null)
-            {
-                StartSort(tail);
-            }
-            tail.Sorter!.Add(key, version, ordinal, record);
         }
 
-        // The map drains as the first sorted run and is released
-        private void StartSort(TailState tail)
+        // Sort mode starts at the first spill, or before a root we did not write is read
+        private CheckpointSorter StartSort(TailState tail)
         {
-            _context.BuildFaultForTests?.Invoke("run write");
-            tail.Sorter = new CheckpointSorter(_context.Scratch, _context.Memory, _context.ArenaCap) { FaultForTests = _context.BuildFaultForTests };
-            using (var run = new RunWriter(_context.Scratch, _context.Memory))
-            {
-                tail.Map!.DrainSorted(run);
-                run.Close();
-                tail.Sorter.AddRun(run);
-            }
-            tail.Map.Dispose();
-            tail.Map = null;
+            return tail.Sorter ??= new CheckpointSorter(_context.Scratch, _context.Memory) { FaultForTests = _context.BuildFaultForTests };
         }
 
         // Expired tombstones and removed domains are never written
@@ -813,9 +801,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 {
                     return "The output schema is not the checkpoint schema";
                 }
-                if (scan.Footer.RowGroupRows.Count > CheckpointWriterLimits.Default.MaxRowGroups || scan.Footer.RowGroupRows.Sum() != written.Actions)
+                if (scan.Footer.RowGroupRows.Sum() != written.Actions)
                 {
-                    return "The output's row groups or row count differ";
+                    return "The output's row groups hold a different row count";
                 }
                 if (scan.Footer.Chunks.Any(group => group.Any(chunk => chunk?.HasPageIndex == true)))
                 {
@@ -830,14 +818,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 var ordered = true;
                 var previousLength = -1;
                 using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-                var length = new byte[5];
                 using (var reader = new BoundedCheckpointReader(path, scan, memory))
                 {
                     reader.Read(record =>
                     {
-                        var prefix = Varint(length, (uint)record.Length);
-                        hash.AppendData(length.AsSpan(0, prefix));
-                        hash.AppendData(record);
+                        CheckpointFileWriter.AppendDigest(hash, record);
                         actions++;
                         switch (CheckpointRecord.Kind(record))
                         {
@@ -901,18 +886,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     memory.Free(validationKey);
                 }
             }
-        }
-
-        private static int Varint(Span<byte> destination, uint value)
-        {
-            var i = 0;
-            while (value >= 0x80)
-            {
-                destination[i++] = (byte)(value | 0x80);
-                value >>= 7;
-            }
-            destination[i++] = (byte)value;
-            return i;
         }
     }
 }

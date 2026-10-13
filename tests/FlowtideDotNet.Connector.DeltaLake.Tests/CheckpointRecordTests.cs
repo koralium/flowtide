@@ -48,19 +48,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var remove = TestRecords.FromAction(new DeltaAction() { Remove = new DeltaRemoveFileAction() { Path = "p", DeletionVector = vector, DeletionTimestamp = 7 } })[0];
             var plain = TestRecords.FromAction(new DeltaAction() { Remove = new DeltaRemoveFileAction() { Path = "p" } })[0];
 
-            Assert.Equal(RecordKey.Of(add), RecordKey.Of(remove));
-            Assert.NotEqual(RecordKey.Of(add), RecordKey.Of(plain));
+            Assert.Equal(TestRecords.Key(add), TestRecords.Key(remove));
+            Assert.NotEqual(TestRecords.Key(add), TestRecords.Key(plain));
         }
 
         [Fact]
         public void KeysWithEmbeddedNulDoNotCollide()
         {
-            byte[] Key(string path, string? dv) => RecordKey.Of(TestRecords.FromAction(new DeltaAction()
+            byte[] Key(string path, string? dv) => TestRecords.Key(TestRecords.FromAction(new DeltaAction()
             {
                 Add = new DeltaAddAction() { Path = path, DeletionVector = dv == null ? null : new DeletionVector() { StorageType = "", PathOrInlineDv = dv } }
             })[0]);
-            byte[] Txn(string id) => RecordKey.Of(TestRecords.FromAction(new DeltaAction() { Txn = new DeltaTransactionAction() { AppId = id } })[0]);
-            byte[] Domain(string id) => RecordKey.Of(TestRecords.FromAction(new DeltaAction() { DomainMetadata = new DeltaDomainMetadataAction() { Domain = id } })[0]);
+            byte[] Txn(string id) => TestRecords.Key(TestRecords.FromAction(new DeltaAction() { Txn = new DeltaTransactionAction() { AppId = id } })[0]);
+            byte[] Domain(string id) => TestRecords.Key(TestRecords.FromAction(new DeltaAction() { DomainMetadata = new DeltaDomainMetadataAction() { Domain = id } })[0]);
 
             var keys = new List<byte[]>()
             {
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     action = new DeltaAction() { Remove = remove };
                     readerKey = remove.GetKey();
                 }
-                var recordKey = Convert.ToHexString(RecordKey.Of(TestRecords.FromAction(action)[0]));
+                var recordKey = Convert.ToHexString(TestRecords.Key(TestRecords.FromAction(action)[0]));
                 Assert.Equal(byReader.GetValueOrDefault(readerKey, recordKey), recordKey);
                 Assert.Equal(byRecord.GetValueOrDefault(recordKey, readerKey), readerKey);
                 byReader[readerKey] = recordKey;
@@ -116,10 +116,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var keys = new[]
             {
-                RecordKey.Of(TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = "" } })[0]),
-                RecordKey.Of(TestRecords.FromAction(new DeltaAction() { Txn = new DeltaTransactionAction() { AppId = "" } })[0]),
-                RecordKey.Of(TestRecords.FromAction(new DeltaAction() { MetaData = new DeltaMetadataAction() })[0]),
-                RecordKey.Of(TestRecords.FromAction(new DeltaAction() { Protocol = new DeltaProtocolAction() })[0])
+                TestRecords.Key(TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = "" } })[0]),
+                TestRecords.Key(TestRecords.FromAction(new DeltaAction() { Txn = new DeltaTransactionAction() { AppId = "" } })[0]),
+                TestRecords.Key(TestRecords.FromAction(new DeltaAction() { MetaData = new DeltaMetadataAction() })[0]),
+                TestRecords.Key(TestRecords.FromAction(new DeltaAction() { Protocol = new DeltaProtocolAction() })[0])
             };
             var sorted = keys.OrderBy(x => x, Comparer<byte[]>.Create((x, y) => x.AsSpan().SequenceCompareTo(y))).ToList();
             Assert.Equal(new[] { (byte)RecordFamily.Protocol }, sorted[0]);
@@ -132,7 +132,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // The reader keeps a null path apart from an empty one
             var none = TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = null! } })[0];
             var empty = TestRecords.FromAction(new DeltaAction() { Add = new DeltaAddAction() { Path = "" } })[0];
-            Assert.NotEqual(RecordKey.Of(none), RecordKey.Of(empty));
+            Assert.NotEqual(TestRecords.Key(none), TestRecords.Key(empty));
         }
 
         [Fact]

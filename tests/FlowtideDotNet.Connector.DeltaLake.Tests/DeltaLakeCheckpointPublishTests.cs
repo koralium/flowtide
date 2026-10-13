@@ -28,18 +28,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public DeltaLakeCheckpointPublishTests()
         {
-            _directory = Path.Combine(Path.GetTempPath(), "publish-tests-" + Guid.NewGuid().ToString("N"));
+            _directory = Path.Combine(Path.GetTempPath(), "pt-" + ScratchOwners.ShortId());
             Directory.CreateDirectory(_directory);
         }
 
+        private readonly ScratchOwners _owners = new ScratchOwners();
+
         public void Dispose()
         {
+            _owners.Release();
             try
             {
                 Directory.Delete(_directory, true);
             }
             catch (IOException)
             {
+            }
+        }
+
+        [Fact]
+        public void DisposeReleasesScratchOwnersRetainedUntilTeardown()
+        {
+            var owner = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
+            Assert.True(owner.LockHeldForTests);
+            try
+            {
+                Dispose();
+                Assert.False(owner.LockHeldForTests);
+                Assert.False(Directory.Exists(_directory));
+            }
+            finally
+            {
+                owner.ReleaseLockForTests();
             }
         }
 
@@ -97,7 +117,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Action<int>? afterChunk = null, CancellationToken cancellationToken = default, RootPolicy root = RootPolicy.Auto, ScratchDirectory? scratch = null, JobMemory? memory = null,
             Action<string>? buildFault = null)
         {
-            scratch ??= new ScratchDirectory(Path.Combine(_directory, "scratch-" + Guid.NewGuid().ToString("N")), diskCap);
+            scratch ??= _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()), diskCap));
             memory ??= new JobMemory();
             BuildResult? result = null;
             Exception? error = null;
@@ -109,7 +129,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     Table = "t",
                     Scratch = job,
                     Memory = memory,
-                    Directory = scratch,
                     Clock = new FakeTimeProvider(s_now),
                     ArenaCap = arenaCap,
                     Transport = new StowageCheckpointTransport(setup.Storage, "t") { ChunkSize = chunkSize, AfterChunkForTests = afterChunk },
@@ -235,7 +254,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     $"{kind} {fault}: {run.Result?.Status} {run.Result?.Reason} {run.Error?.Message}");
                 if (fault == "local write")
                 {
-                    // The output's own growth reaches the cap, after the root and the runs fitted
+                    // Once the root fitted, the tail's spill or the output's growth reaches the cap; the writer's opening charge has tests of its own
                     Assert.Equal(MaintenanceReason.DiskCap, run.Result!.Reason);
                 }
                 if (fault is "run write" or "merge" or "writer close")
@@ -271,7 +290,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         private ScratchDirectory DeletesFail()
         {
-            return new ScratchDirectory(Path.Combine(_directory, "scratch-" + Guid.NewGuid().ToString("N"))) { DeleteFailsForTests = _ => true };
+            return _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())) { DeleteFailsForTests = _ => true });
         }
 
         [Theory]
@@ -477,11 +496,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task UndeletableTempKeepsItsChargeUntilARetryDeletesIt()
+        {
+            var setup = Storage("local");
+            await Table(setup.Storage);
+            var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())) { DeleteFailsForTests = path => path.EndsWith(".checkpoint.tmp") });
+            var run = await Build(setup, 6, publishFault: p => { if (p == "rename") throw new IOException("rename fault"); }, scratch: scratch);
+
+            Assert.IsType<IOException>(run.Error);
+            var log = Path.Combine(setup.Root!, "t", "_delta_log");
+            var temp = Assert.Single(Directory.GetFiles(log, ".flowtide-*"));
+            Assert.Equal(new FileInfo(temp).Length, scratch.PendingBytes);
+            Assert.Equal(scratch.PendingBytes, scratch.Ledger.Reserved);
+
+            scratch.DeleteFailsForTests = null;
+            scratch.RetryPending();
+            Assert.Equal(0, scratch.Ledger.Reserved);
+            Assert.Empty(Directory.GetFiles(log, ".flowtide-*"));
+        }
+
+        [Fact]
         public async Task AdjacentCopyIsReservedBeforeTheMove()
         {
             var setup = Storage("local");
             await Table(setup.Storage);
-            var scratch = new ScratchDirectory(Path.Combine(_directory, "adjacent-" + Guid.NewGuid().ToString("N")));
+            var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
             var memory = new JobMemory();
             using var job = scratch.CreateJob();
             var built = await CheckpointBuilder.BuildAsync(new CheckpointBuildContext()
@@ -490,7 +529,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Table = "t",
                 Scratch = job,
                 Memory = memory,
-                Directory = scratch,
                 Clock = new FakeTimeProvider(s_now),
                 Publish = false
             }, new BuildRequest() { Version = 6 });
@@ -498,7 +536,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // Another job holds all but too little of the ledger for this output's adjacent copy
             scratch.Ledger.Reserve(scratch.Ledger.Cap - scratch.Ledger.Reserved - checkpoint.SizeInBytes + 1);
 
-            var declined = await Assert.ThrowsAsync<CheckpointDeclinedException>(() => CheckpointPublisher.PublishAsync(new StowageCheckpointTransport(setup.Storage, "t"), job, scratch, memory, checkpoint, null, default));
+            var declined = await Assert.ThrowsAsync<CheckpointDeclinedException>(() => CheckpointPublisher.PublishAsync(new StowageCheckpointTransport(setup.Storage, "t"), job, memory, checkpoint, null, default));
             Assert.Equal(MaintenanceReason.DiskCap, declined.Reason);
             // Nothing moved: the output is still in scratch, and the log holds neither a temp nor the checkpoint
             Assert.True(File.Exists(checkpoint.LocalPath));
@@ -521,7 +559,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void DiskChargeIsReleasedOnlyAfterDeletion()
         {
-            var scratch = new ScratchDirectory(Path.Combine(_directory, "release-" + Guid.NewGuid().ToString("N")), 100_000);
+            var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()), 100_000));
             var job = scratch.CreateJob();
             var path = job.NewPath(".bin");
             using (var stream = job.Create(path))
@@ -545,7 +583,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void FailedScratchDeletionKeepsItsCharge()
         {
-            var scratch = new ScratchDirectory(Path.Combine(_directory, "keep-" + Guid.NewGuid().ToString("N")), 100_000) { DeleteFailsForTests = _ => true };
+            var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()), 100_000) { DeleteFailsForTests = _ => true });
             var job = scratch.CreateJob();
             var path = job.NewPath(".bin");
             using (var stream = job.Create(path))
@@ -568,7 +606,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task PendingDeletionIsClaimedOnce()
         {
-            var scratch = new ScratchDirectory(Path.Combine(_directory, "claim-" + Guid.NewGuid().ToString("N")));
+            var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
             var job = scratch.CreateJob();
             var paths = new List<string>();
             for (int i = 0; i < 64; i++)

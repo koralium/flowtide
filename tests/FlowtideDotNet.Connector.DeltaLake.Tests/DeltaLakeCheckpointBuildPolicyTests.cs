@@ -308,7 +308,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void RunCursorGrowsToTheEntryItHolds()
         {
-            using var scratch = new JobScratch(Path.Combine(_directory, Guid.NewGuid().ToString("N")), new DiskLedger());
+            using var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()))).CreateJob();
             var record = new byte[RunWriter.BufferSize + 40_000];
             var key = new byte[] { 4, 1, 2, 3 };
             var entry = new byte[ArenaEntry.EncodedLength(key.Length, record.Length)];
@@ -336,10 +336,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void RunCursorLongKeyStaysWithinReadBufferPlusEntry()
         {
-            using var scratch = new JobScratch(Path.Combine(_directory, Guid.NewGuid().ToString("N")), new DiskLedger());
-            // A key longer than the read buffer hides the record's length behind it
+            using var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()))).CreateJob();
+            // A key longer than the read buffer
             var record = Records(Add(new string('p', RunWriter.BufferSize + 40_000))).Single();
-            var key = RecordKey.Of(record);
+            var key = TestRecords.Key(record);
             var entry = new byte[ArenaEntry.EncodedLength(key.Length, record.Length)];
             var length = ArenaEntry.Encode(entry, key, 1, 0, record);
             string path;
@@ -359,16 +359,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public async Task OverflowReleasesTheTailMapBeforeDecoding()
+        public async Task SortModeBuffersInTheMapAloneWithinTheJobCap()
         {
-            var storage = Memory(nameof(OverflowReleasesTheTailMapBeforeDecoding));
+            var storage = Memory(nameof(SortModeBuffersInTheMapAloneWithinTheJobCap));
             await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema));
             for (int version = 1; version <= 20; version++)
             {
                 var adds = Enumerable.Range(0, 1000).Select(i => Add($"v{version}-{i}-{new string('p', 200)}.parquet")).ToArray();
                 await DeltaTestKit.WriteCommit(storage, "t", version, adds);
             }
-            // Measured peaks: 9.1 MB when the map is released at the overflow, 11.0 MB when it is held beside the sorter's arena
+            // Sort mode buffers in the map alone; a second arena held beside it was measured at 11.0 MB
             const long arena = 2L << 20;
             var memory = new JobMemory(managedCap: 10L << 20);
             var built = await Build(storage, "t", 20, arenaCap: arena, memory: memory);
@@ -389,13 +389,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 for (int i = 0; i < 13; i++)
                 {
                     var record = TestRecords.FromAction(Add($"f{i}.parquet"))[0];
-                    Assert.True(reducer.TryAdd(RecordKey.Of(record), 1, i, record));
+                    Assert.True(reducer.TryAdd(TestRecords.Key(record), 1, i, record));
                 }
                 // 13 keys pass three quarters of 16 slots: 32 slots are reserved while the 16 are still held
                 Assert.Contains(reserves, x => x.Bytes == 32 * 16 && x.Before >= 16 * 16);
                 Assert.Equal(13, reducer.Count);
             }
             Assert.Equal(0, memory.Managed);
+        }
+
+        [Fact]
+        public void SpillKeepsTheIndexAndTheMergeHoldsNoReducer()
+        {
+            using var scratch = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId()))).CreateJob();
+            var memory = new JobMemory();
+            using var reducer = new TailReducer(memory);
+            using var sorter = new CheckpointSorter(scratch, memory);
+            void Fill(int from)
+            {
+                for (int i = from; i < from + 13; i++)
+                {
+                    var record = TestRecords.FromAction(Add($"f{i}.parquet"))[0];
+                    Assert.True(reducer.TryAdd(TestRecords.Key(record), 1, i, record));
+                }
+            }
+
+            Fill(0);
+            sorter.Spill(reducer);
+            // The next run reuses the grown index instead of growing it again
+            Assert.Equal(0, reducer.Count);
+            Assert.True(reducer.Bytes >= 32 * 16, $"{reducer.Bytes} bytes held after the spill");
+
+            Fill(13);
+            var entries = 0;
+            sorter.Reduce(reducer, (in ArenaEntry entry) => entries++);
+            Assert.Equal(26, entries);
+            // The merge phase holds no reducer memory
+            Assert.Equal(0, reducer.Bytes);
         }
 
         [Fact]
@@ -432,6 +462,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await OwnRoot(storage, "t", 0, Records(DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema), first, last));
             var built = await Build(storage, "t", 1, arenaCap: 4096);
 
+            // A root without a marker is always sorted
+            Assert.Equal(BuildMode.Sort, built.Result.Mode);
             var same = Assert.Single(built.Records.Select(x => CheckpointRecord.ToAction(x).Add), x => x?.Path == "same.parquet");
             Assert.Equal(2, same!.Size);
         }

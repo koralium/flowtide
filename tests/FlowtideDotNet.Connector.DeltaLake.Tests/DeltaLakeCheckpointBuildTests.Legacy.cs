@@ -22,9 +22,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Builds and publishes the checkpoint, as a worker's job does
         private async Task<BuildResult> Publish(IFileStorage storage, string table, long version, bool rebuildLegacy = false)
         {
-            var ledger = new DiskLedger();
+            var directory = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
             BuildResult result;
-            using (var scratch = new JobScratch(Path.Combine(_directory, Guid.NewGuid().ToString("N")), ledger))
+            using (var scratch = directory.CreateJob())
             {
                 result = await CheckpointBuilder.BuildAsync(new CheckpointBuildContext()
                 {
@@ -36,7 +36,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     RebuildLegacyCheckpoints = rebuildLegacy
                 }, new BuildRequest() { Version = version });
             }
-            Assert.Equal(0, ledger.Reserved);
+            Assert.Equal(0, directory.Ledger.Reserved);
+            _owners.Release(directory);
             return result;
         }
 

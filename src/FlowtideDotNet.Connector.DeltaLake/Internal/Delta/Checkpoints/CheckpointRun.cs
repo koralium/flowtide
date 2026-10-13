@@ -59,12 +59,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             _used += entry.Length;
         }
 
-        public void Write(in ArenaEntry entry, Span<byte> scratch)
-        {
-            var length = ArenaEntry.Encode(scratch, entry.Key, entry.Version, entry.Ordinal, entry.Record);
-            Write(scratch.Slice(0, length));
-        }
-
         private void Flush()
         {
             if (_used > 0)
@@ -106,8 +100,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         private int _end;
         private int _current;
         private bool _eof;
-        // The file offset of the buffer's first byte
-        private long _offset;
 
         public RunCursor(string path, JobMemory memory)
         {
@@ -167,9 +159,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var remaining = _end - _start;
             if (_start == 0 && remaining == _buffer.Length)
             {
-                // One entry is larger than the buffer: grow once to that entry, known from its header, before the old buffer is freed
-                var required = ArenaEntry.RequiredLength(_buffer.AsSpan(0, remaining)) ?? LengthPastTheBuffer();
-                var grown = _memory.Allocate(required is { } exact && exact > _buffer.Length ? checked((int)exact) : _buffer.Length * 2);
+                // One entry is larger than the buffer: grow once to exactly that entry, whose leading lengths the buffer holds, before the old buffer is freed
+                var grown = _memory.Allocate(checked((int)ArenaEntry.RequiredLength(_buffer)!.Value));
                 _buffer.AsSpan(0, remaining).CopyTo(grown);
                 _memory.Free(_buffer);
                 _buffer = grown;
@@ -177,7 +168,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             else if (_start > 0)
             {
                 _buffer.AsSpan(_start, remaining).CopyTo(_buffer);
-                _offset += _start;
             }
             _start = 0;
             _end = remaining;
@@ -187,18 +177,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 _eof = true;
             }
             _end += read;
-        }
-
-        // A key longer than the buffer hides the record's length, which is read from the file where it follows the key
-        private long? LengthPastTheBuffer()
-        {
-            if (ArenaEntry.RecordLengthOffset(_buffer) is not { } at)
-            {
-                return null;
-            }
-            Span<byte> varint = stackalloc byte[5];
-            var read = RandomAccess.Read(_file.SafeFileHandle, varint, _offset + at);
-            return ArenaEntry.TryReadLength(varint.Slice(0, read), out var recordLength, out var lengthBytes) ? at + lengthBytes + recordLength : null;
         }
 
         public void Dispose()

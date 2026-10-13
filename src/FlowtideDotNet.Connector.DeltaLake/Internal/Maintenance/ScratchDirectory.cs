@@ -74,6 +74,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The lock handle stays open for the directory's lifetime
         internal bool LockHeldForTests => _processLock.CanRead;
 
+        // Test fixtures release the lock at teardown; the process-wide owner keeps it for the process's lifetime
+        internal void ReleaseLockForTests() => _processLock.Dispose();
+
         /// <summary>
         /// What the folder's creation found worth a warning, taken once by the job that logs it.
         /// </summary>
@@ -219,11 +222,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public JobScratch CreateJob()
         {
             RetryPending();
-            return new JobScratch(Path.Combine(ProcessPath, "jobs", Guid.NewGuid().ToString("N")), Ledger, this);
+            return new JobScratch(Path.Combine(ProcessPath, "jobs", Guid.NewGuid().ToString("N")), this);
         }
 
         // Deletes a file; false when it is still there, as with a file another handle holds
-        internal bool TryDeleteFile(string path)
+        private bool TryDeleteFile(string path)
         {
             if (DeleteFailsForTests?.Invoke(path) == true)
             {
@@ -247,6 +250,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Deletes a file, then releases its charge; when the file stays, its charge stays too, on the pending list.
+        /// </summary>
+        public bool DeleteAndRelease(string path, long charge)
+        {
+            if (TryDeleteFile(path))
+            {
+                Ledger.Release(charge);
+                return true;
+            }
+            QueuePending(path, charge);
+            return false;
         }
 
         public void QueuePending(string path, long charge)
@@ -275,14 +292,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             var released = 0;
             foreach (var entry in claimed)
             {
-                if (TryDeleteFile(entry.Path))
+                if (DeleteAndRelease(entry.Path, entry.Charge))
                 {
-                    Ledger.Release(entry.Charge);
                     released++;
-                }
-                else
-                {
-                    QueuePending(entry.Path, entry.Charge);
                 }
             }
             return released;

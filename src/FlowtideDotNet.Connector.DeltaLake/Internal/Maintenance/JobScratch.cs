@@ -20,20 +20,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Charges adopted from writers that charged the ledger themselves, and the quota streams this folder created
         private readonly Dictionary<string, long> _charges = new Dictionary<string, long>(StringComparer.Ordinal);
         private readonly Dictionary<string, QuotaWriteStream> _streams = new Dictionary<string, QuotaWriteStream>(StringComparer.Ordinal);
-        private readonly ScratchDirectory? _owner;
+        private readonly ScratchDirectory _owner;
         private int _names;
 
-        public JobScratch(string directory, DiskLedger ledger, ScratchDirectory? owner = null)
+        public JobScratch(string directory, ScratchDirectory owner)
         {
             DirectoryPath = directory;
-            Ledger = ledger;
             _owner = owner;
             Directory.CreateDirectory(directory);
         }
 
         public string DirectoryPath { get; }
 
-        public DiskLedger Ledger { get; }
+        public DiskLedger Ledger => _owner.Ledger;
 
         // Files this folder still tracks
         public IReadOnlyCollection<string> Files => _charges.Keys.Union(_streams.Keys).ToList();
@@ -62,44 +61,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         /// </summary>
         public bool Delete(string path)
         {
-            // Windows refuses to delete an open file
-            if (_streams.TryGetValue(path, out var stream))
-            {
-                stream.Dispose();
-            }
-            var deleted = _owner != null ? _owner.TryDeleteFile(path) : TryDelete(path);
-            var charge = Release(path);
-            if (deleted)
-            {
-                Ledger.Release(charge);
-            }
-            else if (_owner != null)
-            {
-                _owner.QueuePending(path, charge);
-            }
-            else
-            {
-                // Without a process folder the charge stays tracked here
-                _charges[path] = charge;
-            }
-            return deleted;
-        }
-
-        private static bool TryDelete(string path)
-        {
-            try
-            {
-                File.Delete(path);
-                return true;
-            }
-            catch (IOException)
-            {
-                return false;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return false;
-            }
+            // Release closes the file first, as Windows refuses to delete an open file
+            return _owner.DeleteAndRelease(path, Release(path));
         }
 
         /// <summary>
@@ -127,7 +90,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Delete(path);
             }
             // The folder's deletion passes the same test hook as its files
-            if (_charges.Count == 0 && _streams.Count == 0 && _owner?.DeleteFailsForTests?.Invoke(DirectoryPath) != true)
+            if (_charges.Count == 0 && _streams.Count == 0 && _owner.DeleteFailsForTests?.Invoke(DirectoryPath) != true)
             {
                 try
                 {

@@ -20,14 +20,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
     /// </summary>
     internal static class DeltaReconcileRules
     {
-        // Adds and removes share the file family; commitInfo and cdc are never reconciled
-        public static RecordFamily Family(RecordKind kind) => CheckpointRecord.Family(kind);
-
         // A file is keyed by its path and its deletion vector's unique id
         public static DeltaFileKey FileKey(string path, DeletionVector? deletionVector) => new DeltaFileKey(path, deletionVector?.UniqueId);
-
-        // A later reference to a key replaces an earlier one; a txn's own version is not compared, as it need not grow
-        public static bool LaterReplaces(RecordFamily family, long? earlierTxnVersion, long? laterTxnVersion) => true;
 
         // A removed domain suppresses the older ones and is never written itself
         public static bool IsWritten(DeltaDomainMetadataAction domain) => !domain.Removed;

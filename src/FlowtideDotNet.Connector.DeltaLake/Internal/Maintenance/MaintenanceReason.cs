@@ -27,7 +27,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         InvalidUtf8 = 7,
         RecordOverCap = 8,
         ValueOutOfRange = 9,
-        RowGroupCap = 10,
         MetadataCap = 11,
         DecodeCap = 12,
         InvalidRetention = 13,

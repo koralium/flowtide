@@ -15,7 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 {
     /// <summary>
-    /// Sort mode: entries buffered in the arena are written as sorted runs, then merged with fan-in 8 and reduced to one entry per key.
+    /// Sort mode: the tail reducer drains into sorted runs, which are merged with fan-in 8 and reduced to one entry per key.
     /// </summary>
     internal sealed class CheckpointSorter : IDisposable
     {
@@ -23,106 +23,48 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         private readonly JobScratch _scratch;
         private readonly JobMemory _memory;
-        private readonly long _cap;
-        private readonly RecordArena _arena;
         private readonly List<string> _runs = new List<string>();
-        private long[] _offsets = Array.Empty<long>();
-        private int _count;
-        private byte[] _entry = Array.Empty<byte>();
         private byte[] _key = Array.Empty<byte>();
         private int _keyLength;
 
-        public CheckpointSorter(JobScratch scratch, JobMemory memory, long arenaCap = TailReducer.DefaultArenaCap)
+        public CheckpointSorter(JobScratch scratch, JobMemory memory)
         {
             _scratch = scratch;
             _memory = memory;
-            _cap = arenaCap;
-            _arena = new RecordArena(memory, arenaCap);
         }
 
         public int Runs => _runs.Count;
 
-        // Throws at the start of a merge, so tests can fail the build there
+        // Throws at a run write or at the start of a merge, so tests can fail the build there
         public Action<string>? FaultForTests { get; init; }
 
         // Bytes written to runs, merge passes included
         public long SpillBytes { get; private set; }
 
-        public void AddRun(RunWriter run)
-        {
-            _runs.Add(run.Path);
-        }
-
-        public void Add(ReadOnlySpan<byte> key, long version, long ordinal, ReadOnlySpan<byte> record)
-        {
-            var offsetGrowth = _count == _offsets.Length ? (long)Math.Max(1024, _offsets.Length * 2) * sizeof(long) : 0;
-            var held = _arena.Bytes + (long)_offsets.Length * sizeof(long);
-            if (_count > 0 && held + _arena.GrowthFor(key.Length, record.Length) + offsetGrowth > _cap)
-            {
-                FlushRun();
-                offsetGrowth = _offsets.Length == 0 ? 1024 * sizeof(long) : 0;
-            }
-            if (offsetGrowth > 0)
-            {
-                GrowOffsets();
-            }
-            _offsets[_count++] = _arena.Append(key, version, ordinal, record);
-        }
-
-        private void GrowOffsets()
-        {
-            var length = Math.Max(1024, _offsets.Length * 2);
-            _memory.Reserve((long)length * sizeof(long));
-            var grown = new long[length];
-            _offsets.AsSpan(0, _count).CopyTo(grown);
-            _memory.Release((long)_offsets.Length * sizeof(long));
-            _offsets = grown;
-        }
-
         /// <summary>
-        /// Sorts what the arena holds by key, then latest first, writes it as a run and empties the arena.
+        /// Writes what the reducer holds as a run in key order, which empties the reducer.
         /// </summary>
-        public void FlushRun()
+        public void Spill(TailReducer reducer)
         {
-            if (_count == 0)
-            {
-                return;
-            }
             FaultForTests?.Invoke("run write");
-            var arena = _arena;
-            _offsets.AsSpan(0, _count).Sort((x, y) =>
-            {
-                var left = arena.Read(x);
-                var right = arena.Read(y);
-                return ArenaEntry.Compare(left, right);
-            });
             using var run = new RunWriter(_scratch, _memory);
-            for (int i = 0; i < _count; i++)
-            {
-                run.Write(_arena.Raw(_offsets[i]));
-            }
+            reducer.DrainSorted(run);
             run.Close();
             _runs.Add(run.Path);
             SpillBytes += new FileInfo(run.Path).Length;
-            _arena.Clear();
-            _count = 0;
-        }
-
-        private void ReleaseBuffers()
-        {
-            _arena.Clear();
-            _memory.Release((long)_offsets.Length * sizeof(long));
-            _offsets = Array.Empty<long>();
-            _count = 0;
         }
 
         /// <summary>
-        /// Merges every run and calls the visitor once per key, in key order, with the entry that wins under the reconcile rules.
+        /// Spills what the reducer still holds, merges every run and calls the visitor once per key, in key order, with the key's latest entry.
         /// </summary>
-        public void Reduce(EntryVisitor visitor, CancellationToken cancellationToken = default)
+        public void Reduce(TailReducer reducer, EntryVisitor visitor, CancellationToken cancellationToken = default)
         {
-            FlushRun();
-            ReleaseBuffers();
+            if (reducer.Count > 0)
+            {
+                Spill(reducer);
+            }
+            // The merge phase holds no reducer
+            reducer.Clear();
             // Earlier passes merge without reducing; consumed runs are deleted after their replacement is closed
             while (_runs.Count > FanIn)
             {
@@ -149,68 +91,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 _runs.AddRange(next);
             }
 
-            // Each key's first entry is the latest; only a txn's is held, as an older one may still win under the rules
+            // Each key's first entry is the latest, and the only one written
             var previous = false;
-            var heldTxn = false;
             Merge(_runs, raw =>
             {
                 ArenaEntry.TryDecode(raw, out var entry);
                 if (previous && entry.Key.SequenceEqual(_key.AsSpan(0, _keyLength)))
                 {
-                    if (heldTxn && !DeltaReconcileRules.LaterReplaces(RecordFamily.Txn, CheckpointRecord.TxnVersion(entry.Record), CheckpointRecord.TxnVersion(Decode(_entry).Record)))
-                    {
-                        Hold(raw);
-                    }
                     return;
-                }
-                if (heldTxn)
-                {
-                    visitor(Decode(_entry));
-                    heldTxn = false;
                 }
                 KeepKey(entry.Key);
                 previous = true;
-                if (CheckpointRecord.Family(CheckpointRecord.Kind(entry.Record)) == RecordFamily.Txn)
-                {
-                    Hold(raw);
-                    heldTxn = true;
-                }
-                else
-                {
-                    visitor(entry);
-                }
+                visitor(entry);
             }, cancellationToken);
-            if (heldTxn)
-            {
-                visitor(Decode(_entry));
-            }
             foreach (var path in _runs)
             {
                 _scratch.Delete(path);
             }
             _runs.Clear();
             Free();
-        }
-
-        private static ArenaEntry Decode(byte[] buffer)
-        {
-            ArenaEntry.TryDecode(buffer, out var entry);
-            return entry;
-        }
-
-        // Keeps a copy of the current winner, as the cursor that held it moves on
-        private void Hold(ReadOnlySpan<byte> raw)
-        {
-            if (_entry.Length < raw.Length)
-            {
-                var grown = _memory.Allocate(Math.Max(raw.Length, 4096));
-                if (_entry.Length > 0)
-                {
-                    _memory.Free(_entry);
-                }
-                _entry = grown;
-            }
-            raw.CopyTo(_entry);
         }
 
         private void KeepKey(ReadOnlySpan<byte> key)
@@ -230,11 +129,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         private void Free()
         {
-            if (_entry.Length > 0)
-            {
-                _memory.Free(_entry);
-                _entry = Array.Empty<byte>();
-            }
             if (_key.Length > 0)
             {
                 _memory.Free(_key);
@@ -288,10 +182,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
         }
 
-        public void Dispose()
-        {
-            ReleaseBuffers();
-            Free();
-        }
+        public void Dispose() => Free();
     }
 }

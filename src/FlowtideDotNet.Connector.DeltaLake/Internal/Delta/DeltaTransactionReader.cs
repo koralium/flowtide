@@ -294,8 +294,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     _protocol = action.Protocol;
                 }
-                if (action.Txn?.AppId != null
-                    && (!_transactions.TryGetValue(action.Txn.AppId, out var earlier) || DeltaReconcileRules.LaterReplaces(RecordFamily.Txn, earlier.Version, action.Txn.Version)))
+                // The latest txn per application wins, versions are not assumed to grow
+                if (action.Txn?.AppId != null)
                 {
                     _transactions[action.Txn.AppId] = action.Txn;
                 }

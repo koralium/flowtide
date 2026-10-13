@@ -356,15 +356,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         // The charge goes only after the file is gone; a failed deletion keeps it on the pending list
-        private bool DeleteNow(Entry entry)
-        {
-            if (_directory.TryDeleteFile(entry.Path))
-            {
-                _directory.Ledger.Release(entry.Charge);
-                return true;
-            }
-            _directory.QueuePending(entry.Path, entry.Charge);
-            return false;
-        }
+        private bool DeleteNow(Entry entry) => _directory.DeleteAndRelease(entry.Path, entry.Charge);
     }
 }

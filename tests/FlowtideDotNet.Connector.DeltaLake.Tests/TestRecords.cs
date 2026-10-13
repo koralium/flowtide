@@ -150,5 +150,41 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             w.WriteBool(domain.Removed);
         }
 
+        private static void WriteMap(this ref RecordWriter w, IReadOnlyDictionary<string, string>? map)
+        {
+            if (map == null)
+            {
+                w.WriteNull();
+                return;
+            }
+            w.WriteCount(map.Count);
+            foreach (var entry in map)
+            {
+                w.WriteString(entry.Key);
+                w.WriteString(entry.Value);
+            }
+        }
+
+        private static void WriteList(this ref RecordWriter w, IReadOnlyList<string>? list)
+        {
+            if (list == null)
+            {
+                w.WriteNull();
+                return;
+            }
+            w.WriteCount(list.Count);
+            for (int i = 0; i < list.Count; i++)
+            {
+                w.WriteString(list[i]);
+            }
+        }
+
+        // A record's reconciliation key as a new array
+        public static byte[] Key(ReadOnlySpan<byte> record)
+        {
+            var key = new byte[RecordKey.Length(record)];
+            RecordKey.Write(record, key);
+            return key;
+        }
     }
 }

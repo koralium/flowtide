@@ -12,8 +12,11 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using System.Buffers.Text;
 using System.Text;
+using System.Text.Json;
+using System.Text.Unicode;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 {
@@ -72,15 +75,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             r.SkipString();
             r.SkipString();
             return r.ReadBool() == true;
-        }
-
-        // A txn record's version, the field after its app id
-        public static long? TxnVersion(ReadOnlySpan<byte> record)
-        {
-            var r = new RecordReader(record);
-            r.ReadKind(out _);
-            r.SkipString();
-            return r.ReadLong();
         }
 
         public static RecordFamily Family(RecordKind kind) => kind switch
@@ -195,6 +189,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
     }
 
     /// <summary>
+    /// The LEB128 varint that the record codec, the arena and the digest framing write.
+    /// </summary>
+    internal static class Varint
+    {
+        public static int Length(ulong value)
+        {
+            var length = 1;
+            while (value >= 0x80)
+            {
+                value >>= 7;
+                length++;
+            }
+            return length;
+        }
+
+        public static int Write(Span<byte> destination, ulong value)
+        {
+            var i = 0;
+            while (value >= 0x80)
+            {
+                destination[i++] = (byte)(value | 0x80);
+                value >>= 7;
+            }
+            destination[i++] = (byte)value;
+            return i;
+        }
+    }
+
+    /// <summary>
     /// Writes record fields into a span sized beforehand, or only counts them.
     /// </summary>
     internal ref struct RecordWriter
@@ -237,12 +260,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public void WriteVarint(ulong value)
         {
-            while (value >= 0x80)
-            {
-                WriteByte((byte)(value | 0x80));
-                value >>= 7;
-            }
-            WriteByte((byte)value);
+            _position += _counting ? Varint.Length(value) : Varint.Write(_destination.Slice(_position), value);
         }
 
         public void WriteBytes(scoped ReadOnlySpan<byte> bytes)
@@ -258,6 +276,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         {
             WriteVarint((ulong)utf8.Length + 1);
             WriteBytes(utf8);
+        }
+
+        // Unescapes in place after room for the longest prefix, then moves left if the prefix came out shorter; never while counting
+        public void WriteJsonString(ref Utf8JsonReader reader)
+        {
+            var raw = reader.ValueSpan;
+            if (!reader.ValueIsEscaped)
+            {
+                WriteString(raw);
+                return;
+            }
+            var room = Varint.Length((ulong)raw.Length + 1);
+            var length = reader.CopyString(_destination.Slice(_position + room));
+            if (!Utf8.IsValid(_destination.Slice(_position + room, length)))
+            {
+                throw new CheckpointDeclinedException(MaintenanceReason.InvalidUtf8, DeclineDependency.Tail, "An escaped string is not valid UTF-8");
+            }
+            var prefix = Varint.Length((ulong)length + 1);
+            if (prefix < room)
+            {
+                _destination.Slice(_position + room, length).CopyTo(_destination.Slice(_position + prefix));
+            }
+            WriteVarint((ulong)length + 1);
+            _position += length;
         }
 
         public void WriteNull()
@@ -306,35 +348,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         public void WriteCount(int? count)
         {
             WriteVarint(count == null ? 0 : (ulong)count.Value + 1);
-        }
-
-        public void WriteMap(IReadOnlyDictionary<string, string>? map)
-        {
-            if (map == null)
-            {
-                WriteNull();
-                return;
-            }
-            WriteCount(map.Count);
-            foreach (var entry in map)
-            {
-                WriteString(entry.Key);
-                WriteString(entry.Value);
-            }
-        }
-
-        public void WriteList(IReadOnlyList<string>? list)
-        {
-            if (list == null)
-            {
-                WriteNull();
-                return;
-            }
-            WriteCount(list.Count);
-            for (int i = 0; i < list.Count; i++)
-            {
-                WriteString(list[i]);
-            }
         }
 
         public static ulong Zigzag(long value) => (ulong)((value << 1) ^ (value >> 63));
@@ -541,13 +554,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var writer = new RecordWriter(destination);
             Write(record, ref writer);
             return writer.Position;
-        }
-
-        public static byte[] Of(ReadOnlySpan<byte> record)
-        {
-            var key = new byte[Length(record)];
-            Write(record, key);
-            return key;
         }
 
         private static void Write(ReadOnlySpan<byte> record, ref RecordWriter writer)

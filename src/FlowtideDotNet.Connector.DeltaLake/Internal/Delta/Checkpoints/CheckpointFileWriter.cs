@@ -33,8 +33,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         // Plain-encoded value bytes fed per row group
         public long GroupValueBytes { get; init; } = 16L << 20;
 
-        public int MaxRowGroups { get; init; } = 512;
-
         // Native memory reserved for the writer
         public long WriterReservation { get; init; } = 96L << 20;
 
@@ -205,10 +203,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 _batch.TryAdd(record);
             }
             var emitted = _batch.Row(_batch.Rows - 1);
-            Span<byte> length = stackalloc byte[5];
-            var prefix = Varint(length, (uint)emitted.Length);
-            _hash.AppendData(length.Slice(0, prefix));
-            _hash.AppendData(emitted);
+            AppendDigest(_hash, emitted);
             Actions++;
             if (CheckpointRecord.Kind(emitted) == RecordKind.Add)
             {
@@ -216,16 +211,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
         }
 
-        private static int Varint(Span<byte> destination, uint value)
+        // The digest's framing, which validation repeats over the file read back: each record's length, then the record
+        public static void AppendDigest(IncrementalHash hash, ReadOnlySpan<byte> record)
         {
-            var i = 0;
-            while (value >= 0x80)
-            {
-                destination[i++] = (byte)(value | 0x80);
-                value >>= 7;
-            }
-            destination[i++] = (byte)value;
-            return i;
+            Span<byte> length = stackalloc byte[5];
+            hash.AppendData(length.Slice(0, Varint.Write(length, (uint)record.Length)));
+            hash.AppendData(record);
         }
 
         private void Flush()
@@ -241,10 +232,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
             if (!_groupOpen)
             {
-                if (_groupRows.Count >= _limits.MaxRowGroups)
-                {
-                    throw new CheckpointDeclinedException(MaintenanceReason.RowGroupCap, DeclineDependency.None, $"The checkpoint needs more than {_limits.MaxRowGroups} row groups");
-                }
                 // The closing group was covered with its last batch
                 if (_groupRows.Count > 0)
                 {
@@ -258,7 +245,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 Array.Clear(_groupBatchValueBytes);
                 Array.Clear(_groupRowLevels);
                 _groupRowCount = 0;
-                // A fresh group always accepts one batch by construction, so these are unreachable within the limits
+                // A fresh group takes one batch within the batch, action and entry caps, so these hold unless those caps grow
                 if (ProjectedDecode() > _limits.DecodeCap - (8L << 20))
                 {
                     throw new CheckpointDeclinedException(MaintenanceReason.DecodeCap, DeclineDependency.None, $"One batch projects a decode bound of {ProjectedDecode()} bytes");

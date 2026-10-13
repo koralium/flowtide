@@ -18,7 +18,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
     internal delegate void EntryVisitor(in ArenaEntry entry);
 
     /// <summary>
-    /// The latest record per key of the tail, in an open-addressing index over the arena, all within the arena allowance.
+    /// The latest record per key, in an open-addressing index over the arena, all within the arena allowance; sort mode drains it into runs.
     /// </summary>
     internal sealed class TailReducer : IDisposable
     {
@@ -60,7 +60,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         /// <summary>
-        /// Keeps the record if it is the latest for its key; false when the arena allowance would be passed, and nothing is added.
+        /// Keeps the record unless its key holds a later one; false when the arena allowance would be passed, and nothing is added, though an empty reducer takes any record.
         /// </summary>
         public bool TryAdd(ReadOnlySpan<byte> key, long version, long ordinal, ReadOnlySpan<byte> record)
         {
@@ -70,7 +70,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 indexGrowth = (long)Math.Max(16, _slots.Length * 2) * s_slotBytes;
             }
-            if (Bytes + _arena.GrowthFor(key.Length, record.Length) + indexGrowth > _cap)
+            if (_count > 0 && Bytes + _arena.GrowthFor(key.Length, record.Length) + indexGrowth > _cap)
             {
                 return false;
             }
@@ -80,21 +80,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
             var hash = HashOf(key);
             var index = Find(key, hash);
-            if (_slots[index].Used != 0)
-            {
-                var earlier = _arena.Read(_slots[index].Location);
-                var family = CheckpointRecord.Family(CheckpointRecord.Kind(record));
-                var replaces = family != RecordFamily.Txn || DeltaReconcileRules.LaterReplaces(family, CheckpointRecord.TxnVersion(earlier.Record), CheckpointRecord.TxnVersion(record));
-                if (!replaces)
-                {
-                    return true;
-                }
-            }
-            else
+            if (_slots[index].Used == 0)
             {
                 _slots[index].Used = 1;
                 _slots[index].Hash = hash;
                 _count++;
+            }
+            else
+            {
+                // A root row read after the tail never replaces the tail's later entry for its key
+                var earlier = _arena.Read(_slots[index].Location);
+                if (earlier.Version > version || (earlier.Version == version && earlier.Ordinal > ordinal))
+                {
+                    return true;
+                }
             }
             _slots[index].Location = _arena.Append(key, version, ordinal, record);
             return true;
@@ -159,7 +158,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         /// <summary>
-        /// Writes every kept entry to a run in key order, sorting the index in place, then releases the map.
+        /// Writes every kept entry to a run in key order, sorting the index in place, then empties the map and keeps its index for the next run.
         /// </summary>
         public void DrainSorted(RunWriter run)
         {
@@ -177,7 +176,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 run.Write(_arena.Raw(_slots[i].Location));
             }
-            Clear();
+            _arena.Clear();
+            Array.Clear(_slots);
+            _count = 0;
         }
 
         public void Clear()

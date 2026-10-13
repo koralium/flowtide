@@ -254,7 +254,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Table = "t",
                 Scratch = job,
                 Memory = new JobMemory(),
-                Directory = directory,
                 Publish = false,
                 BeforeValidationForTests = _ => held = false
             }, new BuildRequest() { Version = 5 });

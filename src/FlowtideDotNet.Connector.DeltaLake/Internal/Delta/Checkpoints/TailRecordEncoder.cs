@@ -554,7 +554,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 return 0;
             }
-            var output = new OutputCursor(_record!);
+            var output = new RecordWriter(_record!);
             output.WriteByte((byte)kind);
             var written = kind == RecordKind.Remove ? RemoveWrittenFields : fields.Length;
             for (int f = 0; f < written; f++)
@@ -597,7 +597,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
         }
 
-        private void WriteField(ReadOnlySpan<byte> value, Field type, int start, int length, ref OutputCursor output)
+        private void WriteField(ReadOnlySpan<byte> value, Field type, int start, int length, ref RecordWriter output)
         {
             if (start < 0)
             {
@@ -652,7 +652,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         // An absent field reads as the model's default: zero and false for value types, null otherwise
-        private static void WriteAbsent(Field type, ref OutputCursor output)
+        private static void WriteAbsent(Field type, ref RecordWriter output)
         {
             switch (type)
             {
@@ -670,7 +670,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
         }
 
-        private static void WriteList(ref Utf8JsonReader reader, ref OutputCursor output)
+        private static void WriteList(ref Utf8JsonReader reader, ref RecordWriter output)
         {
             var probe = reader;
             var count = 0;
@@ -693,7 +693,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         // For one map: index the unescaped keys, mark superseded entries, then write the survivors in order
-        private void WriteMap(ReadOnlySpan<byte> map, ref OutputCursor output)
+        private void WriteMap(ReadOnlySpan<byte> map, ref RecordWriter output)
         {
             var entries = MemoryMarshal.Cast<byte, KeyEntry>(_keyIndex.AsSpan());
             var reader = new Utf8JsonReader(map);
@@ -782,75 +782,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var hash = new HashCode();
             hash.AddBytes(key);
             return hash.ToHashCode();
-        }
-
-        /// <summary>
-        /// Writes into the reserved record buffer.
-        /// </summary>
-        private ref struct OutputCursor
-        {
-            private readonly Span<byte> _buffer;
-            private int _position;
-
-            public OutputCursor(Span<byte> buffer)
-            {
-                _buffer = buffer;
-                _position = 0;
-            }
-
-            public readonly int Position => _position;
-
-            public void WriteByte(byte value)
-            {
-                _buffer[_position++] = value;
-            }
-
-            public void WriteVarint(ulong value)
-            {
-                while (value >= 0x80)
-                {
-                    _buffer[_position++] = (byte)(value | 0x80);
-                    value >>= 7;
-                }
-                _buffer[_position++] = (byte)value;
-            }
-
-            // Unescapes in place after room for the longest prefix, then moves left if the prefix came out shorter
-            public void WriteJsonString(ref Utf8JsonReader reader)
-            {
-                var raw = reader.ValueSpan;
-                if (!reader.ValueIsEscaped)
-                {
-                    WriteVarint((ulong)raw.Length + 1);
-                    raw.CopyTo(_buffer.Slice(_position));
-                    _position += raw.Length;
-                    return;
-                }
-                var room = VarintLength((ulong)raw.Length + 1);
-                var length = reader.CopyString(_buffer.Slice(_position + room));
-                if (!Utf8.IsValid(_buffer.Slice(_position + room, length)))
-                {
-                    throw new CheckpointDeclinedException(MaintenanceReason.InvalidUtf8, DeclineDependency.Tail, "An escaped string is not valid UTF-8");
-                }
-                var prefix = VarintLength((ulong)length + 1);
-                if (prefix < room)
-                {
-                    _buffer.Slice(_position + room, length).CopyTo(_buffer.Slice(_position + prefix));
-                }
-                WriteVarint((ulong)length + 1);
-                _position += length;
-            }
-
-            private static int VarintLength(ulong value)
-            {
-                var length = 1;
-                while (value >= 0x80)
-                {
-                    value >>= 7;
-                    length++;
-                }
-                return length;
-            }
         }
     }
 }

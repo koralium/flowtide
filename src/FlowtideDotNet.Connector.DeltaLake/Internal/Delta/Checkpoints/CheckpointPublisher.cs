@@ -24,13 +24,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         // Room the destination volume keeps beyond the checkpoint
         public const long FreeSpaceMargin = 64L << 20;
 
-        public static async Task<PublishResult> PublishAsync(ICheckpointTransport transport, JobScratch scratch, ScratchDirectory? directory, JobMemory memory,
+        public static async Task<PublishResult> PublishAsync(ICheckpointTransport transport, JobScratch scratch, JobMemory memory,
             CheckpointDescriptor checkpoint, Func<string, long>? freeSpace, CancellationToken cancellationToken, Action<string>? faultForTests = null, RootCacheScope? cache = null)
         {
             var destination = transport.Table.Combine(DeltaTransactionReader.DeltaLogDirName).Combine($"{checkpoint.Version:D20}.checkpoint.parquet");
             if (transport.NativePath(destination) is { } native)
             {
-                PublishLocal(scratch, directory, checkpoint, native, freeSpace, faultForTests);
+                PublishLocal(scratch, checkpoint, native, freeSpace, faultForTests);
                 var length = new FileInfo(native).Length;
                 if (length != checkpoint.SizeInBytes)
                 {
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         // Moves the output next to the destination, then renames it over the canonical name
-        private static void PublishLocal(JobScratch scratch, ScratchDirectory? directory, CheckpointDescriptor checkpoint, string native, Func<string, long>? freeSpace, Action<string>? faultForTests)
+        private static void PublishLocal(JobScratch scratch, CheckpointDescriptor checkpoint, string native, Func<string, long>? freeSpace, Action<string>? faultForTests)
         {
             var ledger = scratch.Ledger;
             var size = checkpoint.SizeInBytes;
@@ -144,14 +144,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             catch
             {
                 // The temp keeps its charge until it is gone
-                if (!File.Exists(temp) || (directory?.TryDeleteFile(temp) ?? TryDelete(temp)))
-                {
-                    ledger.Release(size);
-                }
-                else if (directory != null)
-                {
-                    directory.QueuePending(temp, size);
-                }
+                scratch.Adopt(temp, size);
+                scratch.Delete(temp);
                 throw;
             }
         }
@@ -168,23 +162,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException)
             {
                 return null;
-            }
-        }
-
-        private static bool TryDelete(string path)
-        {
-            try
-            {
-                File.Delete(path);
-                return true;
-            }
-            catch (IOException)
-            {
-                return false;
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return false;
             }
         }
     }

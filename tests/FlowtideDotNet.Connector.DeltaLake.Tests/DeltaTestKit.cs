@@ -315,4 +315,50 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
     }
+
+    /// <summary>
+    /// The scratch owners a test created, released at its teardown so their folders can be deleted.
+    /// </summary>
+    internal sealed class ScratchOwners
+    {
+        private readonly List<ScratchDirectory> _owners = new List<ScratchDirectory>();
+
+        // A short folder name, since native Parquet opens fail on Windows past 260 characters
+        public static string ShortId() => Guid.NewGuid().ToString("N").Substring(0, 8);
+
+        public ScratchDirectory Add(ScratchDirectory owner)
+        {
+            lock (_owners)
+            {
+                _owners.Add(owner);
+            }
+            return owner;
+        }
+
+        // Deletes what the owner's deletion hook kept, then releases its lock
+        public void Release(ScratchDirectory owner)
+        {
+            lock (_owners)
+            {
+                _owners.Remove(owner);
+            }
+            owner.DeleteFailsForTests = null;
+            owner.RetryPending();
+            owner.ReleaseLockForTests();
+        }
+
+        // Releases every owner the test still holds
+        public void Release()
+        {
+            ScratchDirectory[] owners;
+            lock (_owners)
+            {
+                owners = _owners.ToArray();
+            }
+            foreach (var owner in owners)
+            {
+                Release(owner);
+            }
+        }
+    }
 }

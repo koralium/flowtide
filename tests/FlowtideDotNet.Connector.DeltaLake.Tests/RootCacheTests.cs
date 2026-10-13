@@ -381,7 +381,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     Table = "t",
                     Scratch = job,
                     Memory = memory,
-                    Directory = directory,
                     Cache = cached ? directory.Cache : null,
                     Clock = clock,
                     Publish = false
@@ -398,7 +397,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(original.SizeInBytes, replacement.Length);
 
             var scope = new RootCacheScope(directory.Cache, storage, "table-id", 0);
-            var published = await CheckpointPublisher.PublishAsync(new ReplacedAfterFirstLook(storage, replacement), job, directory, memory, original, null, default, cache: scope);
+            var published = await CheckpointPublisher.PublishAsync(new ReplacedAfterFirstLook(storage, replacement), job, memory, original, null, default, cache: scope);
             Assert.True(published.Published);
             Assert.Equal(replacement, await DeltaTestKit.ReadBytes(storage, "/t/_delta_log/00000000000000000000.checkpoint.parquet"));
 

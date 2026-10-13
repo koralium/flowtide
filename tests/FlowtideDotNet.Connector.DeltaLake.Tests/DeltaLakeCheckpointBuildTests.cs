@@ -29,18 +29,50 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public DeltaLakeCheckpointBuildTests()
         {
-            _directory = Path.Combine(Path.GetTempPath(), "build-tests-" + Guid.NewGuid().ToString("N"));
+            _directory = Path.Combine(Path.GetTempPath(), "bt-" + ScratchOwners.ShortId());
             Directory.CreateDirectory(_directory);
         }
 
+        private readonly ScratchOwners _owners = new ScratchOwners();
+
         public void Dispose()
         {
+            _owners.Release();
             try
             {
                 Directory.Delete(_directory, true);
             }
             catch (IOException)
             {
+            }
+        }
+
+        [Fact]
+        public async Task DisposeRemovesEveryBuildsScratchFolder()
+        {
+            var storage = Memory(nameof(DisposeRemovesEveryBuildsScratchFolder));
+            await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema));
+            var built = await Build(storage, "t", 0);
+            Assert.Equal(BuildStatus.Completed, built.Result.Status);
+
+            Dispose();
+            Assert.False(Directory.Exists(_directory));
+        }
+
+        [Fact]
+        public void DisposeReleasesScratchOwnersRetainedUntilTeardown()
+        {
+            var owner = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
+            Assert.True(owner.LockHeldForTests);
+            try
+            {
+                Dispose();
+                Assert.False(owner.LockHeldForTests);
+                Assert.False(Directory.Exists(_directory));
+            }
+            finally
+            {
+                owner.ReleaseLockForTests();
             }
         }
 
@@ -54,14 +86,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private async Task<Built> Build(IFileStorage storage, string table, long version, RootPolicy root = RootPolicy.Auto, long arenaCap = TailReducer.DefaultArenaCap,
             bool rebuildLegacy = false, IReadOnlySet<ObjectIdentity>? unsupported = null, Action<string>? damage = null, JobMemory? memory = null)
         {
-            var ledger = new DiskLedger();
+            var directory = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
             memory ??= new JobMemory();
             BuildResult result;
             var lines = new List<string>();
             var records = new List<byte[]>();
             string? marker = null;
             long outputLength = 0;
-            using (var scratch = new JobScratch(Path.Combine(_directory, Guid.NewGuid().ToString("N")), ledger))
+            using (var scratch = directory.CreateJob())
             {
                 var context = new CheckpointBuildContext()
                 {
@@ -91,7 +123,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             Assert.Equal(0, memory.Managed);
             Assert.Equal(0, memory.Native);
-            Assert.Equal(0, ledger.Reserved);
+            Assert.Equal(0, directory.Ledger.Reserved);
+            _owners.Release(directory);
             return new Built(result, lines, records, marker) { OutputLength = outputLength };
         }
 
@@ -248,6 +281,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.True(rootKind == 1 || sorted.Result.Mode == BuildMode.Sort, $"seed {seed}: {sorted.Result.Mode}");
                 AssertLines(expected, sorted.Lines, $"seed {seed}, root kind {rootKind}, sort");
 
+                // A bigger arena holds several entries per run, so a later entry replaces an earlier one inside the map between spills
+                var batched = await Build(storage, "t", target, arenaCap: 16 << 10);
+                Assert.True(batched.Result.Status == BuildStatus.Completed, $"seed {seed}: {batched.Result.Reason} {batched.Result.Detail}");
+                AssertLines(expected, batched.Lines, $"seed {seed}, root kind {rootKind}, sort with a 16 KiB arena");
+
                 if (rootKind != 0)
                 {
                     Assert.Equal(middle, probe.Result.RootVersion);
@@ -289,6 +327,113 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(probe.Result.Checkpoint!.Actions, sorted.Result.Checkpoint!.Actions);
         }
 
+        [Fact]
+        public async Task SpillBytesCountEveryRunWritten()
+        {
+            var storage = Memory(nameof(SpillBytesCountEveryRunWritten));
+            await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema));
+            for (int version = 1; version <= 5; version++)
+            {
+                await DeltaTestKit.WriteCommit(storage, "t", version, Enumerable.Range(0, 200).Select(i => Add($"v{version}-{i}-{new string('p', 100)}.parquet")).ToArray());
+            }
+            // Runs whose deletion fails stay on disk, so every run the build wrote can be measured afterwards
+            var directory = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())) { DeleteFailsForTests = path => path.EndsWith(".run") });
+            BuildResult result;
+            using (var scratch = directory.CreateJob())
+            {
+                result = await CheckpointBuilder.BuildAsync(new CheckpointBuildContext()
+                {
+                    Storage = storage,
+                    Table = "t",
+                    Scratch = scratch,
+                    Memory = new JobMemory(),
+                    Clock = new FakeTimeProvider(s_now),
+                    ArenaCap = 16L << 10,
+                    Publish = false
+                }, new BuildRequest() { Version = 5 });
+            }
+
+            Assert.Equal(BuildStatus.Completed, result.Status);
+            Assert.Equal(BuildMode.Sort, result.Mode);
+            var runs = Directory.GetFiles(directory.ProcessPath, "*.run", SearchOption.AllDirectories);
+            // More runs than the fan-in, so a merge pass wrote some, and the first is the tail map drained on overflow
+            Assert.True(runs.Length > CheckpointSorter.FanIn + 1, $"{runs.Length} runs");
+            Assert.True(new FileInfo(runs.Min()!).Length > 0);
+            Assert.Equal(runs.Sum(x => new FileInfo(x).Length), result.SpillBytes);
+        }
+
+        // A fault before an intermediate merge, or a cancellation inside one, leaves no run, charge or memory behind
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AFailedIntermediateMergeLeavesNothingBehind(bool cancel)
+        {
+            var storage = Memory(nameof(AFailedIntermediateMergeLeavesNothingBehind));
+            await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema));
+            for (int version = 1; version <= 5; version++)
+            {
+                await DeltaTestKit.WriteCommit(storage, "t", version, Enumerable.Range(0, 2000).Select(i => Add($"v{version}-{i}-{new string('p', 100)}.parquet")).ToArray());
+            }
+            var directory = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
+            var memory = new JobMemory();
+            using var cancellation = new CancellationTokenSource();
+            var merges = 0;
+            var runsAtFault = 0;
+            string jobFolder;
+            Exception? error = null;
+            using (var scratch = directory.CreateJob())
+            {
+                jobFolder = scratch.DirectoryPath;
+                try
+                {
+                    await CheckpointBuilder.BuildAsync(new CheckpointBuildContext()
+                    {
+                        Storage = storage,
+                        Table = "t",
+                        Scratch = scratch,
+                        Memory = memory,
+                        Clock = new FakeTimeProvider(s_now),
+                        ArenaCap = 64L << 10,
+                        Publish = false,
+                        BuildFaultForTests = point =>
+                        {
+                            // The first pass's second merge, after the first merged run replaced its inputs
+                            if (point == "merge" && ++merges == 2)
+                            {
+                                runsAtFault = Directory.GetFiles(scratch.DirectoryPath, "*.run").Length;
+                                if (!cancel)
+                                {
+                                    throw new IOException("merge fault");
+                                }
+                                cancellation.Cancel();
+                            }
+                        }
+                    }, new BuildRequest() { Version = 5 }, cancellation.Token);
+                }
+                catch (Exception e)
+                {
+                    error = e;
+                }
+            }
+
+            if (cancel)
+            {
+                Assert.IsAssignableFrom<OperationCanceledException>(error);
+            }
+            else
+            {
+                Assert.Equal("merge fault", error?.Message);
+            }
+            // More runs than the fan-in remained, so the failed merge was not the final one; a cancellation stopped it midway
+            Assert.True(runsAtFault > CheckpointSorter.FanIn, $"{runsAtFault} runs");
+            Assert.Equal(2, merges);
+            Assert.Equal(0, directory.Ledger.Reserved);
+            Assert.Equal(0, directory.PendingCount);
+            Assert.False(Directory.Exists(jobFolder));
+            Assert.Equal(0, memory.Managed);
+            Assert.Equal(0, memory.Native);
+        }
+
         // A root of ours stays in probe mode with the default arena; a legacy root is always sorted
         [Theory]
         [InlineData(TailReducer.DefaultArenaCap, false)]
@@ -317,7 +462,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WriteHistory(storage, "t", 7, 30, 50);
             var built = await Build(storage, "t", 29, arenaCap: 4096);
 
-            var keys = built.Records.Select(x => RecordKey.Of(x)).ToList();
+            var keys = built.Records.Select(x => TestRecords.Key(x)).ToList();
             for (int i = 1; i < keys.Count; i++)
             {
                 Assert.True(keys[i - 1].AsSpan().SequenceCompareTo(keys[i]) < 0);
@@ -365,10 +510,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var expired = s_now.ToUnixTimeMilliseconds() - (long)TimeSpan.FromDays(8).TotalMilliseconds;
             await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema), Add("a.parquet"), Add("b.parquet"));
             await RootAt(storage, 0, ownRoot);
-            await DeltaTestKit.WriteCommit(storage, "t", 1, Remove("a.parquet", expired));
+            // A second tail record overflows the 4 KiB arena, so those rows sort over either root
+            await DeltaTestKit.WriteCommit(storage, "t", 1, Remove("a.parquet", expired), Remove("gone.parquet", expired));
             var built = await Build(storage, "t", 1, arenaCap: arenaCap);
 
-            // The expired tombstone is not written, and the root's add it removed is not either
+            if (arenaCap == 4096)
+            {
+                Assert.Equal(BuildMode.Sort, built.Result.Mode);
+            }
+            // The expired tombstones are not written, and the root's add one removed is not either
             Assert.Equal(0, built.Result.RootVersion);
             Assert.Equal(new[] { "b.parquet" }, built.Records.Where(x => CheckpointRecord.Kind(x) is RecordKind.Add or RecordKind.Remove).Select(x => CheckpointRecord.ToAction(x).Add?.Path ?? "remove"));
         }

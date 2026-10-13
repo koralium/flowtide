@@ -52,28 +52,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             return versions != 0 ? versions : y.Ordinal.CompareTo(x.Ordinal);
         }
 
-        public static int EncodedLength(int key, int record) => VarintLength((uint)key) + key + 16 + VarintLength((uint)record) + record;
+        public static int EncodedLength(int key, int record) => Varint.Length((uint)key) + Varint.Length((uint)record) + key + 16 + record;
 
-        public static int VarintLength(uint value)
-        {
-            var length = 1;
-            while (value >= 0x80)
-            {
-                value >>= 7;
-                length++;
-            }
-            return length;
-        }
-
+        // Both lengths lead, so the entry's size is known from its first bytes
         public static int Encode(Span<byte> destination, ReadOnlySpan<byte> key, long version, long ordinal, ReadOnlySpan<byte> record)
         {
-            var position = WriteVarint(destination, (uint)key.Length);
+            var position = Varint.Write(destination, (uint)key.Length);
+            position += Varint.Write(destination.Slice(position), (uint)record.Length);
             key.CopyTo(destination.Slice(position));
             position += key.Length;
             BinaryPrimitives.WriteInt64LittleEndian(destination.Slice(position), version);
             BinaryPrimitives.WriteInt64LittleEndian(destination.Slice(position + 8), ordinal);
             position += 16;
-            position += WriteVarint(destination.Slice(position), (uint)record.Length);
             record.CopyTo(destination.Slice(position));
             return position + record.Length;
         }
@@ -84,7 +74,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         public static bool TryDecode(ReadOnlySpan<byte> source, out ArenaEntry entry)
         {
             entry = default;
-            if (!TryReadVarint(source, out var keyLength, out var position) || source.Length - position < (long)keyLength + 16)
+            if (!TryReadLengths(source, out var keyLength, out var recordLength, out var position) || source.Length < (long)position + keyLength + 16 + recordLength)
             {
                 return false;
             }
@@ -93,50 +83,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var version = BinaryPrimitives.ReadInt64LittleEndian(source.Slice(position));
             var ordinal = BinaryPrimitives.ReadInt64LittleEndian(source.Slice(position + 8));
             position += 16;
-            if (!TryReadVarint(source.Slice(position), out var recordLength, out var lengthBytes) || source.Length - position - lengthBytes < recordLength)
-            {
-                return false;
-            }
-            position += lengthBytes;
             entry = new ArenaEntry(key, version, ordinal, source.Slice(position, (int)recordLength), position + (int)recordLength);
             return true;
         }
 
         /// <summary>
-        /// The length of the entry at the start of the span once its header is there, else null.
+        /// The length of the entry at the start of the span once its two lengths are there, else null.
         /// </summary>
-        public static long? RequiredLength(ReadOnlySpan<byte> source)
+        public static long? RequiredLength(ReadOnlySpan<byte> source) =>
+            TryReadLengths(source, out var keyLength, out var recordLength, out var position) ? (long)position + keyLength + 16 + recordLength : null;
+
+        private static bool TryReadLengths(ReadOnlySpan<byte> source, out uint keyLength, out uint recordLength, out int position)
         {
-            if (!TryReadVarint(source, out var keyLength, out var position) || source.Length - position < (long)keyLength + 16)
+            recordLength = 0;
+            if (!TryReadVarint(source, out keyLength, out position) || !TryReadVarint(source.Slice(position), out recordLength, out var recordBytes))
             {
-                return null;
+                return false;
             }
-            var afterKey = position + (long)keyLength + 16;
-            if (!TryReadVarint(source.Slice((int)afterKey), out var recordLength, out var lengthBytes))
-            {
-                return null;
-            }
-            return afterKey + lengthBytes + recordLength;
+            position += recordBytes;
+            return true;
         }
-
-        private static int WriteVarint(Span<byte> destination, uint value)
-        {
-            var i = 0;
-            while (value >= 0x80)
-            {
-                destination[i++] = (byte)(value | 0x80);
-                value >>= 7;
-            }
-            destination[i++] = (byte)value;
-            return i;
-        }
-
-        /// <summary>
-        /// Where the record's length is once the key's length is readable, so a reader can fetch it without buffering the key.
-        /// </summary>
-        public static long? RecordLengthOffset(ReadOnlySpan<byte> source) => TryReadVarint(source, out var keyLength, out var position) ? position + (long)keyLength + 16 : null;
-
-        public static bool TryReadLength(ReadOnlySpan<byte> source, out uint value, out int length) => TryReadVarint(source, out value, out length);
 
         private static bool TryReadVarint(ReadOnlySpan<byte> source, out uint value, out int length)
         {

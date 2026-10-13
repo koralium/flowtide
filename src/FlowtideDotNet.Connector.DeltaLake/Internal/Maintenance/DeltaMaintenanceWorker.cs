@@ -906,7 +906,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Table = _table,
                 Scratch = run.Scratch!,
                 Memory = run.Memory,
-                Directory = _budget.Scratch,
                 Cache = _budget.Scratch.Cache,
                 Transfer = _budget.Transfer,
                 Clock = _settings.OptionsClock,
