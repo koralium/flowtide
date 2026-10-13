@@ -1357,13 +1357,10 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
         {
-            if (_nullCounter > 0)
+            if (_nullCounter > 0 && (_type == ArrowTypeId.Null || !_validityList.Get(index)))
             {
-                if (_type == ArrowTypeId.Null || !_validityList.Get(index))
-                {
-                    XxHash32Implementation.AppendByte(0, ref state);
-                    return;
-                }
+                XxHash32Implementation.AppendByte(0, ref state);
+                return;
             }
             _dataColumn!.AppendXxHash32Single(index, child, ref state);
         }
