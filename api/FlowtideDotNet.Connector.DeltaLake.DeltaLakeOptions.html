@@ -156,12 +156,11 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval">
   CheckpointInterval
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L30"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Gets or sets the checkpoint interval in number of commits.
-A checkpoint file (.checkpoint.parquet) is written every time this number of commits is reached.
-Setting this to 0 or a negative value disables checkpoint writing.</p>
+  <div class="markdown level1 summary"><p>Gets or sets how many published versions may follow the latest checkpoint before a new one is built in the background.
+Setting this to 0 or a negative value turns checkpoint maintenance off.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 
@@ -186,11 +185,43 @@ Setting this to 0 or a negative value disables checkpoint writing.</p>
 
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointMaxAge_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointMaxAge" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge">
+  CheckpointMaxAge
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets how long published versions may wait for a checkpoint before one is built regardless of the interval; null turns the age trigger off.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan? CheckpointMaxAge { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec">
   CompressionCodec
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L57"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets the compression codec for written Parquet files, it applies to every table this sink writes.
@@ -223,7 +254,7 @@ When null the table property delta.parquet.compression.codec is used, and zstd w
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_DeltaCheckInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.DeltaCheckInterval">
   DeltaCheckInterval
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L33"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L32"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -254,7 +285,7 @@ When null the table property delta.parquet.compression.codec is used, and zstd w
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_EnableColumnMappingOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableColumnMappingOnNewTables">
   EnableColumnMappingOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L38"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -285,7 +316,7 @@ When null the table property delta.parquet.compression.codec is used, and zstd w
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_EnableDeletionVectorsOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableDeletionVectorsOnNewTables">
   EnableDeletionVectorsOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L36"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -312,11 +343,75 @@ When null the table property delta.parquet.compression.codec is used, and zstd w
 
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory">
+  MaintenanceTempDirectory
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L84"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the local folder for maintenance scratch files, ./data/tempFiles/deltalake when null; the first sink's value applies to every sink.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public string? MaintenanceTempDirectory { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxConcurrentMaintenanceJobs_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxConcurrentMaintenanceJobs" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs">
+  MaxConcurrentMaintenanceJobs
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets how many maintenance jobs run at once in the process; the first sink's value applies to every sink.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MaxConcurrentMaintenanceJobs { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxFileSizeBytes_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxFileSizeBytes*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxFileSizeBytes" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxFileSizeBytes">
   MaxFileSizeBytes
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets the maximum allowed file size, in bytes. Files are usually smaller than this value because of compression.</p>
@@ -387,7 +482,7 @@ The default value is set to 100 MB.</p>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes">
   PruningMemoryBytes
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L70"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L69"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets the memory, in bytes, all Delta Lake sinks in the process may use for the statistics they skip files with.
@@ -417,11 +512,43 @@ columns give them up at their next checkpoint, and the table that did not fit ke
 
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_RebuildLegacyCheckpoints_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_RebuildLegacyCheckpoints" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints">
+  RebuildLegacyCheckpoints
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L89"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets whether, when every commit since version 0 is still there, a checkpoint is rebuilt from the full log instead of building on one the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool RebuildLegacyCheckpoints { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns">
   StatsPruningColumns
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L63"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L62"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets how many written columns the sink keeps file statistics for, to skip files when deleting rows.
@@ -485,7 +612,7 @@ Columns are taken in the order they are written, structs, lists and maps are ski
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_WriteChangeDataOnNewTables" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.WriteChangeDataOnNewTables">
   WriteChangeDataOnNewTables
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L35"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L34"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

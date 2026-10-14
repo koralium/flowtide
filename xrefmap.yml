@@ -10344,6 +10344,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
   nameWithType: DeltaLakeOptions.CheckpointInterval
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge
+  name: CheckpointMaxAge
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointMaxAge
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge
+  nameWithType: DeltaLakeOptions.CheckpointMaxAge
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge*
+  name: CheckpointMaxAge
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointMaxAge_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointMaxAge
+  nameWithType: DeltaLakeOptions.CheckpointMaxAge
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CompressionCodec
   name: CompressionCodec
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CompressionCodec
@@ -10396,6 +10409,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableDeletionVectorsOnNewTables
   nameWithType: DeltaLakeOptions.EnableDeletionVectorsOnNewTables
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
+  name: MaintenanceTempDirectory
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
+  nameWithType: DeltaLakeOptions.MaintenanceTempDirectory
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory*
+  name: MaintenanceTempDirectory
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
+  nameWithType: DeltaLakeOptions.MaintenanceTempDirectory
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+  name: MaxConcurrentMaintenanceJobs
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxConcurrentMaintenanceJobs
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+  nameWithType: DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs*
+  name: MaxConcurrentMaintenanceJobs
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxConcurrentMaintenanceJobs_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxConcurrentMaintenanceJobs
+  nameWithType: DeltaLakeOptions.MaxConcurrentMaintenanceJobs
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaxFileSizeBytes
   name: MaxFileSizeBytes
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaxFileSizeBytes
@@ -10435,6 +10474,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
   nameWithType: DeltaLakeOptions.PruningMemoryBytes
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
+  name: RebuildLegacyCheckpoints
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_RebuildLegacyCheckpoints
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
+  nameWithType: DeltaLakeOptions.RebuildLegacyCheckpoints
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints*
+  name: RebuildLegacyCheckpoints
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_RebuildLegacyCheckpoints_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
+  nameWithType: DeltaLakeOptions.RebuildLegacyCheckpoints
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
   name: StatsPruningColumns
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns
