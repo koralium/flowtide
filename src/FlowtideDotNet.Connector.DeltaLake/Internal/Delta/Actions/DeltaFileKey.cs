@@ -25,6 +25,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
             DeletionVectorId = deletionVectorId;
         }
 
+        /// <summary>
+        /// The unique id of a deletion vector: storage type, path or inline vector, then @offset when set.
+        /// </summary>
+        public static string DvId(string? storageType, string? pathOrInlineDv, long? offset)
+        {
+            return offset == null ? $"{storageType}{pathOrInlineDv}" : $"{storageType}{pathOrInlineDv}@{offset}";
+        }
+
         public bool Equals(DeltaFileKey other)
         {
             return Path == other.Path && DeletionVectorId == other.DeletionVectorId;

@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
@@ -21,6 +22,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Microsoft.Extensions.Logging;
 using Stowage;
 using System.Globalization;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
@@ -67,30 +69,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         private static async Task<DeltaTable> ReadVersion(IFileStorage storage, IOPath tableName, LogListing log, long target, DeltaReadOptions options)
         {
-            // Every commit from suffixStart up to the target exists
-            long suffixStart = target + 1;
-            while (suffixStart > 0 && log.Commits.ContainsKey(suffixStart - 1))
-            {
-                suffixStart--;
-            }
+            var segment = new DeltaLogSegment(storage, tableName, log);
+            var suffixStart = segment.SuffixStart(target);
 
             Exception? lastFailure = null;
-            foreach (var checkpoint in log.Checkpoints)
+            foreach (var checkpoint in segment.RootCandidates(target, target))
             {
-                if (checkpoint.Version > target)
-                {
-                    continue;
-                }
-                // Older checkpoints need an even longer run of commits
-                if (checkpoint.Version + 1 < suffixStart)
-                {
-                    break;
-                }
                 var replay = new LogReplay(options.SkipTombstones);
                 var failure = await TryReplayCheckpoint(storage, checkpoint, replay, options);
                 if (failure == null)
                 {
-                    await ReplayCommits(storage, log, checkpoint.Version + 1, target, replay);
+                    await ReplayCommits(segment, checkpoint.Version + 1, target, replay);
                     failure = replay.CheckpointSchemaFailure();
                     if (failure == null)
                     {
@@ -106,7 +95,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 throw new DeltaVersionNotAvailableException($"Version {target} of delta table {tableName} cannot be reconstructed, commit {suffixStart - 1} is missing and no usable checkpoint at version {suffixStart - 1} or later exists.", lastFailure);
             }
             var fromStart = new LogReplay(options.SkipTombstones);
-            await ReplayCommits(storage, log, 0, target, fromStart);
+            await ReplayCommits(segment, 0, target, fromStart);
             return fromStart.ToTable(target, null);
         }
 
@@ -179,23 +168,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
         }
 
-        private static async Task ReplayCommits(IFileStorage storage, LogListing log, long from, long to, LogReplay replay)
+        private static async Task ReplayCommits(DeltaLogSegment segment, long from, long to, LogReplay replay)
         {
             for (long version = from; version <= to; version++)
             {
-                var commit = log.Commits[version];
-                using var logData = await storage.OpenRead(commit.IOEntry.Path);
-
-                if (logData == null)
+                // No cap: the reader keeps reading what StreamReader read
+                using var lines = await segment.OpenCommitAsync(version, null, int.MaxValue, skipOversizedCommitInfo: false);
+                if (lines == null)
                 {
-                    throw new DeltaVersionNotAvailableException($"Commit {commit.IOEntry.Path.Full} was removed while it was read.");
+                    throw new DeltaVersionNotAvailableException($"Commit {segment.Listing.Commits[version].IOEntry.Path.Full} was removed while it was read.");
                 }
 
-                using var textReader = new StreamReader(logData);
-
-                string? line;
-                while ((line = await textReader.ReadLineAsync()) != null)
+                while (await lines.ReadLineAsync())
                 {
+                    // Decoded as StreamReader did, so invalid UTF-8 still reads as replacement characters
+                    var line = Encoding.UTF8.GetString(lines.Line.Span);
                     if (string.IsNullOrWhiteSpace(line))
                     {
                         continue;
@@ -331,11 +318,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
                 var schema = ParseSchema();
 
-                // Removed domains only suppress older ones
                 var domains = new Dictionary<string, DeltaDomainMetadataAction>();
                 foreach (var domain in _domains)
                 {
-                    if (!domain.Value.Removed)
+                    if (DeltaReconcileRules.IsWritten(domain.Value))
                     {
                         domains.Add(domain.Key, domain.Value);
                     }

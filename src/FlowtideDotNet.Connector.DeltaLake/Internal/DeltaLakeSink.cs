@@ -14,6 +14,7 @@ using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers;
@@ -22,6 +23,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -71,6 +73,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         /// </summary>
         internal static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Func<DeltaSinkCatalog, Task>> CatalogHooksForTests = new System.Collections.Concurrent.ConcurrentDictionary<string, Func<DeltaSinkCatalog, Task>>();
 
+        // How long a stopping run waits for its maintenance job before counting it detached
+        private static readonly TimeSpan s_maintenanceJoin = TimeSpan.FromSeconds(2);
+
         private readonly DeltaLakeOptions _options;
         private readonly WriteRelation _writeRelation;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
@@ -89,7 +94,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private bool _halted;
         private string? _haltReason;
         private bool _gaugesCreated;
-        private readonly HashSet<string> _checkpointSkipReasons = new HashSet<string>();
+        private DeltaMaintenanceWorker? _worker;
+
+        // Earlier runs' workers whose detached jobs still run, replaced whole so the gauge reads it unlocked
+        private volatile DeltaMaintenanceWorker[] _stoppedWorkers = System.Array.Empty<DeltaMaintenanceWorker>();
+        // The head the latest Validate saw this run, handed off when there is nothing to publish
+        private long _validatedHead = -1;
+        private bool _maintenanceGaugesCreated;
+        private bool _budgetMismatchWarned;
         private readonly HashSet<string> _reportedCheckpointFailures = new HashSet<string>();
         private readonly HashSet<string> _unknownCodecs = new HashSet<string>();
         private string _fileExtension = ".parquet";
@@ -158,13 +170,104 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_catalog_pruning_bytes", () => _catalog?.PruningBytes ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
             }
+
+            _validatedHead = -1;
+            await StartMaintenance();
         }
 
-        public override ValueTask DisposeAsync()
+        // A failure here only turns maintenance off for this run; it never reaches the engine
+        private async Task StartMaintenance()
         {
+            await StopWorker();
+            // Earlier runs' jobs that settled since leave the gauge
+            _stoppedWorkers = Detached(_stoppedWorkers, null);
+            if (_options.CheckpointInterval <= 0)
+            {
+                return;
+            }
+            var budget = _options.MaintenanceBudgetOverride;
+            try
+            {
+                if (budget == null)
+                {
+                    var settings = MaintenanceBudgetSettings.From(_options);
+                    budget = DeltaMaintenanceBudget.Shared(settings, out var matches);
+                    if (!matches && !_budgetMismatchWarned)
+                    {
+                        _budgetMismatchWarned = true;
+                        Logger.LogWarning("Delta table {table} keeps the process's first maintenance settings: {jobs} concurrent jobs in {directory}", _tableName, budget.Settings.MaxConcurrentJobs, budget.Settings.TempDirectory);
+                    }
+                }
+                if (_options.MaintenanceInitFailsForTests)
+                {
+                    throw new InvalidOperationException("Maintenance initialization fault");
+                }
+                var worker = new DeltaMaintenanceWorker(budget, new MaintenanceWorkerSettings(_options.CheckpointInterval, _options.CheckpointMaxAge, _options.TimeProvider)
+                {
+                    Codec = _options.CompressionCodec,
+                    RebuildLegacyCheckpoints = _options.RebuildLegacyCheckpoints
+                }, _options.StorageLocation, _tablePath, _tableName, Logger);
+                budget.Register(worker);
+                _worker = worker;
+            }
+            catch (Exception e)
+            {
+                _worker = null;
+                if (budget != null)
+                {
+                    budget.InitFailed = true;
+                }
+                Logger.LogWarning(e, "Delta table {table} runs without checkpoint maintenance: {reason}", _tableName, MaintenanceReason.InitFailed);
+            }
+            if (!_maintenanceGaugesCreated)
+            {
+                _maintenanceGaugesCreated = true;
+                Metrics.CreateObservableGauge("delta_checkpoint_version", () => _worker?.LastCompleted ?? -1);
+                Metrics.CreateObservableGauge("delta_checkpoint_lag_versions", () => _worker is { } w && w.Target >= 0 ? w.Target - Math.Max(w.LastCompleted, -1) : 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_oldest_uncheckpointed_seconds", () => _worker?.OldestUncheckpointedSeconds ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_consecutive_failures", () => _worker?.ConsecutiveFailures ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_skipped", () => _worker?.Skipped == true ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_dangling_hint", () => _worker?.RepairDue != null ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_last_duration_ms", () => _worker?.LastDurationMs ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_last_validation_ms", () => _worker?.LastBuild?.ValidationMs ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_last_spill_bytes", () => _worker?.LastBuild?.SpillBytes ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_last_transfer_bytes", () => _worker?.LastBuild?.TransferBytes ?? 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_last_mode", () => _worker?.LastBuild?.Mode == BuildMode.Sort ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_inherited_gap", () => _worker?.LastBuild?.InheritedGap == true ? 1 : 0);
+                // The array first: a stopping worker is cleared before it is added, so its job is never counted twice
+                Metrics.CreateObservableGauge("delta_checkpoint_detached_jobs", () => _stoppedWorkers.Sum(x => x.DetachedJobs) + (_worker?.DetachedJobs ?? 0));
+            }
+        }
+
+        /// <summary>
+        /// The stopped workers whose detached jobs still run, the newly stopped one included.
+        /// </summary>
+        internal static DeltaMaintenanceWorker[] Detached(DeltaMaintenanceWorker[] stopped, DeltaMaintenanceWorker? stopping)
+        {
+            return (stopping != null ? stopped.Append(stopping) : stopped).Where(x => x.DetachedJobs > 0).ToArray();
+        }
+
+        // The engine disposes the sink before it initializes it again, so both paths keep a worker whose job still runs
+        private async Task StopWorker()
+        {
+            var worker = _worker;
+            if (worker == null)
+            {
+                return;
+            }
+            await worker.StopAsync(s_maintenanceJoin);
+            // Cleared before the array is replaced, so the gauge never counts the job twice
+            _worker = null;
+            _stoppedWorkers = Detached(_stoppedWorkers, worker);
+        }
+
+        // Maintenance never makes the dispose throw
+        public override async ValueTask DisposeAsync()
+        {
+            await StopWorker();
             _catalog?.Dispose();
             _catalog = null;
-            return base.DisposeAsync();
+            await base.DisposeAsync();
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
@@ -277,18 +380,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_pendingCommit != null);
 
             var pendingCommit = _pendingCommit.Value;
-            if (pendingCommit == null || !IsPublishable(pendingCommit, version))
-            {
-                return;
-            }
+            var outcome = pendingCommit != null && IsPublishable(pendingCommit, version) ? await Publish(pendingCommit) : (PublishOutcome?)null;
+            // One hand-off for every outcome, decided by HandOffVersion
+            HandOff(HandOffVersion(pendingCommit, version, outcome, _validatedHead));
+            _options.CommitVersionHookForTests?.Invoke(pendingCommit?.Version, outcome, _worker?.Target ?? -1);
+        }
 
+        private async Task<PublishOutcome> Publish(DeltaLakePendingCommit pendingCommit)
+        {
             // The first attempt of a commit staged in this run follows the listing that chose its version
             var checkSuccessor = _stagedBytes == null || _halted;
             var result = await DeltaTransactionWriter.PublishCommit(_options.StorageLocation, _tablePath, pendingCommit, _stagedBytes, checkSuccessor);
             if (result.Outcome == PublishOutcome.FailedClosed)
             {
                 Halt(result.Reason!);
-                return;
+                return result.Outcome;
             }
             if (_halted)
             {
@@ -303,35 +409,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 _stagedOverlay = null;
             }
             _stagedBytes = null;
+            _pendingCommit!.Value = null;
+            return result.Outcome;
+        }
 
-            if (_options.CheckpointInterval > 0 && pendingCommit.Version > 0 && (pendingCommit.Version % _options.CheckpointInterval == 0))
+        // One InterlockedMax; the build runs in the background
+        private void HandOff(long version)
+        {
+            if (version >= 0)
             {
-                try
-                {
-                    // The checkpoint writer does not write tombstones, so they are not read
-                    var currentTableState = await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tablePath, options: new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures });
-                    if (currentTableState != null)
-                    {
-                        var skipReason = CheckpointSkipReason(currentTableState);
-                        if (skipReason == null)
-                        {
-                            var codec = ResolveCodec(currentTableState.Metadata.Configuration);
-                            await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState, codec.WriterProperties);
-                        }
-                        else if (_checkpointSkipReasons.Add(skipReason))
-                        {
-                            Logger.LogWarning("Delta table {table} {reason}, no checkpoint is written", _tableName, skipReason);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    // Checkpoint is optional, next interval tries again.
-                    Logger.LogWarning(e, "Failed to write delta checkpoint for version {version} of table {table}", pendingCommit.Version, _tableName);
-                }
+                _worker?.Published(version);
             }
+        }
 
-            _pendingCommit.Value = null;
+        /// <summary>
+        /// The version CommitVersion hands off, -1 for none: the validated head when nothing is pending, the commit once it is published.
+        /// </summary>
+        internal static long HandOffVersion(DeltaLakePendingCommit? pending, long version, PublishOutcome? outcome, long validatedHead)
+        {
+            if (pending == null)
+            {
+                // The head this run validated is durable, which arms the worker after an idle start
+                return validatedHead;
+            }
+            if (!IsPublishable(pending, version) || outcome is null or PublishOutcome.FailedClosed)
+            {
+                return -1;
+            }
+            return pending.Version;
         }
 
         /// <summary>
@@ -366,45 +471,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return codec;
         }
 
-        // Null when the checkpoint writer can write this snapshot without losing anything
-        private static string? CheckpointSkipReason(DeltaTable table)
+        private void Validated()
         {
-            // The checkpoint writer cannot keep txn or domainMetadata actions yet, a checkpoint would drop them
-            if (table.Transactions.Count > 0 || table.DomainMetadata.Count > 0)
-            {
-                return "has txn or domainMetadata actions that checkpoints cannot keep yet";
-            }
-            // The spec requires numRecords on every file with a deletion vector
-            foreach (var file in table.AddFiles)
-            {
-                if (file.DeletionVector != null && !HasRecordCount(file.Statistics))
-                {
-                    return "has files with deletion vectors but no record count";
-                }
-            }
-            return null;
-        }
-
-        // A top level, non negative integer numRecords
-        private static bool HasRecordCount(string? statistics)
-        {
-            if (statistics == null)
-            {
-                return false;
-            }
-            try
-            {
-                using var document = JsonDocument.Parse(statistics);
-                return document.RootElement.ValueKind == JsonValueKind.Object &&
-                    document.RootElement.TryGetProperty("numRecords", out var recordCount) &&
-                    recordCount.ValueKind == JsonValueKind.Number &&
-                    recordCount.TryGetInt64(out var value) &&
-                    value >= 0;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
+            _validatedHead = _catalog!.Head;
+            _worker?.SetTableId(_catalog.Header?.Metadata.Id);
         }
 
         private async Task SaveData()
@@ -425,6 +495,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             if (!_catalog.IsReady)
             {
                 await _catalog.Validate(readOptions);
+                Validated();
                 validated = true;
             }
             var overwrite = !_firstInsertDone.Value && _writeRelation.Overwrite;
@@ -438,6 +509,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             if (!validated)
             {
                 await _catalog.Validate(readOptions);
+                Validated();
             }
             var table = _catalog.Header;
 

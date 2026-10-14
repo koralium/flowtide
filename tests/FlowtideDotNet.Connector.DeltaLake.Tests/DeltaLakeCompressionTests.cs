@@ -150,12 +150,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
                 conn.Open();
-                using (var setup = conn.CreateCommand())
-                {
-                    var extensionsDir = Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/");
-                    setup.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
-                    setup.ExecuteNonQuery();
-                }
+                DeltaTestKit.LoadDuckDbDelta(conn, Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/"));
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = $"SELECT count(*) FROM delta_scan('{Path.Join(tempPath, "test").Replace("\\", "/")}')";
                 var count = Convert.ToInt64(cmd.ExecuteScalar());

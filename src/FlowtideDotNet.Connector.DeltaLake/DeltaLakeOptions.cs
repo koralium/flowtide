@@ -24,9 +24,8 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public bool OneVersionPerCheckpoint { get; set; } = false;
 
         /// <summary>
-        /// Gets or sets the checkpoint interval in number of commits.
-        /// A checkpoint file (.checkpoint.parquet) is written every time this number of commits is reached.
-        /// Setting this to 0 or a negative value disables checkpoint writing.
+        /// Gets or sets how many published versions may follow the latest checkpoint before a new one is built in the background.
+        /// Setting this to 0 or a negative value turns checkpoint maintenance off.
         /// </summary>
         public int CheckpointInterval { get; set; } = 20;
 
@@ -70,9 +69,38 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public long PruningMemoryBytes { get; set; } = 1024L * 1024 * 1024;
 
         /// <summary>
+        /// Gets or sets how long published versions may wait for a checkpoint before one is built regardless of the interval; null turns the age trigger off.
+        /// </summary>
+        public TimeSpan? CheckpointMaxAge { get; set; } = TimeSpan.FromHours(24);
+
+        /// <summary>
+        /// Gets or sets how many maintenance jobs run at once in the process; the first sink's value applies to every sink.
+        /// </summary>
+        public int MaxConcurrentMaintenanceJobs { get; set; } = 2;
+
+        /// <summary>
+        /// Gets or sets the local folder for maintenance scratch files, ./data/tempFiles/deltalake when null; the first sink's value applies to every sink.
+        /// </summary>
+        public string? MaintenanceTempDirectory { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether, when every commit since version 0 is still there, a checkpoint is rebuilt from the full log instead of building on one the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used.
+        /// </summary>
+        public bool RebuildLegacyCheckpoints { get; set; }
+
+        /// <summary>
         /// The clock for every timestamp the sink writes.
         /// </summary>
         internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
+
+        // Tests use their own maintenance budget instead of the process wide one
+        internal Internal.Maintenance.DeltaMaintenanceBudget? MaintenanceBudgetOverride { get; set; }
+
+        // Called after every CommitVersion with the pending version, the publication outcome and the worker's target
+        internal Action<long?, Internal.Delta.PublishOutcome?, long>? CommitVersionHookForTests { get; set; }
+
+        // Maintenance initialization throws, so tests see the failure contained
+        internal bool MaintenanceInitFailsForTests { get; set; }
 
         // Tests use their own reservation instead of the process wide one
         internal Internal.Catalog.PruningReservation? ReservationOverride { get; set; }

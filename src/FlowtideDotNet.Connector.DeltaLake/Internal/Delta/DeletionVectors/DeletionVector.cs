@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using System.Text.Json.Serialization;
 
@@ -40,11 +41,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 
         private string GetUniqueId()
         {
-            if (Offset == null)
-            {
-                return $"{StorageType}{PathOrInlineDv}";
-            }
-            return $"{StorageType}{PathOrInlineDv}@{Offset}";
+            return DeltaFileKey.DvId(StorageType, PathOrInlineDv, Offset);
         }
 
         public string? GetAbsolutePath()

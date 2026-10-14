@@ -17,6 +17,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
     internal class StringStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
+        // Spark's default prefix for string statistics, in code points
+        internal const int StatisticsPrefixLength = 32;
+
+        // U+10FFFF, the largest UTF-8 sequence, closes a truncated maximum
+        private static readonly byte[] s_tieBreaker = { 0xF4, 0x8F, 0xBF, 0xBF };
+
         private byte[]? _minValue;
         private byte[]? _maxValue;
         private readonly int? _nullCount;
@@ -67,7 +73,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_minValue != null)
             {
-                writer.WriteString(propertyName, _minValue);
+                WriteMinBound(writer, propertyName, _minValue);
             }
         }
 
@@ -75,8 +81,50 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_maxValue != null)
             {
-                writer.WriteString(propertyName, _maxValue);
+                WriteMaxBound(writer, propertyName, _maxValue);
             }
+        }
+
+        // A prefix is at most the value, so it stays a lower bound in UTF-8 byte order
+        internal static void WriteMinBound(Utf8JsonWriter writer, string propertyName, ReadOnlySpan<byte> value)
+        {
+            writer.WriteString(propertyName, Prefix(value, out _));
+        }
+
+        // An upper bound in UTF-8 byte order for every value at most this valid UTF-8 one
+        internal static void WriteMaxBound(Utf8JsonWriter writer, string propertyName, ReadOnlySpan<byte> value)
+        {
+            var prefix = Prefix(value, out var truncated);
+            var rest = value.Slice(prefix.Length);
+            // Untruncated, or already a prefix closed by U+10FFFF, the value is written as it is
+            if (!truncated || rest.SequenceEqual(s_tieBreaker))
+            {
+                writer.WriteString(propertyName, value);
+                return;
+            }
+            // The prefix and U+10FFFF bound every value sharing the prefix, unless U+10FFFF itself follows it; then no maximum is written
+            if (rest.StartsWith(s_tieBreaker))
+            {
+                return;
+            }
+            Span<byte> bounded = stackalloc byte[prefix.Length + s_tieBreaker.Length];
+            prefix.CopyTo(bounded);
+            s_tieBreaker.CopyTo(bounded.Slice(prefix.Length));
+            writer.WriteString(propertyName, bounded);
+        }
+
+        // The first StatisticsPrefixLength code points of a UTF-8 value
+        internal static ReadOnlySpan<byte> Prefix(ReadOnlySpan<byte> value, out bool truncated)
+        {
+            var length = 0;
+            for (int codePoints = 0; codePoints < StatisticsPrefixLength && length < value.Length; codePoints++)
+            {
+                var lead = value[length];
+                length += lead < 0x80 ? 1 : lead < 0xE0 ? 2 : lead < 0xF0 ? 3 : 4;
+            }
+            length = Math.Min(length, value.Length);
+            truncated = length < value.Length;
+            return value.Slice(0, length);
         }
 
         public void WriteNullValue(Utf8JsonWriter writer, string propertyName)

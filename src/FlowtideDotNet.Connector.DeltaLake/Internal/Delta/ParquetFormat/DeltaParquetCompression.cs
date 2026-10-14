@@ -96,19 +96,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         {
             using var builder = new WriterPropertiesBuilder();
             builder.Compression(compression);
-            // Arrow rejects a level for codecs without one, int.MinValue is its default level
-            builder.CompressionLevel(compression switch
-            {
-                Compression.Zstd => 1,
-                Compression.Gzip => 6,
-                Compression.Lz4 => 1,
-                _ => int.MinValue
-            });
+            builder.CompressionLevel(CompressionLevel(compression));
             builder.DataPageVersion(ParquetDataPageVersion.V1);
             builder.EnableDictionary();
             builder.EnableStatistics();
             return builder.Build();
         }
+
+        // Arrow rejects a level for codecs without one, int.MinValue is its default level
+        public static int CompressionLevel(Compression compression) => compression switch
+        {
+            Compression.Zstd => 1,
+            Compression.Gzip => 6,
+            Compression.Lz4 => 1,
+            _ => int.MinValue
+        };
 
         internal static void ResetCacheForTests()
         {
