@@ -11,14 +11,24 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
+using FlowtideDotNet.Storage.Memory;
 using Stowage;
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using System.Buffers;
 using System.Collections.Concurrent;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
+    // Alone, so the process-wide Arrow pool is not moved by other classes
+    [CollectionDefinition(nameof(ArrowPoolCollection), DisableParallelization = true)]
+    public class ArrowPoolCollection
+    {
+    }
+
+    [Collection(nameof(ArrowPoolCollection))]
     public class ParquetSharpReaderTests
     {
         [Fact]
@@ -362,12 +372,147 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return (reader, new DisposeTrackingStorage(inner));
         }
 
+        [Theory]
+        [InlineData("data")]
+        [InlineData("addRemoved")]
+        [InlineData("arrow")]
+        [InlineData("cdc")]
+        public async Task EarlyExitReleasesTheBatchReader(string method)
+        {
+            var (reader, storage) = await SyntheticCdcFile(Enumerable.Repeat("insert", 300_000).ToList());
+            var allocator = GlobalMemoryManager.Instance;
+
+            long released = method switch
+            {
+                "data" => await ReleasedOnEarlyExit(reader.ReadDataFile(storage, "/", "cdc.parquet", EmptyDeleteVector.Instance, null, allocator), b => b.data.Dispose()),
+                "addRemoved" => await ReleasedOnEarlyExit(reader.ReadAddRemovedDataFile(storage, "/", "cdc.parquet", [(0, 1), (299_999, 1)], null, allocator), b =>
+                {
+                    b.data.Dispose();
+                    b.weights.Dispose();
+                }),
+                "arrow" => await ReleasedOnEarlyExit(reader.ReadDataFileArrowFormat(storage, "/", "cdc.parquet"), b => b.Dispose()),
+                _ => await ReleasedOnEarlyExit(reader.ReadCdcFile(storage, "/", "cdc.parquet", null, allocator), b =>
+                {
+                    b.data.Dispose();
+                    b.weights.Dispose();
+                }),
+            };
+
+            // A batch reader left open keeps its decode buffers in the Arrow pool
+            Assert.True(released > 1_000_000, $"Released {released} bytes");
+            Assert.True(Assert.Single(storage.Opened).Disposed);
+        }
+
+        [Fact]
+        public async Task ArrowFormatBatchesOutliveTheReader()
+        {
+            var (reader, storage) = await SyntheticCdcFile(Enumerable.Repeat("insert", 100_000).ToList());
+
+            var batches = new List<RecordBatch>();
+            try
+            {
+                await foreach (var batch in reader.ReadDataFileArrowFormat(storage, "/", "cdc.parquet"))
+                {
+                    batches.Add(batch);
+                }
+                Assert.True(Assert.Single(storage.Opened).Disposed);
+
+                int expected = 0;
+                foreach (var batch in batches)
+                {
+                    var ids = (Int32Array)batch.Column(0);
+                    var names = (StringArray)batch.Column(1);
+                    for (int i = 0; i < batch.Length; i++, expected++)
+                    {
+                        Assert.Equal(expected, ids.GetValue(i));
+                        Assert.Equal($"name_{expected}", names.GetString(i));
+                    }
+                }
+                Assert.Equal(100_000, expected);
+            }
+            finally
+            {
+                foreach (var batch in batches)
+                {
+                    batch.Dispose();
+                }
+            }
+        }
+
+        [Fact]
+        public async Task CdcReadFreesTheBatchItFailedOn()
+        {
+            var changeTypes = Enumerable.Repeat("insert", 100_000).ToList();
+            changeTypes[^1] = "bogus";
+            var (reader, storage) = await SyntheticCdcFile(changeTypes);
+            var allocator = new CountingAllocator();
+
+            var received = new List<CdcBatchResult>();
+            try
+            {
+                await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                {
+                    await foreach (var batch in reader.ReadCdcFile(storage, "/", "cdc.parquet", null, allocator))
+                    {
+                        received.Add(batch);
+                    }
+                });
+            }
+            finally
+            {
+                DisposeAll(received);
+            }
+
+            Assert.NotEmpty(received);
+            Assert.Equal(0, allocator.Outstanding);
+        }
+
+        // Arrow pool bytes freed by disposing the reader after its first batch
+        private static async Task<long> ReleasedOnEarlyExit<T>(IAsyncEnumerable<T> batches, Action<T> dispose)
+        {
+            var pool = ParquetSharp.MemoryPool.GetDefaultMemoryPool();
+            var enumerator = batches.GetAsyncEnumerator();
+            Assert.True(await enumerator.MoveNextAsync());
+            dispose(enumerator.Current);
+            var held = pool.BytesAllocated;
+            await enumerator.DisposeAsync();
+            return held - pool.BytesAllocated;
+        }
+
         private static void DisposeAll(List<CdcBatchResult> batches)
         {
             foreach (var batch in batches)
             {
                 batch.data.Dispose();
                 batch.weights.Dispose();
+            }
+        }
+
+        // Bytes taken through the block paths and not yet freed
+        private sealed class CountingAllocator : IMemoryAllocator
+        {
+            private long _outstanding;
+
+            public long Outstanding => Interlocked.Read(ref _outstanding);
+
+            public IMemoryOwner<byte> Allocate(int size, int alignment)
+            {
+                return GlobalMemoryManager.Instance.Allocate(size, alignment);
+            }
+
+            public IMemoryOwner<byte> Realloc(IMemoryOwner<byte> memory, int size, int alignment)
+            {
+                return GlobalMemoryManager.Instance.Realloc(memory, size, alignment);
+            }
+
+            public void RegisterAllocationToMetrics(int size)
+            {
+                Interlocked.Add(ref _outstanding, size);
+            }
+
+            public void RegisterFreeToMetrics(int size)
+            {
+                Interlocked.Add(ref _outstanding, -size);
             }
         }
 
