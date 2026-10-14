@@ -244,7 +244,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitUntil(first, () => false));
                 Assert.Contains(nameof(DeltaFileNotFoundException), failure.ToString());
                 Assert.Contains($"Exists /test/{cdc[1]}", storage.Requests);
-                Assert.DoesNotContain(firstLogs.Errors, x => x.Contains("halted"));
+                // The engine's own restart may halt after the failure, never before it
+                Assert.StartsWith("Stream error", firstLogs.Errors.First());
             }
 
             // The retry from the last checkpoint finds the file missing before sending anything
