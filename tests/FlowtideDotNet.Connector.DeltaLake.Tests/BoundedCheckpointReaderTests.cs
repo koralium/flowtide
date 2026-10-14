@@ -554,13 +554,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             strings.Append("x");
             innerLists.Append();
             var addType = new StructType(new List<Apache.Arrow.Field>() { new Apache.Arrow.Field("path", StringType.Default, true) });
+            // The batch disposes it too; Arrow frees native buffers only once
+            using var add = new Apache.Arrow.StructArray(addType, 1, new Apache.Arrow.IArrowArray[] { new Apache.Arrow.StringArray.Builder().Append("p").Build() }, Apache.Arrow.ArrowBuffer.Empty, 0);
             var schema = new Apache.Arrow.Schema(new List<Apache.Arrow.Field>()
             {
                 new Apache.Arrow.Field("add", addType, true),
                 new Apache.Arrow.Field("extra", new ListType(inner), true)
             }, null);
             var path = Path.Combine(_directory, "nested-unknown-" + Guid.NewGuid().ToString("N") + ".parquet");
-            using (var batch = new Apache.Arrow.RecordBatch(schema, new Apache.Arrow.IArrowArray[] { new Apache.Arrow.StructArray(addType, 1, new Apache.Arrow.IArrowArray[] { new Apache.Arrow.StringArray.Builder().Append("p").Build() }, Apache.Arrow.ArrowBuffer.Empty, 0), extra.Build() }, 1))
+            using (var batch = new Apache.Arrow.RecordBatch(schema, new Apache.Arrow.IArrowArray[] { add, extra.Build() }, 1))
             using (var writer = new ParquetSharp.Arrow.FileWriter(path, schema))
             {
                 writer.WriteRecordBatch(batch);
