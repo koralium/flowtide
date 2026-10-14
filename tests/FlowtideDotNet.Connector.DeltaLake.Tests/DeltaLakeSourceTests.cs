@@ -20,30 +20,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task ReadDataWithDeletionVector()
         {
             var storageLoc = Files.Of.LocalDisk("../../../testdata");
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadDataWithDeletionVector), storageLoc);
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadDataWithDeletionVector), storageLoc, recordPublished: true);
 
             await stream.StartStream(@"
             INSERT INTO output
             SELECT company, age, name FROM table_with_deletion_logs
             ");
 
-            await stream.WaitForUpdate();
-
-            var actual = stream.GetActualRowsAsVectors();
-
-            Assert.Equal(100, actual.Count);
-
-            await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
-
-            Assert.Equal(99, actual.Count);
-
-            await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
-
-            Assert.Equal(98, actual.Count);
+            Assert.Equal(100, (await stream.WaitForPublished(1)).Count);
+            Assert.Equal(99, (await stream.WaitForPublished(2)).Count);
+            Assert.Equal(98, (await stream.WaitForPublished(3)).Count);
         }
 
         /// <summary>
@@ -54,22 +40,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task ReadDataWithCdcChange()
         {
             var storageLoc = Files.Of.LocalDisk("../../../testdata");
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadDataWithCdcChange), storageLoc);
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadDataWithCdcChange), storageLoc, recordPublished: true);
 
             await stream.StartStream(@"
             INSERT INTO output
             SELECT id, name FROM simple_table_with_cdc
             ");
 
-            await stream.WaitForUpdate();
-
-            var actual = stream.GetActualRowsAsVectors();
-            Assert.Empty(actual);
-
-            await stream.WaitForUpdate();
-            stream.AssertCurrentDataEqual(new[] { new { id = 0, name = "Mario" } });
-            await stream.WaitForUpdate();
-            stream.AssertCurrentDataEqual(new[] { new { id = 0, name = "Mino" } });
+            Assert.Empty(await stream.WaitForPublished(1));
+            await stream.AssertPublishedEqual(2, new[] { new { id = 0, name = "Mario" } });
+            await stream.AssertPublishedEqual(3, new[] { new { id = 0, name = "Mino" } });
         }
 
 
@@ -81,27 +61,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task ReadCountData()
         {
             var storageLoc = Files.Of.LocalDisk("../../../testdata");
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadCountData), storageLoc);
+            DeltaLakeTestStream stream = new DeltaLakeTestStream(nameof(ReadCountData), storageLoc, recordPublished: true);
 
             await stream.StartStream(@"
             INSERT INTO output
             SELECT count(*) FROM table_with_deletion_logs
             ", ignoreSameDataCheck: true);
 
-            await stream.WaitForUpdate();
-
-            var actual = stream.GetActualRowsAsVectors();
-            Assert.Equal(100, actual.Columns[0].GetValueAt(0, default).AsLong);
-
-            await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
-            Assert.Equal(99, actual.Columns[0].GetValueAt(0, default).AsLong);
-
-            await stream.WaitForUpdate();
-
-            actual = stream.GetActualRowsAsVectors();
-            Assert.Equal(98, actual.Columns[0].GetValueAt(0, default).AsLong);
+            Assert.Equal(100, (await stream.WaitForPublished(1)).Columns[0].GetValueAt(0, default).AsLong);
+            Assert.Equal(99, (await stream.WaitForPublished(2)).Columns[0].GetValueAt(0, default).AsLong);
+            Assert.Equal(98, (await stream.WaitForPublished(3)).Columns[0].GetValueAt(0, default).AsLong);
         }
 
         [Fact]

@@ -487,7 +487,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             return new ReservoirPersistentStorage(new Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new MemoryFileProvider()});
         }
 
-        private void OnDataUpdate(EventBatchData actualData)
+        protected virtual void OnDataUpdate(EventBatchData actualData)
         {
             lock (_lock)
             {
