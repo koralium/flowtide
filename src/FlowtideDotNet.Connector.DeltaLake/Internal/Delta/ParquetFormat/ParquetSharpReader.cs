@@ -81,14 +81,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new InvalidOperationException("Initialize must be called before ReadDataFile");
             }
 
-            var stream = await storage.OpenRead(table.Combine(path));
+            using var stream = await storage.OpenRead(table.Combine(path));
 
             if (stream == null)
             {
                 throw new DeltaFileNotFoundException(path);
             }
 
-            ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
+            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
 
             foreach (var encoder in _encoders)
             {
@@ -143,7 +143,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 throw new InvalidOperationException("Could not find _change_type column in batch");
             }
 
-            var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
+            // Must be released before its file reader
+            using var batchReader = fileReader.GetRecordBatchReader(columns: columnsToSelect.ToArray());
 
             int globalIndex = 0;
             Apache.Arrow.RecordBatch batch;

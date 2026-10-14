@@ -15,6 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using Stowage;
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using System.Collections.Concurrent;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -227,6 +228,185 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(1000, rows);
             Assert.True(stream.Reads > 0);
             Assert.Equal(0, stream.ForeignReads);
+        }
+
+        [Theory]
+        [InlineData("complete")]
+        [InlineData("break")]
+        [InlineData("throw")]
+        public async Task CdcReadDisposesItsStream(string end)
+        {
+            var testData = Files.Of.LocalDisk("../../../testdata");
+            var table = await DeltaTransactionReader.ReadTable(testData, "/simple_table_with_cdc");
+            Assert.NotNull(table);
+            var commit = await DeltaTransactionReader.ReadVersionCommit(testData, "/simple_table_with_cdc", 2);
+            Assert.NotNull(commit);
+            var file = Assert.Single(commit.CdcFiles);
+
+            var reader = new ParquetSharpReader();
+            reader.Initialize(table, new List<string> { "id", "name" });
+            var storage = new DisposeTrackingStorage(testData);
+
+            var received = new List<CdcBatchResult>();
+            try
+            {
+                await foreach (var batch in reader.ReadCdcFile(storage, "/simple_table_with_cdc", file.Path!, file.PartitionValues, FlowtideDotNet.Storage.Memory.GlobalMemoryManager.Instance))
+                {
+                    received.Add(batch);
+                    if (end == "break")
+                    {
+                        break;
+                    }
+                    if (end == "throw")
+                    {
+                        throw new InvalidOperationException("consumer failed");
+                    }
+                }
+            }
+            catch (InvalidOperationException) when (end == "throw")
+            {
+            }
+            finally
+            {
+                DisposeAll(received);
+            }
+
+            Assert.NotEmpty(received);
+            Assert.True(Assert.Single(storage.Opened).Disposed);
+        }
+
+        [Fact]
+        public async Task CdcReadDisposesItsStreamWhenALaterBatchFails()
+        {
+            // The bad row is past the first batch, so the read fails after a yield
+            var changeTypes = Enumerable.Repeat("insert", 100_000).ToList();
+            changeTypes[^1] = "bogus";
+            var (reader, storage) = await SyntheticCdcFile(changeTypes);
+
+            var received = new List<CdcBatchResult>();
+            try
+            {
+                await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+                {
+                    await foreach (var batch in reader.ReadCdcFile(storage, "/", "cdc.parquet", null, FlowtideDotNet.Storage.Memory.GlobalMemoryManager.Instance))
+                    {
+                        received.Add(batch);
+                    }
+                });
+            }
+            finally
+            {
+                DisposeAll(received);
+            }
+
+            Assert.NotEmpty(received);
+            Assert.True(Assert.Single(storage.Opened).Disposed);
+        }
+
+        [Fact]
+        public async Task CdcReadDisposesItsStreamWhenTheChangeTypeIsMissing()
+        {
+            var (reader, storage) = await SyntheticCdcFile(null);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            {
+                await foreach (var batch in reader.ReadCdcFile(storage, "/", "cdc.parquet", null, FlowtideDotNet.Storage.Memory.GlobalMemoryManager.Instance))
+                {
+                    batch.data.Dispose();
+                    batch.weights.Dispose();
+                }
+            });
+
+            Assert.True(Assert.Single(storage.Opened).Disposed);
+        }
+
+        // Rows for the cdc test table, no _change_type column when changeTypes is null
+        private static async Task<(ParquetSharpReader reader, DisposeTrackingStorage storage)> SyntheticCdcFile(List<string>? changeTypes)
+        {
+            var table = await DeltaTransactionReader.ReadTable(Files.Of.LocalDisk("../../../testdata"), "/simple_table_with_cdc");
+            Assert.NotNull(table);
+            var reader = new ParquetSharpReader();
+            reader.Initialize(table, new List<string> { "id", "name" });
+
+            int rows = changeTypes?.Count ?? 10;
+            var schemaBuilder = new Apache.Arrow.Schema.Builder()
+                .Field(new Field("id", Int32Type.Default, true))
+                .Field(new Field("name", StringType.Default, true));
+            if (changeTypes != null)
+            {
+                schemaBuilder.Field(new Field("_change_type", StringType.Default, true));
+            }
+            var schema = schemaBuilder.Build();
+
+            var ids = new Int32Array.Builder();
+            var names = new StringArray.Builder();
+            for (int i = 0; i < rows; i++)
+            {
+                ids.Append(i);
+                names.Append($"name_{i}");
+            }
+            var columns = new List<IArrowArray> { ids.Build(), names.Build() };
+            if (changeTypes != null)
+            {
+                columns.Add(new StringArray.Builder().AppendRange(changeTypes).Build());
+            }
+
+            var inner = Files.Of.InternalMemory($"./cdc-{Guid.NewGuid():N}");
+            using (var stream = await inner.OpenWrite("cdc.parquet"))
+            using (var writer = new ParquetSharp.Arrow.FileWriter(stream, schema))
+            {
+                using var batch = new RecordBatch(schema, columns, rows);
+                writer.WriteRecordBatch(batch);
+                writer.Close();
+            }
+            return (reader, new DisposeTrackingStorage(inner));
+        }
+
+        private static void DisposeAll(List<CdcBatchResult> batches)
+        {
+            foreach (var batch in batches)
+            {
+                batch.data.Dispose();
+                batch.weights.Dispose();
+            }
+        }
+
+        // Read streams record their disposal
+        private sealed class DisposeTrackingStorage : HookFileStorage, IFileStorage
+        {
+            public DisposeTrackingStorage(IFileStorage inner) : base(inner)
+            {
+            }
+
+            public ConcurrentQueue<DisposeTrackingStream> Opened { get; } = new ConcurrentQueue<DisposeTrackingStream>();
+
+            async Task<Stream?> IFileStorage.OpenRead(IOPath path, CancellationToken cancellationToken)
+            {
+                var stream = await base.OpenRead(path, cancellationToken);
+                if (stream is not MemoryStream memory)
+                {
+                    return stream;
+                }
+                var tracked = new DisposeTrackingStream(memory.ToArray());
+                await memory.DisposeAsync();
+                Opened.Enqueue(tracked);
+                return tracked;
+            }
+        }
+
+        private sealed class DisposeTrackingStream : MemoryStream
+        {
+            public DisposeTrackingStream(byte[] bytes) : base(bytes, false)
+            {
+            }
+
+            public volatile bool Disposed;
+
+            protected override void Dispose(bool disposing)
+            {
+                Disposed = true;
+                base.Dispose(disposing);
+            }
         }
 
         private sealed class ThreadRecordingStream : MemoryStream
