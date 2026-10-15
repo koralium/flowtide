@@ -53,6 +53,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 types.Add(DeltaToSubstraitTypeVisitor.Instance.Visit(column.Type));
             }
 
+            // A clash keeps inserts working, the source rejects the read
+            if (deltaLakeOptions.IncludeChangeHistory && !columnNames.Any(DeltaHistoryColumns.IsHistoryColumn))
+            {
+                columnNames.Add(DeltaHistoryColumns.Weight);
+                types.Add(new Int64Type());
+                columnNames.Add(DeltaHistoryColumns.ModificationDate);
+                types.Add(new TimestampType());
+                columnNames.Add(DeltaHistoryColumns.Version);
+                types.Add(new Int64Type());
+            }
+
             var schema = new NamedStruct()
             {
                 Names = columnNames,

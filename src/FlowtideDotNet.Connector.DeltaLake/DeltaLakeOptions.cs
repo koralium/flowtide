@@ -19,9 +19,21 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public required IFileStorage StorageLocation { get; set; }
 
         /// <summary>
-        /// Mostly used for testing, allows for full replay of the table
+        /// Mostly used for testing, allows for full replay of the table.
+        /// Starts from the first version like <see cref="StartFromFirstVersion"/> and waits for a checkpoint after each version.
         /// </summary>
         public bool OneVersionPerCheckpoint { get; set; } = false;
+
+        /// <summary>
+        /// Only used for reading, the first start reads the oldest version of the table instead of the latest, then every later version.
+        /// </summary>
+        public bool StartFromFirstVersion { get; set; } = false;
+
+        /// <summary>
+        /// Only used for reading, adds the columns __weight, __modificationDate and __version and sends every change as an insert.
+        /// A deleted row has __weight -1, __modificationDate is the commit time and __version the version of the change.
+        /// </summary>
+        public bool IncludeChangeHistory { get; set; } = false;
 
         /// <summary>
         /// Gets or sets how many published versions may follow the latest checkpoint before a new one is built in the background.
