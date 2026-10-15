@@ -28,25 +28,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly bool oneVersionPerCheckpoint;
         private readonly KeepAliveMemoryFileProvider? stateFiles;
         private readonly List<EventBatchData>? published;
+        private readonly Action<DeltaLakeOptions>? configure;
 
         /// <param name="stateFiles">Shared state files, a new stream over the same files restores the last checkpoint.</param>
         /// <param name="recordPublished">Keeps a copy of every published snapshot for <see cref="WaitForPublished"/>.</param>
-        public DeltaLakeTestStream(string testName, IFileStorage location, bool oneVersionPerCheckpoint = true, KeepAliveMemoryFileProvider? stateFiles = null, bool recordPublished = false) : base(testName)
+        /// <param name="configure">Changes the source options after the defaults are set.</param>
+        public DeltaLakeTestStream(string testName, IFileStorage location, bool oneVersionPerCheckpoint = true, KeepAliveMemoryFileProvider? stateFiles = null, bool recordPublished = false, Action<DeltaLakeOptions>? configure = null) : base(testName)
         {
             this.location = location;
             this.oneVersionPerCheckpoint = oneVersionPerCheckpoint;
             this.stateFiles = stateFiles;
             published = recordPublished ? new List<EventBatchData>() : null;
+            this.configure = configure;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+            connectorManger.AddDeltaLakeSource(CreateOptions());
 
             connectorManger.AddCatalog("catalogtest", c =>
             {
-                c.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+                c.AddDeltaLakeSource(CreateOptions());
             });
+        }
+
+        private DeltaLakeOptions CreateOptions()
+        {
+            var options = new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) };
+            configure?.Invoke(options);
+            return options;
         }
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)

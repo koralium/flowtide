@@ -35,7 +35,9 @@ These are the options that can be configured when adding the delta lake connecto
 | Name                             | Description                                                                                                                  | Default    | Required |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
 | StorageLocation                  | Connection where the tables are located                                                                                      | Null       | Yes      |
-| OneVersionPerCheckpoint          | Only used for reading, it then makes sure that each commit is sent once per checkpoint                                       | False      | No       |
+| OneVersionPerCheckpoint          | Only used for reading, starts from the first version and sends each commit once per checkpoint                               | False      | No       |
+| StartFromFirstVersion            | Only used for reading, the first start reads the oldest version of the table instead of the latest, then every later version | False      | No       |
+| IncludeChangeHistory             | Only used for reading, adds `__weight`, `__modificationDate` and `__version` and sends every change as an insert, see [Change history](#change-history) | False | No |
 | DeltaCheckInterval               | Only used for reading, how often it should be checked if a new commit exists                                                 | 10 seconds | No       |
 | WriteChangeDataOnNewTables       | If new tables created by the connector should enable change feed                                                             | False      | No       |
 | EnableDeletionVectorsOnNewTables | If new tables created by the connector should enable deletion vectors                                                        | True       | No       |
@@ -126,6 +128,52 @@ connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
     OneVersionPerCheckpoint = true
 });
 ```
+
+`StartFromFirstVersion` also starts from the oldest version but does not wait for a checkpoint between versions, so a long log loads faster.
+Without [Change history](#change-history) the versions read together cancel each other out, the result is the same as starting from the latest version.
+
+### Change history
+
+With `IncludeChangeHistory` the source sends the table as a change log, nothing it sends is ever retracted. Three columns are added to every table:
+
+| Column               | Type      | Value                                                                                         |
+| -------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `__weight`           | long      | 1 for an inserted row, -1 for a deleted row, the row itself is sent as an insert                |
+| `__modificationDate` | timestamp | The time of the version the change comes from                                                 |
+| `__version`          | long      | The version the change comes from, the first load uses the version it read                    |
+
+An update is a deleted row and an inserted row in the same version, an update that does not change the selected columns sends nothing.
+The time of a version is the first that exists of `inCommitTimestamp` and `timestamp` in its `commitInfo`, the latest `modificationTime` of an added file
+and the latest `deletionTimestamp` of a removed file, otherwise it is null.
+
+Combine it with `StartFromFirstVersion` to read the whole history of a table:
+
+```csharp
+connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
+    StorageLocation = Files.Of.LocalDisk("./testdata"),
+    IncludeChangeHistory = true,
+    StartFromFirstVersion = true
+});
+```
+
+The table as it was at version 10 is then:
+
+```sql
+INSERT INTO output
+SELECT id, name FROM (
+    SELECT id, name, SUM(__weight) AS total FROM my_delta_lake_table
+    WHERE __version <= 10
+    GROUP BY id, name
+)
+WHERE total > 0
+```
+
+Things to keep in mind:
+
+* Order changes by `__version`, `__modificationDate` comes from the writers' clocks and can go back between versions.
+* The history starts at the oldest version the log still has. After log cleanup that is the oldest checkpoint, earlier changes are gone.
+* State that keeps the history, such as the query above, grows with every version.
+* A table that already has a column with one of these names can not be read with `IncludeChangeHistory`.
 
 ### Sample
 

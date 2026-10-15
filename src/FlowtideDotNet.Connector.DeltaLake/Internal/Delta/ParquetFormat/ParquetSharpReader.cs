@@ -153,7 +153,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 using (batch)
                 {
                     PrimitiveList<int> weights = new PrimitiveList<int>(memoryAllocator);
-                    var changeTypeColumn = batch.Column(changeTypeIndex);
+                    // The batch only holds the selected columns
+                    var changeTypeColumn = batch.Column(batch.Schema.GetFieldIndex("_change_type"));
                     var changeTypes = (Apache.Arrow.StringArray)changeTypeColumn;
 
                     Column[] outColumns = new Column[_encoders.Count];
