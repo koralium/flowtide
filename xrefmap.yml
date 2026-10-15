@@ -10409,6 +10409,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableDeletionVectorsOnNewTables
   nameWithType: DeltaLakeOptions.EnableDeletionVectorsOnNewTables
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
+  name: IncludeChangeHistory
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
+  nameWithType: DeltaLakeOptions.IncludeChangeHistory
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory*
+  name: IncludeChangeHistory
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
+  nameWithType: DeltaLakeOptions.IncludeChangeHistory
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
   name: MaintenanceTempDirectory
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory
@@ -10487,6 +10500,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints
   nameWithType: DeltaLakeOptions.RebuildLegacyCheckpoints
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion
+  name: StartFromFirstVersion
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StartFromFirstVersion
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion
+  nameWithType: DeltaLakeOptions.StartFromFirstVersion
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion*
+  name: StartFromFirstVersion
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StartFromFirstVersion_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StartFromFirstVersion
+  nameWithType: DeltaLakeOptions.StartFromFirstVersion
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.StatsPruningColumns
   name: StatsPruningColumns
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_StatsPruningColumns

@@ -123,7 +123,19 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 </tr>
 <tr>
 <td>OneVersionPerCheckpoint</td>
-<td>Only used for reading, it then makes sure that each commit is sent once per checkpoint</td>
+<td>Only used for reading, starts from the first version and sends each commit once per checkpoint</td>
+<td>False</td>
+<td>No</td>
+</tr>
+<tr>
+<td>StartFromFirstVersion</td>
+<td>Only used for reading, the first start reads the oldest version of the table instead of the latest, then every later version</td>
+<td>False</td>
+<td>No</td>
+</tr>
+<tr>
+<td>IncludeChangeHistory</td>
+<td>Only used for reading, adds <code>__weight</code>, <code>__modificationDate</code> and <code>__version</code> and sends every change as an insert, see <a href="#change-history">Change history</a></td>
 <td>False</td>
 <td>No</td>
 </tr>
@@ -258,6 +270,62 @@ This can be useful in unit tests, but also if one wants to send historic data to
     OneVersionPerCheckpoint = true
 });
 </code></pre>
+<p><code>StartFromFirstVersion</code> also starts from the oldest version but does not wait for a checkpoint between versions, so a long log loads faster.
+Without <a href="#change-history">Change history</a> the versions read together cancel each other out, the result is the same as starting from the latest version.</p>
+<h3 id="change-history">Change history</h3>
+<p>With <code>IncludeChangeHistory</code> the source sends the table as a change log, nothing it sends is ever retracted. Three columns are added to every table:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Type</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>__weight</code></td>
+<td>long</td>
+<td>1 for an inserted row, -1 for a deleted row, the row itself is sent as an insert</td>
+</tr>
+<tr>
+<td><code>__modificationDate</code></td>
+<td>timestamp</td>
+<td>The time of the version the change comes from</td>
+</tr>
+<tr>
+<td><code>__version</code></td>
+<td>long</td>
+<td>The version the change comes from, the first load uses the version it read</td>
+</tr>
+</tbody>
+</table>
+<p>An update is a deleted row and an inserted row in the same version, an update that does not change the selected columns sends nothing.
+The time of a version is the first that exists of <code>inCommitTimestamp</code> and <code>timestamp</code> in its <code>commitInfo</code>, the latest <code>modificationTime</code> of an added file
+and the latest <code>deletionTimestamp</code> of a removed file, otherwise it is null.</p>
+<p>Combine it with <code>StartFromFirstVersion</code> to read the whole history of a table:</p>
+<pre><code class="lang-csharp">connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
+    StorageLocation = Files.Of.LocalDisk(&quot;./testdata&quot;),
+    IncludeChangeHistory = true,
+    StartFromFirstVersion = true
+});
+</code></pre>
+<p>The table as it was at version 10 is then:</p>
+<pre><code class="lang-sql">INSERT INTO output
+SELECT id, name FROM (
+    SELECT id, name, SUM(__weight) AS total FROM my_delta_lake_table
+    WHERE __version &lt;= 10
+    GROUP BY id, name
+)
+WHERE total &gt; 0
+</code></pre>
+<p>Things to keep in mind:</p>
+<ul>
+<li>Order changes by <code>__version</code>, <code>__modificationDate</code> comes from the writers' clocks and can go back between versions.</li>
+<li>The history starts at the oldest version the log still has. After log cleanup that is the oldest checkpoint, earlier changes are gone.</li>
+<li>State that keeps the history, such as the query above, grows with every version.</li>
+<li>A table that already has a column with one of these names can not be read with <code>IncludeChangeHistory</code>.</li>
+</ul>
 <h3 id="sample">Sample</h3>
 <p>There is an example in the samples folder that uses the Delta Lake Source to read data from an azure blob storage.
 To run the example, start the <code>AspireSamples</code> project and select one of:</p>
