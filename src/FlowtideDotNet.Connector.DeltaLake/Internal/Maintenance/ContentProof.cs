@@ -287,6 +287,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 await using var proof = new ProofStream(source, context, proveFirstLine);
                 while (await proof.ReadAsync(buffer, context.Stop) > 0)
                 {
+                    // Reading feeds the hash
                 }
                 return proof.Complete(version);
             }

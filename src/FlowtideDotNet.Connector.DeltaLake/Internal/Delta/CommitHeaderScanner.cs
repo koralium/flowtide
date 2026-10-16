@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         private readonly byte[] _number = new byte[MaxNumberBytes];
         private byte[] _path = Array.Empty<byte>();
 
-        private CommitHeader _header = new CommitHeader();
+        private readonly CommitHeader _header = new CommitHeader();
         private int _depth;
         private ulong _arrays;
         private byte _top;

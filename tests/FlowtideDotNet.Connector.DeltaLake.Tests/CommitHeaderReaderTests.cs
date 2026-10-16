@@ -353,6 +353,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var lines = new BoundedLineReader(new MemoryStream(commit), null, int.MaxValue, skipOversizedCommitInfo: false, streamOwnHeader: true);
             while (await lines.ReadLineAsync())
             {
+                // Drains every line
             }
         }
 
