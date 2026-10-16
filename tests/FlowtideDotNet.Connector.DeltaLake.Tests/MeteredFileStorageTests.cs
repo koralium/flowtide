@@ -516,7 +516,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             budget.TickNow();
             // The job's log listing waits for a token the fake clock never grants
-            MaintenanceBucketsTests.Until(() => buckets.Requests.QueueLength == 1);
+            await MaintenanceBucketsTests.Until(() => buckets.Requests.QueueLength == 1);
             Assert.Empty(hooks.Requests);
 
             await worker.StopAsync(s_timeout);
@@ -572,7 +572,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             budget.TickNow();
             // The job's first storage call waits for a token, so nothing has reached the store
-            MaintenanceBucketsTests.Until(() => buckets.Requests.QueueLength == 1);
+            await MaintenanceBucketsTests.Until(() => buckets.Requests.QueueLength == 1);
             Assert.Empty(hooks.Requests);
             clock.Advance(s_second);
             await worker.CurrentJob.WaitAsync(s_timeout);

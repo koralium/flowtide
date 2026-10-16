@@ -66,10 +66,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Rates no test reaches, for tests about scheduling rather than metering
         internal static MaintenanceBuckets Unthrottled() => new MaintenanceBuckets(TimeProvider.System, 1L << 40, 1L << 40, 1L << 50, 1L << 50);
 
-        // A rendezvous: the condition is observable state another task reaches, never a timing guess
-        internal static void Until(Func<bool> condition)
+        // A rendezvous on state another task reaches, polled without holding the test's thread
+        internal static async Task Until(Func<bool> condition)
         {
-            Assert.True(SpinWait.SpinUntil(condition, s_timeout), "The condition was never reached");
+            var deadline = Environment.TickCount64 + (long)s_timeout.TotalMilliseconds;
+            while (!condition())
+            {
+                Assert.True(Environment.TickCount64 < deadline, "The condition was never reached");
+                await Task.Delay(1);
+            }
         }
 
         [Fact]
@@ -146,7 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             while (!listing.IsCompleted)
             {
-                Until(() => listing.IsCompleted || buckets.Requests.QueueLength == 1);
+                await Until(() => listing.IsCompleted || buckets.Requests.QueueLength == 1);
                 if (!listing.IsCompleted)
                 {
                     clock.Advance(s_second);
@@ -282,7 +287,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var advances = 0;
             while (!write.IsCompleted)
             {
-                Until(() => write.IsCompleted || buckets.Bytes.QueueLength == 1);
+                await Until(() => write.IsCompleted || buckets.Bytes.QueueLength == 1);
                 if (write.IsCompleted)
                 {
                     break;
@@ -308,7 +313,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var reading = read.ReadAsync(buffer).AsTask();
                 while (!reading.IsCompleted)
                 {
-                    Until(() => reading.IsCompleted || buckets.Bytes.QueueLength == 1);
+                    await Until(() => reading.IsCompleted || buckets.Bytes.QueueLength == 1);
                     if (!reading.IsCompleted)
                     {
                         clock.Advance(s_second);
