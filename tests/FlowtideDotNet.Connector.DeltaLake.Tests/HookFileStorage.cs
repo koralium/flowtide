@@ -130,14 +130,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private IOEntry Stamp(IOEntry entry)
         {
             var count = _writes.TryGetValue(entry.Path.Full, out var writes) ? writes : 0;
-            return new IOEntry(entry.Path.Full)
+            var stamped = new IOEntry(entry.Path.Full)
             {
                 Size = entry.Size,
                 MD5 = entry.MD5,
                 CreatedTime = entry.CreatedTime,
-                LastModificationTime = DateTimeOffset.UnixEpoch.AddTicks(count)
+                LastModificationTime = DateTimeOffset.UnixEpoch.AddTicks(count),
+                Tag = entry.Tag
             };
+            foreach (var property in entry.Properties)
+            {
+                stamped.Properties[property.Key] = property.Value;
+            }
+            foreach (var metadata in entry.Metadata)
+            {
+                stamped.Metadata[metadata.Key] = metadata.Value;
+            }
+            return stamped;
         }
+
+        // Holds a write's publication until the returned task completes, so a write can land after a later request
+        public Func<IOPath, Task?>? DeferPublication { get; set; }
+
+        // Called when a deferred write's dispose starts waiting
+        public Action<IOPath>? PublicationParked { get; set; }
 
         private async Task Record(string verb, IOPath? path)
         {
@@ -157,7 +173,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             await Record("OpenWrite", path);
             // The bytes become visible when the stream is disposed, which is when the identity changes
-            Stream stream = new SerializedDisposeStream(await _inner.OpenWrite(path, cancellationToken), _lock, () => CountWrite(path));
+            var deferred = DeferPublication?.Invoke(path);
+            var parked = PublicationParked;
+            Stream stream = new SerializedDisposeStream(await _inner.OpenWrite(path, cancellationToken), _lock, () => CountWrite(path), deferred, deferred != null && parked != null ? () => parked(path) : null);
             var record = RecordWritesOf;
             if (record != null && path.Full.EndsWith(record))
             {
@@ -311,13 +329,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             private readonly Stream _inner;
             private readonly SemaphoreSlim _lock;
             private readonly Action _published;
+            private readonly Task? _deferred;
+            private readonly Action? _parked;
             private int _disposed;
 
-            public SerializedDisposeStream(Stream inner, SemaphoreSlim @lock, Action published)
+            public SerializedDisposeStream(Stream inner, SemaphoreSlim @lock, Action published, Task? deferred, Action? parked)
             {
                 _inner = inner;
                 _lock = @lock;
                 _published = published;
+                _deferred = deferred;
+                _parked = parked;
             }
 
             public override bool CanRead => _inner.CanRead;
@@ -348,6 +370,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
                 {
+                    _parked?.Invoke();
+                    _deferred?.GetAwaiter().GetResult();
                     _lock.Wait();
                     try
                     {
@@ -365,6 +389,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (Interlocked.Exchange(ref _disposed, 1) == 0)
                 {
+                    if (_deferred != null)
+                    {
+                        _parked?.Invoke();
+                        await _deferred;
+                    }
                     await _lock.WaitAsync();
                     try
                     {
@@ -439,6 +468,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     _inner.Dispose();
                 }
             }
+
+            public override async ValueTask DisposeAsync()
+            {
+                await _inner.DisposeAsync();
+                GC.SuppressFinalize(this);
+            }
         }
 
         // Keeps the first bytes, then the process "dies"
@@ -511,6 +546,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     _inner.Dispose();
                 }
             }
+
+            public override async ValueTask DisposeAsync()
+            {
+                if (!_torn)
+                {
+                    await _inner.DisposeAsync();
+                }
+                GC.SuppressFinalize(this);
+            }
         }
     }
 
@@ -518,6 +562,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     internal sealed class LocalDiskHookFileStorage : HookFileStorage, ILocalDiskFileStorage
     {
         public LocalDiskHookFileStorage(IFileStorage inner) : base(inner)
+        {
+        }
+
+        public string ToNativeLocalPath(IOPath path) => ((ILocalDiskFileStorage)Inner).ToNativeLocalPath(path);
+    }
+
+    // A hook wrapper the connector would own, so cleanup classifies the storage below it
+    internal sealed class OwnedHookFileStorage : HookFileStorage, Internal.Maintenance.IConnectorOwnedStorage
+    {
+        public OwnedHookFileStorage(IFileStorage inner) : base(inner)
+        {
+        }
+
+        public static HookFileStorage Over(IFileStorage inner)
+        {
+            return inner is ILocalDiskFileStorage ? new OwnedLocalDiskHookFileStorage(inner) : new OwnedHookFileStorage(inner);
+        }
+    }
+
+    // The owned wrapper over local disk, which keeps native paths reachable
+    internal sealed class OwnedLocalDiskHookFileStorage : HookFileStorage, Internal.Maintenance.IConnectorOwnedStorage, ILocalDiskFileStorage
+    {
+        public OwnedLocalDiskHookFileStorage(IFileStorage inner) : base(inner)
         {
         }
 

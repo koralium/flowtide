@@ -314,6 +314,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var line = "{\"commitInfo\":{\"timestamp\":1},\"commitInfo\":" + lastValue + "}";
             var reader = JsonSerializer.Deserialize<DeltaAction>(line)!;
+            Assert.Null(reader.CommitInfo?.Timestamp);
             Assert.True(reader.CommitInfo?.Data?.ContainsKey("timestamp") != true);
 
             using var encoder = new TailRecordEncoder(new JobMemory());
@@ -391,7 +392,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 "{\"add\":{\"unknown\":{\"VALUE\":null},\"path\":\"a\"}}",
                 "{\"commitInfo\":{\"VALUE\":null}}",
                 "{\"commitInfo\":{\"unknown\":\"VALUE\"}}",
-                "{\"commitInfo\":{\"flowtide.stageId\":\"VALUE\"}}"
+                "{\"commitInfo\":{\"flowtide.stageId\":\"VALUE\"}}",
+                "{\"commitInfo\":{\"operation\":\"VALUE\"}}",
+                "{\"commitInfo\":{\"timestamp\":\"VALUE\",\"flowtide.adoptedAt\":\"VALUE\"}}",
+                "{\"commitInfo\":{\"flowtide.createdFiles\":[\"VALUE\"]}}"
             };
             using var encoder = new TailRecordEncoder(new JobMemory());
             foreach (var template in templates)

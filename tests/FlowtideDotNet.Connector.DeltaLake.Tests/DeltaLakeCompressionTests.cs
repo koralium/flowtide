@@ -22,7 +22,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task NewTablesWriteZstdFiles()
         {
-            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}"));
+            // Owned, so the in-memory store below is classified and its discarded change files are deleted inline
+            var storage = new OwnedHookFileStorage(Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}"));
             DeltaLakeOptions? sinkOptions = null;
             await using var stream = new DeltaLakeSinkStream(nameof(NewTablesWriteZstdFiles), storage, options =>
             {

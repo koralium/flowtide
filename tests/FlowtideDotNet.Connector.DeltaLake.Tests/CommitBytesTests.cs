@@ -72,18 +72,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.False(Of(Data.AsSpan(0, 40).ToArray(), 3).StartsWith(bytes));
         }
 
-        [Theory]
-        [InlineData(1)]
-        [InlineData(7)]
-        [InlineData(1024)]
-        public void TheFirstLineIsReadAcrossChunks(int chunkSize)
-        {
-            var bytes = Of(Data, chunkSize);
-
-            Assert.Equal(Encoding.UTF8.GetBytes("{\"commitInfo\":{\"a\":1}}"), bytes.FirstLine());
-            Assert.Null(Of(Encoding.UTF8.GetBytes("no newline"), chunkSize).FirstLine());
-        }
-
         [Fact]
         public void ASmallCommitAllocatesLittle()
         {

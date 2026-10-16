@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     public class ScratchDirectoryTests : IDisposable
     {
         private readonly ITestOutputHelper _output;
-        private readonly string _root = Path.Combine(AppContext.BaseDirectory, "scratch-tests-" + Guid.NewGuid().ToString("N"));
+        private readonly string _root = Path.Combine(Path.GetTempPath(), "sd-" + ScratchOwners.ShortId());
 
         public ScratchDirectoryTests(ITestOutputHelper output)
         {
@@ -181,7 +181,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // A symbolic link, or a junction where symbolic links need a privilege; false when the OS allows neither
-        private static bool TryLink(string link, string target, out string how)
+        internal static bool TryLink(string link, string target, out string how)
         {
             try
             {

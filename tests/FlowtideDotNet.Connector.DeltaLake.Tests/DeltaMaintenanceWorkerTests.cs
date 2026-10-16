@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         private static readonly DateTimeOffset s_now = new DateTimeOffset(2026, 10, 12, 0, 0, 0, TimeSpan.Zero);
 
-        private readonly string _directory = Path.Combine(AppContext.BaseDirectory, "worker-" + Guid.NewGuid().ToString("N"));
+        private readonly string _directory = Path.Combine(Path.GetTempPath(), "wk-" + ScratchOwners.ShortId());
 
         public void Dispose()
         {
@@ -104,21 +104,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
+        // Unthrottled buckets: thousands of jobs on one budget would otherwise wait on the default rates
         private DeltaMaintenanceBudget NewBudget(int jobs = 2, FakeTimeProvider? clock = null)
         {
-            return new DeltaMaintenanceBudget(new MaintenanceBudgetSettings(jobs, Path.Combine(_directory, "scratch-" + Guid.NewGuid().ToString("N"))), clock ?? new FakeTimeProvider(s_now), manualTick: true);
+            return new DeltaMaintenanceBudget(new MaintenanceBudgetSettings(jobs, Path.Combine(_directory, ScratchOwners.ShortId())), clock ?? new FakeTimeProvider(s_now), manualTick: true)
+            {
+                Buckets = MaintenanceBucketsTests.Unthrottled()
+            };
         }
 
         // cached: the worker knows the table id, which the root cache requires
         private Rig Create(IFileStorage? storage = null, int interval = 2, TimeSpan? maxAge = null, int jobs = 2, DeltaMaintenanceBudget? budget = null, bool stamp = false,
-            FakeTimeProvider? optionsClock = null, bool cached = false)
+            FakeTimeProvider? optionsClock = null, bool cached = false, bool periodic = true)
         {
             var hooks = storage == null ? new HookFileStorage(Files.Of.InternalMemory($"./worker-{Guid.NewGuid():N}")) { StampIdentity = stamp } : storage as HookFileStorage;
             storage ??= hooks!;
             budget ??= NewBudget(jobs);
             optionsClock ??= new FakeTimeProvider(s_now);
             var logs = new CollectingLogger();
-            var worker = new DeltaMaintenanceWorker(budget, new MaintenanceWorkerSettings(interval, maxAge, optionsClock), storage, "t", "t", logs);
+            var worker = new DeltaMaintenanceWorker(budget, new MaintenanceWorkerSettings(interval, maxAge, optionsClock) { PeriodicEnabled = periodic }, storage, "t", "t", logs);
             budget.Register(worker);
             if (cached)
             {
@@ -180,6 +184,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return storage.WriteText("/t/_delta_log/_last_checkpoint", JsonSerializer.Serialize(new LastCheckpointInfo() { Version = version, Size = 3, SizeInBytes = sizeInBytes }));
         }
 
+        // The cleanup's warn-once mask is a single 64-bit word, the worker's covers every byte value
+        [Fact]
+        public void ReasonsAreUniqueAndFitTheCleanupWarningMask()
+        {
+            var values = Enum.GetValues<MaintenanceReason>().Select(x => (int)x).Distinct().ToList();
+            Assert.Equal(Enum.GetNames<MaintenanceReason>().Length, values.Count);
+            Assert.All(values, x => Assert.InRange(x, 0, 63));
+        }
+
         [Fact]
         public async Task IntervalCountsFromTheLastCompletedCheckpoint()
         {
@@ -199,6 +212,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await rig.TickAsync();
             Assert.Equal(new long[] { 5, 7 }, await Checkpoints(rig.Storage));
             Assert.Equal(7, rig.Worker.LastCompleted);
+        }
+
+        [Fact]
+        public async Task InspectionOnlyWorkerOwesNoLagOrAge()
+        {
+            var rig = Create(interval: 2, maxAge: TimeSpan.FromHours(1), periodic: false);
+            await Commits(rig.Storage, 0, 5);
+            rig.Worker.Published(5);
+            await rig.TickAsync();
+            Assert.True(rig.Worker.Inspected);
+            Assert.Null(rig.Worker.OldestOrigin);
+            Assert.Equal(0, rig.Worker.LagVersions);
+
+            await Commits(rig.Storage, 6, 7);
+            rig.Worker.Published(7);
+            await rig.TickAsync();
+            rig.Advance(TimeSpan.FromHours(2));
+            await rig.TickAsync();
+            Assert.Empty(await Checkpoints(rig.Storage));
+            Assert.Null(rig.Worker.OldestOrigin);
+            Assert.Equal(0, rig.Worker.OldestUncheckpointedSeconds);
+            Assert.Equal(0, rig.Worker.LagVersions);
         }
 
         [Fact]

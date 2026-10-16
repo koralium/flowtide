@@ -86,7 +86,7 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public TimeSpan? CheckpointMaxAge { get; set; } = TimeSpan.FromHours(24);
 
         /// <summary>
-        /// Gets or sets how many maintenance jobs run at once in the process; the first sink's value applies to every sink.
+        /// Gets or sets how many checkpoint builds run at once in the process, beside the cleanup jobs' own slots; the first sink's value applies to every sink.
         /// </summary>
         public int MaxConcurrentMaintenanceJobs { get; set; } = 2;
 
@@ -101,6 +101,11 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public bool RebuildLegacyCheckpoints { get; set; }
 
         /// <summary>
+        /// Gets or sets whether a storage this connector does not recognize, such as a custom wrapper, is vouched for as a whole stack: every listing is complete and in order, Stat returns null only for an object that does not exist, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spellings of another object), and a delete removes exactly the named object, which lets cleanup rely on its listings, absence checks, references and deletes.
+        /// </summary>
+        public bool AssumeCompleteStorageListing { get; set; } = false;
+
+        /// <summary>
         /// The clock for every timestamp the sink writes.
         /// </summary>
         internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;
@@ -113,6 +118,15 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         // Maintenance initialization throws, so tests see the failure contained
         internal bool MaintenanceInitFailsForTests { get; set; }
+
+        // The maintenance settings fail to build, as an invalid temp directory does
+        internal bool MaintenanceSettingsFailForTests { get; set; }
+
+        // Stands in for the process wide budget source, which a sink finds and creates its budget from like the real one
+        internal Internal.Maintenance.DeltaMaintenanceBudget.SharedBudget? SharedBudgetForTests { get; set; }
+
+        // Called with every sink these options construct
+        internal Action<Internal.DeltaLakeSink>? SinkCreatedForTests { get; set; }
 
         // Tests use their own reservation instead of the process wide one
         internal Internal.Catalog.PruningReservation? ReservationOverride { get; set; }

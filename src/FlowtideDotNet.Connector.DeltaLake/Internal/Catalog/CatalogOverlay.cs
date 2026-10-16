@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         // The table this commit creates
         public DeltaTable? NewHeader { get; }
 
+        // The commit's own provenance, the catalog's head once it is published
+        public CommitProvenance? Provenance { get; set; }
+
         // An overwrite removes every file the catalog held
         public bool RemoveAll { get; set; }
 

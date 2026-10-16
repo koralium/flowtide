@@ -23,6 +23,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public DeltaCompressionCodec? Codec { get; init; }
 
         public bool RebuildLegacyCheckpoints { get; init; }
+
+        // Interval and age triggered builds
+        public bool PeriodicEnabled { get; init; } = true;
+
+        // Inspection, repair and builds of any kind; off, the worker builds nothing
+        public bool InspectionEnabled { get; init; } = true;
+
+        // How the table's store pages listings, for metering
+        public ListingPaging Paging { get; init; }
+
+        // The classified store is eligible for cleanup and still the configured one; off, a torn rebuild also needs every commit from zero
+        public bool CleanupEligible { get; init; }
+
+        public const long DefaultShortReads = 20_000;
+
+        // Counted reads a short admission allows; a job needing more is promoted to the long gate
+        public long ShortReads { get; init; } = DefaultShortReads;
+
+        // On the options clock from admission; cooperative, for cleanup
+        public TimeSpan ShortDeadline { get; init; } = TimeSpan.FromMinutes(15);
+
+        // On the options clock from admission; cooperative, for every long job
+        public TimeSpan LongDeadline { get; init; } = TimeSpan.FromHours(6);
+
+        // The staged sweep runs at the first hand-off of each sink run, then this long after it completes
+        public TimeSpan SweepPeriod { get; init; } = TimeSpan.FromDays(1);
     }
 
     internal enum OutcomeKind : byte
@@ -33,8 +59,41 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         Declined,
         HeldDecline,
         Failed,
-        Cancelled
+        Cancelled,
+        // A due build cancelled or stopped non-build work, which stays due without backoff
+        Preempted
     }
+
+    /// <summary>
+    /// What a job does; builds come first, then the other kinds in this order.
+    /// </summary>
+    internal enum JobKind : byte
+    {
+        // Inspection, latest-head and demand checkpoint builds
+        Build,
+        // Dead and published stage cleanup, between delete slices
+        StagedSweep,
+        // A delete turn: discard hints first, then the active deletion slice
+        Deletion,
+        // Advance planning or resume
+        Advance,
+        // Orphan sweep planning
+        Orphan
+    }
+
+    internal enum JobState : byte
+    {
+        // At the table lease or a gate
+        Waiting,
+        Executing,
+        // Releasing its admission and applying its outcome
+        Settling
+    }
+
+    /// <summary>
+    /// A checkpoint wanted at exactly this version with this root policy; admission, promotion and retry never change it.
+    /// </summary>
+    internal sealed record BuildDemand(long Target, RootPolicy Root);
 
     /// <summary>
     /// What a worker keeps of its last completed build: fixed-size figures, never the history the build listed.
@@ -60,20 +119,55 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     /// </summary>
     internal sealed class JobRun : JobAdmission
     {
-        public JobRun(long dispatchTarget)
+        private volatile bool _yieldRequested;
+
+        public JobRun(long dispatchTarget, JobKind kind = JobKind.Build, BuildDemand? demand = null)
         {
             DispatchTarget = dispatchTarget;
+            Kind = kind;
+            Demand = demand;
         }
 
         public long DispatchTarget { get; }
 
+        public JobKind Kind { get; }
+
+        // Null for a latest-head build
+        public BuildDemand? Demand { get; }
+
+        // Linked to the worker's stop; a due build cancels it while non-build work waits
+        public required CancellationTokenSource Cancellation { get; init; }
+
         public Task? Task { get; set; }
 
+        // The build target: the demand's own, or the head at the first admission
         public long T { get; set; } = -1;
+
+        // The published version at the first admission
+        public long ObservedHead { get; set; } = -1;
 
         public DateTimeOffset AdmittedAt { get; set; }
 
         public bool Admitted { get; set; }
+
+        // Admitted through the long gate
+        public bool Long { get; set; }
+
+        // On the options clock; null for a short build, which its reads bound instead
+        public DateTimeOffset? Deadline { get; set; }
+
+        // Changed under the worker's lock
+        public JobState State { get; set; }
+
+        // A due build cancelled this non-build job while it waited
+        public bool Preempted { get; set; }
+
+        // A due build asks this executing delete-class job to yield
+        public bool YieldRequested
+        {
+            get => _yieldRequested;
+            set => _yieldRequested = value;
+        }
 
         public long? Covered { get; set; }
 
@@ -92,7 +186,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// Test points of a job: holds awaited at admitted, inspect, build and release, and faults thrown at dispatch, release, slot and outcome.
+    /// Test points of a job: holds awaited at granted, admitted, inspect, build, cleanup, promoted, release and settle, and faults thrown at dispatch, release, slot and outcome.
     /// </summary>
     internal sealed class WorkerHooks
     {
@@ -112,6 +206,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         private static readonly TimeSpan s_backoffBase = TimeSpan.FromMinutes(1);
         private static readonly TimeSpan s_backoffCap = TimeSpan.FromMinutes(30);
+
+        // How long a kind that found nothing to act on waits while it still has work
+        private static readonly TimeSpan s_noWorkFloor = TimeSpan.FromMinutes(1);
 
         private readonly object _sync = new object();
         private readonly DeltaMaintenanceBudget _budget;
@@ -139,18 +236,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private long _weakFloor;
         private bool _weakFloorSeeded;
         private string? _factsTableId;
-        private ulong _warned;
+        private readonly ulong[] _warned = new ulong[4];
         private volatile string? _tableId;
         private int _detached;
         private bool _skipped;
         private BuildMetrics? _lastBuild;
         private double _lastDurationMs;
+        private BuildDemand? _demand;
+        // The target the demand backoff belongs to
+        private long? _demandBackoffTarget;
+        private int _demandFailures;
+        private DateTimeOffset _demandRetryAt = DateTimeOffset.MinValue;
+        private DateTimeOffset? _sweepDueAt;
+        private ControlFence _fence = ControlFence.None;
+        private readonly KindSchedule[] _schedules = { new KindSchedule(), new KindSchedule(), new KindSchedule(), new KindSchedule(), new KindSchedule() };
+
+        // Discard hints a delete turn services before its slice
+        public const int MaxHintsPerTurn = 128;
+
+        private static readonly JobKind[] s_cleanupOrder = { JobKind.Deletion, JobKind.Advance, JobKind.Orphan };
+
+        // A non-build kind's own retry state, which builds never share
+        private sealed class KindSchedule
+        {
+            public int Failures;
+
+            public DateTimeOffset RetryAt = DateTimeOffset.MinValue;
+        }
 
         public DeltaMaintenanceWorker(DeltaMaintenanceBudget budget, MaintenanceWorkerSettings settings, IFileStorage storage, IOPath table, string tableName, ILogger? logger)
         {
             _budget = budget;
             _settings = settings;
-            _storage = storage;
+            // Every maintenance call and byte is charged to the process's buckets; the lease key uses the raw storage
+            _storage = MeteredFileStorage.Wrap(storage, budget.Buckets, settings.Paging);
             _table = table;
             _tableName = tableName;
             _logger = logger ?? NullLogger.Instance;
@@ -170,7 +289,77 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         internal JobOutcome? LastOutcomeForTests { get; private set; }
 
+        // The non-build work this worker schedules; null schedules builds only
+        internal IMaintenanceCleanup? Cleanup { get; init; }
+
+        public BuildDemand? PendingDemand
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _demand;
+                }
+            }
+        }
+
+        // On the budget clock; null until the first hand-off of this run
+        internal DateTimeOffset? SweepDueAt
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _sweepDueAt;
+                }
+            }
+        }
+
+        internal int CleanupFailures(JobKind kind)
+        {
+            lock (_sync)
+            {
+                return _schedules[(int)kind].Failures;
+            }
+        }
+
+        // On the options clock
+        internal DateTimeOffset CleanupRetryAt(JobKind kind)
+        {
+            lock (_sync)
+            {
+                return _schedules[(int)kind].RetryAt;
+            }
+        }
+
+        internal int DemandFailures
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _demandFailures;
+                }
+            }
+        }
+
         public long Target => Interlocked.Read(ref _target);
+
+        // Published versions after the latest checkpoint, 0 when this worker owes no checkpoint
+        public long LagVersions
+        {
+            get
+            {
+                var target = Target;
+                lock (_sync)
+                {
+                    return Owes && target >= 0 ? target - Math.Max(_lastCompleted, -1) : 0;
+                }
+            }
+        }
+
+        // A checkpoint is owed by periodic builds, a due repair or a pending demand, never by inspection alone
+        private bool Owes => _settings.InspectionEnabled && (_settings.PeriodicEnabled || _repairDue != null || _demand != null);
 
         public long LastCompleted
         {
@@ -293,6 +482,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        internal bool CleanupEligible => _settings.CleanupEligible;
+
+        internal ListingPaging Paging => _settings.Paging;
+
+        // What the control records of the latest inspection or build listing forbid
+        public ControlFence Fence
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _fence;
+                }
+            }
+        }
+
         // On the budget clock
         public double OldestUncheckpointedSeconds
         {
@@ -362,6 +567,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             _tableId = tableId;
         }
 
+        /// <summary>
+        /// Asks for a checkpoint at exactly the demand's version and root policy; false while a different demand is pending or when the worker builds nothing.
+        /// </summary>
+        public bool RequestBuild(BuildDemand demand)
+        {
+            lock (_sync)
+            {
+                if (_demand != null)
+                {
+                    return _demand == demand;
+                }
+                if (!_settings.InspectionEnabled)
+                {
+                    return false;
+                }
+                // The same target keeps its retry time
+                if (_demandBackoffTarget != demand.Target)
+                {
+                    _demandBackoffTarget = demand.Target;
+                    _demandFailures = 0;
+                    _demandRetryAt = DateTimeOffset.MinValue;
+                }
+                _demand = demand;
+                return true;
+            }
+        }
+
         public void Tick(DateTimeOffset now)
         {
             Interlocked.Increment(ref WorkerCodeCallsForTests);
@@ -377,34 +609,56 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 {
                     return;
                 }
+                if (Cleanup != null)
+                {
+                    // The staged sweep is due at the first hand-off of this sink run
+                    _sweepDueAt ??= now;
+                }
                 if (_run != null)
                 {
-                    // Queued time never dates versions; only versions seen while the job runs do
-                    if (_run.Admitted && t > _run.T && _aboveOrigin == null)
+                    if (_run.Kind == JobKind.Build)
                     {
-                        _aboveOrigin = now;
+                        // Queued time never dates versions; only versions first seen while the job runs do
+                        if (_run.Admitted && t > Math.Max(Math.Max(_run.T, _run.ObservedHead), _lastCompleted) && _aboveOrigin == null)
+                        {
+                            _aboveOrigin = now;
+                        }
+                    }
+                    else if (_settings.InspectionEnabled)
+                    {
+                        // Cleanup dates versions as an idle tick does, and a due build preempts queued or delete-class work
+                        DateUncovered(t, now);
+                        if (PeriodicDue(t, now) || DemandDue())
+                        {
+                            Preempt(_run);
+                        }
                     }
                     return;
                 }
-                if (_inspected && t <= _lastCompleted && _repairDue == null)
+                var kind = JobKind.Build;
+                BuildDemand? demand = null;
+                var due = false;
+                if (_settings.InspectionEnabled)
                 {
-                    _oldestOrigin = null;
-                    return;
+                    DateUncovered(t, now);
+                    due = PeriodicDue(t, now);
+                    if (!due && DemandDue())
+                    {
+                        due = true;
+                        demand = _demand;
+                    }
                 }
-                _oldestOrigin ??= now;
-                if (_settings.OptionsClock.GetUtcNow() < _retryAt)
+                // Cleanup only after the mandatory inspection, and only when no build is due
+                if (!due && Cleanup != null && (_inspected || !_settings.InspectionEnabled) && NextCleanup(t, now) is { } next)
                 {
-                    return;
+                    due = true;
+                    kind = next;
                 }
-                var due = !_inspected
-                    || _repairDue != null
-                    || t - Math.Max(_lastCompleted, 0) >= _settings.Interval
-                    || (_settings.MaxAge is { } maxAge && now - _oldestOrigin.Value >= maxAge);
                 if (!due)
                 {
                     return;
                 }
-                var run = new JobRun(t);
+                var run = new JobRun(t, kind, demand) { Cancellation = CancellationTokenSource.CreateLinkedTokenSource(_cancellation.Token) };
                 _run = run;
                 try
                 {
@@ -418,7 +672,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 catch (Exception e)
                 {
                     _run = null;
-                    Backoff();
+                    run.Cancellation.Dispose();
+                    BackoffFor(run, default);
                     failure = e;
                 }
             }
@@ -432,116 +687,167 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        // The latest-head build: inspection, a dangling hint, the interval or the age trigger, outside its backoff
+        private bool PeriodicDue(long t, DateTimeOffset now)
+        {
+            if (_inspected && t <= _lastCompleted && _repairDue == null)
+            {
+                return false;
+            }
+            if (_settings.OptionsClock.GetUtcNow() < _retryAt)
+            {
+                return false;
+            }
+            return !_inspected
+                || _repairDue != null
+                || (_settings.PeriodicEnabled && t - Math.Max(_lastCompleted, 0) >= _settings.Interval)
+                || (_settings.PeriodicEnabled && _settings.MaxAge is { } maxAge && _oldestOrigin is { } origin && now - origin >= maxAge);
+        }
+
+        // After the inspection, outside the demand's own backoff
+        private bool DemandDue() => _demand != null && _inspected && _settings.OptionsClock.GetUtcNow() >= _demandRetryAt;
+
+        // The oldest uncovered version's origin, cleared once nothing is uncovered or nothing is owed
+        private void DateUncovered(long t, DateTimeOffset now)
+        {
+            if (_inspected && ((t <= _lastCompleted && _repairDue == null) || !Owes))
+            {
+                _oldestOrigin = null;
+            }
+            else
+            {
+                _oldestOrigin ??= now;
+            }
+        }
+
+        // Due cleanup in priority order at the published head: the staged sweep, a delete turn, advance work, orphan planning
+        private JobKind? NextCleanup(long t, DateTimeOffset now)
+        {
+            var options = _settings.OptionsClock.GetUtcNow();
+            if (_sweepDueAt is { } sweepDue && sweepDue <= now && options >= _schedules[(int)JobKind.StagedSweep].RetryAt)
+            {
+                return JobKind.StagedSweep;
+            }
+            foreach (var kind in s_cleanupOrder)
+            {
+                if (options >= _schedules[(int)kind].RetryAt && Cleanup!.IsDue(kind, t, options))
+                {
+                    return kind;
+                }
+            }
+            return null;
+        }
+
+        // Cancels waiting cleanup, which rejoins later without backoff, and asks executing delete-class work to yield
+        private static void Preempt(JobRun run)
+        {
+            if (run.State == JobState.Waiting)
+            {
+                if (!run.Preempted)
+                {
+                    run.Preempted = true;
+                    run.Cancellation.Cancel();
+                }
+            }
+            else if (run.State == JobState.Executing && IsDeleteClass(run.Kind))
+            {
+                run.YieldRequested = true;
+            }
+        }
+
+        private static bool IsDeleteClass(JobKind kind) => kind is JobKind.StagedSweep or JobKind.Deletion;
+
+        private static AdmissionClass ClassOf(JobRun run)
+        {
+            if (IsDeleteClass(run.Kind))
+            {
+                return run.Long ? AdmissionClass.LongDelete : AdmissionClass.Delete;
+            }
+            return run.Long ? AdmissionClass.Long : AdmissionClass.Ordinary;
+        }
+
+        // None for a short build, which its reads bound
+        private DateTimeOffset? DeadlineOf(JobRun run)
+        {
+            if (run.Kind == JobKind.Build && !run.Long)
+            {
+                return null;
+            }
+            return _settings.OptionsClock.GetUtcNow() + (run.Long ? _settings.LongDeadline : _settings.ShortDeadline);
+        }
+
         private async Task RunJobAsync(JobRun run)
         {
-            var token = _cancellation.Token;
+            var token = run.Cancellation.Token;
             var clockStarted = _settings.OptionsClock.GetTimestamp();
             try
             {
-                await _budget.AdmitAsync(_leaseKey, run, token);
-                // The duration a build is judged by starts at admission, not in the queue
-                clockStarted = _settings.OptionsClock.GetTimestamp();
-                lock (_sync)
+                while (true)
                 {
-                    if (_stopped)
-                    {
-                        throw new OperationCanceledException(token);
-                    }
-                    run.T = Interlocked.Read(ref _target);
-                    run.AdmittedAt = _budget.Clock.GetUtcNow();
-                    run.Admitted = true;
-                    _aboveOrigin = null;
-                    run.TableId = _tableId;
-                    // Under the table lease, so every root an earlier worker cached is below the floor and a same-version repair is read fresh
-                    if (!_weakFloorSeeded)
-                    {
-                        _weakFloorSeeded = true;
-                        _weakFloor = _budget.NextFactSequence();
-                    }
-                    // Facts recorded under another table id no longer apply
-                    if (run.TableId != _factsTableId)
-                    {
-                        _memo = null;
-                        _unsupportedRoots.Clear();
-                        _factsTableId = run.TableId;
-                    }
-                }
-                await HoldAsync("admitted");
-                // A new job retries the pending deletions before it reserves anything
-                run.Scratch = _budget.Scratch.CreateJob();
-                LastJobFolderForTests = run.Scratch.DirectoryPath;
-                foreach (var (reason, detail) in _budget.Scratch.TakeNotes())
-                {
-                    Warn(reason, detail, null);
-                }
-
-                bool inspected;
-                lock (_sync)
-                {
-                    inspected = _inspected;
-                }
-                if (!inspected)
-                {
-                    await HoldAsync("inspect");
-                    var inspection = await InspectAsync(run, token);
+                    await _budget.AdmitAsync(_leaseKey, run, ClassOf(run), token);
+                    await HoldAsync("granted");
+                    // The duration a job is judged by starts at admission, not in the queue
+                    clockStarted = _settings.OptionsClock.GetTimestamp();
                     lock (_sync)
                     {
-                        _lastCompleted = inspection.LastCompleted;
-                        _inspected = true;
-                        _repairDue = inspection.RepairDue;
-                        run.Covered = inspection.LastCompleted;
-                        DateCoverage(run, inspection.LastCompleted);
-                        if (inspection.RepairDeclined is { } declined)
+                        // Preempted after the grant: the admission goes back in the release below
+                        if (_stopped || run.Preempted)
                         {
-                            run.Outcome = new JobOutcome(OutcomeKind.Declined, MaintenanceReason.TornRepairDeclined, $"{declined.Reason}: {declined.Detail}");
+                            throw new OperationCanceledException(token);
                         }
-                        else if (!DueAfterInspection(run))
+                        run.State = JobState.Executing;
+                        run.Deadline = DeadlineOf(run);
+                        if (!run.Admitted)
                         {
-                            run.Outcome = new JobOutcome(OutcomeKind.NoWork);
+                            AdmitFirst(run);
                         }
                     }
-                }
-
-                DeclineMemo? memo;
-                lock (_sync)
-                {
-                    memo = run.Outcome == null ? _memo : null;
-                }
-                if (memo != null)
-                {
-                    var check = await memo.CheckAsync(_storage, _table, run.T, _settings.OptionsClock.GetUtcNow(), run.Memory, _budget.Transfer, token);
-                    if (check == MemoCheck.Holds)
+                    await HoldAsync("admitted");
+                    // A new job retries the pending deletions before it reserves anything
+                    run.Scratch = _budget.Scratch.CreateJob();
+                    LastJobFolderForTests = run.Scratch.DirectoryPath;
+                    foreach (var (reason, detail) in _budget.Scratch.TakeNotes())
                     {
-                        run.Outcome = new JobOutcome(OutcomeKind.HeldDecline, memo.Reason, memo.Detail) { Memo = memo };
+                        Warn(reason, detail, null);
                     }
-                    else
+                    try
                     {
-                        lock (_sync)
+                        if (run.Kind == JobKind.Build)
                         {
-                            _memo = null;
-                            if (check == MemoCheck.ExpiredWeak)
-                            {
-                                // Weak facts recorded before now no longer apply, so the attempt reads fresh bytes
-                                _weakFloor = _budget.NextFactSequence();
-                                foreach (var weak in _unsupportedRoots.Keys.Where(x => !x.Strong).ToList())
-                                {
-                                    _unsupportedRoots.Remove(weak);
-                                }
-                            }
+                            await BuildJobAsync(run, token);
+                        }
+                        else
+                        {
+                            await CleanupJobAsync(run, token);
+                        }
+                        break;
+                    }
+                    catch (LongAdmissionNeededException)
+                    {
+                    }
+                    // Promoted: the admission goes back and the same target and policy wait at the long gate
+                    run.Scratch?.Dispose();
+                    run.Scratch = null;
+                    run.Slot?.Dispose();
+                    run.Slot = null;
+                    run.Lease?.Dispose();
+                    run.Lease = null;
+                    lock (_sync)
+                    {
+                        run.Long = true;
+                        run.State = JobState.Waiting;
+                        // Cleanup asked to yield, or facing a due build, gives way before it waits again
+                        if (run.Kind != JobKind.Build && (run.YieldRequested || (_settings.InspectionEnabled && (PeriodicDue(Interlocked.Read(ref _target), _budget.Clock.GetUtcNow()) || DemandDue()))))
+                        {
+                            Preempt(run);
                         }
                     }
-                }
-
-                if (run.Outcome == null)
-                {
-                    await HoldAsync("build");
-                    var result = await BuildAsync(run, run.T, token);
-                    run.Outcome = OutcomeOf(result);
+                    await HoldAsync("promoted");
                 }
             }
-            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            catch (OperationCanceledException) when (token.IsCancellationRequested || run.Preempted)
             {
-                run.Outcome = new JobOutcome(OutcomeKind.Cancelled);
+                run.Outcome = new JobOutcome(run.Preempted && !_cancellation.IsCancellationRequested ? OutcomeKind.Preempted : OutcomeKind.Cancelled);
             }
             catch (Exception e)
             {
@@ -549,6 +855,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             finally
             {
+                lock (_sync)
+                {
+                    run.State = JobState.Settling;
+                }
                 // Each release step contains its own failure, so settlement and the lease release always happen
                 Exception? releaseFailure = null;
                 try
@@ -572,6 +882,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 try
                 {
+                    run.LongSlot?.Dispose();
+                }
+                catch (Exception e)
+                {
+                    releaseFailure ??= e;
+                }
+                try
+                {
                     run.Lease?.Dispose();
                 }
                 catch (Exception e)
@@ -588,6 +906,170 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 Settle(run, releaseFailure, _settings.OptionsClock.GetElapsedTime(clockStarted));
             }
+        }
+
+        // The first admission fixes the target: the demand's own, or the head now
+        private void AdmitFirst(JobRun run)
+        {
+            run.ObservedHead = Interlocked.Read(ref _target);
+            run.T = run.Demand?.Target ?? run.ObservedHead;
+            run.AdmittedAt = _budget.Clock.GetUtcNow();
+            run.Admitted = true;
+            run.TableId = _tableId;
+            if (run.Kind != JobKind.Build)
+            {
+                return;
+            }
+            _aboveOrigin = null;
+            // Under the table lease, so every root an earlier worker cached is below the floor and a same-version repair is read fresh
+            if (!_weakFloorSeeded)
+            {
+                _weakFloorSeeded = true;
+                _weakFloor = _budget.NextFactSequence();
+            }
+            // Facts recorded under another table id no longer apply
+            if (run.TableId != _factsTableId)
+            {
+                _memo = null;
+                _unsupportedRoots.Clear();
+                _factsTableId = run.TableId;
+            }
+            // Versions first seen while a demand was queued date from its admission
+            if (run.Demand != null && run.ObservedHead > _lastCompleted)
+            {
+                _oldestOrigin ??= run.AdmittedAt;
+            }
+        }
+
+        private async Task BuildJobAsync(JobRun run, CancellationToken token)
+        {
+            bool inspected;
+            lock (_sync)
+            {
+                inspected = _inspected;
+            }
+            if (!inspected)
+            {
+                await HoldAsync("inspect");
+                var inspection = await InspectAsync(run, token);
+                if (inspection.HintKept is { } kept)
+                {
+                    Warn(MaintenanceReason.CleanupGate, kept, null);
+                }
+                lock (_sync)
+                {
+                    _lastCompleted = inspection.LastCompleted;
+                    _inspected = true;
+                    _repairDue = inspection.RepairDue;
+                    run.Covered = inspection.LastCompleted;
+                    DateCoverage(run, inspection.LastCompleted);
+                    if (inspection.RepairDeclined is { } declined)
+                    {
+                        run.Outcome = new JobOutcome(OutcomeKind.Declined, MaintenanceReason.TornRepairDeclined, $"{declined.Reason}: {declined.Detail}");
+                    }
+                    else if (run.Demand == null && !DueAfterInspection(run))
+                    {
+                        run.Outcome = new JobOutcome(OutcomeKind.NoWork);
+                    }
+                }
+            }
+
+            // A demand is decided by its own build, never by the latest-head memo
+            DeclineMemo? memo;
+            lock (_sync)
+            {
+                memo = run.Outcome == null && run.Demand == null ? _memo : null;
+            }
+            if (memo != null)
+            {
+                var check = await memo.CheckAsync(_storage, _table, run.T, _settings.OptionsClock.GetUtcNow(), run.Memory, _budget.Transfer, token);
+                if (check == MemoCheck.Holds)
+                {
+                    run.Outcome = new JobOutcome(OutcomeKind.HeldDecline, memo.Reason, memo.Detail) { Memo = memo };
+                }
+                else
+                {
+                    lock (_sync)
+                    {
+                        _memo = null;
+                        if (check == MemoCheck.ExpiredWeak)
+                        {
+                            // Weak facts recorded before now no longer apply, so the attempt reads fresh bytes
+                            _weakFloor = _budget.NextFactSequence();
+                            foreach (var weak in _unsupportedRoots.Keys.Where(x => !x.Strong).ToList())
+                            {
+                                _unsupportedRoots.Remove(weak);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (run.Outcome == null)
+            {
+                await HoldAsync("build");
+                var result = await BuildAsync(run, run.T, run.Demand?.Root ?? RootPolicy.Auto, token);
+                if (result.Status == BuildStatus.NeedsLongAdmission)
+                {
+                    if (run.Long)
+                    {
+                        throw new MaintenanceJobException(MaintenanceReason.Unexpected, "A build asked for long admission again");
+                    }
+                    throw new LongAdmissionNeededException();
+                }
+                run.Outcome = OutcomeOf(result);
+            }
+        }
+
+        private async Task CleanupJobAsync(JobRun run, CancellationToken token)
+        {
+            var cleanup = Cleanup!;
+            var context = new CleanupContext(run, _settings.OptionsClock)
+            {
+                Kind = run.Kind,
+                Long = run.Long,
+                ReadLimit = run.Long ? long.MaxValue : _settings.ShortReads,
+                Deadline = run.Deadline!.Value,
+                Head = run.ObservedHead,
+                TableId = run.TableId,
+                Scratch = run.Scratch!,
+                Memory = run.Memory,
+                Transfer = _budget.Transfer,
+                Stop = token
+            };
+            CleanupResult result;
+            var drained = 0;
+            try
+            {
+                await HoldAsync("cleanup");
+                var drain = run.Kind == JobKind.Deletion ? await cleanup.DrainHintsAsync(context, MaxHintsPerTurn) : default;
+                drained = drain.Drained;
+                // A drain too large for short admission promotes the whole turn before its slice
+                result = drain.NeedsLongAdmission ? CleanupResult.Promote : await cleanup.RunAsync(run.Kind, context);
+            }
+            finally
+            {
+                // Submitted operations settle before the admission is released
+                await context.SettleAsync();
+            }
+            if (result.NeedsLongAdmission)
+            {
+                // A second promotion is a defect
+                if (run.Long)
+                {
+                    throw new MaintenanceJobException(MaintenanceReason.Unexpected, $"{run.Kind} work asked for long admission again");
+                }
+                throw new LongAdmissionNeededException();
+            }
+            run.Outcome = (context.Stopped, result.Kind) switch
+            {
+                (_, OutcomeKind.Failed) => new JobOutcome(result.Kind, result.Reason, result.Detail),
+                (IssuanceStop.Deadline, _) => new JobOutcome(OutcomeKind.Declined, MaintenanceReason.JobDeadline, $"{run.Kind} work stopped issuing at its {(run.Long ? "long" : "short")} deadline"),
+                (IssuanceStop.BuildDue, _) => new JobOutcome(OutcomeKind.Preempted),
+                // Hints the drain serviced are work even without a slice
+                (_, OutcomeKind.NoWork) when drained > 0 => new JobOutcome(OutcomeKind.Completed),
+                _ => new JobOutcome(result.Kind, result.Reason, result.Detail)
+            };
         }
 
         private async Task HoldAsync(string point)
@@ -615,15 +1097,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     HooksForTests?.Fault?.Invoke("outcome");
                     if (run.Admitted)
                     {
-                        ApplyOutcome(run, Interlocked.Read(ref _target), duration);
-                        _lastDurationMs = duration.TotalMilliseconds;
+                        if (run.Kind != JobKind.Build)
+                        {
+                            ApplyCleanupOutcome(run, duration);
+                        }
+                        else
+                        {
+                            if (run.Demand != null)
+                            {
+                                ApplyDemandOutcome(run, Interlocked.Read(ref _target), duration);
+                            }
+                            else
+                            {
+                                ApplyOutcome(run, Interlocked.Read(ref _target), duration);
+                            }
+                            _lastDurationMs = duration.TotalMilliseconds;
+                        }
                     }
                 }
                 catch (Exception e)
                 {
                     // Settlement is never skipped
                     settleFailure = e;
-                    Backoff();
+                    BackoffFor(run, default);
                 }
                 finally
                 {
@@ -631,6 +1127,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     LastOutcomeForTests = outcome == null ? null : outcome with { Build = null, Error = null, Detail = DeclineMemo.Cut(outcome.Detail) };
                     _aboveOrigin = null;
                     run.Settled = true;
+                    // Under the lock a tick cancels it with
+                    run.Cancellation.Dispose();
                     if (run.Detached)
                     {
                         _detached--;
@@ -648,10 +1146,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     case OutcomeKind.Declined:
                     case OutcomeKind.HeldDecline:
                     case OutcomeKind.Failed:
+                    // A valid checkpoint whose hint a control record kept
+                    case OutcomeKind.AlreadyValid when outcome.Reason == MaintenanceReason.CleanupGate:
                         Warn(outcome.Reason, outcome.Detail, outcome.Error);
                         break;
                 }
-                if (_settings.MaxAge is { } maxAge && duration > maxAge && outcome.Kind is OutcomeKind.Completed)
+                if (_settings.MaxAge is { } maxAge && duration > maxAge && outcome.Kind is OutcomeKind.Completed && run.Kind == JobKind.Build)
                 {
                     Warn(MaintenanceReason.SlowBuild, $"A checkpoint build took {duration}, longer than the {maxAge} age limit", null);
                 }
@@ -690,7 +1190,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 return true;
             }
-            if (run.T <= _lastCompleted)
+            if (run.T <= _lastCompleted || !_settings.PeriodicEnabled)
             {
                 return false;
             }
@@ -772,6 +1272,139 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 case OutcomeKind.Cancelled:
                     break;
             }
+            if (_inspected && !Owes)
+            {
+                _oldestOrigin = null;
+            }
+        }
+
+        // Completion at the actual target; the frontier only rises and uncovered versions keep their origin
+        private void ApplyDemandOutcome(JobRun run, long t2, TimeSpan duration)
+        {
+            var outcome = run.Outcome!;
+            var coveredAll = outcome.Kind is OutcomeKind.Completed or OutcomeKind.AlreadyValid && run.T >= run.ObservedHead;
+            // Versions first seen while it ran stay dated from then unless it covered them
+            if (!coveredAll && _aboveOrigin is { } seen)
+            {
+                _oldestOrigin ??= seen;
+            }
+            if (outcome.Build != null)
+            {
+                foreach (var stale in outcome.Build.Stale)
+                {
+                    _unsupportedRoots.Remove(stale);
+                }
+            }
+            switch (outcome.Kind)
+            {
+                case OutcomeKind.Completed:
+                case OutcomeKind.AlreadyValid:
+                    // Covering all it observed, it dates the rest as a latest-head build does
+                    if (run.T >= run.ObservedHead)
+                    {
+                        if (t2 > run.T && _aboveOrigin == null)
+                        {
+                            // A publication after the last tick is dated at completion
+                            _aboveOrigin = _budget.Clock.GetUtcNow();
+                        }
+                        _oldestOrigin = t2 > run.T ? _aboveOrigin : null;
+                    }
+                    _lastCompleted = Math.Max(_lastCompleted, run.T);
+                    if (_repairDue != null && run.T >= _repairDue)
+                    {
+                        _repairDue = null;
+                    }
+                    if (outcome.Build != null)
+                    {
+                        _lastBuild = BuildMetrics.Of(outcome.Build);
+                    }
+                    if (_demand == run.Demand)
+                    {
+                        _demand = null;
+                        _demandFailures = 0;
+                        _demandRetryAt = DateTimeOffset.MinValue;
+                    }
+                    break;
+                case OutcomeKind.Declined:
+                case OutcomeKind.HeldDecline:
+                    // Final for this request; the target keeps its retry time
+                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
+                    if (_demand == run.Demand)
+                    {
+                        _demand = null;
+                    }
+                    break;
+                case OutcomeKind.Failed:
+                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
+                    if (outcome.Build?.RootIdentity is { } root && outcome.Reason is MaintenanceReason.RootDecodeFailure or MaintenanceReason.SidecarRoot)
+                    {
+                        AddUnsupported(root, _budget.NextFactSequence());
+                    }
+                    break;
+            }
+        }
+
+        // Only the kind's own due and retry state; never build dating, backoff or memo
+        private void ApplyCleanupOutcome(JobRun run, TimeSpan duration)
+        {
+            var schedule = _schedules[(int)run.Kind];
+            var kind = run.Outcome!.Kind;
+            if (run.Kind == JobKind.StagedSweep)
+            {
+                // Due a period after any attempt that ran; a failure backs off and preempted work stays due
+                switch (kind)
+                {
+                    case OutcomeKind.Failed:
+                        Backoff(ref schedule.Failures, ref schedule.RetryAt, duration);
+                        break;
+                    case OutcomeKind.Preempted:
+                    case OutcomeKind.Cancelled:
+                        break;
+                    default:
+                        schedule.Failures = 0;
+                        schedule.RetryAt = DateTimeOffset.MinValue;
+                        _sweepDueAt = _budget.Clock.GetUtcNow() + _settings.SweepPeriod;
+                        break;
+                }
+                return;
+            }
+            switch (kind)
+            {
+                case OutcomeKind.Completed:
+                case OutcomeKind.AlreadyValid:
+                    schedule.Failures = 0;
+                    schedule.RetryAt = DateTimeOffset.MinValue;
+                    break;
+                case OutcomeKind.NoWork:
+                    schedule.Failures = 0;
+                    // Due work it could not act on waits the floor
+                    var options = _settings.OptionsClock.GetUtcNow();
+                    schedule.RetryAt = Cleanup!.IsDue(run.Kind, Interlocked.Read(ref _target), options) ? options + s_noWorkFloor : DateTimeOffset.MinValue;
+                    break;
+                case OutcomeKind.Declined:
+                case OutcomeKind.HeldDecline:
+                case OutcomeKind.Failed:
+                    Backoff(ref schedule.Failures, ref schedule.RetryAt, duration);
+                    break;
+            }
+        }
+
+        // Latest-head builds, the demand and each cleanup kind back off separately
+        private void BackoffFor(JobRun run, TimeSpan spent)
+        {
+            if (run.Kind != JobKind.Build)
+            {
+                var schedule = _schedules[(int)run.Kind];
+                Backoff(ref schedule.Failures, ref schedule.RetryAt, spent);
+            }
+            else if (run.Demand != null)
+            {
+                Backoff(ref _demandFailures, ref _demandRetryAt, spent);
+            }
+            else
+            {
+                Backoff(spent);
+            }
         }
 
         private void AddUnsupported(ObjectIdentity identity, long sequence)
@@ -785,11 +1418,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // On the options clock: 1 minute doubling to 30, the exponent capped
         // After a failure or a decline nothing holds, the retry also waits three times as long as the attempt took, so such a table cannot keep a job slot busy
-        private void Backoff(TimeSpan spent = default)
+        private void Backoff(TimeSpan spent = default) => Backoff(ref _failures, ref _retryAt, spent);
+
+        private void Backoff(ref int failures, ref DateTimeOffset retryAt, TimeSpan spent)
         {
-            _failures++;
-            var delay = TimeSpan.FromTicks(Math.Max(Math.Min(s_backoffBase.Ticks << Math.Min(_failures - 1, 5), s_backoffCap.Ticks), spent.Ticks * 3));
-            _retryAt = _settings.OptionsClock.GetUtcNow() + delay;
+            failures++;
+            var delay = TimeSpan.FromTicks(Math.Max(Math.Min(s_backoffBase.Ticks << Math.Min(failures - 1, 5), s_backoffCap.Ticks), spent.Ticks * 3));
+            retryAt = _settings.OptionsClock.GetUtcNow() + delay;
         }
 
         private static JobOutcome OutcomeOf(BuildResult result)
@@ -815,7 +1450,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             };
         }
 
-        private sealed record Inspection(long LastCompleted, long? RepairDue, BuildResult? RepairDeclined);
+        // HintKept: why a control record kept the hint below a valid checkpoint
+        private sealed record Inspection(long LastCompleted, long? RepairDue, BuildResult? RepairDeclined, string? HintKept);
 
         /// <summary>
         /// Classifies the newest checkpoint at or below T once per run; nothing above T is considered.
@@ -824,10 +1460,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         {
             var transport = new StowageCheckpointTransport(_storage, _table);
             var segment = await transport.ListAsync(cancellationToken);
+            // Control records come from the same listing, before the hint is trusted or written
+            var fence = ControlFence.Of(segment.Listing);
+            lock (_sync)
+            {
+                _fence = fence;
+            }
             var hint = await transport.ReadHintAsync(cancellationToken);
             var target = run.T;
             long lastCompleted = -1;
             BuildResult? repairDeclined = null;
+            string? hintKept = null;
             var checkpoint = segment.Listing.Checkpoints.FirstOrDefault(x => x.Version <= target);
             if (checkpoint != null)
             {
@@ -846,7 +1489,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                             // The hint is never lowered, and is repaired at the same version
                             if (CheckpointInspector.HintNeedsWrite(hint, checkpoint.Version, inspected.Rows, inspected.Length))
                             {
-                                await transport.WriteHintAsync(new LastCheckpointInfo() { Version = checkpoint.Version, Size = inspected.Rows, SizeInBytes = inspected.Length }, cancellationToken);
+                                if (fence.AllowsHint(checkpoint.Version))
+                                {
+                                    await transport.WriteHintAsync(new LastCheckpointInfo() { Version = checkpoint.Version, Size = inspected.Rows, SizeInBytes = inspected.Length }, cancellationToken);
+                                }
+                                else
+                                {
+                                    hintKept = $"The hint stays below checkpoint {checkpoint.Version}: {fence.Detail}";
+                                }
                             }
                             break;
                         case CheckpointClass.Unsupported:
@@ -854,9 +1504,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                             lastCompleted = checkpoint.Version;
                             break;
                         case CheckpointClass.Torn:
-                            var rebuilt = await BuildAsync(run, checkpoint.Version, cancellationToken);
+                            var rebuilt = await BuildAsync(run, checkpoint.Version, RootPolicy.Auto, cancellationToken);
                             switch (rebuilt.Status)
                             {
+                                case BuildStatus.NeedsLongAdmission:
+                                    // The whole inspection runs again under long admission
+                                    throw new LongAdmissionNeededException();
                                 case BuildStatus.Completed:
                                 case BuildStatus.AlreadyValid:
                                     lastCompleted = checkpoint.Version;
@@ -878,7 +1531,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             // Kernel fails on a hint with no complete checkpoint at or after it, so that hint is due for repair
             long? repairDue = CheckpointInspector.IsDangling(hint, segment, target) ? hint!.Version : null;
-            return new Inspection(lastCompleted, repairDue, repairDeclined);
+            return new Inspection(lastCompleted, repairDue, repairDeclined, hintKept);
         }
 
         // What a fetch may read from the cache; nothing without a table id
@@ -890,7 +1543,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
-        private Task<BuildResult> BuildAsync(JobRun run, long version, CancellationToken cancellationToken)
+        private async Task<BuildResult> BuildAsync(JobRun run, long version, RootPolicy root, CancellationToken cancellationToken)
         {
             HashSet<ObjectIdentity> known;
             long weakFloor;
@@ -911,16 +1564,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Clock = _settings.OptionsClock,
                 Codec = _settings.Codec,
                 RebuildLegacyCheckpoints = _settings.RebuildLegacyCheckpoints,
+                CleanupEligible = _settings.CleanupEligible,
                 PublishFaultForTests = HooksForTests?.PublishFault
             };
-            return CheckpointBuilder.BuildAsync(context, new BuildRequest() { Version = version, TableId = run.TableId, KnownUnsupported = known, WeakFloor = weakFloor }, cancellationToken);
+            var request = new BuildRequest()
+            {
+                Version = version,
+                Root = root,
+                TableId = run.TableId,
+                KnownUnsupported = known,
+                WeakFloor = weakFloor,
+                ReadLimit = run.Long ? null : _settings.ShortReads,
+                Deadline = run.Deadline
+            };
+            var result = await CheckpointBuilder.BuildAsync(context, request, cancellationToken);
+            lock (_sync)
+            {
+                _fence = result.Fence;
+            }
+            return result;
         }
 
         // The first occurrence of a reason code logs at Warning, repeats at Debug
         private void Warn(MaintenanceReason reason, string? detail, Exception? exception)
         {
-            var bit = 1UL << ((int)reason & 63);
-            var first = (Interlocked.Or(ref _warned, bit) & bit) == 0;
+            var code = (int)reason;
+            var bit = 1UL << (code & 63);
+            var first = (Interlocked.Or(ref _warned[(code >> 6) & 3], bit) & bit) == 0;
             _logger.Log(first ? LogLevel.Warning : LogLevel.Debug, exception, "Delta table {table} checkpoint maintenance: {reason}. {detail}", _tableName, reason, detail);
         }
 
@@ -973,5 +1643,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // The failed build behind it, such as a torn rebuild's, whose root identity the worker records
         public BuildResult? Build { get; init; }
+    }
+
+    /// <summary>
+    /// A job too large for short admission, raised before it opened anything counted; the worker re-admits it through the long gate.
+    /// </summary>
+    internal sealed class LongAdmissionNeededException : Exception
+    {
     }
 }

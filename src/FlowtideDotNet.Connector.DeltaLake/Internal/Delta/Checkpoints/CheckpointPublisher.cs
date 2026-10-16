@@ -30,6 +30,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var destination = transport.Table.Combine(DeltaTransactionReader.DeltaLogDirName).Combine($"{checkpoint.Version:D20}.checkpoint.parquet");
             if (transport.NativePath(destination) is { } native)
             {
+                // The move, the rename, the size check and the bytes published, all before the first of them
+                await transport.ChargeNativeAsync(3, checkpoint.SizeInBytes, cancellationToken);
                 PublishLocal(scratch, checkpoint, native, freeSpace, faultForTests);
                 var length = new FileInfo(native).Length;
                 if (length != checkpoint.SizeInBytes)

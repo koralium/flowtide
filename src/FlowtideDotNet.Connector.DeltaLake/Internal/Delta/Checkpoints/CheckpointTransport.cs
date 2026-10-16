@@ -47,6 +47,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         // The identity a listing of the log gives the object, null when it is not listed
         Task<ObjectIdentity?> IdentityAsync(IOPath path, long version, CancellationToken cancellationToken);
+
+        // Charges a native operation that bypasses the storage to the maintenance buckets before it runs; free when the storage is not metered
+        ValueTask ChargeNativeAsync(long requests, long bytes, CancellationToken cancellationToken);
     }
 
     internal sealed class StowageCheckpointTransport : ICheckpointTransport
@@ -73,7 +76,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public IOPath HintPath => LogPath.Combine("_last_checkpoint");
 
-        public Task<DeltaLogSegment> ListAsync(CancellationToken cancellationToken) => DeltaLogSegment.ListAsync(Storage, Table);
+        public Task<DeltaLogSegment> ListAsync(CancellationToken cancellationToken) => DeltaLogSegment.ListAsync(Storage, Table, cancellationToken);
 
         public async Task<LastCheckpointInfo?> ReadHintAsync(CancellationToken cancellationToken)
         {
@@ -108,6 +111,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var bytes = JsonSerializer.SerializeToUtf8Bytes(hint);
             if (NativePath(HintPath) is { } native)
             {
+                // The temp write and the rename
+                await ChargeNativeAsync(2, bytes.Length, cancellationToken);
                 // A reader never meets a hint half written or held open
                 var temp = Path.Combine(Path.GetDirectoryName(native)!, $".flowtide-{Guid.NewGuid():N}.last_checkpoint.tmp");
                 try
@@ -143,6 +148,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         public string? NativePath(IOPath path) => Storage is ILocalDiskFileStorage local ? local.ToNativeLocalPath(path) : null;
+
+        public ValueTask ChargeNativeAsync(long requests, long bytes, CancellationToken cancellationToken) => MeteredFileStorage.ChargeNativeAsync(Storage, requests, bytes, cancellationToken);
 
         public async Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken cancellationToken)
         {

@@ -22,11 +22,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
     {
         public const int ReadSize = 64 << 10;
 
+        // An own first line over this many bytes is streamed through the header scanner
+        public const int OwnHeaderThreshold = 64 << 10;
+
         private readonly Stream _stream;
         private readonly JobMemory? _memory;
         private readonly int _cap;
         private readonly bool _skipOversizedCommitInfo;
         private readonly bool _ownsStream;
+        private readonly bool _streamOwnHeader;
         private byte[] _read;
         private int _readStart;
         private int _readEnd;
@@ -35,19 +39,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         private bool _started;
         private bool _pendingCarriageReturn;
         private bool _end;
+        private long _lineIndex;
+        private bool _headerChecked;
+        private CommitHeaderScanner? _header;
 
         // With a ledger the buffers are charged; a cap of int.MaxValue reads like StreamReader
-        public BoundedLineReader(Stream stream, JobMemory? memory, int cap, bool skipOversizedCommitInfo, bool ownsStream = false)
+        public BoundedLineReader(Stream stream, JobMemory? memory, int cap, bool skipOversizedCommitInfo, bool ownsStream = false, bool streamOwnHeader = false)
         {
             _stream = stream;
             _memory = memory;
             _cap = cap;
             _skipOversizedCommitInfo = skipOversizedCommitInfo;
             _ownsStream = ownsStream;
+            _streamOwnHeader = streamOwnHeader;
             _read = Allocate(ReadSize);
         }
 
         public ReadOnlyMemory<byte> Line => _line.AsMemory(0, _lineLength);
+
+        /// <summary>
+        /// Set instead of the line when an own first line over the threshold was streamed, the line is then empty.
+        /// </summary>
+        public CommitHeader? StreamedHeader { get; private set; }
 
         // Oversized commitInfo lines skipped so far
         public int SkippedLines { get; private set; }
@@ -55,13 +68,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         // The largest line buffer held, for tests
         public int LineCapacity => _line.Length;
 
-        private byte[] Allocate(int length) => _memory != null ? _memory.Allocate(length) : new byte[length];
+        // Charged to the ledger, or pooled for readers without one
+        private byte[] Allocate(int length) => _memory != null ? _memory.Allocate(length) : System.Buffers.ArrayPool<byte>.Shared.Rent(length);
 
         private void Free(byte[] buffer)
         {
-            if (_memory != null && buffer.Length > 0)
+            if (buffer.Length == 0)
+            {
+                return;
+            }
+            if (_memory != null)
             {
                 _memory.Free(buffer);
+            }
+            else
+            {
+                System.Buffers.ArrayPool<byte>.Shared.Return(buffer);
             }
         }
 
@@ -101,10 +123,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         /// </summary>
         public async ValueTask<bool> ReadLineAsync(CancellationToken cancellationToken = default)
         {
+            StreamedHeader = null;
             while (true)
             {
                 _lineLength = 0;
                 var any = false;
+                var terminated = false;
                 OversizedLine? oversized = null;
                 while (true)
                 {
@@ -134,12 +158,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     }
                     if (Consume(ref oversized, ref any))
                     {
+                        terminated = true;
                         break;
                     }
                 }
                 if (!any && oversized == null)
                 {
                     return false;
+                }
+                _lineIndex++;
+                if (_header != null)
+                {
+                    StreamedHeader = _header.Complete(terminated);
+                    _header = null;
+                    return true;
                 }
                 if (oversized == null)
                 {
@@ -160,21 +192,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var end = span.IndexOfAny((byte)'\r', (byte)'\n');
             var chunk = end < 0 ? span : span.Slice(0, end);
             any |= chunk.Length > 0;
-            if (oversized == null && (long)_lineLength + chunk.Length > _cap)
+            _readStart += chunk.Length;
+            if (_streamOwnHeader && !_headerChecked && _lineIndex == 0 && oversized == null && _cap > OwnHeaderThreshold && (long)_lineLength + chunk.Length > OwnHeaderThreshold)
             {
-                oversized = new OversizedLine();
-                oversized.Feed(_line.AsSpan(0, _lineLength));
-                _lineLength = 0;
+                _headerChecked = true;
+                var take = OwnHeaderThreshold - _lineLength;
+                Append(chunk.Slice(0, take));
+                chunk = chunk.Slice(take);
+                // Only an own commitInfo line is streamed, every other line reads as before
+                if (_line.AsSpan(0, _lineLength).StartsWith(CommitHeaderReader.OwnPrefix))
+                {
+                    _header = new CommitHeaderScanner(HeaderMode.Lenient, keepResidual: true);
+                    _header.Feed(_line.AsSpan(0, _lineLength));
+                    _lineLength = 0;
+                }
             }
-            if (oversized != null)
+            if (_header != null)
             {
-                oversized.Feed(chunk);
+                _header.Feed(chunk);
             }
             else
             {
-                Append(chunk);
+                if (oversized == null && (long)_lineLength + chunk.Length > _cap)
+                {
+                    oversized = new OversizedLine();
+                    oversized.Feed(_line.AsSpan(0, _lineLength));
+                    _lineLength = 0;
+                }
+                if (oversized != null)
+                {
+                    oversized.Feed(chunk);
+                }
+                else
+                {
+                    Append(chunk);
+                }
             }
-            _readStart += chunk.Length;
             if (end < 0)
             {
                 return false;

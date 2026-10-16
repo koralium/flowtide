@@ -84,11 +84,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var listed = file.IOEntry.Size;
             if (transport.NativePath(file.IOEntry.Path) is { } native)
             {
+                // The probe, then the bytes read in place, charged once as a download would be
+                await transport.ChargeNativeAsync(1, 0, cancellationToken);
                 var info = new FileInfo(native);
                 if (!info.Exists || (listed != null && info.Length != listed))
                 {
                     return (null, $"Checkpoint {file.Version} changed after the listing");
                 }
+                await transport.ChargeNativeAsync(0, info.Length, cancellationToken);
                 return (new LocalCheckpoint() { Path = native, Owned = false, Identity = identity, Version = file.Version, Length = info.Length }, null);
             }
             // A cached copy only under the identity the listing shows now

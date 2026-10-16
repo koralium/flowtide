@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
     public class RootCacheTests : IDisposable
     {
-        private readonly string _directory = Path.Combine(AppContext.BaseDirectory, "root-cache-" + Guid.NewGuid().ToString("N"));
+        private readonly string _directory = Path.Combine(Path.GetTempPath(), "rc-" + ScratchOwners.ShortId());
 
         public void Dispose()
         {
@@ -339,6 +339,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public string? NativePath(IOPath path) => null;
             public Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken ct) => _inner.DownloadAsync(path, target, memory, ct);
             public Task UploadAsync(string local, IOPath destination, JobMemory memory, CancellationToken ct) => _inner.UploadAsync(local, destination, memory, ct);
+            public ValueTask ChargeNativeAsync(long requests, long bytes, CancellationToken ct) => _inner.ChargeNativeAsync(requests, bytes, ct);
 
             public async Task<long?> SizeAsync(IOPath path, CancellationToken ct)
             {

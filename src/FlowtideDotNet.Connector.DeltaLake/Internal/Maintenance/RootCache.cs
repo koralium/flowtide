@@ -138,9 +138,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        // The raw storage below the connector's wrappers, so a new worker's meter still hits
         private StorageId IdOf(IFileStorage storage)
         {
-            return _storageIds.GetValue(storage, x => new StorageId() { Value = Interlocked.Increment(ref _storageCounter), Storage = new WeakReference<IFileStorage>(x) });
+            return _storageIds.GetValue(RawStorage.Unwrap(storage), x => new StorageId() { Value = Interlocked.Increment(ref _storageCounter), Storage = new WeakReference<IFileStorage>(x) });
         }
 
         private Key KeyOf(RootCacheScope scope, ObjectIdentity identity) => new Key(IdOf(scope.Storage).Value, identity.Table, scope.TableId, identity.Version);

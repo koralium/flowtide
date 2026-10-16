@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(treeMode, check.SawTreeMode);
             await AssertTableHolds(table, storage, stream);
             var foreign = await foreignVersion.Task;
-            Assert.Equal("FOREIGN", Assert.Single(await ReadCommitActions(storage, table, foreign), x => x.CommitInfo != null).CommitInfo!.Data!["operation"].ToString());
+            Assert.Equal("FOREIGN", Assert.Single(await ReadCommitActions(storage, table, foreign), x => x.CommitInfo != null).CommitInfo!.Operation);
             Assert.True((await DeltaTransactionReader.ReadTable(storage, table))!.Version > foreign, "the sink wrote nothing after the foreign commit");
             // Across the recovery the catalog opened sessions and wrote nothing, while the rest of the state did write
             Assert.True(states.Sum(x => x.SessionsOf(CountingPersistentStorage.IsCatalogSession)) > 0, "no catalog session");

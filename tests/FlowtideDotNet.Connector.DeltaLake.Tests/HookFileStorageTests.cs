@@ -189,6 +189,106 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // A test removes the file while a stream reads it
+        [Fact]
+        public async Task DeferredWriteLandsAfterRelease()
+        {
+            var memory = Files.Of.InternalMemory($"./{nameof(DeferredWriteLandsAfterRelease)}");
+            var storage = new HookFileStorage(memory);
+            var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            storage.DeferPublication = path => path.Full.EndsWith("late.json") ? release.Task : null;
+            storage.PublicationParked = _ => parked.TrySetResult();
+
+            var write = Task.Run(async () =>
+            {
+                await using var stream = await storage.OpenWrite("/t/late.json");
+                await stream.WriteAsync(Encoding.UTF8.GetBytes("late"));
+            });
+            // The late write is written and waits at its publication
+            await parked.Task.WaitAsync(TimeSpan.FromMinutes(1));
+            await using (var other = await storage.OpenWrite("/t/other.json"))
+            {
+                await other.WriteAsync(Encoding.UTF8.GetBytes("other"));
+            }
+
+            // The later write is visible, the deferred one is not until it is released
+            Assert.True(await storage.Exists("/t/other.json"));
+            Assert.False(write.IsCompleted);
+            Assert.False(await memory.Exists("/t/late.json"));
+            release.SetResult();
+            await write.WaitAsync(TimeSpan.FromMinutes(1));
+            Assert.Equal("late", await storage.ReadText("/t/late.json"));
+        }
+
+        [Fact]
+        public async Task StampKeepsProperties()
+        {
+            var memory = Files.Of.InternalMemory($"./{nameof(StampKeepsProperties)}");
+            await memory.WriteText("/t/a.json", "a");
+            var storage = new HookFileStorage(new PropertiesStorage(memory)) { StampIdentity = true };
+
+            var listed = Assert.Single(await storage.Ls("/t/"));
+            var stat = await storage.Stat("/t/a.json");
+
+            foreach (var entry in new[] { listed, stat! })
+            {
+                Assert.Equal("etag-1", entry.Properties["ETag"]);
+                Assert.Equal("v", entry.Metadata["k"]);
+                Assert.Equal("tag", entry.Tag);
+                Assert.NotNull(entry.LastModificationTime);
+            }
+        }
+
+        // Fills the properties a cloud store reports
+        private sealed class PropertiesStorage : IFileStorage
+        {
+            private readonly IFileStorage _inner;
+
+            public PropertiesStorage(IFileStorage inner)
+            {
+                _inner = inner;
+            }
+
+            private static IOEntry Fill(IOEntry entry)
+            {
+                entry.Properties["ETag"] = "etag-1";
+                entry.Metadata["k"] = "v";
+                entry.Tag = "tag";
+                return entry;
+            }
+
+            public Task<Stream?> OpenRead(IOPath path, CancellationToken cancellationToken = default) => _inner.OpenRead(path, cancellationToken);
+
+            public Task<Stream> OpenWrite(IOPath path, CancellationToken cancellationToken = default) => _inner.OpenWrite(path, cancellationToken);
+
+            public Task Ren(IOPath name, IOPath newName, CancellationToken cancellationToken = default) => _inner.Ren(name, newName, cancellationToken);
+
+            public Task<string?> ReadText(IOPath path, Encoding? encoding = null, CancellationToken cancellationToken = default) => _inner.ReadText(path, encoding, cancellationToken);
+
+            public Task WriteText(IOPath path, string contents, Encoding? encoding = null, CancellationToken cancellationToken = default) => _inner.WriteText(path, contents, encoding, cancellationToken);
+
+            public async Task<IReadOnlyCollection<IOEntry>> Ls(IOPath? path = null, bool recurse = false, CancellationToken cancellationToken = default)
+            {
+                return (await _inner.Ls(path, recurse, cancellationToken)).Select(Fill).ToList();
+            }
+
+            public Task<T?> ReadAsJson<T>(IOPath path, CancellationToken cancellationToken = default) => _inner.ReadAsJson<T>(path, cancellationToken);
+
+            public Task WriteAsJson(IOPath path, object value, bool writeIndented = true, CancellationToken cancellationToken = default) => _inner.WriteAsJson(path, value, writeIndented, cancellationToken);
+
+            public Task Rm(IOPath path, CancellationToken cancellationToken = default) => _inner.Rm(path, cancellationToken);
+
+            public Task<bool> Exists(IOPath path, CancellationToken cancellationToken = default) => _inner.Exists(path, cancellationToken);
+
+            public async Task<IOEntry?> Stat(IOPath path, CancellationToken cancellationToken = default)
+            {
+                var entry = await _inner.Stat(path, cancellationToken);
+                return entry == null ? null : Fill(entry);
+            }
+
+            public void Dispose() => _inner.Dispose();
+        }
+
         private sealed class RemoveDuringReadStorage : IFileStorage
         {
             private readonly IFileStorage _inner;

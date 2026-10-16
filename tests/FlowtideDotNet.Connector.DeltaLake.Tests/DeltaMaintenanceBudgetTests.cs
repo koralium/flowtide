@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Time.Testing;
 using Stowage;
+using System.Diagnostics.Metrics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -123,6 +124,123 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             b.Slot!.Dispose();
             b.Lease!.Dispose();
             Assert.Equal(0, budget.Gate.Running);
+        }
+
+        [Fact]
+        public async Task AdmissionClassesTakeTheirGates()
+        {
+            var budget = Budget(jobs: 1);
+            Assert.Equal(1, budget.LongGate.Slots);
+            Assert.Equal(2, budget.DeleteGate.Slots);
+            var ordinary = new JobAdmission();
+            await budget.AdmitAsync("a", ordinary, AdmissionClass.Ordinary, default);
+            Assert.NotNull(ordinary.Slot);
+            Assert.Null(ordinary.LongSlot);
+
+            // A long job holds the long slot while it queues for the main slot
+            var longJob = new JobAdmission();
+            var longWait = budget.AdmitAsync("b", longJob, AdmissionClass.Long, default);
+            Assert.False(longWait.IsCompleted);
+            Assert.Equal(1, budget.LongGate.Running);
+            Assert.Equal(1, budget.Gate.QueueLength);
+
+            // Deletion takes neither the main nor the long gate
+            var deletions = new[] { new JobAdmission(), new JobAdmission(), new JobAdmission() };
+            await budget.AdmitAsync("c", deletions[0], AdmissionClass.Delete, default);
+            await budget.AdmitAsync("d", deletions[1], AdmissionClass.Delete, default);
+            var thirdDeletion = budget.AdmitAsync("e", deletions[2], AdmissionClass.Delete, default);
+            Assert.False(thirdDeletion.IsCompleted);
+            Assert.Equal(2, budget.DeleteGate.Running);
+            Assert.Equal(1, budget.Gate.Running);
+            Assert.Equal(1, budget.Gate.QueueLength);
+
+            ordinary.Slot!.Dispose();
+            await longWait;
+            Assert.NotNull(longJob.Slot);
+            deletions[0].Slot!.Dispose();
+            await thirdDeletion;
+            Assert.Equal(1, budget.Gate.Running);
+            Assert.Equal(2, budget.DeleteGate.Running);
+
+            // Long deletion queues for the long slot first, then holds it while it queues for a delete slot
+            var longDeletion = new JobAdmission();
+            var longDeletionWait = budget.AdmitAsync("f", longDeletion, AdmissionClass.LongDelete, default);
+            Assert.False(longDeletionWait.IsCompleted);
+            Assert.Equal(1, budget.LongGate.QueueLength);
+            Assert.Equal(0, budget.DeleteGate.QueueLength);
+            longJob.LongSlot!.Dispose();
+            longJob.LongSlot = null;
+            await DeltaMaintenanceWorkerTests.Queued(() => budget.DeleteGate.QueueLength == 1);
+            Assert.Equal(1, budget.LongGate.Running);
+            Assert.False(longDeletionWait.IsCompleted);
+            deletions[1].Slot!.Dispose();
+            deletions[1].Slot = null;
+            await longDeletionWait;
+            Assert.NotNull(longDeletion.LongSlot);
+            Assert.Equal(1, budget.Gate.Running);
+            Assert.Equal(2, budget.DeleteGate.Running);
+            foreach (var admission in deletions.Append(ordinary).Append(longJob).Append(longDeletion))
+            {
+                admission.Slot?.Dispose();
+                admission.LongSlot?.Dispose();
+                admission.Lease?.Dispose();
+            }
+            Assert.Equal(0, budget.Gate.Running);
+            Assert.Equal(0, budget.LongGate.Running);
+            Assert.Equal(0, budget.DeleteGate.Running);
+            Assert.Equal(0, budget.Leases.Count);
+        }
+
+        [Theory]
+        [InlineData("main")]
+        [InlineData("long")]
+        [InlineData("delete")]
+        public async Task OldestWaitGaugeCoversEveryGate(string wait)
+        {
+            var clock = new FakeTimeProvider(s_now);
+            var budget = Budget(jobs: 1, clock: clock);
+            using var meter = new Meter("oldest-wait-" + Guid.NewGuid().ToString("N"));
+            DeltaMaintenanceBudget.SharedBudget.RegisterGauges(meter, budget);
+            var gate = wait switch
+            {
+                "main" => budget.Gate,
+                "long" => budget.LongGate,
+                _ => budget.DeleteGate
+            };
+            var held = new List<IDisposable>();
+            for (int i = 0; i < gate.Slots; i++)
+            {
+                held.Add(await gate.AcquireAsync());
+            }
+            using var cancel = new CancellationTokenSource();
+            var waiter = gate.AcquireAsync(cancel.Token);
+            Assert.Equal(0, Gauge(meter, "flowtide_delta_maintenance_oldest_wait_seconds"));
+            clock.Advance(TimeSpan.FromSeconds(5));
+
+            Assert.Equal(5, Gauge(meter, "flowtide_delta_maintenance_oldest_wait_seconds"));
+            cancel.Cancel();
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiter);
+            held.ForEach(x => x.Dispose());
+            Assert.Equal(0, Gauge(meter, "flowtide_delta_maintenance_oldest_wait_seconds"));
+        }
+
+        // One observation of a gauge registered on this meter
+        private static double Gauge(Meter meter, string name)
+        {
+            double? value = null;
+            using var listener = new MeterListener();
+            listener.InstrumentPublished = (instrument, owner) =>
+            {
+                if (ReferenceEquals(instrument.Meter, meter) && instrument.Name == name)
+                {
+                    owner.EnableMeasurementEvents(instrument);
+                }
+            };
+            listener.SetMeasurementEventCallback<double>((_, measurement, _, _) => value = measurement);
+            listener.Start();
+            listener.RecordObservableInstruments();
+            Assert.True(value.HasValue, $"No {name} gauge");
+            return value.Value;
         }
 
         [Fact]
