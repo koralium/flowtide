@@ -10331,6 +10331,19 @@ references:
   commentId: T:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   nameWithType: DeltaLakeOptions
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing
+  name: AssumeCompleteStorageListing
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_AssumeCompleteStorageListing
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing
+  nameWithType: DeltaLakeOptions.AssumeCompleteStorageListing
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing*
+  name: AssumeCompleteStorageListing
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_AssumeCompleteStorageListing_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing
+  nameWithType: DeltaLakeOptions.AssumeCompleteStorageListing
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval
   name: CheckpointInterval
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval

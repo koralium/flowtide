@@ -152,6 +152,38 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 </h2>
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_AssumeCompleteStorageListing_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_AssumeCompleteStorageListing" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing">
+  AssumeCompleteStorageListing
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets whether a storage this connector does not recognize, such as a custom wrapper, is vouched for as a whole stack: every listing is complete and in order, Stat returns null only for an object that does not exist, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spellings of another object), and a delete removes exactly the named object, which lets cleanup rely on its listings, absence checks, references and deletes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool AssumeCompleteStorageListing { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_CheckpointInterval" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.CheckpointInterval">
@@ -415,7 +447,7 @@ A deleted row has __weight -1, __modificationDate is the commit time and __versi
   <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L91"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"><p>Gets or sets how many maintenance jobs run at once in the process; the first sink's value applies to every sink.</p>
+  <div class="markdown level1 summary"><p>Gets or sets how many checkpoint builds run at once in the process, beside the cleanup jobs' own slots; the first sink's value applies to every sink.</p>
 </div>
   <div class="markdown level1 conceptual"></div>
 

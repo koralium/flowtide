@@ -201,14 +201,20 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 </tr>
 <tr>
 <td>MaxConcurrentMaintenanceJobs</td>
-<td>Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value</td>
+<td>Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value, also one with a CheckpointInterval of 0; cleanup jobs run in slots of their own beside them, see <a href="#limits">Limits</a></td>
 <td>2</td>
 <td>No</td>
 </tr>
 <tr>
 <td>MaintenanceTempDirectory</td>
-<td>Only used for writing, the local folder for checkpoint builds, the first sink fixes the value</td>
+<td>Only used for writing, the local folder for checkpoint builds, the first sink fixes the value, also one with a CheckpointInterval of 0</td>
 <td>./data/tempFiles/deltalake</td>
+<td>No</td>
+</tr>
+<tr>
+<td>AssumeCompleteStorageListing</td>
+<td>Only used for writing, vouches for a storage the connector does not recognize, such as a custom wrapper, as a whole stack: listings are complete and in order, Stat returns null only for a missing object, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spelling reaches another object), and a delete removes exactly the named object. Maintenance then treats the store as eligible, which also lets it rebuild a torn checkpoint without the full history. It cannot make a known failed store, such as Google Cloud Storage, eligible</td>
+<td>False</td>
 <td>No</td>
 </tr>
 <tr>
@@ -378,17 +384,20 @@ statistics or tags, and tombstones older than <code>delta.deletedFileRetentionDu
 <h4 id="limits">Limits</h4>
 <p>All Delta Lake sinks in the process share the maintenance budget:</p>
 <ul>
-<li><code>MaxConcurrentMaintenanceJobs</code> builds run at once, one per table; a table waiting for its own earlier build holds no slot.</li>
-<li>Each build may use 84 MiB of managed memory, of which up to 64 MiB holds the commits after its starting checkpoint, and 256 MiB of native Parquet memory.
-A larger tail is sorted through files in the temp folder. These figures exclude the <code>PruningMemoryBytes</code> the sinks keep for deleting rows.</li>
+<li><code>MaxConcurrentMaintenanceJobs</code> checkpoint builds run at once. Beside them, up to two cleanup jobs (discard drains and staged commit sweeps,
+see <a href="#table-maintenance">Table maintenance</a>) run in slots of their own, which no option changes. A table runs one job at a time, and a
+table waiting for its own earlier job holds no slot.</li>
+<li>Each job, build or cleanup, may use 84 MiB of managed memory and 256 MiB of native Parquet memory. A build keeps up to 64 MiB of it for
+the commits after its starting checkpoint and sorts a larger tail through files in the temp folder. These figures exclude the
+<code>PruningMemoryBytes</code> the sinks keep for deleting rows.</li>
 <li>Downloads share a 128 MiB allowance, admitted by listed size, since the storage clients read whole objects; a larger object runs alone.</li>
 <li>Files in the temp folder share a 4 GiB disk cap. Each write reserves its space first, and a file's space is released only after it is deleted.</li>
 <li>An action line over 4 MiB, or with more than 65,536 entries, declines the build before any of it is buffered. An oversized <code>commitInfo</code> line is skipped.</li>
 </ul>
-<p>With the defaults this allows about 340 MiB per build and about 808 MiB for maintenance in the process (two builds and the download
-allowance), or about 1.8 GiB for the connector together with <code>PruningMemoryBytes</code>. Setting <code>MaxConcurrentMaintenanceJobs</code> to 1 saves about
-340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator keeps, the sinks'
-own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.</p>
+<p>With the defaults this allows about 340 MiB per job and about 1.45 GiB for maintenance in the process (two builds, two cleanup jobs and
+the download allowance), or about 2.45 GiB for the connector together with <code>PruningMemoryBytes</code>. Setting <code>MaxConcurrentMaintenanceJobs</code> to 1
+saves about 340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator
+keeps, the sinks' own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.</p>
 <p>A build keeps its starting checkpoint and its output in the temp folder together, and on local disk the output and its published copy, so a
 checkpoint larger than about 2 GiB is not built: the build declines on the disk cap.</p>
 <p>A build that cannot work within these limits declines; the checkpoint is optional, so a decline never fails the stream. It is logged once per reason
@@ -520,8 +529,8 @@ set to <code>true</code>.</p>
 <p>This creates new files in a <code>_change_data</code> folder and adds the corresponding actions in the delta log.
 Change data files are only added if there are deletes on existing rows, since the <code>add</code> action gives the same performance
 to read change data if there are no deletes. This also saves on storage space.</p>
-<p>To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit, but they can then be deleted
-before completing the commit.</p>
+<p>To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit. When the commit has no deletes they
+are left out of it and deleted as described in <a href="#table-maintenance">Table maintenance</a>.</p>
 <p>Since this connector writes the exact result set in the query, it does not have the concept of primary keys and rows can be duplicated if that is the result
 of the query. This means that the change data feed only contains <code>delete</code> and <code>insert</code> operations.</p>
 <h3 id="supported-data-types">Supported data types</h3>
