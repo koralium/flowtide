@@ -129,8 +129,10 @@ connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
 });
 ```
 
-`StartFromFirstVersion` also starts from the oldest version but does not wait for a checkpoint between versions, so a long log loads faster.
+`StartFromFirstVersion` also starts from the oldest version, but reads every version up to the latest as part of the first load, so a long log loads faster.
+The first checkpoint is then taken at the latest version, like the first load of any other source. Checkpoints of other sources and stopping the stream wait for that load.
 Without [Change history](#change-history) the versions read together cancel each other out, the result is the same as starting from the latest version.
+A missing data file or a missing commit while later versions exist stops the source as described in [When the source stops reading](#when-the-source-stops-reading), the versions before it are kept.
 
 ### Change history
 

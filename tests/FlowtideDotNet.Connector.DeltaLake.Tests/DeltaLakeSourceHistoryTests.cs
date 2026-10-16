@@ -220,31 +220,63 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task StartFromFirstVersionWithoutHistoryEndsAtTheLatestRows()
         {
-            await using var stream = new DeltaLakeTestStream(nameof(StartFromFirstVersionWithoutHistoryEndsAtTheLatestRows), Files.Of.LocalDisk("../../../testdata"), oneVersionPerCheckpoint: false, configure: o => o.StartFromFirstVersion = true);
+            await using var stream = new DeltaLakeTestStream(nameof(StartFromFirstVersionWithoutHistoryEndsAtTheLatestRows), Files.Of.LocalDisk("../../../testdata"), oneVersionPerCheckpoint: false, recordPublished: true, configure: o => o.StartFromFirstVersion = true);
             await stream.StartStream($"INSERT INTO output SELECT id FROM {DeletionLogs}");
 
-            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
-            var ids = new List<long>();
-            while (ids.Count != 98)
-            {
-                Assert.True(DateTime.UtcNow < deadline, $"{ids.Count} rows");
-                await stream.SchedulerTick();
-                await Task.Delay(10);
-                // The sink disposes a result when it publishes the next one
-                try
-                {
-                    var data = stream.GetActualRowsAsVectors();
-                    ids = Enumerable.Range(0, data.Count).Select(i => data.Columns[0].GetValueAt(i, default).AsLong).ToList();
-                }
-                catch (Exception) when (DateTime.UtcNow < deadline)
-                {
-                }
-            }
-
-            // The first snapshot and both deletes were sent, the result is the latest version
+            // The first checkpoint is already the latest version
+            var data = await stream.WaitForPublished(1);
+            var ids = Enumerable.Range(0, data.Count).Select(i => data.Columns[0].GetValueAt(i, default).AsLong).ToList();
+            Assert.Equal(98, ids.Count);
             Assert.DoesNotContain(12L, ids);
             Assert.DoesNotContain(89L, ids);
+            // The first snapshot and both deletes were sent
             Assert.Equal(102, stream.ChangeRowsReceived);
+        }
+
+        [Fact]
+        public async Task ReplayIsPartOfTheFirstLoad()
+        {
+            await using var stream = new DeltaLakeTestStream(nameof(ReplayIsPartOfTheFirstLoad), Files.Of.LocalDisk("../../../testdata"), oneVersionPerCheckpoint: false, recordPublished: true, configure: HistoryFromFirstVersion);
+            await stream.StartStream($"INSERT INTO output SELECT id, __weight, __modificationDate, __version FROM {DeletionLogs}");
+
+            var rows = ReadRows(await stream.WaitForPublished(1));
+            Assert.Equal(102, rows.Count);
+            Assert.Equal<long>([0, 3, 4], rows.Select(x => x.Version).Distinct().Order());
+        }
+
+        [Fact]
+        public async Task MissingFileHaltsTheReplayAndKeepsEarlierVersions()
+        {
+            var name = nameof(MissingFileHaltsTheReplayAndKeepsEarlierVersions);
+            var storage = await CopyToMemory(name, Cdc);
+            var cdcFile = (await ReadCommitActions(storage, Cdc, 2)).Single(x => x.Cdc != null).Cdc!.Path!;
+            await storage.Rm($"/{Cdc}/{cdcFile}");
+
+            await using var stream = new DeltaLakeTestStream(name, storage, oneVersionPerCheckpoint: false, recordPublished: true, configure: HistoryFromFirstVersion);
+            var logs = new TestLogCollector();
+            stream.AddLoggerProvider(logs);
+            await stream.StartStream($"INSERT INTO output SELECT id, name, __weight, __modificationDate, __version FROM {Cdc}");
+
+            await stream.AssertPublishedEqual(1, new[] { Row(0, "Mario", 1, CdcV1, 1) });
+            Assert.Contains(logs.Errors, x => x.Contains("halted") && x.Contains(cdcFile));
+        }
+
+        [Fact]
+        public async Task GapInTheLogHaltsTheReplay()
+        {
+            var name = nameof(GapInTheLogHaltsTheReplay);
+            var storage = await CopyToMemory(name, DeletionLogs);
+            await storage.Rm(CommitPath(DeletionLogs, 3));
+
+            await using var stream = new DeltaLakeTestStream(name, storage, oneVersionPerCheckpoint: false, recordPublished: true, configure: HistoryFromFirstVersion);
+            var logs = new TestLogCollector();
+            stream.AddLoggerProvider(logs);
+            await stream.StartStream($"INSERT INTO output SELECT id, __weight, __modificationDate, __version FROM {DeletionLogs}");
+
+            // Versions 1 and 2 change no data, version 3 is missing while later ones exist
+            var rows = ReadRows(await stream.WaitForPublished(1));
+            Assert.Equal(100, rows.Count);
+            Assert.Contains(logs.Errors, x => x.Contains("halted") && x.Contains("commit 3 is missing"));
         }
 
         [Fact]

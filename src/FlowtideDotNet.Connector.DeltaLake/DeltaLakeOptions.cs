@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         /// <summary>
         /// Only used for reading, the first start reads the oldest version of the table instead of the latest, then every later version.
+        /// All of them are part of the first load, so its first checkpoint is at the latest version.
         /// </summary>
         public bool StartFromFirstVersion { get; set; } = false;
 

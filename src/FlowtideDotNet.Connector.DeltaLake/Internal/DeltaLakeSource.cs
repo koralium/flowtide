@@ -109,6 +109,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return Task.CompletedTask;
         }
 
+        // Caller holds the checkpoint lock
+        private Task<DeltaLoadOutcome> LoadVersion(DeltaCommit deltaCommit, IngressOutput<StreamEventBatch> output)
+        {
+            // Change history buffers change data, untouched columns cancel
+            return deltaCommit.CdcFiles.Count > 0 && !_history.Enabled ? LoadCdcData(deltaCommit, output) : LoadBufferedData(deltaCommit, output);
+        }
+
         private async Task<DeltaLoadOutcome> LoadCdcData(DeltaCommit deltaCommit, IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_state?.Value != null);
@@ -116,15 +123,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_eventsCounter != null);
             Debug.Assert(_eventsProcessed != null);
 
-            await output.EnterCheckpointLock();
-
             // Batches are sent per file, so every file must exist before the first is sent, the first fails on open
             for (int i = 1; i < deltaCommit.CdcFiles.Count; i++)
             {
                 var path = deltaCommit.CdcFiles[i].Path!;
                 if (!await _options.StorageLocation.Exists(_tableLoc.Combine(path)))
                 {
-                    output.ExitCheckpointLock();
                     HaltOnMissingFile(path);
                     return DeltaLoadOutcome.Halted;
                 }
@@ -153,7 +157,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             // Removed after the check: once rows were sent the failure rolls them back and the retry halts at the check
             catch (DeltaFileNotFoundException e) when (!sent)
             {
-                output.ExitCheckpointLock();
                 HaltOnMissingFile(e.Path);
                 return DeltaLoadOutcome.Halted;
             }
@@ -161,8 +164,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _hasCheckpointed = false;
             _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
             await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
-            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
-            output.ExitCheckpointLock();
             return DeltaLoadOutcome.Loaded;
         }
 
@@ -178,7 +179,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_state?.Value != null);
             Debug.Assert(_changesTree != null);
 
-            await output.EnterCheckpointLock();
             try
             {
                 if (deltaCommit.CdcFiles.Count > 0)
@@ -194,7 +194,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             catch (DeltaFileNotFoundException e)
             {
                 await _changesTree.Clear();
-                output.ExitCheckpointLock();
                 HaltOnMissingFile(e.Path);
                 return DeltaLoadOutcome.Halted;
             }
@@ -203,8 +202,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _hasCheckpointed = false;
             _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
             await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
-            ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
-            output.ExitCheckpointLock();
             return DeltaLoadOutcome.Loaded;
         }
 
@@ -486,9 +483,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     continue;
                 }
 
-                // Change history buffers change data, untouched columns cancel
-                var outcome = commitInfo.CdcFiles.Count > 0 && !_history.Enabled ? await LoadCdcData(commitInfo, output) : await LoadBufferedData(commitInfo, output);
+                await output.EnterCheckpointLock();
+                var outcome = await LoadVersion(commitInfo, output);
+                if (outcome == DeltaLoadOutcome.Loaded)
+                {
+                    ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+                }
+                output.ExitCheckpointLock();
                 if (outcome == DeltaLoadOutcome.Halted)
+                {
+                    return;
+                }
+            }
+        }
+
+        // Part of the first load, the caller holds the checkpoint lock until the head
+        private async Task ReplayToHead(IngressOutput<StreamEventBatch> output)
+        {
+            Debug.Assert(_state?.Value != null);
+
+            while (!_halted)
+            {
+                var commitInfo = await DeltaTransactionReader.ReadVersionCommit(_options.StorageLocation, _tableLoc, _state.Value.CurrentVersion + 1);
+                if (commitInfo == null)
+                {
+                    // A gap in the log is not the head
+                    if (await NextCommitRemoved(_state.Value.CurrentVersion))
+                    {
+                        HaltOnRemovedCommit();
+                    }
+                    return;
+                }
+                _truncationSchedule!.Loaded();
+
+                if (!HasDataChange(commitInfo))
+                {
+                    _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
+                    _skippedSinceCheckpoint = true;
+                    continue;
+                }
+
+                if (await LoadVersion(commitInfo, output) == DeltaLoadOutcome.Halted)
                 {
                     return;
                 }
@@ -511,7 +546,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
             if (await NextCommitRemoved(_state.Value.CurrentVersion))
             {
-                Halt($"commit {_state.Value.CurrentVersion + 1} is missing while later versions exist, the source fell behind the table's log retention");
+                HaltOnRemovedCommit();
             }
         }
 
@@ -524,6 +559,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 return false;
             }
             return !await _options.StorageLocation.Exists(_tableLoc.Combine("_delta_log").Combine($"{currentVersion + 1:D20}.json"));
+        }
+
+        private void HaltOnRemovedCommit()
+        {
+            Debug.Assert(_state?.Value != null);
+            Halt($"commit {_state.Value.CurrentVersion + 1} is missing while later versions exist, the source fell behind the table's log retention");
         }
 
         private void HaltOnMissingFile(string path)
@@ -593,7 +634,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     unavailable.Throw();
                 }
-                Halt($"commit {_state.Value.CurrentVersion + 1} is missing while later versions exist, the source fell behind the table's log retention");
+                HaltOnRemovedCommit();
             }
             else
             {
@@ -684,6 +725,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 // The snapshot is not needed after the first load
                 _table = null;
                 await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_state.Value.CurrentVersion)));
+                // The first checkpoint means caught up, so a replay stays in the lock
+                if (_options.StartFromFirstVersion && !_options.OneVersionPerCheckpoint)
+                {
+                    await ReplayToHead(output);
+                }
                 ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
                 output.ExitCheckpointLock();
             }
