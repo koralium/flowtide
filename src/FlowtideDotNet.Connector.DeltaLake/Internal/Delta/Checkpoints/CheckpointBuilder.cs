@@ -32,7 +32,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         Completed,
         AlreadyValid,
         Declined,
-        Failed
+        Failed,
+        // The replay needs more commit reads than the request allows; nothing was opened
+        NeedsLongAdmission
     }
 
     internal enum BuildMode : byte
@@ -65,6 +67,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         // Cached roots with a weak identity apply only above it
         public long WeakFloor { get; init; }
+
+        // Commit reads the replay may make, null for no limit
+        public long? ReadLimit { get; init; }
+
+        // On the context clock: no commit is opened and nothing is published after it
+        public DateTimeOffset? Deadline { get; init; }
     }
 
     /// <summary>
@@ -109,6 +117,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         // Known unsupported roots whose listing identity changed, so their classification no longer applies
         public IReadOnlyList<ObjectIdentity> Stale { get; init; } = Array.Empty<ObjectIdentity>();
+
+        // What the build's listing's control records forbid, none before the listing
+        public ControlFence Fence { get; init; } = ControlFence.None;
     }
 
     internal sealed class CheckpointBuildContext
@@ -152,6 +163,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public bool RebuildLegacyCheckpoints { get; init; }
 
+        // Cleanup-eligible storage; off, a torn rebuild also needs no control fence and every commit from zero
+        public bool CleanupEligible { get; init; }
+
         public long ArenaCap { get; init; } = TailReducer.DefaultArenaCap;
 
         public int LineCap { get; init; } = BoundedCheckpointReader.ActionCap;
@@ -179,6 +193,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         private long _transferBytes;
         private int _skippedLines;
         private byte[] _key = Array.Empty<byte>();
+        private ControlFence _fence = ControlFence.None;
 
         private CheckpointBuilder(CheckpointBuildContext context, BuildRequest request)
         {
@@ -214,7 +229,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 ProtocolCommits = dependency == DeclineDependency.Protocol ? _protocolCommits : Array.Empty<ObjectIdentity>(),
                 NewestValidRoot = _newestValidRoot,
                 LegacyGapKept = _legacyGapKept,
-                Stale = _stale
+                Stale = _stale,
+                Fence = _fence
             };
         }
 
@@ -223,6 +239,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var target = _request.Version;
             // One listing; never read or write above the target
             var segment = await _context.Transport.ListAsync(cancellationToken);
+            // Its control records decide what this build may change
+            _fence = ControlFence.Of(segment.Listing);
             var hint = await _context.Transport.ReadHintAsync(cancellationToken);
             if (target < 0 || target > segment.Head || !segment.Listing.Commits.TryGetValue(target, out var targetFile))
             {
@@ -237,6 +255,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 // The hint fast path: a hint naming this checkpoint with its listed size is trusted without a download
                 var trusted = _request.Root == RootPolicy.Auto && hint != null && hint.Version == target && hint.SizeInBytes != null && hint.SizeInBytes == existing.IOEntry.Size;
+                if (!trusted && PastDeadline())
+                {
+                    return DeadlineResult();
+                }
                 InspectedCheckpoint inspected;
                 try
                 {
@@ -263,20 +285,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                         var size = inspected.Length;
                         if (_context.Publish && CheckpointInspector.HintNeedsWrite(hint, target, inspected.Rows, size))
                         {
+                            if (!_fence.AllowsHint(target))
+                            {
+                                // The checkpoint stands; only its hint is kept
+                                return Result(BuildStatus.AlreadyValid, MaintenanceReason.CleanupGate, detail: $"The hint stays below checkpoint {target}: {_fence.Detail}");
+                            }
+                            if (PastDeadline())
+                            {
+                                return DeadlineResult();
+                            }
                             await _context.Transport.WriteHintAsync(new LastCheckpointInfo() { Version = target, Size = inspected.Rows, SizeInBytes = size }, cancellationToken);
                         }
                         return Result(BuildStatus.AlreadyValid);
                     case CheckpointClass.Unsupported:
                         return Result(BuildStatus.Completed);
                 }
-                // Torn: rebuilt in place
+                // Torn: rebuilt in place, unless a control record or an ineligible store's listing defers it
+                var head = Math.Max(segment.Head, segment.Listing.MaxOtherVersion);
+                if (!_fence.AllowsTornRepair(target, _context.CleanupEligible, segment.HasHistoryFromZero(head)))
+                {
+                    var why = _context.CleanupEligible || !_fence.AllowsReplace(target) ? _fence.Detail
+                        : _fence.Clear ? $"on a store not eligible for cleanup, commits before {segment.SuffixStart(head)} are missing" : $"on a store not eligible for cleanup, {_fence.Detail}";
+                    return Result(BuildStatus.Declined, MaintenanceReason.CleanupGate, detail: $"The torn checkpoint at {target} is not rebuilt: {why}");
+                }
+            }
+            else if (!_fence.AllowsCreate(target))
+            {
+                return Result(BuildStatus.Declined, MaintenanceReason.CleanupGate, detail: $"No checkpoint is created at {target}: {_fence.Detail}");
             }
 
             // The root
             var policy = _request.Root;
+            // Even the newest root leaves too many commits, so the job is promoted before any root is fetched
+            var newestRoot = policy == RootPolicy.Auto ? segment.RootCandidates(target, target - 1).FirstOrDefault()?.Version ?? -1 : -1;
+            if (OverReadLimit(target - newestRoot))
+            {
+                return Promotion(target - newestRoot);
+            }
             LocalRoot? root = null;
             try
             {
+                CheckDeadline();
                 if (policy == RootPolicy.Auto)
                 {
                     var (chosen, blocked, failure) = await ChooseRootAsync(segment, target, cancellationToken);
@@ -315,6 +364,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     return Result(BuildStatus.Declined, MaintenanceReason.MissingHistory, detail: $"Commits before {segment.SuffixStart(target)} are missing");
                 }
 
+                // A replay without a root reads target + 1 commits
+                if (OverReadLimit(target - (root?.Version ?? -1)))
+                {
+                    return Promotion(target - (root?.Version ?? -1));
+                }
                 return await BuildFromAsync(segment, target, root, cancellationToken);
             }
             catch (CheckpointDeclinedException e)
@@ -336,6 +390,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 root?.Dispose(_context);
             }
         }
+
+        private bool OverReadLimit(long reads) => _request.ReadLimit is { } limit && reads > limit;
+
+        private BuildResult Promotion(long reads) => Result(BuildStatus.NeedsLongAdmission, detail: $"The replay reads {reads} commits, more than the {_request.ReadLimit} short admission allows");
+
+        // A cooperative stop: nothing new is read or published after the deadline
+        private void CheckDeadline()
+        {
+            if (PastDeadline())
+            {
+                throw new CheckpointDeclinedException(MaintenanceReason.JobDeadline, DeclineDependency.None, $"The job deadline {_request.Deadline:O} passed");
+            }
+        }
+
+        private bool PastDeadline() => _request.Deadline is { } deadline && _context.Clock.GetUtcNow() >= deadline;
+
+        private BuildResult DeadlineResult() => Result(BuildStatus.Declined, MaintenanceReason.JobDeadline, detail: $"The job deadline {_request.Deadline:O} passed");
 
         // A fetched root with its admission scan and marker
         private sealed class LocalRoot
@@ -376,6 +447,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     _skipped.Add($"checkpoint {candidate.Version}: unsupported");
                     continue;
                 }
+                // Each fallback download is new work
+                CheckDeadline();
                 var (fetched, unknown) = await CheckpointInspector.FetchAsync(_context.Transport, _context.Scratch, _context.Memory, _context.Transfer, candidate, cancellationToken, _cache);
                 if (fetched == null)
                 {
@@ -554,6 +627,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 for (long version = rootVersion + 1; version <= target; version++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    CheckDeadline();
                     _tailCommit = ObjectIdentity.Of(_context.Table, segment.Listing.Commits[version]);
                     var listedSize = segment.Listing.Commits[version].IOEntry.Size ?? 0;
                     _transferBytes += listedSize;
@@ -703,6 +777,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             var descriptor = new CheckpointDescriptor(target, output, written.OutputBytes, written.Actions, written.AddFiles, marker, written.Sha256);
             if (_context.Publish)
             {
+                CheckDeadline();
                 var published = await CheckpointPublisher.PublishAsync(_context.Transport, _context.Scratch, memory, descriptor, _context.FreeSpaceForTests, cancellationToken, _context.PublishFaultForTests, _cache);
                 if (_context.Transport.NativePath(_context.Transport.Table) == null)
                 {
@@ -725,7 +800,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 Candidates = _candidates,
                 TargetCommit = _targetCommit,
                 Stale = _stale,
-                ValidationMs = validationMs
+                ValidationMs = validationMs,
+                Fence = _fence
             };
         }
 

@@ -29,5 +29,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Read by the test that keeps the evidence file and the store classification in step -->
+    <None Include="..\..\src\FlowtideDotNet.Connector.DeltaLake\Internal\Maintenance\listing-evidence.md" Link="listing-evidence.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 
 </Project>

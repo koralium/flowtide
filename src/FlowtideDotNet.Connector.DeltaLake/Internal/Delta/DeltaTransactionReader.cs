@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         private const int VersionDigits = 20;
         private const string CommitSuffix = ".json";
         private const string ClassicCheckpointSuffix = ".checkpoint.parquet";
+        internal const string CleanupControlPrefix = ".flowtide-cleanup.";
 
         /// <summary>
         /// Reads the snapshot at maxVersion, where 0 is the oldest readable version, and returns null when the table has no log.
@@ -79,11 +80,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 var failure = await TryReplayCheckpoint(storage, checkpoint, replay, options);
                 if (failure == null)
                 {
-                    await ReplayCommits(segment, checkpoint.Version + 1, target, replay);
+                    var headHeader = await ReplayCommits(segment, checkpoint.Version + 1, target, replay);
                     failure = replay.CheckpointSchemaFailure();
                     if (failure == null)
                     {
-                        return replay.ToTable(target, checkpoint.Version);
+                        var table = replay.ToTable(target, checkpoint.Version);
+                        table.HeadHeader = headHeader;
+                        return table;
                     }
                     ReportCheckpointFailure(checkpoint, failure, options);
                 }
@@ -95,8 +98,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 throw new DeltaVersionNotAvailableException($"Version {target} of delta table {tableName} cannot be reconstructed, commit {suffixStart - 1} is missing and no usable checkpoint at version {suffixStart - 1} or later exists.", lastFailure);
             }
             var fromStart = new LogReplay(options.SkipTombstones);
-            await ReplayCommits(segment, 0, target, fromStart);
-            return fromStart.ToTable(target, null);
+            var header = await ReplayCommits(segment, 0, target, fromStart);
+            var replayed = fromStart.ToTable(target, null);
+            replayed.HeadHeader = header;
+            return replayed;
         }
 
         private static async Task<DeltaTable> ReadOldestVersion(IFileStorage storage, IOPath tableName, LogListing log, DeltaReadOptions options)
@@ -168,21 +173,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
         }
 
-        private static async Task ReplayCommits(DeltaLogSegment segment, long from, long to, LogReplay replay)
+        // The head commit's first-line header, null when nothing was replayed
+        private static async Task<CommitHeader?> ReplayCommits(DeltaLogSegment segment, long from, long to, LogReplay replay)
         {
+            CommitHeader? headHeader = null;
             for (long version = from; version <= to; version++)
             {
-                // No cap: the reader keeps reading what StreamReader read
-                using var lines = await segment.OpenCommitAsync(version, null, int.MaxValue, skipOversizedCommitInfo: false);
+                // No cap: the reader keeps reading what StreamReader read, only an own oversized header is streamed
+                using var lines = await segment.OpenCommitAsync(version, null, int.MaxValue, skipOversizedCommitInfo: false, streamOwnHeader: true);
                 if (lines == null)
                 {
                     throw new DeltaVersionNotAvailableException($"Commit {segment.Listing.Commits[version].IOEntry.Path.Full} was removed while it was read.");
                 }
 
+                var first = true;
                 while (await lines.ReadLineAsync())
                 {
+                    var streamed = lines.StreamedHeader;
+                    if (first && version == to)
+                    {
+                        headHeader = streamed ?? CommitHeaderReader.Read(lines.Line.Span, terminated: true, HeaderMode.Lenient);
+                    }
+                    first = false;
                     // Decoded as StreamReader did, so invalid UTF-8 still reads as replacement characters
-                    var line = Encoding.UTF8.GetString(lines.Line.Span);
+                    var line = Encoding.UTF8.GetString(streamed != null ? Residual(streamed) : lines.Line.Span);
                     if (string.IsNullOrWhiteSpace(line))
                     {
                         continue;
@@ -195,6 +209,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     replay.Apply(action, fromCheckpoint: false);
                 }
             }
+            return headHeader;
+        }
+
+        // A streamed own line reads as its residual, the line without its created paths; a line that is not JSON fails as it did whole
+        private static ReadOnlySpan<byte> Residual(CommitHeader header)
+        {
+            if (header.Error != null)
+            {
+                throw new JsonException(header.Error);
+            }
+            return header.Residual.Span;
         }
 
         /// <summary>
@@ -349,9 +374,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 return null;
             }
 
-            using var textReader = new StreamReader(commitData);
-
-            var line = await textReader.ReadLineAsync();
+            // Lines split and decoded as StreamReader did, only an own oversized header is streamed
+            using var lines = new BoundedLineReader(commitData, null, int.MaxValue, skipOversizedCommitInfo: false, streamOwnHeader: true);
 
             List<DeltaAddAction> addedFiles = new List<DeltaAddAction>();
             List<DeltaRemoveFileAction> removedFiles = new List<DeltaRemoveFileAction>();
@@ -360,9 +384,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             DeltaMetadataAction? metadata = null;
             DeltaCommitInfoAction? commitInfo = null;
 
-            while (line != null)
+            while (await lines.ReadLineAsync())
             {
-
+                var line = Encoding.UTF8.GetString(lines.StreamedHeader is { } header ? Residual(header) : lines.Line.Span);
                 var action = JsonSerializer.Deserialize<DeltaAction>(line);
                 if (action == null)
                 {
@@ -388,12 +412,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (action.CommitInfo != null)
                 {
                     commitInfo = action.CommitInfo;
-                }
-
-                line = await textReader.ReadLineAsync();
-                if (line == null)
-                {
-                    break;
                 }
             }
 
@@ -450,14 +468,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return version;
         }
 
-        internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName)
+        internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName, CancellationToken cancellationToken = default)
+        {
+            return Classify(await storage.Ls(tableName.Combine(DeltaLogDirName), cancellationToken: cancellationToken));
+        }
+
+        /// <summary>
+        /// Sorts the entries of one log listing into commits, checkpoints and cleanup controls; a repeated version keeps its last entry.
+        /// </summary>
+        internal static LogListing Classify(IEnumerable<IOEntry> files)
         {
             var log = new LogListing();
-            var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
             foreach (var file in files)
             {
-                if (file.Path.IsFolder || !TryGetVersion(file.Name, out var version))
+                if (file.Path.IsFolder)
                 {
+                    // A folder under a control name is a record no version can read
+                    if (file.Name.StartsWith(CleanupControlPrefix, StringComparison.Ordinal))
+                    {
+                        log.AddControl(file);
+                    }
+                    continue;
+                }
+                if (!TryGetVersion(file.Name, out var version))
+                {
+                    if (file.Name.StartsWith(CleanupControlPrefix, StringComparison.Ordinal))
+                    {
+                        log.AddControl(file);
+                    }
                     continue;
                 }
 
@@ -480,6 +518,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
             log.Checkpoints.Sort((left, right) => right.Version.CompareTo(left.Version));
             return log;
+        }
+
+        // A {version:D20}.json commit name
+        internal static bool TryGetCommitVersion(string name, out long version)
+        {
+            return TryGetVersion(name, out version) && HasSuffix(name, CommitSuffix);
         }
 
         // The suffix directly follows the version digits
@@ -521,6 +565,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
             // The highest version the other version files cover, -1 without any
             public long MaxOtherVersion { get; set; } = -1;
+
+            private List<IOEntry>? _controls;
+
+            // Cleanup control records in listing order, folders under a control name included
+            public IReadOnlyList<IOEntry> Controls => (IReadOnlyList<IOEntry>?)_controls ?? Array.Empty<IOEntry>();
+
+            internal void AddControl(IOEntry entry)
+            {
+                (_controls ??= new List<IOEntry>()).Add(entry);
+            }
         }
     }
 }

@@ -24,6 +24,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -81,6 +82,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
         private string _tableName;
         private IOPath _tablePath;
+        // Validated once, so restores reuse it and a changed storage instance is detected
+        private readonly CleanupConfiguration _cleanup;
 
         private IObjectState<bool>? _firstInsertDone;
         private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
@@ -95,6 +98,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private string? _haltReason;
         private bool _gaugesCreated;
         private DeltaMaintenanceWorker? _worker;
+        private ProducerHandle? _producers;
+        private DeltaMaintenanceBudget? _producersBudget;
 
         // Earlier runs' workers whose detached jobs still run, replaced whole so the gauge reads it unlocked
         private volatile DeltaMaintenanceWorker[] _stoppedWorkers = System.Array.Empty<DeltaMaintenanceWorker>();
@@ -105,12 +110,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private readonly HashSet<string> _reportedCheckpointFailures = new HashSet<string>();
         private readonly HashSet<string> _unknownCodecs = new HashSet<string>();
         private string _fileExtension = ".parquet";
+        private bool _discardFailureWarned;
+        private bool _discardKeptWarned;
+        private bool _discardDroppedWarned;
+        // Chosen once per run: queued to the worker, or deleted inline by the attempt
+        private DiscardMode _discardMode;
+        // The run's producer handle on its discard route, in queued mode
+        private DiscardHandle? _discards;
+        // The stage this sink last marked failed closed
+        private string? _failedClosedStage;
+        // The inline fallback's executor, made for the storage it deletes through
+        private DeletionExecutor? _inlineExecutor;
+        private readonly DiscardCounters _discardCounters = new DiscardCounters();
+        private readonly SweepCounters _sweepCounters = new SweepCounters();
+
+        // Discarded outputs whose best-effort delete failed
+        internal long DiscardDeleteFailures => _discardCounters.Failed;
+
+        internal DiscardCounters DiscardsForTests => _discardCounters;
+
+        internal DiscardMode DiscardModeForTests => _discardMode;
+
+        internal DiscardHandle? DiscardRouteForTests => _discards;
+
+        // The worker of the latest start, set after that run's discard mode and route
+        internal DeltaMaintenanceWorker? StartedWorkerForTests { get; private set; }
 
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
             this._writeRelation = writeRelation;
             _tableName = string.Join("/", writeRelation.NamedObject.Names);
+            // On the original name, before path normalization can hide a segment
+            _cleanup = CleanupConfiguration.Validate(() => options.StorageLocation, _tableName, options.AssumeCompleteStorageListing, CleanupOptIns.Off);
             _tablePath = _tableName;
 
             if (writeRelation.TableSchema.Struct != null)
@@ -124,6 +156,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     }
                 }
             }
+            options.SinkCreatedForTests?.Invoke(this);
         }
 
         public override string DisplayName => $"DeltaLakeSink({_tableName})";
@@ -181,17 +214,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             await StopWorker();
             // Earlier runs' jobs that settled since leave the gauge
             _stoppedWorkers = Detached(_stoppedWorkers, null);
-            if (_options.CheckpointInterval <= 0)
-            {
-                return;
-            }
+            // Read at every start, outside the construction snapshot
+            var deletesDisabled = MaintenanceSwitches.DeletesDisabled();
+            var mode = DiscardMode.Inline;
+            DiscardHandle? discards = null;
             var budget = _options.MaintenanceBudgetOverride;
+            var shared = _options.SharedBudgetForTests ?? DeltaMaintenanceBudget.SharedSource;
+            // An existing budget's producer entry is held before the settings or the worker can fail
+            if ((budget ?? shared.Existing) is { } existing)
+            {
+                HoldProducers(existing);
+            }
             try
             {
+                if (_options.MaintenanceSettingsFailForTests)
+                {
+                    throw new ArgumentException("Maintenance settings fault");
+                }
                 if (budget == null)
                 {
                     var settings = MaintenanceBudgetSettings.From(_options);
-                    budget = DeltaMaintenanceBudget.Shared(settings, out var matches);
+                    var matches = true;
+                    budget = shared.Get(settings, out matches);
+                    HoldProducers(budget);
                     if (!matches && !_budgetMismatchWarned)
                     {
                         _budgetMismatchWarned = true;
@@ -202,16 +247,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     throw new InvalidOperationException("Maintenance initialization fault");
                 }
+                var periodic = _options.CheckpointInterval > 0;
+                // A storage replaced since construction is metered as S3 and is not eligible
+                var replaced = _cleanup.StorageChanged(_options.StorageLocation);
+                var paging = replaced ? ListingPaging.S3 : _cleanup.Store.Store.Paging;
+                // Queued only to a worker whose listings and targets qualify, which eligibility implies, while maintenance deletes are on
+                var queued = !deletesDisabled && !replaced && _cleanup.Store.Eligible;
+                // The drain and the staged sweep run with checkpoints off too
+                var cleanup = new DeltaTableCleanup(_cleanup, MeteredFileStorage.Wrap(_options.StorageLocation, budget.Buckets, paging), _options.TimeProvider, _tablePath,
+                    queued ? budget.Discards : null, () => _options.StorageLocation, _discardCounters, Logger, _tableName, _sweepCounters);
                 var worker = new DeltaMaintenanceWorker(budget, new MaintenanceWorkerSettings(_options.CheckpointInterval, _options.CheckpointMaxAge, _options.TimeProvider)
                 {
                     Codec = _options.CompressionCodec,
-                    RebuildLegacyCheckpoints = _options.RebuildLegacyCheckpoints
-                }, _options.StorageLocation, _tablePath, _tableName, Logger);
+                    RebuildLegacyCheckpoints = _options.RebuildLegacyCheckpoints,
+                    PeriodicEnabled = periodic,
+                    InspectionEnabled = periodic,
+                    Paging = paging,
+                    CleanupEligible = _cleanup.Store.Eligible && !replaced
+                }, _options.StorageLocation, _tablePath, _tableName, Logger)
+                { Cleanup = cleanup };
+                if (queued)
+                {
+                    // Formed from the sink's own storage; the worker forms it from its meter
+                    discards = budget.Discards.Acquire(DiscardRoute.Of(_options.StorageLocation, _tablePath));
+                }
+                else
+                {
+                    // A run that cannot drain drops inherited hints, never deleting them inline
+                    _discardCounters.AddDropped(budget.Discards.DropQueued(DiscardRoute.Of(_options.StorageLocation, _tablePath)));
+                }
                 budget.Register(worker);
                 _worker = worker;
+                mode = queued ? DiscardMode.Queued : DiscardMode.Inline;
             }
             catch (Exception e)
             {
+                discards?.Dispose();
+                discards = null;
                 _worker = null;
                 if (budget != null)
                 {
@@ -219,11 +291,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 Logger.LogWarning(e, "Delta table {table} runs without checkpoint maintenance: {reason}", _tableName, MaintenanceReason.InitFailed);
             }
+            // The new handle is taken before the earlier run's goes, so a route both hold keeps its hints
+            var previous = _discards;
+            _discards = discards;
+            previous?.Dispose();
+            _discardMode = mode;
+            StartedWorkerForTests = _worker;
             if (!_maintenanceGaugesCreated)
             {
                 _maintenanceGaugesCreated = true;
                 Metrics.CreateObservableGauge("delta_checkpoint_version", () => _worker?.LastCompleted ?? -1);
-                Metrics.CreateObservableGauge("delta_checkpoint_lag_versions", () => _worker is { } w && w.Target >= 0 ? w.Target - Math.Max(w.LastCompleted, -1) : 0);
+                Metrics.CreateObservableGauge("delta_checkpoint_lag_versions", () => _worker?.LagVersions ?? 0);
                 Metrics.CreateObservableGauge("delta_checkpoint_oldest_uncheckpointed_seconds", () => _worker?.OldestUncheckpointedSeconds ?? 0);
                 Metrics.CreateObservableGauge("delta_checkpoint_consecutive_failures", () => _worker?.ConsecutiveFailures ?? 0);
                 Metrics.CreateObservableGauge("delta_checkpoint_skipped", () => _worker?.Skipped == true ? 1 : 0);
@@ -234,10 +312,48 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_checkpoint_last_transfer_bytes", () => _worker?.LastBuild?.TransferBytes ?? 0);
                 Metrics.CreateObservableGauge("delta_checkpoint_last_mode", () => _worker?.LastBuild?.Mode == BuildMode.Sort ? 1 : 0);
                 Metrics.CreateObservableGauge("delta_checkpoint_inherited_gap", () => _worker?.LastBuild?.InheritedGap == true ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_cleanup_reserved_floor", () => _worker?.Fence.ReservedFloor ?? ControlFence.NoReservation);
+                Metrics.CreateObservableGauge("delta_cleanup_uninterpreted_controls", () => _worker?.Fence.Uninterpreted ?? 0);
                 // The array first: a stopping worker is cleared before it is added, so its job is never counted twice
                 Metrics.CreateObservableGauge("delta_checkpoint_detached_jobs", () => _stoppedWorkers.Sum(x => x.DetachedJobs) + (_worker?.DetachedJobs ?? 0));
+                Metrics.CreateObservableGauge("delta_cleanup_discard_queued_mode", () => _discardMode == DiscardMode.Queued ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_hints", () => _discards?.Entry.Hints ?? 0);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_dropped", () => _discardCounters.Dropped);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_deleted", () => _discardCounters.Deleted + _discardCounters.Absent);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_kept", () => _discardCounters.Kept);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_failed", () => _discardCounters.Failed);
+                Metrics.CreateObservableGauge("delta_cleanup_discard_leaked", () => _discardCounters.Leaked);
+                Metrics.CreateObservableGauge("delta_cleanup_sweep_leaked", () => _sweepCounters.PayloadLeaked);
+                Metrics.CreateObservableGauge("delta_cleanup_sweep_leaked_stages", () => _sweepCounters.LeakedStages);
             }
         }
+
+        // Released at dispose; the entry outlives a restart only while another handle, a producer or a barrier uses it
+        private void HoldProducers(DeltaMaintenanceBudget budget)
+        {
+            string key;
+            try
+            {
+                key = TableLeases.KeyOf(_options.StorageLocation, _tablePath);
+            }
+            catch (Exception e)
+            {
+                Logger.LogWarning(e, "Delta table {table} writes without producer coordination: {reason}", _tableName, MaintenanceReason.InitFailed);
+                return;
+            }
+            if (_producers != null && ReferenceEquals(_producersBudget, budget) && _producers.Key == key)
+            {
+                return;
+            }
+            _producers?.Dispose();
+            _producers = budget.Producers.Acquire(key);
+            _producersBudget = budget;
+        }
+
+        // The producer entry this sink writes outputs under, null without coordination
+        internal ProducerHandle? ProducersForTests => _producers;
+
+        internal CleanupConfiguration CleanupForTests => _cleanup;
 
         /// <summary>
         /// The stopped workers whose detached jobs still run, the newly stopped one included.
@@ -265,6 +381,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         public override async ValueTask DisposeAsync()
         {
             await StopWorker();
+            _producers?.Dispose();
+            _producers = null;
+            _producersBudget = null;
+            // A detached drain keeps the route's hints until it settles; otherwise they are dropped here
+            _discards?.Dispose();
+            _discards = null;
             _catalog?.Dispose();
             _catalog = null;
             await base.DisposeAsync();
@@ -287,11 +409,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
             else
             {
+                MarkFailedClosed(_pendingCommit.Value);
                 await KeepWaitingRows();
             }
             await _firstInsertDone.Commit();
             await _pendingCommit.Commit();
             await _bufferDurable.Commit();
+        }
+
+        // A halted sink's waiting stage, marked once for the worker to drop its hints
+        private void MarkFailedClosed(DeltaLakePendingCommit pending)
+        {
+            if (_halted && _discards is { } discards && pending.StageId is { } stage && stage != _failedClosedStage)
+            {
+                _failedClosedStage = stage;
+                discards.Entry.MarkFailedClosed(new FailedClosedMark(pending.Version, stage));
+            }
         }
 
         // Rows that wait for an unpublished commit must survive a restart, the checkpoint already moved the sources past them
@@ -521,6 +654,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             List<DeltaAction> actions = new List<DeltaAction>();
             var currentTime = _options.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
             var stageId = Guid.NewGuid().ToString("N");
+            // The paths this commit writes fresh, recorded in its commitInfo
+            var created = new List<string>();
+            // Change data files the attempt wrote and then dropped from its actions
+            string[]? discarded = null;
 
             bool changeDataEnabled = false;
             bool deletionVectorEnabled = false;
@@ -548,11 +685,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     CommitInfo = new DeltaCommitInfoAction()
                     {
                         StageId = stageId,
-                        Data = new Dictionary<string, object>()
-                        {
-                            { "timestamp", currentTime },
-                            { "operation", "CREATE TABLE" }
-                        }
+                        AdoptedAt = 0,
+                        Timestamp = currentTime,
+                        Operation = "CREATE TABLE",
+                        CreatedFiles = created
                     }
                 });
 
@@ -632,12 +768,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 nextVersion = _catalog.Head + 1;
                 changeDataEnabled = table.ChangeDataEnabled;
 
+                var head = _catalog.HeadProvenance;
                 actions.Add(new DeltaAction()
                 {
                     CommitInfo = new DeltaCommitInfoAction()
                     {
                         StageId = stageId,
-                        Data = new Dictionary<string, object>() { { "timestamp", currentTime }, { "operation", "WRITE" } }
+                        AdoptedAt = CommitProvenance.NextEpoch(head, nextVersion),
+                        Timestamp = CommitProvenance.NextTimestamp(currentTime, head),
+                        Operation = "WRITE",
+                        CreatedFiles = created
                     }
                 });
 
@@ -649,110 +789,130 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             var overlay = _catalog.BeginCommit(nextVersion, newHeader);
-            if (table != null && overwrite)
+            var commitInfo = actions[0].CommitInfo!;
+            overlay.Provenance = new CommitProvenance(nextVersion, stageId, commitInfo.AdoptedAt, commitInfo.Timestamp);
+            // Every output of this attempt is written inside one producer generation, released once it is staged or failed
+            var producer = _producers?.Enter() ?? default;
+            try
             {
-                await foreach (var (_, record) in _catalog.ScanFiles())
+                if (table != null && overwrite)
                 {
-                    actions.Add(new DeltaAction()
+                    await foreach (var (_, record) in _catalog.ScanFiles())
                     {
-                        Remove = new DeltaRemoveFileAction()
+                        actions.Add(new DeltaAction()
                         {
-                            Path = record.Path,
-                            DeletionVector = record.DeletionVector,
-                            DataChange = true,
-                            DeletionTimestamp = currentTime,
-                            Stats = record.Statistics,
-                            Size = record.Size,
-                            PartitionValues = record.PartitionValues,
-                        }
-                    });
-                }
-                overlay.RemoveAll = true;
-                _catalog.RestartIds();
-            }
-
-            var codec = ResolveCodec(configuration);
-            _fileExtension = codec.FileExtension;
-            var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
-            // Only used to compare deleted rows, never written
-            var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
-
-            ParquetSharpWriter? cdcWriter = default;
-            if (changeDataEnabled)
-            {
-                cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
-                cdcWriter.NewBatch();
-            }
-
-            writer.NewBatch();
-            deleteWriter.NewBatch();
-
-            // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
-            bool deleteWritten = false;
-
-            // Deleted rows of the current batch and their probes, matched against the catalog per batch
-            var pendingDeletes = new List<RowToDelete>();
-            _probes ??= new ProbeBatch(_catalog.ScanLayout);
-            _probes.Clear();
-            _probes.SetLayout(_catalog.ScanLayout);
-            var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
-            var touchedFiles = new Dictionary<int, DeltaFileRecord>();
-            await foreach (var page in iterator)
-            {
-                for (int i = 0; i < page.Values.Data.Count; i++)
-                {
-                    var weight = page.Values.Data[i];
-                    if (weight < 0)
-                    {
-                        deleteWritten = true;
-                        int deleteIndex = deleteWriter.WrittenCount;
-                        var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
-                        deleteWriter.AddRow(rowRef);
-                        if (cdcWriter != null)
-                        {
-                            // One change row per deleted copy, rolled per copy so a large weight stays bounded
-                            for (int v = 0; v > weight; v--)
+                            Remove = new DeltaRemoveFileAction()
                             {
-                                cdcWriter.AddRow(rowRef, true);
-                                if (IsFull(cdcWriter))
-                                {
-                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
-                                }
+                                Path = record.Path,
+                                DeletionVector = record.DeletionVector,
+                                DataChange = true,
+                                DeletionTimestamp = currentTime,
+                                Stats = record.Statistics,
+                                Size = record.Size,
+                                PartitionValues = record.PartitionValues,
                             }
-                        }
-
-                        pendingDeletes.Add(new RowToDelete()
-                        {
-                            DeleteIndex = deleteIndex,
-                            Weight = weight
                         });
-                        _probes.Add(rowRef);
                     }
-                    else
+                    overlay.RemoveAll = true;
+                    _catalog.RestartIds();
+                }
+
+                var codec = ResolveCodec(configuration);
+                _fileExtension = codec.FileExtension;
+                var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
+                // Only used to compare deleted rows, never written
+                var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
+
+                ParquetSharpWriter? cdcWriter = default;
+                if (changeDataEnabled)
+                {
+                    cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
+                    cdcWriter.NewBatch();
+                }
+
+                writer.NewBatch();
+                deleteWriter.NewBatch();
+
+                // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
+                bool deleteWritten = false;
+
+                // Deleted rows of the current batch and their probes, matched against the catalog per batch
+                var pendingDeletes = new List<RowToDelete>();
+                _probes ??= new ProbeBatch(_catalog.ScanLayout);
+                _probes.Clear();
+                _probes.SetLayout(_catalog.ScanLayout);
+                var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
+                var touchedFiles = new Dictionary<int, DeltaFileRecord>();
+                await foreach (var page in iterator)
+                {
+                    for (int i = 0; i < page.Values.Data.Count; i++)
                     {
-                        // One row per copy, rolled per copy so a large weight stays bounded
-                        var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
-                        for (int v = 0; v < weight; v++)
+                        var weight = page.Values.Data[i];
+                        if (weight < 0)
                         {
-                            writer.AddRow(rowRef);
-                            if (IsFull(writer))
-                            {
-                                await WriteNewFile(writer, actions, currentTime, overlay);
-                            }
+                            deleteWritten = true;
+                            int deleteIndex = deleteWriter.WrittenCount;
+                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                            deleteWriter.AddRow(rowRef);
                             if (cdcWriter != null)
                             {
-                                cdcWriter.AddRow(rowRef);
-                                if (IsFull(cdcWriter))
+                                // One change row per deleted copy, rolled per copy so a large weight stays bounded
+                                for (int v = 0; v > weight; v--)
                                 {
-                                    await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                                    cdcWriter.AddRow(rowRef, true);
+                                    if (IsFull(cdcWriter))
+                                    {
+                                        await WriteNewCdcFile(cdcWriter, actions, created);
+                                    }
+                                }
+                            }
+
+                            pendingDeletes.Add(new RowToDelete()
+                            {
+                                DeleteIndex = deleteIndex,
+                                Weight = weight
+                            });
+                            _probes.Add(rowRef);
+                        }
+                        else
+                        {
+                            // One row per copy, rolled per copy so a large weight stays bounded
+                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                            for (int v = 0; v < weight; v++)
+                            {
+                                writer.AddRow(rowRef);
+                                if (IsFull(writer))
+                                {
+                                    await WriteNewFile(writer, actions, currentTime, overlay, created);
+                                }
+                                if (cdcWriter != null)
+                                {
+                                    cdcWriter.AddRow(rowRef);
+                                    if (IsFull(cdcWriter))
+                                    {
+                                        await WriteNewCdcFile(cdcWriter, actions, created);
+                                    }
                                 }
                             }
                         }
                     }
+
+                    // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
+                    if (deleteWriter.WrittenCount >= 100_000)
+                    {
+                        if (table == null)
+                        {
+                            throw new InvalidOperationException("Table should not be null when delete is found");
+                        }
+                        using (var deleteBatch = deleteWriter.GetRecordBatch())
+                        {
+                            await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
+                        }
+                        deleteWriter.NewBatch();
+                    }
                 }
 
-                // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
-                if (deleteWriter.WrittenCount >= 100_000)
+                if (deleteWriter.WrittenCount > 0)
                 {
                     if (table == null)
                     {
@@ -762,58 +922,63 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     {
                         await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
                     }
-                    deleteWriter.NewBatch();
                 }
-            }
 
-            if (deleteWriter.WrittenCount > 0)
-            {
-                if (table == null)
+                await WriteDeleteFiles(fileDeleteVectors, touchedFiles, table, actions, currentTime, writer, overlay, created);
+
+                if (writer.WrittenCount > 0)
                 {
-                    throw new InvalidOperationException("Table should not be null when delete is found");
+                    await WriteNewFile(writer, actions, currentTime, overlay, created);
                 }
-                using (var deleteBatch = deleteWriter.GetRecordBatch())
+                if (cdcWriter != null)
                 {
-                    await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
-                }
-            }
-
-            await WriteDeleteFiles(fileDeleteVectors, touchedFiles, table, actions, currentTime, writer, overlay);
-
-            if (writer.WrittenCount > 0)
-            {
-                await WriteNewFile(writer, actions, currentTime, overlay);
-            }
-            if (cdcWriter != null)
-            {
-                if (deleteWritten)
-                {
-                    if (cdcWriter.WrittenCount > 0)
+                    if (deleteWritten)
                     {
-                        await WriteNewCdcFile(cdcWriter, actions, currentTime);
+                        if (cdcWriter.WrittenCount > 0)
+                        {
+                            await WriteNewCdcFile(cdcWriter, actions, created);
+                        }
+                    }
+                    else
+                    {
+                        // Remove written cdc files since there was no delete, the rows are included in the add actions
+                        discarded = RemoveWrittenCdcFiles(actions, created);
+                        if (_discardMode == DiscardMode.Inline)
+                        {
+                            await DeleteDiscardedInline(discarded);
+                        }
                     }
                 }
-                else
+
+                if (table == null || HasChanges(actions))
                 {
-                    // Remove written cdc files since there was no delete, the rows are included in the add actions
-                    await RemoveWrittenCdcFiles(actions);
+                    // Published in CommitVersion once the version is final.
+                    var staged = await DeltaTransactionWriter.StageCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
+                    _pendingCommit.Value = new DeltaLakePendingCommit()
+                    {
+                        Version = nextVersion,
+                        StagedFile = staged.FileName,
+                        StageId = staged.StageId,
+                        Length = staged.Length,
+                        CheckpointId = CurrentCheckpointId
+                    };
+                    _stagedBytes = staged.Bytes;
+                    _stagedOverlay = overlay;
+                    if (discarded != null && _discardMode == DiscardMode.Queued)
+                    {
+                        // An existing table's id may be null, a claim that never matches
+                        var tableId = table != null ? table.Metadata.Id : newHeader!.Metadata.Id;
+                        QueueDiscards(new DiscardGroup(tableId, commitInfo.AdoptedAt!.Value, nextVersion, stageId, discarded) { Counters = _discardCounters, QueuedAt = _options.TimeProvider.GetUtcNow() });
+                    }
+                }
+                else if (discarded is { Length: > 0 } && _discardMode == DiscardMode.Queued)
+                {
+                    DroppedDiscards(discarded.Length, "nothing was staged to hand them off with");
                 }
             }
-
-            if (table == null || HasChanges(actions))
+            finally
             {
-                // Published in CommitVersion once the version is final.
-                var staged = await DeltaTransactionWriter.StageCommit(_options.StorageLocation, _tablePath, nextVersion, actions);
-                _pendingCommit.Value = new DeltaLakePendingCommit()
-                {
-                    Version = nextVersion,
-                    StagedFile = staged.FileName,
-                    StageId = staged.StageId,
-                    Length = staged.Length,
-                    CheckpointId = CurrentCheckpointId
-                };
-                _stagedBytes = staged.Bytes;
-                _stagedOverlay = overlay;
+                producer.Exit();
             }
 
             // Last thing we do is clear the temporary tree, if the write fails we might need the tree again to recompute the files
@@ -835,18 +1000,75 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return false;
         }
 
-        private async Task RemoveWrittenCdcFiles(List<DeltaAction> actions)
+        // Every discarded change file leaves the commit and its ownership before any is deleted or handed off
+        private static string[] RemoveWrittenCdcFiles(List<DeltaAction> actions, List<string> created)
         {
-            for (int i = 0; i < actions.Count; i++)
+            var discarded = new HashSet<string>(StringComparer.Ordinal);
+            actions.RemoveAll(action =>
             {
-                var action = actions[i];
-                if (action.Cdc != null)
+                if (action.Cdc == null)
                 {
-                    await _options.StorageLocation.Rm(_tablePath.Combine(action.Cdc.Path));
-                    actions.RemoveAt(i);
-                    i--;
+                    return false;
                 }
+                discarded.Add(action.Cdc.Path!);
+                return true;
+            });
+            created.RemoveAll(discarded.Contains);
+            return discarded.ToArray();
+        }
+
+        // The inline fallback: before staging, through the current storage, each by its exact qualified name; never fails ingestion
+        private async Task DeleteDiscardedInline(string[] discarded)
+        {
+            var storage = _options.StorageLocation;
+            if (_inlineExecutor == null || !ReferenceEquals(_inlineExecutor.Storage, storage))
+            {
+                _inlineExecutor = new DeletionExecutor(_cleanup, storage);
             }
+            var result = await InlineDiscards.DeleteAsync(_inlineExecutor, discarded, _discardCounters);
+            if (result.Failed > 0)
+            {
+                Logger.Log(_discardFailureWarned ? LogLevel.Debug : LogLevel.Warning, result.FirstError, "Delta table {table} could not delete {count} discarded change data files, they are left behind", _tableName, result.Failed);
+                _discardFailureWarned = true;
+            }
+            if (result.Kept > 0)
+            {
+                Logger.Log(_discardKeptWarned ? LogLevel.Debug : LogLevel.Warning, "Delta table {table} keeps {count} discarded change data files: {reason}. {keep}", _tableName, result.Kept, MaintenanceReason.PathRejected, result.FirstKept);
+                _discardKeptWarned = true;
+            }
+        }
+
+        // Handed off after the stage exists, without a lock; an unroutable or overflowing hint is dropped and counted, never deleted inline
+        private void QueueDiscards(DiscardGroup group)
+        {
+            var route = _discards;
+            var storage = _options.StorageLocation;
+            if (route == null || storage == null || !ReferenceEquals(RawStorage.Unwrap(storage), route.Entry.Route.Raw))
+            {
+                if (group.Paths.Count > 0)
+                {
+                    DroppedDiscards(group.Paths.Count, "the storage instance changed during the run");
+                }
+                return;
+            }
+            // Read first, the queued group keeps only its admitted paths
+            var count = group.Paths.Count;
+            var dropped = route.Entry.Enqueue(group);
+            _discardCounters.AddQueued(count - dropped);
+            if (dropped > 0)
+            {
+                _discardCounters.AddDropped(dropped);
+                Logger.Log(_discardDroppedWarned ? LogLevel.Debug : LogLevel.Warning, "Delta table {table} dropped {count} discarded change data files from the cleanup hand-off: {reason}. They are left behind", _tableName, dropped, MaintenanceReason.DeleteBacklog);
+                _discardDroppedWarned = true;
+            }
+        }
+
+        private void DroppedDiscards(int count, string why)
+        {
+            _discardCounters.AddDropped(count);
+            _discards?.Entry.Owner.AddDropped(count);
+            Logger.Log(_discardDroppedWarned ? LogLevel.Debug : LogLevel.Warning, "Delta table {table} dropped {count} discarded change data files from the cleanup hand-off: {why}. They are left behind", _tableName, count, why);
+            _discardDroppedWarned = true;
         }
 
         private async Task WriteDeleteFiles(
@@ -856,7 +1078,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             List<DeltaAction> actions,
             long currentTime,
             ParquetSharpWriter writer,
-            CatalogOverlay overlay)
+            CatalogOverlay overlay,
+            List<string> created)
         {
             foreach (var deleteFile in fileDeleteVectors)
             {
@@ -889,6 +1112,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Write delete vector here to file
                     var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
 
+                    // Owned before the write, a failed write may still leave the file
+                    created.Add(deletePath);
                     var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_options.StorageLocation, _tablePath, deletePath, roaringBitmap);
 
                     var reAdded = existingFile.ToAdd().WithDeletionVector(new DeletionVector()
@@ -908,7 +1133,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 else
                 {
-                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Path, deleteFile.Value, IsFull, () => WriteNewFile(writer, actions, currentTime, overlay));
+                    await writer.CopyFrom(_options.StorageLocation, _tablePath, existingFile.Path, deleteFile.Value, IsFull, () => WriteNewFile(writer, actions, currentTime, overlay, created));
                     overlay.Removes.Add(deleteFile.Key);
                 }
             }
@@ -991,10 +1216,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _probes.Clear();
         }
 
-        private async Task WriteNewCdcFile(ParquetSharpWriter cdcWriter, List<DeltaAction> actions, long currentTime)
+        private async Task WriteNewCdcFile(ParquetSharpWriter cdcWriter, List<DeltaAction> actions, List<string> created)
         {
             string addFilePath = $"_change_data/cdc-00000-{Guid.NewGuid().ToString()}{_fileExtension}";
 
+            created.Add(addFilePath);
             var fileSize = await cdcWriter.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             actions.Add(new DeltaAction()
             {
@@ -1016,13 +1242,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return writer.WrittenBytes >= _options.MaxFileSizeBytes || writer.WrittenCount >= MaxRowsPerFile;
         }
 
-        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, CatalogOverlay overlay)
+        private async Task WriteNewFile(ParquetSharpWriter writer, List<DeltaAction> actions, long currentTime, CatalogOverlay overlay, List<string> created)
         {
             string addFilePath = $"part-00000-{Guid.NewGuid().ToString()}{_fileExtension}";
 
             var stats = writer.GetStatistics();
             var statsString = JsonSerializer.Serialize(stats, overlay.StatisticsOptions);
 
+            created.Add(addFilePath);
             var fileSize = await writer.WriteData(_options.StorageLocation, _tablePath, addFilePath);
             var add = new DeltaAddAction()
             {

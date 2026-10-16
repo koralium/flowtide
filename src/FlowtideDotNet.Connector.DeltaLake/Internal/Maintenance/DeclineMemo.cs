@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 return MemoCheck.ExpiredWeak;
             }
-            var segment = await DeltaLogSegment.ListAsync(storage, table);
+            var segment = await DeltaLogSegment.ListAsync(storage, table, cancellationToken);
             // Missing history is never memoized, so a commit missing since the last check clears the memo
             for (long version = Math.Max(CheckedThrough + 1, 0); version <= target; version++)
             {

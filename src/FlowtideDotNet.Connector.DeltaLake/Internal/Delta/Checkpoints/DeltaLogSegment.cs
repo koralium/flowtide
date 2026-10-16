@@ -30,9 +30,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             Listing = listing;
         }
 
-        public static async Task<DeltaLogSegment> ListAsync(IFileStorage storage, IOPath table)
+        public static async Task<DeltaLogSegment> ListAsync(IFileStorage storage, IOPath table, CancellationToken cancellationToken = default)
         {
-            return new DeltaLogSegment(storage, table, await DeltaTransactionReader.ListLog(storage, table));
+            return new DeltaLogSegment(storage, table, await DeltaTransactionReader.ListLog(storage, table, cancellationToken));
         }
 
         public IOPath Table { get; }
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         /// <summary>
         /// The lines of a listed commit, null when it was removed after the listing.
         /// </summary>
-        public async Task<BoundedLineReader?> OpenCommitAsync(long version, JobMemory? memory, int cap, bool skipOversizedCommitInfo, CancellationToken cancellationToken = default)
+        public async Task<BoundedLineReader?> OpenCommitAsync(long version, JobMemory? memory, int cap, bool skipOversizedCommitInfo, CancellationToken cancellationToken = default, bool streamOwnHeader = false)
         {
             var stream = await _storage.OpenRead(Listing.Commits[version].IOEntry.Path, cancellationToken);
             if (stream == null)
@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
             try
             {
-                return new BoundedLineReader(stream, memory, cap, skipOversizedCommitInfo, ownsStream: true);
+                return new BoundedLineReader(stream, memory, cap, skipOversizedCommitInfo, ownsStream: true, streamOwnHeader);
             }
             catch
             {

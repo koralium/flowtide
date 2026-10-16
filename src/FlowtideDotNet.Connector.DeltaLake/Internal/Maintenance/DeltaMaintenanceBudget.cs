@@ -31,7 +31,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     {
         public const int DefaultConcurrentJobs = 2;
 
+        public const int DefaultLongJobs = 1;
+
+        public const int DefaultDeleteJobs = 2;
+
         public const string DefaultTempDirectory = "./data/tempFiles/deltalake";
+
+        // Long jobs take one of these before a main slot
+        public int LongJobs { get; init; } = DefaultLongJobs;
+
+        // Deletion slices take one of these instead of a main slot
+        public int DeleteJobs { get; init; } = DefaultDeleteJobs;
 
         public static MaintenanceBudgetSettings From(DeltaLakeOptions options)
         {
@@ -40,17 +50,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// A job's admission: the table lease first, then a gate slot; each is kept as soon as it is held.
+    /// Which gates a job waits on after its table lease.
+    /// </summary>
+    internal enum AdmissionClass : byte
+    {
+        // The main gate
+        Ordinary,
+        // The long gate, then the main gate
+        Long,
+        // The delete gate
+        Delete,
+        // The long gate, then the delete gate
+        LongDelete
+    }
+
+    /// <summary>
+    /// A job's admission: the table lease first, then its gate slots; each is kept as soon as it is held.
     /// </summary>
     internal class JobAdmission
     {
         public IDisposable? Lease { get; set; }
 
+        // The main or the delete slot
         public IDisposable? Slot { get; set; }
+
+        public IDisposable? LongSlot { get; set; }
     }
 
     /// <summary>
-    /// The process-wide maintenance budget: the tick, the FIFO gate, the table leases, the transfer allowance and the scratch folder.
+    /// The process-wide maintenance budget: the tick, the FIFO gates, the table leases, the transfer allowance, the rate buckets and the scratch folder.
     /// </summary>
     internal sealed class DeltaMaintenanceBudget
     {
@@ -78,6 +106,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             _manualTick = manualTick;
             _period = tickPeriod ?? TickPeriod;
             Gate = new FifoGate(settings.MaxConcurrentJobs, clock);
+            LongGate = new FifoGate(settings.LongJobs, clock);
+            DeleteGate = new FifoGate(settings.DeleteJobs, clock);
         }
 
         /// <summary>
@@ -85,17 +115,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         /// </summary>
         public static DeltaMaintenanceBudget Shared(MaintenanceBudgetSettings settings, out bool matches) => s_shared.Get(settings, out matches);
 
+        // Where sinks find and create the process's budget
+        internal static SharedBudget SharedSource => s_shared;
+
         public MaintenanceBudgetSettings Settings { get; }
 
         // Tick time and age origins
         public TimeProvider Clock { get; }
 
+        // The main gate: builds and planning
         public FifoGate Gate { get; }
+
+        // Taken before the main gate by jobs too large for short admission
+        public FifoGate LongGate { get; }
+
+        public FifoGate DeleteGate { get; }
 
         public TableLeases Leases { get; } = new TableLeases();
 
+        // Producers of table outputs, by lease key
+        public ProducerGenerations Producers { get; } = new ProducerGenerations();
+
         // Tests set a smaller cap
         public TransferAllowance Transfer { get; init; } = new TransferAllowance();
+
+        // Discarded outputs handed from sinks to their workers; tests set a smaller allowance
+        public DiscardHandOff Discards { get; init; } = new DiscardHandOff();
+
+        // Request and byte rates of all maintenance traffic; on the system clock unless a test supplies its own
+        public MaintenanceBuckets Buckets { get; init; } = new MaintenanceBuckets(TimeProvider.System);
 
         public int Registered => Volatile.Read(ref _workers).Length;
 
@@ -219,10 +267,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         /// <summary>
         /// The table lease first, so a job that waits on its own table holds no gate slot.
         /// </summary>
-        public async Task AdmitAsync(string tableKey, JobAdmission admission, CancellationToken cancellationToken)
+        public Task AdmitAsync(string tableKey, JobAdmission admission, CancellationToken cancellationToken) => AdmitAsync(tableKey, admission, AdmissionClass.Ordinary, cancellationToken);
+
+        /// <summary>
+        /// The table lease, then the class's gates: the long gate before the main or delete gate, so nothing holds either slot while it waits for the long one.
+        /// </summary>
+        public async Task AdmitAsync(string tableKey, JobAdmission admission, AdmissionClass admissionClass, CancellationToken cancellationToken)
         {
             admission.Lease = await Leases.AcquireAsync(tableKey, cancellationToken);
-            admission.Slot = await Gate.AcquireAsync(cancellationToken);
+            if (admissionClass is AdmissionClass.Long or AdmissionClass.LongDelete)
+            {
+                admission.LongSlot = await LongGate.AcquireAsync(cancellationToken);
+            }
+            var gate = admissionClass is AdmissionClass.Delete or AdmissionClass.LongDelete ? DeleteGate : Gate;
+            admission.Slot = await gate.AcquireAsync(cancellationToken);
+        }
+
+        // How long the head of the longest-waiting gate queue has waited
+        public TimeSpan OldestWait
+        {
+            get
+            {
+                var main = Gate.OldestWait;
+                var longest = LongGate.OldestWait;
+                var delete = DeleteGate.OldestWait;
+                var oldest = main > longest ? main : longest;
+                return oldest > delete ? oldest : delete;
+            }
         }
 
         /// <summary>
@@ -236,9 +307,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             private readonly bool _registerGauges;
             private DeltaMaintenanceBudget? _budget;
 
-            public SharedBudget(bool registerGauges = false)
+            // A test source can start out holding a budget, as the process's does once a sink created it
+            public SharedBudget(bool registerGauges = false, DeltaMaintenanceBudget? existing = null)
             {
                 _registerGauges = registerGauges;
+                _budget = existing;
+            }
+
+            public DeltaMaintenanceBudget? Existing
+            {
+                get
+                {
+                    lock (_lock)
+                    {
+                        return _budget;
+                    }
+                }
             }
 
             public DeltaMaintenanceBudget Get(MaintenanceBudgetSettings settings, out bool matches)
@@ -250,7 +334,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                         _budget = new DeltaMaintenanceBudget(settings, TimeProvider.System, manualTick: false);
                         if (_registerGauges)
                         {
-                            RegisterGauges(_budget);
+                            RegisterGauges(s_meter, _budget);
                         }
                     }
                     matches = _budget.Settings == settings;
@@ -258,17 +342,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
             }
 
-            private static void RegisterGauges(DeltaMaintenanceBudget budget)
+            // Tests register on a meter of their own
+            internal static void RegisterGauges(Meter meter, DeltaMaintenanceBudget budget)
             {
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_running_jobs", () => budget.Gate.Running);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_queued_jobs", () => budget.Gate.QueueLength + budget.Leases.Waiting);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_oldest_wait_seconds", () => budget.Gate.OldestWait.TotalSeconds);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_transfer_bytes", () => budget.Transfer.Charged);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_disk_bytes", () => budget.ScratchIfCreated?.Ledger.Reserved ?? 0);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_pending_deletion_bytes", () => budget.ScratchIfCreated?.PendingBytes ?? 0);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_detached_jobs", () => budget.DetachedJobs);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_tick_ms", () => budget.LastTickMilliseconds);
-                s_meter.CreateObservableGauge("flowtide_delta_maintenance_init_failed", () => budget.InitFailed ? 1 : 0);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_running_jobs", () => budget.Gate.Running + budget.DeleteGate.Running);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_queued_jobs", () => budget.Gate.QueueLength + budget.LongGate.QueueLength + budget.DeleteGate.QueueLength + budget.Leases.Waiting);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_oldest_wait_seconds", () => budget.OldestWait.TotalSeconds);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_transfer_bytes", () => budget.Transfer.Charged);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_disk_bytes", () => budget.ScratchIfCreated?.Ledger.Reserved ?? 0);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_pending_deletion_bytes", () => budget.ScratchIfCreated?.PendingBytes ?? 0);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_detached_jobs", () => budget.DetachedJobs);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_tick_ms", () => budget.LastTickMilliseconds);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_init_failed", () => budget.InitFailed ? 1 : 0);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_request_debt", () => budget.Buckets.Requests.Debt);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_byte_debt", () => budget.Buckets.Bytes.Debt);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_bucket_waiters", () => budget.Buckets.Requests.QueueLength + budget.Buckets.Bytes.QueueLength);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_discard_hints", () => budget.Discards.Queued);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_discard_bytes", () => budget.Discards.Charged);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_discard_dropped", () => budget.Discards.Dropped);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_discard_leaked", () => budget.Discards.Leaked);
             }
         }
     }

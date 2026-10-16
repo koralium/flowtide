@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         {
             var data = commit.CommitInfo?.Data;
             return ReadTimestamp(data, "inCommitTimestamp")
-                ?? ReadTimestamp(data, "timestamp")
+                ?? commit.CommitInfo?.Timestamp
                 ?? LatestAddTime(commit.AddedFiles)
                 ?? commit.RemovedFiles.Max(x => x.DeletionTimestamp);
         }

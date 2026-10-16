@@ -33,4 +33,87 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
             writer.WriteStringValue(value);
         }
     }
+
+    // A free-form string; one escaped into invalid UTF-16 reads as null
+    internal sealed class TolerantStringConverter : JsonConverter<string?>
+    {
+        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.String)
+            {
+                try
+                {
+                    return reader.GetString();
+                }
+                catch (InvalidOperationException)
+                {
+                    return null;
+                }
+            }
+            reader.Skip();
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, string? value, JsonSerializerOptions options)
+        {
+            writer.WriteStringValue(value);
+        }
+    }
+
+    // An integer that fits a long; any other value reads as null
+    internal sealed class LenientInt64Converter : JsonConverter<long?>
+    {
+        public override long? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            if (reader.TokenType == JsonTokenType.Number && IsIntegral(reader.ValueSpan) && reader.TryGetInt64(out var value))
+            {
+                return value;
+            }
+            reader.Skip();
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, long? value, JsonSerializerOptions options)
+        {
+            if (value.HasValue)
+            {
+                writer.WriteNumberValue(value.Value);
+            }
+            else
+            {
+                writer.WriteNullValue();
+            }
+        }
+
+        // Without a fraction or an exponent
+        internal static bool IsIntegral(ReadOnlySpan<byte> number)
+        {
+            return number.IndexOfAny((byte)'.', (byte)'e', (byte)'E') < 0;
+        }
+    }
+
+    // Written for own commits, skipped on read
+    internal sealed class CreatedFilesConverter : JsonConverter<List<string>?>
+    {
+        public override List<string>? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        {
+            reader.Skip();
+            return null;
+        }
+
+        public override void Write(Utf8JsonWriter writer, List<string>? value, JsonSerializerOptions options)
+        {
+            if (value == null)
+            {
+                writer.WriteNullValue();
+                return;
+            }
+            writer.WriteStartArray();
+            foreach (var path in value)
+            {
+                writer.WriteStringValue(path);
+            }
+            writer.WriteEndArray();
+        }
+    }
 }

@@ -59,7 +59,56 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         SlowBuild = 40,
         ScratchLocksIneffective = 41,
         LinkedScratchSkipped = 42,
-        LegacyGapKept = 43
+        LegacyGapKept = 43,
+        // Cleanup and retention
+        ListingIneligible = 44,
+        CleanupGate = 45,
+        NoEligibleCheckpoint = 46,
+        ManifestSuspended = 47,
+        HistoryChanged = 48,
+        UnclassifiedLogFile = 49,
+        BarrierTimeout = 50,
+        StuckProducer = 51,
+        OrphanNotEligible = 52,
+        CreatedFilesUnreadable = 53,
+        DeleteBacklog = 54,
+        TimestampAhead = 55,
+        PathRejected = 56,
+        DeleteFailed = 57,
+        DeletesDisabled = 58,
+        InvalidMaintenanceOptions = 59,
+        JobDeadline = 60,
+        InvalidProvenance = 61
+    }
+
+    /// <summary>
+    /// Why a listing could not serve as deletion evidence, a finite subreason of <see cref="MaintenanceReason.ListingIneligible"/>.
+    /// </summary>
+    internal enum ListingCheck : byte
+    {
+        Passed = 0,
+        // The store or path is not qualified for absence-based cleanup
+        StoreIneligible = 1,
+        // The client-generated folder block did not match its exact recomputation
+        EnvelopeMismatch = 2,
+        // A nonrecursive evidence folder held subfolders or descendants
+        UnsupportedSubfolder = 3,
+        // Names were not strictly increasing, or repeated
+        OrderOrDuplicate = 4,
+        // An entry lay outside the requested folder
+        Containment = 5,
+        // A relied-on commit range had a gap
+        RangeGap = 6,
+        // The successor of the listed head exists
+        SuccessorPresent = 7,
+        // The successor probe failed or was cancelled
+        ProbeError = 8,
+        // The head has no representable successor
+        Overflow = 9,
+        // The storage instance differs from the one classified at construction
+        StorageChanged = 10,
+        // A cleanup control record this version cannot interpret fences every deletion
+        ControlFenced = 11
     }
 
     /// <summary>

@@ -262,6 +262,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task OversizedHeaderKeepsConservativeBuilderCoverage()
+        {
+            var storage = Memory(nameof(OversizedHeaderKeepsConservativeBuilderCoverage));
+            await DeltaTestKit.WriteCommit(storage, "t", 0, DeltaTestKit.Protocol(), DeltaTestKit.Metadata(DeltaTestKit.UserSchema), Add("a.parquet"));
+            await LegacyRoot(storage, "t", 0);
+            // An own header whose created files take it over the action cap
+            var created = Enumerable.Range(0, 80_000).Select(i => $"part-00000-{i:D36}.zstd.parquet").ToList();
+            var own = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = new string('a', 32), AdoptedAt = 0, Timestamp = 5, Operation = "WRITE", CreatedFiles = created } };
+            await DeltaTestKit.WriteCommit(storage, "t", 1, own, Add("b.parquet"));
+            await DeltaTestKit.WriteCommit(storage, "t", 2, CommitInfo(7_000), Add("c.parquet"));
+            var built = await Build(storage, "t", 2);
+
+            // The skipped header's timestamp is unknown, so the bound falls back to the next one and never claims more
+            Assert.Equal(BuildStatus.Completed, built.Result.Status);
+            Assert.Equal(1, built.Result.SkippedLines);
+            Assert.Equal(7_000 + (long)CoverageMarker.Slack.TotalMilliseconds, CoverageMarker.Parse(built.Marker)!.Inherited!.TsBound);
+        }
+
+        [Fact]
         public async Task WriterBugIsCaughtBeforePublication()
         {
             var storage = Memory(nameof(WriterBugIsCaughtBeforePublication));

@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
     public class DeltaMaintenanceLifecycleTests : IDisposable
     {
-        private readonly string _directory = Path.Combine(AppContext.BaseDirectory, "lifecycle-" + Guid.NewGuid().ToString("N"));
+        private readonly string _directory = Path.Combine(Path.GetTempPath(), "lc-" + ScratchOwners.ShortId());
 
         public void Dispose()
         {
@@ -319,19 +319,98 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public async Task IntervalZeroCreatesNoWorker()
+        public async Task IntervalZeroNeverDispatchesPeriodicBuilds()
         {
-            var testName = nameof(IntervalZeroCreatesNoWorker);
+            var testName = nameof(IntervalZeroNeverDispatchesPeriodicBuilds);
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{testName}"));
-            await using var stream = new DeltaLakeSinkStream(testName, storage, options => options.CheckpointInterval = 0);
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.CheckpointInterval = 0;
+                options.CheckpointMaxAge = TimeSpan.Zero;
+            });
             stream.Generate(10);
             await stream.StartStream(UserInsert);
             await WaitForVersion(storage, "test", stream, 0);
-            stream.Generate(1);
-            await WaitForVersion(storage, "test", stream, 1);
-            Assert.Equal(0, stream.Maintenance.Budget.Registered);
+            for (long version = 1; version <= 3; version++)
+            {
+                stream.Generate(1);
+                await WaitForVersion(storage, "test", stream, version);
+            }
+            // The worker exists for the cleanup steps but inspects and builds nothing, also with an age trigger due
+            var worker = Assert.Single(stream.Maintenance.Workers);
+            await stream.Maintenance.TickAndSettleAsync(3);
             Assert.False(await stream.Maintenance.TickOnceAsync());
+            Assert.False(worker.Inspected);
+            Assert.Equal(-1, worker.LastCompleted);
+            // Checkpoints are off, so no lag accrues although every version was handed off
+            Assert.Equal(3, worker.Target);
+            Assert.Equal(0, worker.LagVersions);
             Assert.DoesNotContain(storage.Requests, x => x.Contains("_last_checkpoint") || x.Contains(".checkpoint."));
+        }
+
+        [Fact]
+        public async Task IntervalZeroRunsOnlyStepsOneAndTwo()
+        {
+            var directory = Path.Combine(Path.GetTempPath(), "iz-" + ScratchOwners.ShortId());
+            try
+            {
+                // Checkpoints off and no retention: the worker runs the discard drain and the staged sweep only
+                await using var run = SinkRun.Start(nameof(IntervalZeroRunsOnlyStepsOneAndTwo), directory);
+                await run.Started();
+                var sink = run.Sink;
+                var entry = sink.DiscardRouteForTests!.Entry;
+                var discarded = run.ChangeData();
+                Assert.NotEmpty(discarded);
+                Assert.Equal(discarded.Count, entry.Hints);
+                var worker = Assert.Single(run.Stream.Maintenance.Workers);
+                var cleanup = (DeltaTableCleanup)worker.Cleanup!;
+
+                // A published copy of commit 0 left as a stage, which only the staged sweep removes
+                var log = Path.Combine(run.TableDir, "_delta_log");
+                var stage = $".{0:D20}.json.{Guid.NewGuid():N}.tmp";
+                File.Copy(Path.Combine(log, $"{0:D20}.json"), Path.Combine(log, stage));
+                await run.Stream.Maintenance.TickAndSettleAsync(0);
+                // Step two: the staged sweep removed the stage; step one: the drain deleted the discards
+                Assert.False(File.Exists(Path.Combine(log, stage)));
+                Assert.Equal(StageVerdict.Published, cleanup.LastSweepForTests!.Verdicts[stage]);
+                Assert.Equal(1, cleanup.LastSweepForTests.LogFilesDeleted);
+                Assert.Equal(0, entry.Hints);
+                Assert.All(discarded, x => Assert.False(run.Exists(x)));
+
+                // An uninterpreted control record found by the drain's own listing drops the next attempt's hints
+                await run.Local.WriteText("/test/_delta_log/.flowtide-cleanup.future", "{}");
+                run.Stream.Generate(100);
+                await WaitForVersion(run.Local, "test", run.Stream, 1);
+                var fenced = run.ChangeData();
+                Assert.NotEmpty(fenced);
+                Assert.Equal(fenced.Count, entry.Hints);
+                await run.Stream.Maintenance.TickAndSettleAsync(1);
+                Assert.Equal(0, entry.Hints);
+                Assert.Equal(fenced.Count, sink.DiscardsForTests.Dropped);
+                Assert.All(fenced, x => Assert.True(run.Exists(x)));
+                Assert.Equal(1, worker.CleanupFailures(JobKind.Deletion));
+
+                // No inspection, repair or build ran
+                Assert.False(worker.Inspected);
+                Assert.Equal(-1, worker.LastCompleted);
+                Assert.Null(worker.LastBuild);
+                Assert.DoesNotContain(run.Storage.Requests, x => x.Contains("_last_checkpoint") || x.Contains(".checkpoint."));
+                Assert.Empty(Directory.GetFiles(Path.Combine(run.TableDir, "_delta_log"), "*checkpoint*"));
+                Assert.Equal(0, run.Stream.FailureNotificationCount);
+            }
+            finally
+            {
+                try
+                {
+                    Directory.Delete(directory, true);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
         }
 
         [Fact]

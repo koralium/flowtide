@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         private readonly JobScratch _scratch;
         private readonly JobMemory _memory;
         private readonly List<string> _runs = new List<string>();
+        // The runs a merge pass wrote so far, the one being written included
+        private readonly List<string> _merged = new List<string>();
         private byte[] _key = Array.Empty<byte>();
         private int _keyLength;
 
@@ -68,27 +70,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             // Earlier passes merge without reducing; consumed runs are deleted after their replacement is closed
             while (_runs.Count > FanIn)
             {
-                var next = new List<string>();
                 for (int i = 0; i < _runs.Count; i += FanIn)
                 {
                     var group = _runs.GetRange(i, Math.Min(FanIn, _runs.Count - i));
                     if (group.Count == 1)
                     {
-                        next.Add(group[0]);
+                        _merged.Add(group[0]);
                         continue;
                     }
                     using var merged = new RunWriter(_scratch, _memory);
+                    _merged.Add(merged.Path);
                     Merge(group, entry => merged.Write(entry), cancellationToken);
                     merged.Close();
                     SpillBytes += new FileInfo(merged.Path).Length;
-                    next.Add(merged.Path);
                     foreach (var path in group)
                     {
                         _scratch.Delete(path);
                     }
                 }
                 _runs.Clear();
-                _runs.AddRange(next);
+                _runs.AddRange(_merged);
+                _merged.Clear();
             }
 
             // Each key's first entry is the latest, and the only one written
@@ -109,6 +111,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                 _scratch.Delete(path);
             }
             _runs.Clear();
+            Free();
+        }
+
+        /// <summary>
+        /// Deletes the runs not yet merged, those of an unfinished merge pass included, and frees the key buffer, for a sort abandoned before its reduction finished.
+        /// </summary>
+        public void Discard()
+        {
+            foreach (var path in _runs.Union(_merged))
+            {
+                _scratch.Delete(path);
+            }
+            _runs.Clear();
+            _merged.Clear();
             Free();
         }
 

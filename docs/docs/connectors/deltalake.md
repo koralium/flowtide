@@ -48,8 +48,9 @@ These are the options that can be configured when adding the delta lake connecto
 | StatsPruningColumns              | Only used for writing, how many written columns the sink keeps file statistics for to skip files when deleting rows         | 8          | No       |
 | PruningMemoryBytes               | Only used for writing, memory all Delta Lake sinks in the process share for those statistics, the first sink fixes the value | 1 GB       | No       |
 | CheckpointMaxAge                 | Only used for writing, how long published versions may wait for a checkpoint before one is built regardless of the interval, null turns the age trigger off | 24 hours | No |
-| MaxConcurrentMaintenanceJobs     | Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value                 | 2          | No       |
-| MaintenanceTempDirectory         | Only used for writing, the local folder for checkpoint builds, the first sink fixes the value                                | ./data/tempFiles/deltalake | No |
+| MaxConcurrentMaintenanceJobs     | Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value, also one with a CheckpointInterval of 0; cleanup jobs run in slots of their own beside them, see [Limits](#limits) | 2 | No |
+| MaintenanceTempDirectory         | Only used for writing, the local folder for checkpoint builds, the first sink fixes the value, also one with a CheckpointInterval of 0 | ./data/tempFiles/deltalake | No |
+| AssumeCompleteStorageListing     | Only used for writing, vouches for a storage the connector does not recognize, such as a custom wrapper, as a whole stack: listings are complete and in order, Stat returns null only for a missing object, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spelling reaches another object), and a delete removes exactly the named object. Maintenance then treats the store as eligible, which also lets it rebuild a torn checkpoint without the full history. It cannot make a known failed store, such as Google Cloud Storage, eligible | False | No |
 | RebuildLegacyCheckpoints         | Only used for writing, when every commit since version 0 is still there, rebuild from the whole log instead of building on a checkpoint the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used | False | No |
 
 The options given to `AddDeltaLakeCatalog` apply to every table the catalog reads or writes.
@@ -246,17 +247,20 @@ statistics or tags, and tombstones older than `delta.deletedFileRetentionDuratio
 
 All Delta Lake sinks in the process share the maintenance budget:
 
-- `MaxConcurrentMaintenanceJobs` builds run at once, one per table; a table waiting for its own earlier build holds no slot.
-- Each build may use 84 MiB of managed memory, of which up to 64 MiB holds the commits after its starting checkpoint, and 256 MiB of native Parquet memory.
-  A larger tail is sorted through files in the temp folder. These figures exclude the `PruningMemoryBytes` the sinks keep for deleting rows.
+- `MaxConcurrentMaintenanceJobs` checkpoint builds run at once. Beside them, up to two cleanup jobs (discard drains and staged commit sweeps,
+  see [Table maintenance](#table-maintenance)) run in slots of their own, which no option changes. A table runs one job at a time, and a
+  table waiting for its own earlier job holds no slot.
+- Each job, build or cleanup, may use 84 MiB of managed memory and 256 MiB of native Parquet memory. A build keeps up to 64 MiB of it for
+  the commits after its starting checkpoint and sorts a larger tail through files in the temp folder. These figures exclude the
+  `PruningMemoryBytes` the sinks keep for deleting rows.
 - Downloads share a 128 MiB allowance, admitted by listed size, since the storage clients read whole objects; a larger object runs alone.
 - Files in the temp folder share a 4 GiB disk cap. Each write reserves its space first, and a file's space is released only after it is deleted.
 - An action line over 4 MiB, or with more than 65,536 entries, declines the build before any of it is buffered. An oversized `commitInfo` line is skipped.
 
-With the defaults this allows about 340 MiB per build and about 808 MiB for maintenance in the process (two builds and the download
-allowance), or about 1.8 GiB for the connector together with `PruningMemoryBytes`. Setting `MaxConcurrentMaintenanceJobs` to 1 saves about
-340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator keeps, the sinks'
-own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.
+With the defaults this allows about 340 MiB per job and about 1.45 GiB for maintenance in the process (two builds, two cleanup jobs and
+the download allowance), or about 2.45 GiB for the connector together with `PruningMemoryBytes`. Setting `MaxConcurrentMaintenanceJobs` to 1
+saves about 340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator
+keeps, the sinks' own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.
 
 A build keeps its starting checkpoint and its output in the temp folder together, and on local disk the output and its published copy, so a
 checkpoint larger than about 2 GiB is not built: the build declines on the disk cap.
@@ -374,8 +378,8 @@ This creates new files in a `_change_data` folder and adds the corresponding act
 Change data files are only added if there are deletes on existing rows, since the `add` action gives the same performance
 to read change data if there are no deletes. This also saves on storage space.
 
-To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit, but they can then be deleted
-before completing the commit.
+To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit. When the commit has no deletes they
+are left out of it and deleted as described in [Table maintenance](#table-maintenance).
 
 Since this connector writes the exact result set in the query, it does not have the concept of primary keys and rows can be duplicated if that is the result
 of the query. This means that the change data feed only contains `delete` and `insert` operations.

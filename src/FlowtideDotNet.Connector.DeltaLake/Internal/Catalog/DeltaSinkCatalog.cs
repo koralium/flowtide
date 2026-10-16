@@ -48,6 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private CatalogOverlay? _published;
         private bool _ready;
         private long _head = -1;
+        private CommitProvenance? _headProvenance;
         private int _nextId;
         private int _liveFiles;
         private bool _capacityWarned;
@@ -97,6 +98,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 
         public long Head => _head;
 
+        /// <summary>
+        /// The head commit's provenance, null while the table does not exist.
+        /// </summary>
+        public CommitProvenance? HeadProvenance => _headProvenance;
+
         public int LiveFiles => _liveFiles;
 
         /// <summary>
@@ -133,9 +139,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             {
                 _header = null;
                 _head = -1;
+                _headProvenance = null;
                 _ready = true;
                 return;
             }
+            _headProvenance = await ReadHeadProvenance(table, listing);
             if (wasReady)
             {
                 _logger.LogInformation("Delta table {table} has commits from another writer, the catalog is read again at version {version}", _tablePath.Full, table.Version);
@@ -155,6 +163,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 _liveFiles++;
             }
             _ready = true;
+        }
+
+        // A replayed head is reused; a snapshot rooted at the head checkpoint reads the head's first line once
+        private async Task<CommitProvenance> ReadHeadProvenance(DeltaTable table, DeltaTransactionReader.LogListing listing)
+        {
+            if (table.HeadHeader != null)
+            {
+                return CommitProvenance.From(table.Version, table.HeadHeader);
+            }
+            if (!listing.Commits.TryGetValue(table.Version, out var head))
+            {
+                return CommitProvenance.Unknown(table.Version);
+            }
+            var header = await CommitHeaderReader.ReadAsync(_options.StorageLocation, head.IOEntry.Path, HeaderMode.Lenient);
+            return CommitProvenance.From(table.Version, header);
         }
 
         private static DeltaTable WithoutFiles(DeltaTable table)
@@ -346,6 +369,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             }
             LatchTreeMode();
             _head = overlay.Version;
+            _headProvenance = overlay.Provenance ?? CommitProvenance.Unknown(overlay.Version);
         }
 
         public void ApplyRevocation()

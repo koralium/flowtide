@@ -776,14 +776,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task VersionCommitIncludesCommitInfo()
         {
             var storage = Files.Of.InternalMemory($"./{nameof(VersionCommitIncludesCommitInfo)}");
-            var commitInfo = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } };
+            var commitInfo = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "WRITE", ["engineInfo"] = "other" } } };
             await WriteCommit(storage, "t", 0, commitInfo, Protocol(), Metadata(IdSchema));
 
             var commit = await DeltaTransactionReader.ReadVersionCommit(storage, "t", 0);
 
             Assert.NotNull(commit);
             Assert.NotNull(commit.CommitInfo);
-            Assert.Equal("WRITE", commit.CommitInfo.Data!["operation"].ToString());
+            Assert.Equal("WRITE", commit.CommitInfo.Operation);
+            // Fields without a typed property stay in the extension data
+            Assert.Equal("other", commit.CommitInfo.Data!["engineInfo"].ToString());
         }
 
         [Fact]
