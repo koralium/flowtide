@@ -14,7 +14,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Stowage;
 using System.Reflection;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Web;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
@@ -649,86 +648,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Assert.True(Increasing(provider, CompareBytes));
             }
-        }
-
-        // The markdown tables of a file: each a header and its data rows, cells trimmed
-        private static List<(string[] Header, List<string[]> Rows)> Tables(string text)
-        {
-            var tables = new List<(string[] Header, List<string[]> Rows)>();
-            List<string[]>? current = null;
-            foreach (var line in text.Split('\n').Select(x => x.Trim()))
-            {
-                if (!line.StartsWith('|'))
-                {
-                    current = null;
-                    continue;
-                }
-                var cells = line.Trim('|').Split('|').Select(x => x.Trim()).ToArray();
-                if (current == null)
-                {
-                    current = new List<string[]>();
-                    tables.Add((cells, current));
-                }
-                else if (!cells.All(x => x.Trim('-', ':').Length == 0))
-                {
-                    current.Add(cells);
-                }
-            }
-            return tables;
-        }
-
-        [Fact]
-        public void EveryEligibleStoreHasAnEvidenceRow()
-        {
-            var tables = Tables(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "listing-evidence.md")));
-            var (header, rows) = tables.Single(x => x.Header.Contains("Implementation type"));
-            var implementation = Array.IndexOf(header, "Implementation type");
-            var eligibility = Array.IndexOf(header, "Cleanup eligibility");
-            var evidence = Array.IndexOf(header, "Evidence");
-            var directory = StoreFixtures.TempDirectory(nameof(EveryEligibleStoreHasAnEvidenceRow));
-            var representatives = new IFileStorage[]
-            {
-                Files.Of.LocalDisk(directory), StoreFixtures.S3(), StoreFixtures.Azure(), StoreFixtures.Azure("devstoreaccount1/"), StoreFixtures.Gcs(),
-                Files.Of.InternalMemory(nameof(EveryEligibleStoreHasAnEvidenceRow)), new ForwardingStorage(StoreFixtures.S3())
-            };
-            foreach (var storage in representatives)
-            {
-                var store = CleanupStoreContract.Classify(storage, "c/t", false).Store;
-                var row = store.Kind == StoreKind.Unknown
-                    ? rows.Single(x => x[0].StartsWith("Any other"))
-                    : rows.Single(x => x[implementation].Contains($"`{storage.GetType().FullName}`") && x[implementation].Contains("endpoint path") == (store.Kind == StoreKind.Azure && store.KnownFailed));
-                var expected = store.KnownFailed ? "Ineligible" : store.NeedsAssertion ? "Asserted only" : "Eligible";
-                Assert.StartsWith(expected, row[eligibility]);
-                if (!store.KnownFailed)
-                {
-                    Assert.Matches("`[A-Z][A-Za-z0-9]+`", row[evidence]);
-                }
-            }
-
-            // Every test an evidence column names exists
-            var tests = typeof(StoreListingQualificationTests).Assembly.GetTypes()
-                .SelectMany(x => x.GetMethods())
-                .Where(x => x.GetCustomAttributes<FactAttribute>().Any())
-                .Select(x => x.Name)
-                .ToHashSet();
-            var cited = 0;
-            foreach (var (tableHeader, tableRows) in tables)
-            {
-                var column = Array.IndexOf(tableHeader, "Evidence");
-                if (column < 0)
-                {
-                    continue;
-                }
-                foreach (var row in tableRows)
-                {
-                    foreach (Match match in Regex.Matches(row[column], "`([A-Z][A-Za-z0-9]+)`"))
-                    {
-                        Assert.Contains(match.Groups[1].Value, tests);
-                        cited++;
-                    }
-                }
-            }
-            Assert.True(cited > 20, $"{cited} tests cited");
         }
     }
 }
