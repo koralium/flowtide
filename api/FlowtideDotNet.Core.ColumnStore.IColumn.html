@@ -89,7 +89,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_ColumnStore_IColumn" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn" class="text-break">
-Interface IColumn  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L26"><i class="bi bi-code-slash"></i></a>
+Interface IColumn  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L27"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -131,7 +131,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Count" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Count">
   Count
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L28"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L29"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -162,7 +162,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SupportSelfCompareExpression" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SupportSelfCompareExpression">
   SupportSelfCompareExpression
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L104"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L105"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -193,7 +193,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Type" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Type">
   Type
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L30"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L31"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -228,7 +228,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_AddToHash_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_IO_Hashing_NonCryptographicHashAlgorithm_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.AddToHash(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.IO.Hashing.NonCryptographicHashAlgorithm)">
   AddToHash(in int, ReferenceSegment?, NonCryptographicHashAlgorithm)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L94"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L95"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -263,7 +263,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Add__1___0__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Add``1(``0@)">
   Add&lt;T&gt;(in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L35"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -295,11 +295,89 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_IColumn_AppendToXxHash32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState},System.Span{System.Int32})">
+  AppendToXxHash32(ReadOnlySpan&lt;int&gt;, ReferenceSegment?, Span&lt;Xxh32RowState&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L136"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Highly specialized hash method that allows bulk hashing.
+The scratch is used to create new indices that will be sent down dependent on dictionary encoding or null values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void AppendToXxHash32(ReadOnlySpan&lt;int&gt; indices, ReferenceSegment? child, Span&lt;Xxh32RowState&gt; states, Span&lt;int&gt; scratch)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>indices</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>Indices to add to hash</p>
+</dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd><p>Optional child such as map or struct field</p>
+</dd>
+    <dt><code>states</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html">Xxh32RowState</a>&gt;</dt>
+    <dd><p>XxHash32 states for each row</p>
+</dd>
+    <dt><code>scratch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>Scratch that should be at least the same size as indices</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_ColumnStore_IColumn_AppendXxHash32Single_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)">
+  AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L148"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>index</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd></dd>
+    <dt><code>state</code> <a class="xref" href="FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html">Xxh32RowState</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_IColumn_CompareTo_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.CompareTo*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_CompareTo_FlowtideDotNet_Core_ColumnStore_IColumn__System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.CompareTo(FlowtideDotNet.Core.ColumnStore.IColumn@,System.Int32@,System.Int32@)">
   CompareTo(in IColumn, in int, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L54"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L55"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -339,7 +417,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_CompareTo__1_System_Int32____0__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.CompareTo``1(System.Int32@,``0@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   CompareTo&lt;T&gt;(in int, in T, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L51"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L52"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -384,7 +462,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Copy_FlowtideDotNet_Storage_Memory_IMemoryAllocator_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Copy(FlowtideDotNet.Storage.Memory.IMemoryAllocator)">
   Copy(IMemoryAllocator)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L90"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L91"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -420,7 +498,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_CreateSelfCompareExpression_System_Linq_Expressions_Expression_System_Linq_Expressions_Expression_System_Linq_Expressions_Expression_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression,System.Linq.Expressions.Expression,System.Linq.Expressions.Expression)">
   CreateSelfCompareExpression(Expression, Expression, Expression)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L109"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -460,7 +538,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_DeleteBatch_System_ReadOnlySpan_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.DeleteBatch(System.ReadOnlySpan{System.Int32})">
   DeleteBatch(ReadOnlySpan&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L98"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L99"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -491,7 +569,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetByteSize" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetByteSize">
   GetByteSize()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L81"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -522,7 +600,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetByteSize_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetByteSize(System.Int32,System.Int32)">
   GetByteSize(int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L83"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -560,7 +638,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetColumnSizeInfo" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetColumnSizeInfo">
   GetColumnSizeInfo()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L100"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L101"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -591,7 +669,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetColumnState" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetColumnState">
   GetColumnState()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L102"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L103"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -622,7 +700,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetPrefixSumByteSizes_System_ReadOnlySpan_System_Int32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetPrefixSumByteSizes(System.ReadOnlySpan{System.Int32},System.Span{System.Int32})">
   GetPrefixSumByteSizes(ReadOnlySpan&lt;int&gt;, Span&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L84"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L85"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -655,7 +733,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetSerializationEstimate" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetSerializationEstimate">
   GetSerializationEstimate()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L65"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -686,7 +764,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetTypeAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetTypeAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetTypeAt(in int, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L46"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -724,7 +802,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetValueAt_System_Int32__FlowtideDotNet_Core_ColumnStore_DataValueContainer__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetValueAt(System.Int32@,FlowtideDotNet.Core.ColumnStore.DataValueContainer@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetValueAt(in int, in DataValueContainer, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -759,7 +837,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_GetValueAt_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.GetValueAt(System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@)">
   GetValueAt(in int, in ReferenceSegment?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L47"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L48"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -797,7 +875,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_InsertAt__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.InsertAt``1(System.Int32@,``0@)">
   InsertAt&lt;T&gt;(in int, in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L37"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L38"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -835,7 +913,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_InsertFrom_FlowtideDotNet_Core_ColumnStore_IColumn_System_ReadOnlySpan_System_Int32___System_ReadOnlySpan_System_Int32___System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.InsertFrom(FlowtideDotNet.Core.ColumnStore.IColumn,System.ReadOnlySpan{System.Int32}@,System.ReadOnlySpan{System.Int32}@,System.Int32@)">
   InsertFrom(IColumn, ref readonly ReadOnlySpan&lt;int&gt;, ref readonly ReadOnlySpan&lt;int&gt;, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L96"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L97"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -872,7 +950,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_InsertRangeFrom_System_Int32_FlowtideDotNet_Core_ColumnStore_IColumn_System_Int32_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.InsertRangeFrom(System.Int32,FlowtideDotNet.Core.ColumnStore.IColumn,System.Int32,System.Int32)">
   InsertRangeFrom(int, IColumn, int, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L86"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L87"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -909,7 +987,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_RemoveAt_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.RemoveAt(System.Int32@)">
   RemoveAt(in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L44"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -940,7 +1018,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_RemoveRange_System_Int32__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.RemoveRange(System.Int32@,System.Int32@)">
   RemoveRange(in int, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L79"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -973,7 +1051,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Rent_System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Rent(System.Int32)">
   Rent(int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L75"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1004,7 +1082,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_Return" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.Return">
   Return()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L77"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1030,7 +1108,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SearchBoundries__1___0__System_Int32__System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment__System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SearchBoundries``1(``0@,System.Int32@,System.Int32@,FlowtideDotNet.Substrait.Expressions.ReferenceSegment@,System.Boolean)">
   SearchBoundries&lt;T&gt;(in T, in int, in int, in ReferenceSegment?, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L57"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1079,7 +1157,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SetRadixPrefix_System_Span_FlowtideDotNet_Core_ColumnStore_Sort_RadixItem__System_Int32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SetRadixPrefix(System.Span{FlowtideDotNet.Core.ColumnStore.Sort.RadixItem},System.Int32)">
   SetRadixPrefix(Span&lt;RadixItem&gt;, int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L115"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L116"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1117,7 +1195,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SetRadixPrefix_System_Span_FlowtideDotNet_Core_ColumnStore_Sort_RadixItem__System_Int32_System_Int32_System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SetRadixPrefix(System.Span{FlowtideDotNet.Core.ColumnStore.Sort.RadixItem},System.Int32,System.Int32,System.Span{System.Int32})">
   SetRadixPrefix(Span&lt;RadixItem&gt;, int, int, Span&lt;int&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L125"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L126"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1160,7 +1238,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SetSelfComparePointers_FlowtideDotNet_Core_ColumnStore_Sort_SelfComparePointers__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SetSelfComparePointers(FlowtideDotNet.Core.ColumnStore.Sort.SelfComparePointers@)">
   SetSelfComparePointers(ref SelfComparePointers)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L107"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1191,7 +1269,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_SupportsRadixSort_System_Int32_System_Boolean_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.SupportsRadixSort(System.Int32,System.Boolean)">
   SupportsRadixSort(int, bool)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L113"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L114"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1229,7 +1307,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_ToArrowArray" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.ToArrowArray">
   ToArrowArray()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L62"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L63"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Wraps the buffers in an arrow array without copying.</p>
@@ -1257,11 +1335,54 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
 
 
+  <a id="FlowtideDotNet_Core_ColumnStore_IColumn_ToXxHash32_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32*"></a>
+
+  <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__System_Span_System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32},System.Span{System.Int32})">
+  ToXxHash32(ReadOnlySpan&lt;int&gt;, ReferenceSegment?, Span&lt;uint&gt;, Span&lt;int&gt;)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L146"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Highly specialized hash method that allows bulk hashing.
+The scratch is used to create new indices that will be sent down dependent on dictionary encoding or null values.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">void ToXxHash32(ReadOnlySpan&lt;int&gt; indices, ReferenceSegment? child, Span&lt;uint&gt; destination, Span&lt;int&gt; scratch)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>indices</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.readonlyspan-1">ReadOnlySpan</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>Indices to add to hash</p>
+</dd>
+    <dt><code>child</code> <a class="xref" href="FlowtideDotNet.Substrait.Expressions.ReferenceSegment.html">ReferenceSegment</a></dt>
+    <dd><p>Optional child such as map or struct field</p>
+</dd>
+    <dt><code>destination</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.uint32">uint</a>&gt;</dt>
+    <dd><p>Destination for the hash values</p>
+</dd>
+    <dt><code>scratch</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.span-1">Span</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a>&gt;</dt>
+    <dd><p>Scratch that should be at least the same size as indices</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_ColumnStore_IColumn_UpdateAt_" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.UpdateAt*"></a>
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_UpdateAt__1_System_Int32____0__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.UpdateAt``1(System.Int32@,``0@)">
   UpdateAt&lt;T&gt;(in int, in T)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L41"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1299,7 +1420,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 
   <h3 id="FlowtideDotNet_Core_ColumnStore_IColumn_WriteToJson_System_Text_Json_Utf8JsonWriter__System_Int32__" data-uid="FlowtideDotNet.Core.ColumnStore.IColumn.WriteToJson(System.Text.Json.Utf8JsonWriter@,System.Int32@)">
   WriteToJson(ref readonly Utf8JsonWriter, in int)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L88"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L89"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -1332,7 +1453,7 @@ Interface IColumn  <a class="header-action link-secondary" title="View source" h
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L26" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/ColumnStore/IColumn.cs/#L27" class="edit-link">Edit this page</a>
         </div>
 
 

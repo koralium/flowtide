@@ -3541,6 +3541,48 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.yml\" sourcestartlinenumber=\"1\">Class for hashing a batch of rows in a columnar data structure using XxHash32.\nThis chooses between single-key and multi-key hashing based on the number of fields specified in the constructor.\nSingle key is a much faster path since it requires no real state machine.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.yml\" sourcestartlinenumber=\"1\">Xxhash32 state for a single row. Total bytes = 16 + 4 + 16 = 36 bytes.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Core.ColumnStore.Hash.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Core.ColumnStore.Hash",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.Core.ColumnStore.IColumn.yml",
       "output": {
         ".html": {

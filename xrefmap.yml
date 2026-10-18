@@ -16221,6 +16221,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: BinaryColumn.Add<T>(in T, IMemoryAllocator)
   nameWithType.vb: BinaryColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState))
+  nameWithType: BinaryColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  nameWithType.vb: BinaryColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendToXxHash32
+  nameWithType: BinaryColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: BinaryColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: BinaryColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.AppendXxHash32Single
+  nameWithType: BinaryColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Clear(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -16624,6 +16656,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToArrowArray
   nameWithType: BinaryColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger))
+  nameWithType: BinaryColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  nameWithType.vb: BinaryColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+- uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.BinaryColumn.ToXxHash32
+  nameWithType: BinaryColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.BinaryColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.BinaryColumn.html#FlowtideDotNet_Core_ColumnStore_BinaryColumn_Type
@@ -17257,6 +17305,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.Column.Add(Of T)(T)
   nameWithType: Column.Add<T>(in T)
   nameWithType.vb: Column.Add(Of T)(T)
+- uid: FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState},System.Span{System.Int32})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>, Span<int>)
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__System_Span_System_Int32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState},System.Span{System.Int32})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState), Span(Of Integer))
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>, System.Span<int>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState), System.Span(Of Integer))
+  nameWithType: Column.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>, Span<int>)
+  nameWithType.vb: Column.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState), Span(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.AppendToXxHash32
+  nameWithType: Column.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: Column.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: Column.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.AppendXxHash32Single
+  nameWithType: Column.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.Column.ByteSize
   name: ByteSize
   href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_ByteSize
@@ -17810,6 +17890,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.Column.ToArrowArray
   nameWithType: Column.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32},System.Span{System.Int32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>, Span<int>)
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__System_Span_System_Int32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32},System.Span{System.Int32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger), Span(Of Integer))
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>, System.Span<int>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger), System.Span(Of Integer))
+  nameWithType: Column.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>, Span<int>)
+  nameWithType.vb: Column.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger), Span(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Column.ToXxHash32
+  nameWithType: Column.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.Column.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.Column.html#FlowtideDotNet_Core_ColumnStore_Column_Type
@@ -21048,6 +21144,163 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.EventBatchWeighted.Weights
   nameWithType: EventBatchWeighted.Weights
+- uid: FlowtideDotNet.Core.ColumnStore.Hash
+  name: FlowtideDotNet.Core.ColumnStore.Hash
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.html
+  commentId: N:FlowtideDotNet.Core.ColumnStore.Hash
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash
+  nameWithType: FlowtideDotNet.Core.ColumnStore.Hash
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher
+  name: BatchHasher
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html
+  commentId: T:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher
+  nameWithType: BatchHasher
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Substrait.Expressions.FieldReference})
+  name: BatchHasher(IReadOnlyList<FieldReference>)
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher__ctor_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Substrait_Expressions_FieldReference__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Substrait.Expressions.FieldReference})
+  name.vb: New(IReadOnlyList(Of FieldReference))
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.BatchHasher(System.Collections.Generic.IReadOnlyList<FlowtideDotNet.Substrait.Expressions.FieldReference>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.New(System.Collections.Generic.IReadOnlyList(Of FlowtideDotNet.Substrait.Expressions.FieldReference))
+  nameWithType: BatchHasher.BatchHasher(IReadOnlyList<FieldReference>)
+  nameWithType.vb: BatchHasher.New(IReadOnlyList(Of FieldReference))
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor(System.Int32[])
+  name: BatchHasher(int[])
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher__ctor_System_Int32___
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor(System.Int32[])
+  name.vb: New(Integer())
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.BatchHasher(int[])
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.New(Integer())
+  nameWithType: BatchHasher.BatchHasher(int[])
+  nameWithType.vb: BatchHasher.New(Integer())
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor*
+  name: BatchHasher
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher__ctor_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.BatchHasher
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.New
+  nameWithType: BatchHasher.BatchHasher
+  nameWithType.vb: BatchHasher.New
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch(FlowtideDotNet.Core.ColumnStore.EventBatchData)
+  name: HashBatch(EventBatchData)
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher_HashBatch_FlowtideDotNet_Core_ColumnStore_EventBatchData_
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch(FlowtideDotNet.Core.ColumnStore.EventBatchData)
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch(FlowtideDotNet.Core.ColumnStore.EventBatchData)
+  nameWithType: BatchHasher.HashBatch(EventBatchData)
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch*
+  name: HashBatch
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher_HashBatch_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.HashBatch
+  nameWithType: BatchHasher.HashBatch
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations
+  name: ResetTemporaryAllocations()
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher_ResetTemporaryAllocations
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations()
+  nameWithType: BatchHasher.ResetTemporaryAllocations()
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations*
+  name: ResetTemporaryAllocations
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.html#FlowtideDotNet_Core_ColumnStore_Hash_BatchHasher_ResetTemporaryAllocations_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.BatchHasher.ResetTemporaryAllocations
+  nameWithType: BatchHasher.ResetTemporaryAllocations
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState
+  name: Xxh32RowState
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html
+  commentId: T:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState
+  nameWithType: Xxh32RowState
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc1
+  name: Acc1
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Acc1
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc1
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc1
+  nameWithType: Xxh32RowState.Acc1
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc2
+  name: Acc2
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Acc2
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc2
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc2
+  nameWithType: Xxh32RowState.Acc2
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc3
+  name: Acc3
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Acc3
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc3
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc3
+  nameWithType: Xxh32RowState.Acc3
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc4
+  name: Acc4
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Acc4
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc4
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Acc4
+  nameWithType: Xxh32RowState.Acc4
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Holdback
+  name: Holdback
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Holdback
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Holdback
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Holdback
+  nameWithType: Xxh32RowState.Holdback
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init
+  name: Init()
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Init
+  commentId: M:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init()
+  nameWithType: Xxh32RowState.Init()
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init*
+  name: Init
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Init_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Init
+  nameWithType: Xxh32RowState.Init
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Length
+  name: Length
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Length
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Length
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Length
+  nameWithType: Xxh32RowState.Length
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_1
+  name: Prime32_1
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Prime32_1
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_1
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_1
+  nameWithType: Xxh32RowState.Prime32_1
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_2
+  name: Prime32_2
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Prime32_2
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_2
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_2
+  nameWithType: Xxh32RowState.Prime32_2
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_3
+  name: Prime32_3
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Prime32_3
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_3
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_3
+  nameWithType: Xxh32RowState.Prime32_3
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_4
+  name: Prime32_4
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Prime32_4
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_4
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_4
+  nameWithType: Xxh32RowState.Prime32_4
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_5
+  name: Prime32_5
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_Prime32_5
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_5
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.Prime32_5
+  nameWithType: Xxh32RowState.Prime32_5
+- uid: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.SmallAcc
+  name: SmallAcc
+  href: api/FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.html#FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState_SmallAcc
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.SmallAcc
+  fullName: FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState.SmallAcc
+  nameWithType: Xxh32RowState.SmallAcc
 - uid: FlowtideDotNet.Core.ColumnStore.IColumn
   name: IColumn
   href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html
@@ -21086,6 +21339,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.IColumn.Add(Of T)(T)
   nameWithType: IColumn.Add<T>(in T)
   nameWithType.vb: IColumn.Add(Of T)(T)
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState},System.Span{System.Int32})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>, Span<int>)
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__System_Span_System_Int32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState},System.Span{System.Int32})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState), Span(Of Integer))
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>, System.Span<int>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState), System.Span(Of Integer))
+  nameWithType: IColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>, Span<int>)
+  nameWithType.vb: IColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState), Span(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.AppendToXxHash32
+  nameWithType: IColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: IColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: IColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.AppendXxHash32Single
+  nameWithType: IColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.IColumn.CompareTo(FlowtideDotNet.Core.ColumnStore.IColumn@,System.Int32@,System.Int32@)
   name: CompareTo(in IColumn, in int, in int)
   href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_CompareTo_FlowtideDotNet_Core_ColumnStore_IColumn__System_Int32__System_Int32__
@@ -21492,6 +21777,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IColumn.ToArrowArray
   nameWithType: IColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32},System.Span{System.Int32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>, Span<int>)
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__System_Span_System_Int32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32},System.Span{System.Int32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger), Span(Of Integer))
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>, System.Span<int>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger), System.Span(Of Integer))
+  nameWithType: IColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>, Span<int>)
+  nameWithType.vb: IColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger), Span(Of Integer))
+- uid: FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IColumn.ToXxHash32
+  nameWithType: IColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.IColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.IColumn.html#FlowtideDotNet_Core_ColumnStore_IColumn_Type
@@ -21591,6 +21892,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: IDataColumn.Add<T>(in T, IMemoryAllocator)
   nameWithType.vb: IDataColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState))
+  nameWithType: IDataColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  nameWithType.vb: IDataColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendToXxHash32
+  nameWithType: IDataColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: IDataColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: IDataColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.AppendXxHash32Single
+  nameWithType: IDataColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Clear(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -22030,6 +22363,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToArrowArray
   nameWithType: IDataColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger))
+  nameWithType: IDataColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  nameWithType.vb: IDataColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+- uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.IDataColumn.ToXxHash32
+  nameWithType: IDataColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.IDataColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.IDataColumn.html#FlowtideDotNet_Core_ColumnStore_IDataColumn_Type
@@ -23016,6 +23365,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToList(Of T)(Integer, T)
   nameWithType: ListColumn.AppendToList<T>(in int, in T)
   nameWithType.vb: ListColumn.AppendToList(Of T)(Integer, T)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState))
+  nameWithType: ListColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  nameWithType.vb: ListColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendToXxHash32
+  nameWithType: ListColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: ListColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: ListColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.AppendXxHash32Single
+  nameWithType: ListColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Clear(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -23451,6 +23832,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.ToArrowArray
   nameWithType: ListColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger))
+  nameWithType: ListColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  nameWithType.vb: ListColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+- uid: FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.ListColumn.ToXxHash32
+  nameWithType: ListColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.ListColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.ListColumn.html#FlowtideDotNet_Core_ColumnStore_ListColumn_Type
@@ -23594,6 +23991,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: MapColumn.Add<T>(in T, IMemoryAllocator)
   nameWithType.vb: MapColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState))
+  nameWithType: MapColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  nameWithType.vb: MapColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendToXxHash32
+  nameWithType: MapColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: MapColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: MapColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.AppendXxHash32Single
+  nameWithType: MapColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Clear(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -24041,6 +24470,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.ToArrowArray
   nameWithType: MapColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger))
+  nameWithType: MapColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  nameWithType.vb: MapColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+- uid: FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.MapColumn.ToXxHash32
+  nameWithType: MapColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.MapColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.MapColumn.html#FlowtideDotNet_Core_ColumnStore_MapColumn_Type
@@ -26725,6 +27170,38 @@ references:
   fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.Add(Of T)(T, FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   nameWithType: StringColumn.Add<T>(in T, IMemoryAllocator)
   nameWithType.vb: StringColumn.Add(Of T)(T, IMemoryAllocator)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name: AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AppendToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState})
+  name.vb: AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState))
+  nameWithType: StringColumn.AppendToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<Xxh32RowState>)
+  nameWithType.vb: StringColumn.AppendToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of Xxh32RowState))
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32*
+  name: AppendToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AppendToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendToXxHash32
+  nameWithType: StringColumn.AppendToXxHash32
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name: AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AppendXxHash32Single_System_Int32_FlowtideDotNet_Substrait_Expressions_ReferenceSegment_FlowtideDotNet_Core_ColumnStore_Hash_Xxh32RowState__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single(System.Int32,FlowtideDotNet.Substrait.Expressions.ReferenceSegment,FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState@)
+  name.vb: AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single(int, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, ref FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single(Integer, FlowtideDotNet.Substrait.Expressions.ReferenceSegment, FlowtideDotNet.Core.ColumnStore.Hash.Xxh32RowState)
+  nameWithType: StringColumn.AppendXxHash32Single(int, ReferenceSegment?, ref Xxh32RowState)
+  nameWithType.vb: StringColumn.AppendXxHash32Single(Integer, ReferenceSegment, Xxh32RowState)
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single*
+  name: AppendXxHash32Single
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_AppendXxHash32Single_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.AppendXxHash32Single
+  nameWithType: StringColumn.AppendXxHash32Single
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Clear(FlowtideDotNet.Storage.Memory.IMemoryAllocator)
   name: Clear(IMemoryAllocator)
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Clear_FlowtideDotNet_Storage_Memory_IMemoryAllocator_
@@ -27141,6 +27618,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.ToArrowArray
   nameWithType: StringColumn.ToArrowArray
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name: ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_ToXxHash32_System_ReadOnlySpan_System_Int32__FlowtideDotNet_Substrait_Expressions_ReferenceSegment_System_Span_System_UInt32__
+  commentId: M:FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32(System.ReadOnlySpan{System.Int32},FlowtideDotNet.Substrait.Expressions.ReferenceSegment,System.Span{System.UInt32})
+  name.vb: ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32(System.ReadOnlySpan<int>, FlowtideDotNet.Substrait.Expressions.ReferenceSegment?, System.Span<uint>)
+  fullName.vb: FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32(System.ReadOnlySpan(Of Integer), FlowtideDotNet.Substrait.Expressions.ReferenceSegment, System.Span(Of UInteger))
+  nameWithType: StringColumn.ToXxHash32(ReadOnlySpan<int>, ReferenceSegment?, Span<uint>)
+  nameWithType.vb: StringColumn.ToXxHash32(ReadOnlySpan(Of Integer), ReferenceSegment, Span(Of UInteger))
+- uid: FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32*
+  name: ToXxHash32
+  href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_ToXxHash32_
+  commentId: Overload:FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.ColumnStore.StringColumn.ToXxHash32
+  nameWithType: StringColumn.ToXxHash32
 - uid: FlowtideDotNet.Core.ColumnStore.StringColumn.Type
   name: Type
   href: api/FlowtideDotNet.Core.ColumnStore.StringColumn.html#FlowtideDotNet_Core_ColumnStore_StringColumn_Type
