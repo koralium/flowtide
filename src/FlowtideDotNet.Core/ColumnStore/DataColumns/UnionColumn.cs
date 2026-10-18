@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -941,6 +942,47 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             var valueColumn = _valueColumns[valueColumnIndex];
             valueColumn.AddToHash(_offsets.Get(index), child, hashAlgorithm);
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var valueColumnIndex = _typeList[index];
+            if (valueColumnIndex == 0)
+            {
+                XxHash32Implementation.AppendByte(0, ref state);
+                return;
+            }
+            var valueColumn = _valueColumns[valueColumnIndex];
+            valueColumn.AppendXxHash32Single(_offsets.Get(index), child, ref state);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                AppendXxHash32Single(index, child, ref states[i]);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                state.Init();
+                AppendXxHash32Single(index, child, ref state);
+                destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+            }
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

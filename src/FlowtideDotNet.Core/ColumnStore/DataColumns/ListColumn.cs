@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -22,6 +23,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Diagnostics;
 using System.IO.Hashing;
@@ -543,10 +545,61 @@ namespace FlowtideDotNet.Core.ColumnStore
         {
             var listStart = _offsets.Get(index);
             var listEnd = _offsets.Get(index + 1);
+            var count = listEnd - listStart;
+
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, count);
+            // Add list length to differentiate between flat lists and nested lists.
+            hashAlgorithm.Append(buffer);
 
             for (int i = listStart; i < listEnd; i++)
             {
                 _internalColumn.AddToHash(i, default, hashAlgorithm);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var listStart = _offsets.Get(index);
+            var listEnd = _offsets.Get(index + 1);
+            var count = listEnd - listStart;
+
+            // Add list length to differentiate between flat lists and nested lists.
+            XxHash32Implementation.AppendLong(count, ref state);
+
+            for (int i = listStart; i < listEnd; i++)
+            {
+                _internalColumn.AppendXxHash32Single(i, default, ref state);
+            }
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                AppendXxHash32Single(index, child, ref state);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                state.Init();
+                AppendXxHash32Single(index, child, ref state);
+                destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
             }
         }
 

@@ -15,6 +15,7 @@ using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
@@ -246,6 +247,43 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             Span<byte> buffer = stackalloc byte[8];
             BinaryPrimitives.WriteInt64LittleEndian(buffer, _values.Get(index).ticks);
             hashAlgorithm.Append(buffer);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                XxHash32Implementation.AppendLong(_values.Get(index).ticks, ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            XxHash32Implementation.AppendLong(_values.Get(index).ticks, ref state);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                var val = _values.Get(index).ticks;
+                if (!BitConverter.IsLittleEndian)
+                {
+                    val = BinaryPrimitives.ReverseEndianness(val);
+                }
+                destination[i] = XxHash32Implementation.HashSingleLong(val);
+            }
         }
 
         public SerializationEstimation GetSerializationEstimate()

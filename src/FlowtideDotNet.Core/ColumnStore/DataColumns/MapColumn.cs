@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -23,6 +24,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Collections;
 using System.IO.Hashing;
 using System.Runtime.CompilerServices;
@@ -677,12 +679,79 @@ namespace FlowtideDotNet.Core.ColumnStore
                 throw new NotImplementedException();
             }
 
+            var count = endOffset - startOffset;
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, count);
+            hashAlgorithm.Append(buffer);
+
             for (int i = startOffset; i < endOffset; i++)
             {
                 _keyColumn.AddToHash(i, default, hashAlgorithm);
                 _valueColumn.AddToHash(i, default, hashAlgorithm);
             }
         }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                AppendXxHash32Single(index, child, ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var (startOffset, endOffset) = GetOffsets(in index);
+            if (child != null)
+            {
+                if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+                {
+
+                    var (keyLocationStart, _) = _keyColumn.SearchBoundries(new StringValue(mapKeyReferenceSegment.Key), startOffset, endOffset - 1, default);
+                    if (keyLocationStart < 0)
+                    {
+                        XxHash32Implementation.AppendByte(0, ref state);
+                        return;
+                    }
+                    _valueColumn.AppendXxHash32Single(keyLocationStart, mapKeyReferenceSegment.Child, ref state);
+                    return;
+                }
+                throw new NotImplementedException();
+            }
+
+            var count = endOffset - startOffset;
+            XxHash32Implementation.AppendLong(count, ref state);
+
+            for (int i = startOffset; i < endOffset; i++)
+            {
+                _keyColumn.AppendXxHash32Single(i, default, ref state);
+                _valueColumn.AppendXxHash32Single(i, default, ref state);
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+
+                state.Init();
+                AppendXxHash32Single(index, child, ref state);
+                destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+            }
+        }
+
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
         {
