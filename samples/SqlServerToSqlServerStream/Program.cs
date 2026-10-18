@@ -13,6 +13,7 @@
 using FlowtideDotNet.AspNetCore.Extensions;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.DependencyInjection;
+using FlowtideDotNet.Lineage.DataHub;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 
@@ -52,6 +53,7 @@ builder.Services.AddHealthChecks()
 builder.Services.AddFlowtideStream("my_stream")
     .AddSqlFileAsPlan("stream.sql")
     .AddVersioningFromString("1.0")
+    .AddDataHubLineage()
     .AddVersioningFromPlanHash()
     .AddConnectors(connectors =>
     {
@@ -85,6 +87,7 @@ builder.Services.AddFlowtideStream("my_stream")
 
 var app = builder.Build();
 
+app.MapFlowtideDataHubLineage();
 // Map health check
 app.MapHealthChecks("/health");
 

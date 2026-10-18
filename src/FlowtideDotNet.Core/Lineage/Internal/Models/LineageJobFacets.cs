@@ -10,10 +10,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Text.Json.Serialization;
+
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
     internal class LineageJobFacets
     {
+        [JsonPropertyName("jobType")]
         public LineageJobTypeFacet? JobType { get; }
 
         public LineageJobFacets(LineageJobTypeFacet? jobType = default)
