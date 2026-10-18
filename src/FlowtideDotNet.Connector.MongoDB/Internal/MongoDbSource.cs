@@ -45,6 +45,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly string _collectionName;
         private readonly ReadRelation _readRelation;
         private readonly string _displayName;
+        private MongoClient? _client;
         private IMongoCollection<BsonDocument>? collection;
         private int _idFieldIndex;
         private readonly BsonDocToColumn[] _bsonDocToColumns;
@@ -102,8 +103,8 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             }
             var urlBuilder = new MongoUrlBuilder(_options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
-            var client = new MongoClient(connection);
-            var database = client.GetDatabase(_databaseName);
+            _client = new MongoClient(connection);
+            var database = _client.GetDatabase(_databaseName);
             collection = database.GetCollection<BsonDocument>(_collectionName);
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
@@ -403,6 +404,17 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         protected override Task<IReadOnlySet<string>> GetWatermarkNames()
         {
             return Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _readRelation.NamedTable.DotSeperated });
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            if (_client != null)
+            {
+                _client.Dispose();
+                _client = null;
+            }
+
+            return base.DisposeAsync();
         }
     }
 }
