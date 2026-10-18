@@ -12,6 +12,9 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
@@ -24,23 +27,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly IFileStorage location;
         private readonly bool oneVersionPerCheckpoint;
         private readonly KeepAliveMemoryFileProvider? stateFiles;
+        private readonly List<EventBatchData>? published;
+        private readonly Action<DeltaLakeOptions>? configure;
 
         /// <param name="stateFiles">Shared state files, a new stream over the same files restores the last checkpoint.</param>
-        public DeltaLakeTestStream(string testName, IFileStorage location, bool oneVersionPerCheckpoint = true, KeepAliveMemoryFileProvider? stateFiles = null) : base(testName)
+        /// <param name="recordPublished">Keeps a copy of every published snapshot for <see cref="WaitForPublished"/>.</param>
+        /// <param name="configure">Changes the source options after the defaults are set.</param>
+        public DeltaLakeTestStream(string testName, IFileStorage location, bool oneVersionPerCheckpoint = true, KeepAliveMemoryFileProvider? stateFiles = null, bool recordPublished = false, Action<DeltaLakeOptions>? configure = null) : base(testName)
         {
             this.location = location;
             this.oneVersionPerCheckpoint = oneVersionPerCheckpoint;
             this.stateFiles = stateFiles;
+            published = recordPublished ? new List<EventBatchData>() : null;
+            this.configure = configure;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)
         {
-            connectorManger.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+            connectorManger.AddDeltaLakeSource(CreateOptions());
 
             connectorManger.AddCatalog("catalogtest", c =>
             {
-                c.AddDeltaLakeSource(new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) });
+                c.AddDeltaLakeSource(CreateOptions());
             });
+        }
+
+        private DeltaLakeOptions CreateOptions()
+        {
+            var options = new DeltaLakeOptions() { StorageLocation = location, OneVersionPerCheckpoint = oneVersionPerCheckpoint, DeltaCheckInterval = TimeSpan.FromMilliseconds(100) };
+            configure?.Invoke(options);
+            return options;
         }
 
         protected override IPersistentStorage CreatePersistentStorage(string testName, bool ignoreSameDataCheck)
@@ -48,6 +64,46 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return stateFiles != null
                 ? new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = stateFiles })
                 : base.CreatePersistentStorage(testName, ignoreSameDataCheck);
+        }
+
+        // Copied, the sink disposes a snapshot when it publishes the next one.
+        protected override void OnDataUpdate(EventBatchData actualData)
+        {
+            if (published != null)
+            {
+                var copy = new EventBatchData(actualData.Columns.Select(c => (IColumn)c.Copy(GlobalMemoryManager.Instance)).ToArray());
+                lock (published)
+                {
+                    published.Add(copy);
+                }
+            }
+            base.OnDataUpdate(actualData);
+        }
+
+        /// <summary>
+        /// The n-th published snapshot, counted from one; WaitForUpdate can skip versions.
+        /// </summary>
+        public async Task<EventBatchData> WaitForPublished(int n)
+        {
+            Assert.NotNull(published);
+            while (true)
+            {
+                lock (published)
+                {
+                    if (published.Count >= n)
+                    {
+                        return published[n - 1];
+                    }
+                }
+                await WaitForUpdate();
+            }
+        }
+
+        public async Task AssertPublishedEqual<T>(int n, IEnumerable<T> data)
+        {
+            var actual = await WaitForPublished(n);
+            using var expected = BatchConverter.ConvertToBatchSorted(data, GlobalMemoryManager.Instance);
+            EventBatchAssertion.Equal(expected, actual);
         }
     }
 }

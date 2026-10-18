@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(stream.Users.Count * 2, await LiveRowCount(storage, "test"));
 
             var expected = stream.Users.SelectMany(x => new[] { new { x.UserKey, x.FirstName }, new { x.UserKey, x.FirstName } });
-            await AssertResult(testName, storage, "test", 2, expected);
+            await AssertResult(testName, storage, "test", expected);
         }
 
         [Theory]
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // The source reads the version through the change data files.
             var expected = stream.Users.SelectMany(x => new[] { new { x.UserKey, x.FirstName }, new { x.UserKey, x.FirstName } });
-            await AssertResult(nameof(DuplicateRowDeletesAreFullyWrittenToChangeData), storage, "test", 2, expected);
+            await AssertResult(nameof(DuplicateRowDeletesAreFullyWrittenToChangeData), storage, "test", expected);
         }
 
         [Fact]
@@ -256,7 +256,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(survivors, recordsPerFile.Sum());
             Assert.True(rewrittenFiles.Count >= 2, $"Expected the rewrite to roll into several files, got {rewrittenFiles.Count} file(s) for {survivors} rows");
 
-            await AssertResult(nameof(InlineRewriteRollsOutputFiles), storage, "test", 5, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
+            await AssertResult(nameof(InlineRewriteRollsOutputFiles), storage, "test", stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
         }
 
         [Fact]
@@ -710,7 +710,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(2, inserts);
 
             var expected = stream.Users.SelectMany(x => new[] { new { x.UserKey, x.FirstName }, new { x.UserKey, x.FirstName } });
-            await AssertResult(nameof(MultiplicityExpansionRollsFiles), storage, "test", 3, expected);
+            await AssertResult(nameof(MultiplicityExpansionRollsFiles), storage, "test", expected);
         }
 
         [Fact]
@@ -823,7 +823,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "test", stream, 1);
 
-            await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
+            await AssertResult(testName, storage, "test", stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
         }
 
         [Fact]
@@ -859,7 +859,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "test", stream, 2);
 
-            await AssertResult(nameof(NonUtf8BinaryRowsAreDeleted), storage, "test", 3, new[]
+            await AssertResult(nameof(NonUtf8BinaryRowsAreDeleted), storage, "test", new[]
             {
                 new { v = new byte[] { 0xC3 } },
                 new { v = new byte[] { 0x41, 0xFF, 0x42 } }
@@ -965,20 +965,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // Nulls sort first, the empty delete matched the null row
             stream.DeleteUser(stream.Users.Single(x => x.FirstName == ""));
             await WaitForVersion(storage, "test", stream, 1);
-            await AssertUsers($"{testName}_empty", 2);
+            await AssertUsers($"{testName}_empty");
 
             // Rewrite without the null row made this delete throw
             stream.DeleteUser(stream.Users.Single(x => x.FirstName == null));
             await WaitForVersion(storage, "test", stream, 2);
-            await AssertUsers($"{testName}_null", 3);
+            await AssertUsers($"{testName}_null");
 
-            Task AssertUsers(string name, int waitCount)
+            Task AssertUsers(string name)
             {
                 if (type == "BINARY")
                 {
-                    return AssertResult(name, storage, "test", waitCount, stream.Users.Select(x => new { val = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
+                    return AssertResult(name, storage, "test", stream.Users.Select(x => new { val = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
                 }
-                return AssertResult(name, storage, "test", waitCount, stream.Users.Select(x => new { val = x.FirstName }));
+                return AssertResult(name, storage, "test", stream.Users.Select(x => new { val = x.FirstName }));
             }
         }
 
@@ -1011,11 +1011,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             if (type == "BINARY")
             {
-                await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
+                await AssertResult(testName, storage, "test", stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName == null ? null : Encoding.UTF8.GetBytes(x.FirstName) }));
             }
             else
             {
-                await AssertResult(testName, storage, "test", 2, stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName }));
+                await AssertResult(testName, storage, "test", stream.Users.Select(x => new { lastName = x.LastName, firstName = x.FirstName }));
             }
         }
 
@@ -1261,19 +1261,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return lines;
         }
 
-        private static async Task AssertResult<T>(string testName, IFileStorage storage, string tableName, int waitCount, IEnumerable<T> result)
+        private static Task AssertResult<T>(string testName, IFileStorage storage, string tableName, IEnumerable<T> result)
         {
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(testName + "_compare", storage);
-
-            await stream.StartStream($"INSERT INTO result SELECT * FROM {tableName}");
-
-            for (int i = 0; i < waitCount; i++)
-            {
-                await stream.WaitForUpdate();
-            }
-
-            stream.AssertCurrentDataEqual(result);
-            await stream.DisposeAsync();
+            return DeltaTestKit.AssertReaderResult(testName, storage, tableName, result);
         }
 
         private static async Task WaitForVersion(IFileStorage storage, string tableName, FlowtideTestStream stream, long version)

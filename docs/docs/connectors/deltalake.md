@@ -35,16 +35,23 @@ These are the options that can be configured when adding the delta lake connecto
 | Name                             | Description                                                                                                                  | Default    | Required |
 | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------- | -------- |
 | StorageLocation                  | Connection where the tables are located                                                                                      | Null       | Yes      |
-| OneVersionPerCheckpoint          | Only used for reading, it then makes sure that each commit is sent once per checkpoint                                       | False      | No       |
+| OneVersionPerCheckpoint          | Only used for reading, starts from the first version and sends each commit once per checkpoint                               | False      | No       |
+| StartFromFirstVersion            | Only used for reading, the first start reads the oldest version of the table instead of the latest, then every later version | False      | No       |
+| IncludeChangeHistory             | Only used for reading, adds `__weight`, `__modificationDate` and `__version` and sends every change as an insert, see [Change history](#change-history) | False | No |
 | DeltaCheckInterval               | Only used for reading, how often it should be checked if a new commit exists                                                 | 10 seconds | No       |
 | WriteChangeDataOnNewTables       | If new tables created by the connector should enable change feed                                                             | False      | No       |
 | EnableDeletionVectorsOnNewTables | If new tables created by the connector should enable deletion vectors                                                        | True       | No       |
 | EnableColumnMappingOnNewTables   | If new tables created by the connector should use column mapping by name                                                     | True       | No       |
-| CheckpointInterval               | Only used for writing, a Delta checkpoint file is written every this many versions, 0 turns checkpoint files off             | 20         | No       |
+| CheckpointInterval               | Only used for writing, a checkpoint is built in the background once this many versions follow the latest one, 0 turns checkpoints off, see [Checkpoints](#checkpoints) | 20 | No |
 | MaxFileSizeBytes                 | Only used for writing, the size at which the sink starts a new data file                                                     | 100 MB     | No       |
 | CompressionCodec                 | Only used for writing, the codec of written Parquet files, see [Compression](#compression)                                   | Null       | No       |
 | StatsPruningColumns              | Only used for writing, how many written columns the sink keeps file statistics for to skip files when deleting rows         | 8          | No       |
 | PruningMemoryBytes               | Only used for writing, memory all Delta Lake sinks in the process share for those statistics, the first sink fixes the value | 1 GB       | No       |
+| CheckpointMaxAge                 | Only used for writing, how long published versions may wait for a checkpoint before one is built regardless of the interval, null turns the age trigger off | 24 hours | No |
+| MaxConcurrentMaintenanceJobs     | Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value, also one with a CheckpointInterval of 0; cleanup jobs run in slots of their own beside them, see [Limits](#limits) | 2 | No |
+| MaintenanceTempDirectory         | Only used for writing, the local folder for checkpoint builds, the first sink fixes the value, also one with a CheckpointInterval of 0 | ./data/tempFiles/deltalake | No |
+| AssumeCompleteStorageListing     | Only used for writing, vouches for a storage the connector does not recognize, such as a custom wrapper, as a whole stack: listings are complete and in order, Stat returns null only for a missing object, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spelling reaches another object), and a delete removes exactly the named object. Maintenance then treats the store as eligible, which also lets it rebuild a torn checkpoint without the full history. It cannot make a known failed store, such as Google Cloud Storage, eligible | False | No |
+| RebuildLegacyCheckpoints         | Only used for writing, when every commit since version 0 is still there, rebuild from the whole log instead of building on a checkpoint the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used | False | No |
 
 The options given to `AddDeltaLakeCatalog` apply to every table the catalog reads or writes.
 
@@ -123,6 +130,52 @@ connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
 });
 ```
 
+`StartFromFirstVersion` also starts from the oldest version but does not wait for a checkpoint between versions, so a long log loads faster.
+Without [Change history](#change-history) the versions read together cancel each other out, the result is the same as starting from the latest version.
+
+### Change history
+
+With `IncludeChangeHistory` the source sends the table as a change log, nothing it sends is ever retracted. Three columns are added to every table:
+
+| Column               | Type      | Value                                                                                         |
+| -------------------- | --------- | --------------------------------------------------------------------------------------------- |
+| `__weight`           | long      | 1 for an inserted row, -1 for a deleted row, the row itself is sent as an insert                |
+| `__modificationDate` | timestamp | The time of the version the change comes from                                                 |
+| `__version`          | long      | The version the change comes from, the first load uses the version it read                    |
+
+An update is a deleted row and an inserted row in the same version, an update that does not change the selected columns sends nothing.
+The time of a version is the first that exists of `inCommitTimestamp` and `timestamp` in its `commitInfo`, the latest `modificationTime` of an added file
+and the latest `deletionTimestamp` of a removed file, otherwise it is null.
+
+Combine it with `StartFromFirstVersion` to read the whole history of a table:
+
+```csharp
+connectorManager.AddDeltaLakeSource(new DeltaLakeOptions() {
+    StorageLocation = Files.Of.LocalDisk("./testdata"),
+    IncludeChangeHistory = true,
+    StartFromFirstVersion = true
+});
+```
+
+The table as it was at version 10 is then:
+
+```sql
+INSERT INTO output
+SELECT id, name FROM (
+    SELECT id, name, SUM(__weight) AS total FROM my_delta_lake_table
+    WHERE __version <= 10
+    GROUP BY id, name
+)
+WHERE total > 0
+```
+
+Things to keep in mind:
+
+* Order changes by `__version`, `__modificationDate` comes from the writers' clocks and can go back between versions.
+* The history starts at the oldest version the log still has. After log cleanup that is the oldest checkpoint, earlier changes are gone.
+* State that keeps the history, such as the query above, grows with every version.
+* A table that already has a column with one of these names can not be read with `IncludeChangeHistory`.
+
 ### Sample
 
 There is an example in the samples folder that uses the Delta Lake Source to read data from an azure blob storage.
@@ -177,6 +230,111 @@ Delta Lake Features:
 
 A checkpoint that changes no rows writes no new version of the table, unless it creates the table or starts an `INSERT OVERWRITE`.
 
+### Checkpoints
+
+A Delta checkpoint lets readers start from one file instead of replaying every commit. The sink builds checkpoints in the background, outside
+the commit path: publishing a version only hands its number to the table's maintenance worker, so a large table never delays a commit.
+
+A checkpoint is built at the newest published version when `CheckpointInterval` versions follow the latest checkpoint, or when a published version
+has waited `CheckpointMaxAge`. That wait is counted from when the running stream first saw the version, so a restart starts it again. A build starts from the newest checkpoint below it that it can read within its limits, and replays the commits after it.
+The first checkpoint of a table replays the log from version 0. The output is written in the local temp folder, read back and checked in full, and only
+then published as `{version}.checkpoint.parquet`, after which `_last_checkpoint` is updated. The hint is never moved to an older version.
+
+Checkpoints are classic, single-file checkpoints with `add`, `remove`, `protocol`, `metaData`, `txn` and `domainMetadata` rows. Removes keep no
+statistics or tags, and tombstones older than `delta.deletedFileRetentionDuration` (one week by default) are dropped.
+
+#### Limits
+
+All Delta Lake sinks in the process share the maintenance budget:
+
+- `MaxConcurrentMaintenanceJobs` checkpoint builds run at once. Beside them, up to two cleanup jobs (discard drains and staged commit sweeps,
+  see [Table maintenance](#table-maintenance)) run in slots of their own, which no option changes. A table runs one job at a time, and a
+  table waiting for its own earlier job holds no slot.
+- Each job, build or cleanup, may use 84 MiB of managed memory and 256 MiB of native Parquet memory. A build keeps up to 64 MiB of it for
+  the commits after its starting checkpoint and sorts a larger tail through files in the temp folder. These figures exclude the
+  `PruningMemoryBytes` the sinks keep for deleting rows.
+- Downloads share a 128 MiB allowance, admitted by listed size, since the storage clients read whole objects; a larger object runs alone.
+- Files in the temp folder share a 4 GiB disk cap. Each write reserves its space first, and a file's space is released only after it is deleted.
+- An action line over 4 MiB, or with more than 65,536 entries, declines the build before any of it is buffered. An oversized `commitInfo` line is skipped.
+
+With the defaults this allows about 340 MiB per job and about 1.45 GiB for maintenance in the process (two builds, two cleanup jobs and
+the download allowance), or about 2.45 GiB for the connector together with `PruningMemoryBytes`. Setting `MaxConcurrentMaintenanceJobs` to 1
+saves about 340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator
+keeps, the sinks' own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.
+
+A build keeps its starting checkpoint and its output in the temp folder together, and on local disk the output and its published copy, so a
+checkpoint larger than about 2 GiB is not built: the build declines on the disk cap.
+
+A build that cannot work within these limits declines; the checkpoint is optional, so a decline never fails the stream. It is logged once per reason
+at warning level, shown in the gauges below, and retried with a backoff that starts at one minute and doubles up to 30 minutes. After a failure,
+or a decline that is not held (see below), the retry also waits at least three times as long as the attempt took, so a table whose builds keep
+failing does not keep a build slot busy.
+
+#### Starting checkpoints written by others
+
+A checkpoint the sink did not write, or one it wrote on top of such a checkpoint, may lack tombstones, transactions or domains that its writer dropped.
+The new checkpoint records this gap in its file metadata and in the `delta_checkpoint_inherited_gap` gauge. With `RebuildLegacyCheckpoints` the sink
+instead rebuilds from the whole log, when every commit since version 0 is still there, and builds on its own complete checkpoint after that.
+
+A starting checkpoint is skipped, and an older readable one used instead when there is one, when its file is outside the limits above (its row
+groups, pages or metadata are too large), when it uses sidecar files, or when it cannot be decoded. The last two are found while it is read, so
+the attempt that finds them fails and the next one skips it. With `RebuildLegacyCheckpoints`, when no starting checkpoint is left and every
+commit since version 0 is still there, the build replays the log from version 0. A torn checkpoint, one whose file was cut short, is rebuilt in place.
+
+The build declines when its starting checkpoint:
+
+- holds only parsed statistics (`stats_parsed` without JSON `stats`), unless they are row counts only, which are converted;
+- holds rows that break the Delta specification, or a non-null column the sink does not know.
+
+It also declines when the table names a reader or writer version, or a feature, that is not in the table below.
+
+A declined build is not retried while nothing it depends on changes: the same starting checkpoints, the commits that hold the protocol, or the
+oversized commit. On storages whose listings report a modification time or an MD5, as local disk does, a checkpoint replaced at the same
+version is picked up at the next attempt. On storages without them it is picked up within 6 hours. A decline that depends on the output itself, such
+as a deletion vector count, is retried at each backoff; its starting checkpoint is then read from the local cache, the commits after it from the
+table again.
+
+| Feature | Why a classic checkpoint is correct |
+| ------- | ----------------------------------- |
+| appendOnly, invariants, checkConstraints, generatedColumns, identityColumns, allowColumnDefaults | They constrain data writes; the checkpoint copies `metaData` unchanged |
+| changeDataFeed | The specification excludes `cdc` actions from checkpoints |
+| columnMapping, timestampNtz, typeWidening, typeWidening-preview, variantType, variantType-preview | Schema and type rules live in `metaData`; statistics and partition values are copied as written |
+| deletionVectors | Deletion vector descriptors are copied; `numRecords` is required and checked |
+| rowTracking | `baseRowId` and `defaultRowCommitVersion` are copied, and so is the `delta.rowTracking` domain |
+| domainMetadata, clustering | Domains are written; removed domains are not |
+| v2Checkpoint | Writers may always create a classic checkpoint |
+| inCommitTimestamp | It lives in `commitInfo` and `metaData.configuration`; `commitInfo` is not checkpointed |
+| icebergCompatV1, icebergCompatV2, materializePartitionColumns | They constrain data writes only |
+| vacuumProtocolCheck | It restricts cleanup, not checkpoints |
+
+Tables with `checkpointProtection`, `catalogManaged`, `catalogOwned-preview` or `coordinatedCommits-preview` get no checkpoints from the sink:
+the first forbids checkpoints that do not support every protocol feature, and with the others commits may not be in `_delta_log`.
+
+#### Storage
+
+- Put `MaintenanceTempDirectory` on the same volume as tables on local disk, so publishing a checkpoint is a rename. Across volumes it is a copy
+  that is flushed before the rename.
+- Each process locks its own folder under the temp folder, and cleans up folders of processes that are gone only behind their lock. Folders that are
+  or hold a link are never cleaned. Where file locks do not work, for example with `DOTNET_SYSTEM_IO_DISABLEFILELOCKING`, cleanup is skipped and logged.
+- An upload that fails is abandoned. On S3, add an `AbortIncompleteMultipartUpload` lifecycle rule; Azure removes uncommitted blocks after 7 days.
+- Where neither the object's metadata nor the listing reports its size, the size check after an upload reads the checkpoint back to count it.
+- On a storage that wraps local disk the checkpoint is uploaded, not renamed, so a crash can leave a partial file. The next build finds it torn and
+  rebuilds it.
+- The storage must allow concurrent calls, since builds of different tables run at the same time as the sinks.
+- When `_last_checkpoint` names a version without a complete checkpoint at or after it, which some readers fail on, the sink builds a checkpoint at
+  once to repair it, whatever the interval.
+
+#### Gauges
+
+Per table: `delta_checkpoint_version`, `delta_checkpoint_lag_versions`, `delta_checkpoint_oldest_uncheckpointed_seconds`,
+`delta_checkpoint_consecutive_failures` (failed or declined attempts in a row), `delta_checkpoint_skipped` (the latest attempt declined), `delta_checkpoint_dangling_hint`,
+`delta_checkpoint_last_duration_ms`, `delta_checkpoint_last_validation_ms`, `delta_checkpoint_last_spill_bytes`, `delta_checkpoint_last_transfer_bytes`,
+`delta_checkpoint_last_mode` (1 when the tail was sorted through files), `delta_checkpoint_inherited_gap` and `delta_checkpoint_detached_jobs`.
+
+For the process, on the `FlowtideDotNet.Connector.DeltaLake` meter: `flowtide_delta_maintenance_running_jobs`, `_queued_jobs`,
+`_oldest_wait_seconds`, `_transfer_bytes`, `_disk_bytes`, `_pending_deletion_bytes`, `_detached_jobs`, `_tick_ms` and `_init_failed` (1 once a
+sink in this process failed to start its maintenance worker; invalid maintenance settings only log a warning).
+
 ### Compression
 
 Data and change data files are compressed with zstd by default. The codec is chosen in this order:
@@ -220,8 +378,8 @@ This creates new files in a `_change_data` folder and adds the corresponding act
 Change data files are only added if there are deletes on existing rows, since the `add` action gives the same performance
 to read change data if there are no deletes. This also saves on storage space.
 
-To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit, but they can then be deleted
-before completing the commit.
+To be able to reduce memory usage, Flowtide writes the change data files as it creates a commit. When the commit has no deletes they
+are left out of it and deleted as described in [Table maintenance](#table-maintenance).
 
 Since this connector writes the exact result set in the query, it does not have the concept of primary keys and rows can be duplicated if that is the result
 of the query. This means that the change data feed only contains `delete` and `insert` operations.

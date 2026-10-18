@@ -46,14 +46,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var create = await ReadCommitActions(storage, "test", 0);
             var v0 = Start.ToUnixTimeMilliseconds();
             Assert.Equal(v0, create.Single(x => x.MetaData != null).MetaData!.CreatedTime);
-            Assert.Equal(v0, ((JsonElement)create[0].CommitInfo!.Data!["timestamp"]).GetInt64());
+            Assert.Equal(v0, create[0].CommitInfo!.Timestamp);
             Assert.All(create.Where(x => x.Add != null), x => Assert.Equal(v0, x.Add!.ModificationTime));
 
             for (long version = 1; version <= 2; version++)
             {
                 var expected = Start.AddHours(version).ToUnixTimeMilliseconds();
                 var actions = await ReadCommitActions(storage, "test", version);
-                Assert.Equal(expected, ((JsonElement)actions[0].CommitInfo!.Data!["timestamp"]).GetInt64());
+                Assert.Equal(expected, actions[0].CommitInfo!.Timestamp);
                 Assert.NotEmpty(actions.Where(x => x.Remove != null));
                 Assert.All(actions.Where(x => x.Remove != null), x => Assert.Equal(expected, x.Remove!.DeletionTimestamp));
             }
@@ -86,15 +86,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 using var line = JsonDocument.Parse(text.Split('\n')[0]);
                 var keys = line.RootElement.GetProperty("commitInfo").EnumerateObject().Select(x => x.Name).ToList();
-                if (version == 1)
-                {
-                    Assert.Equal(new[] { "flowtide.stageId", "timestamp", "operation" }, keys);
-                }
-                else
-                {
-                    Assert.Equal(new[] { "flowtide.stageId", "timestamp" }, keys.Take(2));
-                    Assert.Single(keys, x => x.StartsWith("flowtide."));
-                }
+                Assert.Equal(new[] { "flowtide.stageId", "flowtide.adoptedAt", "timestamp", "operation", "flowtide.createdFiles" }, keys);
             }
             Assert.Equal(2, stageIds.Count);
         }

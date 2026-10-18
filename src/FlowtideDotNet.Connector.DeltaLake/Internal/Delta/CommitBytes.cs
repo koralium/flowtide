@@ -80,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         }
 
         // The used part of each chunk in order
-        private IEnumerable<ReadOnlyMemory<byte>> Segments()
+        internal IEnumerable<ReadOnlyMemory<byte>> Segments()
         {
             for (int i = 0; i < _chunks.Count; i++)
             {
@@ -133,42 +133,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 bytes = bytes.Slice(count);
             }
             return true;
-        }
-
-        /// <summary>
-        /// The bytes before the first newline, null when there is none.
-        /// </summary>
-        public byte[]? FirstLine()
-        {
-            long end = -1;
-            long position = 0;
-            foreach (var segment in Segments())
-            {
-                var index = segment.Span.IndexOf((byte)'\n');
-                if (index >= 0)
-                {
-                    end = position + index;
-                    break;
-                }
-                position += segment.Length;
-            }
-            if (end < 0)
-            {
-                return null;
-            }
-            var line = new byte[end];
-            long copied = 0;
-            foreach (var segment in Segments())
-            {
-                var count = (int)Math.Min(segment.Length, end - copied);
-                segment.Span.Slice(0, count).CopyTo(line.AsSpan((int)copied));
-                copied += count;
-                if (copied == end)
-                {
-                    break;
-                }
-            }
-            return line;
         }
 
         // The first bytes are flushed on their own, a torn copy then still names its stage

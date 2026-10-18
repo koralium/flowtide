@@ -63,12 +63,15 @@ namespace FlowtideDotNet.TestFramework.Internal
         {
             if (readRelation.Filter != null)
             {
-                return new FilterRelation()
+                var filterRelation = new FilterRelation()
                 {
                     Emit = readRelation.Emit,
                     Condition = readRelation.Filter,
                     Input = readRelation,
                 };
+                // Condition indexes the base schema, the filter emits instead
+                readRelation.Emit = null;
+                return filterRelation;
             }
 
             return readRelation;

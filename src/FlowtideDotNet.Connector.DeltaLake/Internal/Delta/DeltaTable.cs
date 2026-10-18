@@ -92,6 +92,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// </summary>
         public long? StartCheckpointVersion => _startCheckpointVersion;
 
+        /// <summary>
+        /// The first-line header of the head commit when the read replayed it, null otherwise.
+        /// </summary>
+        internal CommitHeader? HeadHeader { get; set; }
+
         private List<DeltaFile> ParseFiles()
         {
             var statisticsJsonOptions = new JsonSerializerOptions();

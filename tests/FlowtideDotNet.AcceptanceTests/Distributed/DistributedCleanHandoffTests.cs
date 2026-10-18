@@ -1107,8 +1107,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 Assert.True(failures.Any(f => f.Exception != null), "No substream failed, the sink crash did not fire.");
 
                 commits.Clear();
-                _generator.Generate(100);
-                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                // One delta can coalesce into a single commit, minVersion 2 needs two.
+                for (int i = 0; i < 2; i++)
+                {
+                    _generator.Generate(100);
+                    await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                }
 
                 await AssertCommittedVersionsConverge(
                     () => HighestVersionPerStream(commits),

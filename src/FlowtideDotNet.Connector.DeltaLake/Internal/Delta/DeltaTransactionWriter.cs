@@ -198,22 +198,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return Encoding.UTF8.GetBytes($"{{\"commitInfo\":{{\"flowtide.stageId\":\"{stageId}\"");
         }
 
-        private static bool FirstLineHasStageId(CommitBytes commit, string stageId)
+        // The whole first line is checked in place, without a copy
+        internal static bool FirstLineHasStageId(CommitBytes commit, string stageId)
         {
-            var line = commit.FirstLine();
-            if (line == null)
-            {
-                return false;
-            }
-            try
-            {
-                var action = JsonSerializer.Deserialize<DeltaAction>(line);
-                return action?.CommitInfo?.StageId == stageId;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
+            var header = CommitHeaderReader.Read(commit, HeaderMode.Strict);
+            return header.IsCommitInfo && (header.Flags & (HeaderFlags.DuplicateField | HeaderFlags.InvalidStageId)) == 0 && header.StageId == stageId;
         }
 
         internal static CommitBytes Serialize(List<DeltaAction> actions)
