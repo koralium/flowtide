@@ -13,6 +13,7 @@
 using Bogus;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Entities.tpcdi;
+using System.Globalization;
 
 namespace FlowtideDotNet.AcceptanceTests.Internal
 {
@@ -270,7 +271,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .RuleFor(x => x.TrimmableNullableString, (f, u) => u.NullableString != null ? $" {u.NullableString} " : null)
                 .RuleFor(x => x.DoubleValue, (f, u) => f.Random.Double(0, 1000))
                 .RuleFor(x => x.Active, (f, u) => f.Random.Bool())
-                .RuleFor(x => x.BirthDate, (f, u) => f.Date.BetweenDateOnly(DateOnly.Parse("1980-01-01"), DateOnly.Parse("2000-01-01")).ToDateTime(new TimeOnly(0)));
+                .RuleFor(x => x.BirthDate, (f, u) => f.Date.BetweenDateOnly(DateOnly.Parse("1980-01-01", CultureInfo.InvariantCulture), DateOnly.Parse("2000-01-01", CultureInfo.InvariantCulture)).ToDateTime(new TimeOnly(0)));
 
 
             var newUsers = testUsers.Generate(count);
@@ -285,7 +286,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             var testOrders = new Faker<Order>()
                 .RuleFor(x => x.OrderKey, (f, u) => NextUniqueIndex())
                 .RuleFor(x => x.UserKey, (f, u) => f.PickRandom(Users).UserKey)
-                .RuleFor(x => x.Orderdate, (f, u) => f.Date.Between(DateTime.Parse("1980-01-01"), DateTime.Parse("2000-01-01")))
+                .RuleFor(x => x.Orderdate, (f, u) => f.Date.Between(DateTime.Parse("1980-01-01", CultureInfo.InvariantCulture), DateTime.Parse("2000-01-01", CultureInfo.InvariantCulture)))
                 .RuleFor(x => x.GuidVal, (f, u) => Guid.NewGuid())
                 .RuleFor(x => x.Money, (f, u) => f.Finance.Amount());
 
@@ -387,17 +388,17 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 .Rules((f, s) =>
                 {
                     s.BatchID = 1;
-                    s.PostingDate = f.Date.Between(DateTime.Parse("2015-07-06"), DateTime.Parse("2015-07-06").AddDays(count - 1));
+                    s.PostingDate = f.Date.Between(DateTime.Parse("2015-07-06", CultureInfo.InvariantCulture), DateTime.Parse("2015-07-06", CultureInfo.InvariantCulture).AddDays(count - 1));
                     s.Symbol = f.Finance.Account();
                     s.Key = s.Symbol + s.PostingDate;
                     s.IssueType = f.PickRandom(new string[] { "Common", "Preferred", "Bond", "ETF", "Mutual Fund" });
                     s.Status = f.PickRandom(new string[] { "Active", "Inactive", "Delisted" });
                     s.Name = f.Company.CompanyName();
                     s.ExID = f.Address.CountryCode();
-                    s.ShOut = f.Random.Number(1000, 1000000).ToString();
-                    s.FirstTradeDate = f.Date.Past(20).ToString("yyyyMMdd");
-                    s.FirstTradeExchg = f.Date.Past(20).ToString("yyyyMMdd");
-                    s.Dividend = f.Finance.Amount(0, 5).ToString("F2");
+                    s.ShOut = f.Random.Number(1000, 1000000).ToString(CultureInfo.InvariantCulture);
+                    s.FirstTradeDate = f.Date.Past(20).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                    s.FirstTradeExchg = f.Date.Past(20).ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                    s.Dividend = f.Finance.Amount(0, 5).ToString("F2", CultureInfo.InvariantCulture);
                     s.CoNameOrCIK = f.Company.CompanyName();
                 });
 
@@ -413,7 +414,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         public void GenerateDailyMarkets(int numberOfDays)
         {
             _dailyMarketLastDay = _dailyMarketLastDay == null
-                ? DateTime.Parse("2015-07-06")
+                ? DateTime.Parse("2015-07-06", CultureInfo.InvariantCulture)
                 : _dailyMarketLastDay.Value.AddDays(1);
 
             List<DailyMarket> generated = new List<DailyMarket>();

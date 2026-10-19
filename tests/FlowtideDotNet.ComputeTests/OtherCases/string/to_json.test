@@ -7,5 +7,5 @@ to_json(317::i64) = '317'::str
 to_json(3.14::fp64) = '3.14'::str
 to_json(['a', 'b', 'c']::list<str>) = '["a","b","c"]'::str
 to_json(true::bool) = 'true'::str
-to_json('2016-12-31T13:45:15'::ts) = '"2016-12-31T13:45:15+01:00"'::str
+to_json('2016-12-31T13:45:15'::ts) = '"2016-12-31T13:45:15+00:00"'::str
 to_json(NULL::i64) = 'null'::str

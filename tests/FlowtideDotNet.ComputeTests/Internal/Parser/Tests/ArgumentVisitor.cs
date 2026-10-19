@@ -42,7 +42,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
 
         public override IDataValue VisitIntegerLiteral([NotNull] FuncTestCaseParser.IntegerLiteralContext context)
         {
-            var number = int.Parse(context.GetText());
+            var number = int.Parse(context.GetText(), CultureInfo.InvariantCulture);
             return new Int64Value(number);
         }
 
@@ -86,7 +86,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
         public override IDataValue VisitIntArg([NotNull] FuncTestCaseParser.IntArgContext context)
         {
             var literal = context.IntegerLiteral();
-            var val = long.Parse(literal.GetText());
+            var val = long.Parse(literal.GetText(), CultureInfo.InvariantCulture);
             return new Int64Value(val);
         }
 
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Tests
             var value = literal.GetText();
 
             value = value.Trim('\'');
-            if (DateTimeOffset.TryParse(value, out var result))
+            if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var result))
             {
                 return new TimestampTzValue(result.Ticks, (short)result.Offset.TotalMinutes);
             }
