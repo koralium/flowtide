@@ -57,7 +57,7 @@ namespace FlowtideDotNet.ComputeTests.SourceGenerator.Internal.Tests
                     return new DecimalValue(decimal.Parse(value, CultureInfo.InvariantCulture));
                 case "ts":
                     value = value.Trim('\'');
-                    if (DateTimeOffset.TryParse(value, out var result))
+                    if (DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var result))
                     {
                         return new TimestampTzValue(result);
                     }
