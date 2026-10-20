@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.IO.Hashing;
 using System.Linq;
 using System.Text;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.ColumnStore
 {
@@ -58,6 +59,10 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             var length = GetLength();
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, length);
+            hashAlgorithm.Append(buffer);
+
             for (int i = 0; i < length; i++)
             {
                 var key = GetKeyAt(i);
