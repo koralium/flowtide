@@ -28,6 +28,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
         private readonly FlowtideMongoDBSinkOptions m_options;
         private readonly ColumnsToBsonDoc m_serializer;
         private readonly List<int> primaryKeys;
+        private MongoClient? _client;
         private IMongoCollection<BsonDocument>? collection;
         private ICounter<long>? _eventsCounter;
 
@@ -76,9 +77,9 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
             var urlBuilder = new MongoUrlBuilder(m_options.ConnectionString);
             var connection = urlBuilder.ToMongoUrl();
-            using var client = new MongoClient(connection);
+            _client = new MongoClient(connection);
 
-            var database = client.GetDatabase(m_options.Database);
+            var database = _client.GetDatabase(m_options.Database);
             collection = database.GetCollection<BsonDocument>(m_options.Collection);
             if (_eventsCounter == null)
             {
@@ -219,6 +220,17 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
             {
                 await m_options.OnWatermarkUpdate(watermark);
             }
+        }
+
+        public override ValueTask DisposeAsync()
+        {
+            if (_client != null)
+            {
+                _client.Dispose();
+                _client = null;
+            }
+
+            return base.DisposeAsync();
         }
     }
 }

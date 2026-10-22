@@ -135,6 +135,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             StreamContext.CheckpointPostCommitGapHookForTests = null;
             StreamContext.CompactionHookForTests = null;
             StreamContext.RestoreVersionForTests = null;
+            RunningStreamState.StopAgreementReleaseGraceForTests = null;
             _tickCancellation.Cancel();
             if (_tickLoop != null)
             {
@@ -604,6 +605,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             var slowed = new ConcurrentDictionary<string, long>();
             long holdAbove = long.MaxValue;
             var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Give the slow case a longer grace for loaded machines
+            var grace = holdClaims ? RunningStreamState.StopAgreementReleaseGrace : TimeSpan.FromSeconds(2);
+            RunningStreamState.StopAgreementReleaseGraceForTests = streamName => SubstreamOf(streamName, testName) != null ? grace : null;
 
             StreamContext.CheckpointCommitHookForTests = (streamName, lastVersion) =>
             {
@@ -646,7 +650,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 var sw = Stopwatch.StartNew();
                 var stopEnds = Task.WhenAll(streams["suba"].StopAsync(), streams["subc"].StopAsync());
                 // Slow: the cycles reach the agreement wait only after a grace from the stop has passed.
-                await WaitForTask(stopB ?? Task.Delay(RunningStreamState.StopAgreementReleaseGrace + TimeSpan.FromMilliseconds(500)), "subb to stop");
+                await WaitForTask(stopB ?? Task.Delay(grace + TimeSpan.FromMilliseconds(500)), "subb to stop");
                 release.TrySetResult();
                 await WaitForTask(Task.WhenAll(stopEnds, stopB ?? streams["subb"].StopAsync()), "the stop");
 

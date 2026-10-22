@@ -12,6 +12,7 @@
 
 using Apache.Arrow;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -247,6 +248,57 @@ namespace FlowtideDotNet.Core.ColumnStore
                 return;
             }
             innerColumn.AddToHash(offset, child, hashAlgorithm);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch)
+        {
+            Debug.Assert(innerColumn is not ColumnWithOffset, "ColumnWithOffset should not be nested, use CreateFlattened to flatten the offsets into a single layer.");
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                var offset = offsets[index];
+                if (offset == NullValueIndex)
+                {
+                    XxHash32Implementation.Append(ByteArrayUtils.nullBytes, ref states[i]);
+                    scratch[i] = -1;
+                }
+                else
+                {
+                    scratch[i] = offset;
+                }
+            }
+            innerColumn.AppendToXxHash32(scratch, child, states, scratch);
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var offset = offsets[index];
+            if (offset == NullValueIndex)
+            {
+                XxHash32Implementation.AppendByte(0, ref state);
+                return;
+            }
+            innerColumn.AppendXxHash32Single(offset, child, ref state);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination, Span<int> scratch)
+        {
+            Debug.Assert(innerColumn is not ColumnWithOffset, "ColumnWithOffset should not be nested, use CreateFlattened to flatten the offsets into a single layer.");
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                var offset = offsets[index];
+                if (offset == NullValueIndex)
+                {
+                    destination[i] = XxHash32Implementation.HashNullByte();
+                    scratch[i] = -1;
+                }
+                else
+                {
+                    scratch[i] = offset;
+                }
+            }
+            innerColumn.ToXxHash32(scratch, child, destination, scratch);
         }
 
         int IColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

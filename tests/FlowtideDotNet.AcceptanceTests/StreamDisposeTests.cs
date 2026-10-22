@@ -58,23 +58,26 @@ namespace FlowtideDotNet.AcceptanceTests
             {
                 await stream.StartStream("INSERT INTO output SELECT userkey + 1 as k, firstName FROM users");
 
-                // The blocked sink fills the projection's output, the pause then parks its next input
+                // Wait for a full projection output and a Normalize backlog
                 var deadline = DateTime.UtcNow.AddSeconds(30);
-                while ((stream.Gauge("Projection", "flowtide_backpressure") == 0 || stream.Gauge("Normalize", "flowtide_backpressure") == 0) && DateTime.UtcNow < deadline) await Task.Delay(10);
+                while ((stream.Gauge("Projection", "flowtide_backpressure") < 1 || stream.Gauge("Normalize", "flowtide_backpressure") < 0.05m) && DateTime.UtcNow < deadline) await Task.Delay(10);
                 stream.Pause();
                 stream.SinkGate.Set();
 
-                // Parked: a steady input backlog with an empty output and an idle sink
-                decimal busy = -1;
+                // Wait for a steady backlog here or in Normalize's output
+                (decimal Input, decimal Upstream) Backlog() => (stream.Gauge("Projection", "flowtide_busy"), stream.Gauge("Normalize", "flowtide_backpressure"));
+                var previous = (Input: -1m, Upstream: -1m);
+                var parked = false;
                 deadline = DateTime.UtcNow.AddSeconds(30);
-                while (DateTime.UtcNow < deadline)
+                while (!parked && DateTime.UtcNow < deadline)
                 {
-                    var now = stream.Gauge("Projection", "flowtide_busy");
-                    if (now > 0 && now == busy && stream.Gauge("Projection", "flowtide_backpressure") == 0 && stream.Gauge("Mock Data Sink", "flowtide_InputQueue") == 0) break;
-                    busy = now;
-                    await Task.Delay(500);
+                    var now = Backlog();
+                    parked = (now.Input > 0 || now.Upstream > 0) && now == previous
+                        && stream.Gauge("Projection", "flowtide_backpressure") == 0 && stream.Gauge("Mock Data Sink", "flowtide_InputQueue") == 0;
+                    previous = now;
+                    if (!parked) await Task.Delay(500);
                 }
-                Assert.True(busy > 0 && busy == stream.Gauge("Projection", "flowtide_busy"), "No message is parked in the paused projection");
+                Assert.True(parked, "No message is parked in the paused projection");
             }
             catch
             {

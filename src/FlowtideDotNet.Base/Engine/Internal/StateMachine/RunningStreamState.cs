@@ -335,15 +335,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         // How long a deferred stop waits for the agreement before its cycle skips it.
         internal static readonly TimeSpan StopAgreementReleaseGrace = TimeSpan.FromSeconds(1);
 
+        // Test override per stream name, null keeps the default
+        internal static Func<string, TimeSpan?>? StopAgreementReleaseGraceForTests;
+
         // Agreement first; after a stop, a grace from the later of the stop and this wait's start.
         private async Task<bool> AgreedWithinStopGrace(Task agreed)
         {
+            Debug.Assert(_context != null);
             if (await Task.WhenAny(agreed, _stopRequested.Task) == agreed)
             {
                 return true;
             }
             using var grace = new CancellationTokenSource();
-            var first = await Task.WhenAny(agreed, Task.Delay(StopAgreementReleaseGrace, grace.Token));
+            var graceTime = StopAgreementReleaseGraceForTests?.Invoke(_context.streamName) ?? StopAgreementReleaseGrace;
+            var first = await Task.WhenAny(agreed, Task.Delay(graceTime, grace.Token));
             grace.Cancel();
             return first == agreed;
         }
