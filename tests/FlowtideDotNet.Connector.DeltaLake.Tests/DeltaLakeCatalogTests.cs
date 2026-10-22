@@ -499,19 +499,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             stream.Generate(1);
         }
 
-        [Fact]
-        public async Task ADataCheckpointListsTheLogOnceAndReadsNoLogFile()
+        // With retention the table is created with its properties already published
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ADataCheckpointListsTheLogOnceAndReadsNoLogFile(bool retention)
         {
-            const string table = "catalog_requests";
+            var table = retention ? "catalog_requests_retained" : "catalog_requests";
             var inner = Files.Of.InternalMemory($"./{table}");
             var storage = new HookFileStorage(inner);
-            await using var stream = new DeltaLakeSinkStream(table, storage, options => options.CheckpointInterval = 0);
+            await using var stream = new DeltaLakeSinkStream(table, storage, options =>
+            {
+                options.CheckpointInterval = 0;
+                if (retention)
+                {
+                    options.HistoryRetention = TimeSpan.FromDays(7);
+                    options.AssumeCompleteStorageListing = true;
+                }
+            });
             stream.WaitForUpdateDoesNotRequireDataChange();
             stream.Generate(50);
             await stream.StartStream(Insert(table));
             await WaitForVersion(storage, table, stream, 0);
             stream.Generate(5);
             await WaitForVersion(storage, table, stream, 1);
+            using (storage.Unrecorded())
+            {
+                var configuration = (await DeltaTransactionReader.ReadTable(storage, table))!.Metadata.Configuration;
+                Assert.Equal(retention, Internal.Maintenance.RetentionProperties.Matches(configuration, "interval 168 hours"));
+            }
+            // Retention keeps the worker's inspection with periodic builds off
+            var settings = stream.Sinks.Single().WorkerSettingsForTests!;
+            Assert.False(settings.PeriodicEnabled);
+            Assert.Equal(retention, settings.InspectionEnabled);
 
             // Idle checkpoints cost nothing
             await RunCheckpoints(stream, 3);

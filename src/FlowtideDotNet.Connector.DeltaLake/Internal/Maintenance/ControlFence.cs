@@ -39,6 +39,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public const int OrdinalDigits = 6;
         public const int SequenceDigits = 10;
         public const int MaxTokenLength = 64;
+        public const int MaxOrdinal = 999_999;
+        public const long MaxSequence = 9_999_999_999;
 
         public const string HeaderSegment = "header";
         public const string PartPrefix = "part";
@@ -117,6 +119,41 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             return long.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out boundary);
         }
 
+        public static string Part(long c, string advanceId, int ordinal, string attemptId)
+        {
+            if (ordinal < 0 || ordinal > MaxOrdinal)
+            {
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            }
+            return string.Create(CultureInfo.InvariantCulture, $"{DeltaTransactionReader.CleanupControlPrefix}{NonNegative(c):D20}.{advanceId}.{PartPrefix}{ordinal:D6}.{attemptId}");
+        }
+
+        public static string Header(long c, string advanceId, string attemptId) =>
+            string.Create(CultureInfo.InvariantCulture, $"{DeltaTransactionReader.CleanupControlPrefix}{NonNegative(c):D20}.{advanceId}.{HeaderSegment}.{attemptId}");
+
+        /// <summary>
+        /// A started, logs-complete, progress or done name of the header with this SHA-256.
+        /// </summary>
+        public static string Group(ControlKind kind, long c, string advanceId, ReadOnlySpan<byte> headerSha256, string attemptId, long sequence = -1)
+        {
+            var suffix = kind switch
+            {
+                ControlKind.Started => StartedSuffix,
+                ControlKind.LogsComplete => LogsCompleteSuffix,
+                ControlKind.Done => DoneSuffix,
+                ControlKind.Progress when sequence >= 0 && sequence <= MaxSequence => string.Create(CultureInfo.InvariantCulture, $"{ProgressPrefix}{sequence:D10}"),
+                _ => throw new ArgumentOutOfRangeException(nameof(kind), $"{kind} with sequence {sequence} names no group record")
+            };
+            return string.Create(CultureInfo.InvariantCulture, $"{DeltaTransactionReader.CleanupControlPrefix}{NonNegative(c):D20}.{advanceId}.{D16(headerSha256)}.{attemptId}.{suffix}");
+        }
+
+        /// <summary>
+        /// Lowercase hex of the first eight bytes of a header's SHA-256.
+        /// </summary>
+        public static string D16(ReadOnlySpan<byte> headerSha256) => Convert.ToHexString(headerSha256.Slice(0, DigestLength / 2)).ToLowerInvariant();
+
+        private static long NonNegative(long c) => c >= 0 ? c : throw new ArgumentOutOfRangeException(nameof(c));
+
         // An identifier segment: 1 to 64 of [A-Za-z0-9_-]
         private static bool IsToken(string segment)
         {
@@ -170,7 +207,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// What the control records of one log listing forbid this version to change; records are preserved, never interpreted further or scavenged.
+    /// What the control record names of one log listing forbid this version to change; only an advance's recovery reads their bodies and removes released records.
     /// </summary>
     internal sealed class ControlFence
     {
@@ -253,6 +290,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         /// Deleting payload, stages or temporaries.
         /// </summary>
         public bool AllowsDeletion => !Fenced;
+
+        /// <summary>
+        /// The owning advance's delete of a log name below its own C, while only its C is reserved and no record is uninterpreted.
+        /// </summary>
+        public bool AllowsOwnerDelete(long version, long ownC) => !Fenced && ReservedFloor == ownC && version < ownC;
 
         /// <summary>
         /// Rebuilding a torn checkpoint; on an ineligible store only with no fence at all and every commit from zero listed.

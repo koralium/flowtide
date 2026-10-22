@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Scripted non-build work: which kinds have work, what a job does, and the order calls came in
-        private sealed class FakeCleanup : IMaintenanceCleanup
+        internal sealed class FakeCleanup : IMaintenanceCleanup
         {
             public ConcurrentQueue<string> Calls { get; } = new ConcurrentQueue<string>();
 
@@ -109,22 +109,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
-        private DeltaMaintenanceBudget NewBudget(int jobs = 2)
+        private DeltaMaintenanceBudget NewBudget(int jobs = 2, long requestsPerSecond = MaintenanceBuckets.DefaultRequestsPerSecond)
         {
-            return new DeltaMaintenanceBudget(new MaintenanceBudgetSettings(jobs, Path.Combine(_directory, ScratchOwners.ShortId())), new FakeTimeProvider(s_now), manualTick: true);
+            return new DeltaMaintenanceBudget(new MaintenanceBudgetSettings(jobs, Path.Combine(_directory, ScratchOwners.ShortId())) { RequestsPerSecond = requestsPerSecond }, new FakeTimeProvider(s_now), manualTick: true);
         }
 
         private Rig Create(int interval = 2, TimeSpan? maxAge = null, int jobs = 2, IMaintenanceCleanup? cleanup = null, long? shortReads = null,
-            DeltaMaintenanceBudget? budget = null, HookFileStorage? storage = null, bool inspection = true, bool rebuildLegacy = false)
+            DeltaMaintenanceBudget? budget = null, HookFileStorage? storage = null, bool inspection = true, bool rebuildLegacy = false, int? readAhead = null,
+            long requestsPerSecond = MaintenanceBuckets.DefaultRequestsPerSecond)
         {
             storage ??= new HookFileStorage(Files.Of.InternalMemory($"./scheduling-{Guid.NewGuid():N}"));
-            budget ??= NewBudget(jobs);
+            budget ??= NewBudget(jobs, requestsPerSecond);
             var options = new FakeTimeProvider(budget.Clock.GetUtcNow());
             var settings = new MaintenanceWorkerSettings(interval, maxAge, options)
             {
                 PeriodicEnabled = inspection,
                 InspectionEnabled = inspection,
-                RebuildLegacyCheckpoints = rebuildLegacy
+                RebuildLegacyCheckpoints = rebuildLegacy,
+                ReadAhead = readAhead
             };
             if (shortReads is { } reads)
             {
@@ -201,6 +203,107 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             "main" => budget.Gate.QueueLength,
             _ => budget.DeleteGate.QueueLength
         };
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AdvanceContextCarriesWhatTheWorkersBuildsUse(bool rebuildLegacy)
+        {
+            var cleanup = new FakeCleanup();
+            var rig = Create(interval: 2, cleanup: cleanup, rebuildLegacy: rebuildLegacy);
+            // The build at 6 fails on the sidecar root, which the worker then records as unsupported; without commit 0 the option keeps that root
+            await DeltaMaintenanceWorkerTests.Commits(rig.Storage, 1, 6);
+            await DeltaMaintenanceWorkerTests.SidecarCheckpoint(rig.Storage, 3);
+            rig.Worker.Published(6);
+            await Quiesce(rig);
+            Assert.Single(rig.Worker.UnsupportedRoots);
+
+            var contexts = new ConcurrentQueue<CleanupContext>();
+            cleanup.Work = x => x == JobKind.Advance && contexts.IsEmpty;
+            cleanup.Run = (_, context) =>
+            {
+                contexts.Enqueue(context);
+                return Task.FromResult(new CleanupResult(OutcomeKind.Completed));
+            };
+            await Quiesce(rig);
+
+            var advance = Assert.Single(contexts);
+            Assert.Equal(2, advance.CheckpointInterval);
+            Assert.Equal(rebuildLegacy, advance.RebuildLegacyCheckpoints);
+            Assert.True(advance.KnownUnsupported.SetEquals(rig.Worker.UnsupportedRoots));
+            Assert.Same(rig.Budget.Capacity, advance.Capacity);
+        }
+
+        [Fact]
+        public async Task StopPausesTheTablesRunnableCapacityAfterItsJob()
+        {
+            var cleanup = new FakeCleanup();
+            var rig = Create(interval: 100, cleanup: cleanup);
+            await DeltaMaintenanceWorkerTests.Commits(rig.Storage, 0, 3);
+            rig.Worker.Published(3);
+            await Quiesce(rig);
+            var key = TableLeases.KeyOf(rig.Storage, "t");
+            var other = rig.Budget.Capacity.Restore(default, TableLeases.KeyOf(rig.Storage, "u"), "advance-b", new CapacityDemand(10, 0), CapacityState.Runnable);
+
+            // The advance restores its demand only once the stop is waiting to join it
+            var running = Signal();
+            var release = Signal();
+            CapacityLease? restored = null;
+            cleanup.Work = kind => kind == JobKind.Advance && restored == null;
+            cleanup.Run = async (_, context) =>
+            {
+                running.TrySetResult();
+                await release.Task;
+                restored = rig.Budget.Capacity.Restore(context.CapacityOwner, key, "advance-a", new CapacityDemand(100, 0), CapacityState.Runnable);
+                return new CleanupResult(OutcomeKind.Completed);
+            };
+            rig.Budget.TickNow();
+            await running.Task.WaitAsync(s_wait);
+
+            var stopping = rig.Worker.StopAsync(s_wait);
+            release.SetResult();
+            await stopping.WaitAsync(s_wait);
+            Assert.Equal(CapacityState.Paused, restored!.State);
+            Assert.Equal(CapacityState.Runnable, other.State);
+            Assert.Equal(new CapacityDemand(10, 0), rig.Budget.Capacity.Total(CapacityState.Runnable));
+            Assert.Equal(new CapacityDemand(100, 0), rig.Budget.Capacity.Total(CapacityState.Paused));
+        }
+
+        [Fact]
+        public async Task StoppingOneStoreDoesNotPauseAnotherStoresLiveDemand()
+        {
+            // Two stores holding a table at the same path share its table lease key
+            var budget = NewBudget();
+            var first = Create(interval: 100, budget: budget);
+            var cleanup = new FakeCleanup();
+            var second = Create(interval: 100, budget: budget, cleanup: cleanup);
+            var key = TableLeases.KeyOf(second.Storage, "t");
+            Assert.Equal(TableLeases.KeyOf(first.Storage, "t"), key);
+            await DeltaMaintenanceWorkerTests.Commits(second.Storage, 0, 3);
+            second.Worker.Published(3);
+            await Quiesce(second);
+
+            // The second store's advance restores thirteen hours of runnable demand
+            var demand = new CapacityDemand(13 * 3600 * MaintenanceBuckets.DefaultRequestsPerSecond, 0);
+            CapacityLease? restored = null;
+            cleanup.Work = kind => kind == JobKind.Advance && restored == null;
+            cleanup.Run = (_, context) =>
+            {
+                restored = budget.Capacity.Restore(context.CapacityOwner, key, "advance-a", demand, CapacityState.Runnable);
+                return Task.FromResult(new CleanupResult(OutcomeKind.Completed));
+            };
+            await Quiesce(second);
+            Assert.NotNull(restored);
+
+            await first.Worker.StopAsync(s_wait);
+            Assert.Equal(CapacityState.Runnable, restored!.State);
+            Assert.Equal(demand, budget.Capacity.Current);
+
+            // Its own worker's stop pauses it
+            await second.Worker.StopAsync(s_wait);
+            Assert.Equal(CapacityState.Paused, restored.State);
+            Assert.Equal(default, budget.Capacity.Current);
+        }
 
         [Theory]
         [InlineData("lease")]
@@ -932,6 +1035,67 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task LongBuildReadsAheadOnQualifiedStores()
+        {
+            var directory = Path.Combine(_directory, ScratchOwners.ShortId());
+            Directory.CreateDirectory(directory);
+            var storage = TrackedHookFileStorage.Over(Files.Of.LocalDisk(directory));
+            // Thirty commit reads promote the first build past the five a short admission allows
+            var rig = Create(interval: 2, shortReads: 5, storage: storage);
+            await DeltaMaintenanceWorkerTests.Commits(storage, 0, 29);
+            rig.Worker.Published(29);
+            await rig.TickAsync();
+
+            Assert.Equal(OutcomeKind.Completed, rig.Worker.LastOutcomeForTests!.Kind);
+            Assert.Equal(new long[] { 29 }, await Checkpoints(rig));
+            Assert.Equal(20, rig.Worker.ReadAheadForTests);
+            Assert.Equal(20, storage.MaxOutstanding);
+        }
+
+        // Guards short builds and stores not qualified for concurrent reads against the read-ahead
+        [Fact]
+        public async Task ShortBuildsAndUnqualifiedStoresReadOneAtATime()
+        {
+            // A user's wrapper over in-memory storage classifies as unknown
+            var unknown = TrackedHookFileStorage.Over(new HookFileStorage(Files.Of.InternalMemory($"./scheduling-{Guid.NewGuid():N}")));
+            var promoted = Create(interval: 2, shortReads: 5, storage: unknown);
+            await DeltaMaintenanceWorkerTests.Commits(unknown, 0, 29);
+            promoted.Worker.Published(29);
+            await promoted.TickAsync();
+            Assert.Equal(new long[] { 29 }, await Checkpoints(promoted));
+            Assert.Equal(1, promoted.Worker.ReadAheadForTests);
+            Assert.Equal(1, unknown.MaxOutstanding);
+
+            // A short build on local disk
+            var directory = Path.Combine(_directory, ScratchOwners.ShortId());
+            Directory.CreateDirectory(directory);
+            var local = TrackedHookFileStorage.Over(Files.Of.LocalDisk(directory));
+            var rig = Create(interval: 2, storage: local);
+            await DeltaMaintenanceWorkerTests.Commits(local, 0, 29);
+            rig.Worker.Published(29);
+            await rig.TickAsync();
+            Assert.Equal(new long[] { 29 }, await Checkpoints(rig));
+            Assert.Equal(1, local.MaxOutstanding);
+        }
+
+        [Fact]
+        public void ReadAheadFollowsTheBudgetsRequestRate()
+        {
+            var budget = NewBudget(requestsPerSecond: 5000);
+            var settings = new MaintenanceWorkerSettings(2, null, new FakeTimeProvider(s_now));
+            var directory = Path.Combine(_directory, ScratchOwners.ShortId());
+            Directory.CreateDirectory(directory);
+            using var local = Files.Of.LocalDisk(directory);
+            using var s3 = StoreFixtures.S3();
+
+            Assert.Equal(500, new DeltaMaintenanceWorker(budget, settings, local, "t", "t", null).ReadAheadForTests);
+            Assert.Equal(1, new DeltaMaintenanceWorker(budget, settings, s3, "t", "t", null).ReadAheadForTests);
+            Assert.Equal(20, new DeltaMaintenanceWorker(NewBudget(), settings, local, "t", "t", null).ReadAheadForTests);
+            // A depth the settings name is kept
+            Assert.Equal(3, new DeltaMaintenanceWorker(budget, settings with { ReadAhead = 3 }, local, "t", "t", null).ReadAheadForTests);
+        }
+
+        [Fact]
         public async Task CleanupAndDemandsWaitForTheInspection()
         {
             var cleanup = new FakeCleanup();
@@ -1532,7 +1696,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await rig.TickAsync();
             Assert.Equal(4, rig.Worker.LastCompleted);
 
-            // A target not yet in the log fails; only the demand backs off, and it stays pending
+            // A handed-off target not yet in the log fails; only the demand backs off, and it stays pending
+            rig.Worker.Published(9);
             var demand = new BuildDemand(9, RootPolicy.Auto);
             Assert.True(rig.Worker.RequestBuild(demand));
             Assert.False(rig.Worker.RequestBuild(new BuildDemand(5, RootPolicy.Auto)));

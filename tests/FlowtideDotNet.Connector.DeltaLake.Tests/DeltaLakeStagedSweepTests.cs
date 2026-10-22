@@ -406,6 +406,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Single(stages, x => File.Exists(replaced.Log(x)));
         }
 
+        [Fact]
+        public async Task StageKeptAtIssuanceIsCountedAsAKeptDelete()
+        {
+            var table = NewTable();
+            await Create(table, 2);
+            var stages = new List<string>();
+            for (long version = 3; version <= 4; version++)
+            {
+                var stage = await Stage(table, version, $"attempt-{version}", Array.Empty<string>());
+                WriteRaw(table, "_delta_log/" + CommitName(version), File.ReadAllBytes(table.Log(stage)));
+                stages.Add(stage);
+            }
+            IFileStorage current = table.Local;
+            var counters = new RetentionCounters();
+            var sweep = new StagedSweep(CleanupConfiguration.Validate(() => current, "t", false, CleanupOptIns.Off), table.Metered, TimeProvider.System,
+                new DeletionRunSettings() { MaxOutstanding = 1 }) { Settled = counters.Add };
+            using var other = Files.Of.LocalDisk(Path.GetDirectoryName(table.Dir)!);
+            // The sink's storage is replaced after the first delete
+            sweep.BeforeDeleteForTests = _ =>
+            {
+                current = other;
+                return Task.CompletedTask;
+            };
+
+            await sweep.RunAsync(Context(4));
+
+            Assert.Single(stages, x => File.Exists(table.Log(x)));
+            Assert.Equal((1L, 1L), (counters.Deletes(TargetKind.Stage, DeleteStatus.Deleted), counters.Deletes(TargetKind.Stage, DeleteStatus.Kept)));
+        }
+
         // Builds one matrix scenario around a stage at version 3; returns V and the stage's name
         private static async Task<(long Published, string StageName)> Scenario(Table table, string scenario)
         {

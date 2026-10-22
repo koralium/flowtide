@@ -171,11 +171,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // DuckDB moves a downloaded extension into its folder, so parallel installs into one shared folder are serialized
-        private static readonly object s_duckDbInstall = new object();
+        internal static readonly object DuckDbInstallLock = new object();
 
         public static void LoadDuckDbDelta(DuckDB.NET.Data.DuckDBConnection connection, string extensionsDir)
         {
-            lock (s_duckDbInstall)
+            lock (DuckDbInstallLock)
             {
                 using var command = connection.CreateCommand();
                 command.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
@@ -244,6 +244,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public static Task WriteCommit(IFileStorage storage, string table, long version, params DeltaAction[] actions)
         {
             return DeltaTransactionWriter.WriteCommit(storage, table, version, actions.ToList());
+        }
+
+        // A commit our sink would write: a leading commitInfo with a stage id, the adoption epoch and the timestamp
+        public static Task WriteOwnCommit(IFileStorage storage, string table, long version, long adoptedAt, long timestamp, params DeltaAction[] actions)
+        {
+            var commitInfo = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = $"stage-{version}", AdoptedAt = adoptedAt, Timestamp = timestamp, Operation = "WRITE" } };
+            return DeltaTransactionWriter.WriteCommit(storage, table, version, actions.Prepend(commitInfo).ToList());
         }
 
         // The properties a configured builder produces; the builder is disposed

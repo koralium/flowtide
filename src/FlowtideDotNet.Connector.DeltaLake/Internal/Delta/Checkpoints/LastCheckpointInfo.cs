@@ -33,5 +33,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         [JsonPropertyName("numOfAddFiles")]
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public long? NumOfAddFiles { get; set; }
+
+        // Read from other writers' hints; this writer never sets it
+        [JsonPropertyName("parts")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public long? Parts { get; set; }
     }
 }

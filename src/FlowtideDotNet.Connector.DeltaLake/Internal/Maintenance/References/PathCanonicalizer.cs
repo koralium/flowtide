@@ -252,9 +252,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References
         public PathKey Name(string name, PathRole role) => Relative(name, role);
 
         /// <summary>
-        /// Charges the resolutions owed so far, one request per FIFO turn; free when the storage is not metered.
+        /// Charges the resolutions owed so far, one request per FIFO turn, and with a context yields to its stop between charges; free when the storage is not metered.
         /// </summary>
-        public async ValueTask ChargeOwedAsync(CancellationToken cancellationToken)
+        public async ValueTask ChargeOwedAsync(CancellationToken cancellationToken, CleanupContext? context = null)
         {
             if (_meter == null)
             {
@@ -263,9 +263,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References
             }
             while (Owed > 0)
             {
+                if (context?.CheckStop() is { } stop && stop != IssuanceStop.None)
+                {
+                    throw new CleanupPreemptedException(stop);
+                }
                 await MeteredFileStorage.ChargeNativeAsync(_meter, 1, 0, cancellationToken);
                 Owed--;
             }
+        }
+
+        /// <summary>
+        /// Charges the resolutions owed so far in turns, counting no reads, and leaves the rest owed to the request bucket once the context would stop, without latching that stop.
+        /// </summary>
+        public async ValueTask RepayOwedAsync(CleanupContext context)
+        {
+            try
+            {
+                while (_meter != null && Owed > 0 && context.PeekStop() == IssuanceStop.None)
+                {
+                    await MeteredFileStorage.ChargeNativeAsync(_meter, 1, 0, context.Stop);
+                    Owed--;
+                }
+            }
+            catch (OperationCanceledException) when (context.Stop.IsCancellationRequested)
+            {
+                // Left owed below
+            }
+            LeaveOwed();
+        }
+
+        // Owed to the request bucket at once, without a turn
+        private void LeaveOwed()
+        {
+            if (_meter != null)
+            {
+                MeteredFileStorage.Of(_meter)?.Buckets.Requests.Owe(Owed);
+            }
+            Owed = 0;
         }
 
         private void Touch()

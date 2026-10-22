@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         // The table this commit creates
         public DeltaTable? NewHeader { get; }
 
+        // The metaData this commit writes on an existing table, with the same schema
+        public Delta.Actions.DeltaMetadataAction? UpdatedMetadata { get; set; }
+
         // The commit's own provenance, the catalog's head once it is published
         public CommitProvenance? Provenance { get; set; }
 

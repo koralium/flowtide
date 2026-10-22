@@ -662,7 +662,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static string CheckpointPath(long version) => $"/t/_delta_log/{version:D20}.checkpoint.parquet";
 
         // A checkpoint with a sidecar row: unsupported, never used and never replaced
-        private static Task SidecarCheckpoint(IFileStorage storage, long version)
+        internal static Task SidecarCheckpoint(IFileStorage storage, long version)
         {
             return DeltaLogReplayTests.WriteClassicCheckpoint(storage, "t", version, new Dictionary<string, (string Name, Apache.Arrow.Types.IArrowType Type)[]>(DeltaLogReplayTests.CheckpointColumns)
             {

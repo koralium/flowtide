@@ -976,6 +976,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public Func<IOPath, CancellationToken, Task>? BeforeRm { get; set; }
 
+        // Rewrites a delivered listing
+        public Func<IReadOnlyCollection<IOEntry>, IReadOnlyCollection<IOEntry>>? AfterLs { get; set; }
+
         public int Listings(string folder) => Calls.Count(x => x == "Ls " + folder);
 
         public async Task<IReadOnlyCollection<IOEntry>> Ls(IOPath? path = null, bool recurse = false, CancellationToken cancellationToken = default)
@@ -986,7 +989,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 await BeforeLs(folder);
             }
-            return await Inner.Ls(path, recurse, cancellationToken);
+            var listed = await Inner.Ls(path, recurse, cancellationToken);
+            return AfterLs != null ? AfterLs(listed) : listed;
         }
 
         public async Task<IOEntry?> Stat(IOPath path, CancellationToken cancellationToken = default)

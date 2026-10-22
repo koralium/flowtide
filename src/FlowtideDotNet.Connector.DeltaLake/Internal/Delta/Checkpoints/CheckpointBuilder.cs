@@ -170,6 +170,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public int LineCap { get; init; } = BoundedCheckpointReader.ActionCap;
 
+        // Commit opens a replay keeps ahead of its reader; 1 reads one at a time
+        public int ReadAhead { get; init; } = 1;
+
         // Runs after the output is written and before it is validated, so tests can damage it
         public Action<string>? BeforeValidationForTests { get; init; }
     }
@@ -400,9 +403,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         {
             if (PastDeadline())
             {
-                throw new CheckpointDeclinedException(MaintenanceReason.JobDeadline, DeclineDependency.None, $"The job deadline {_request.Deadline:O} passed");
+                throw DeadlinePassed();
             }
         }
+
+        private CheckpointDeclinedException DeadlinePassed() => new CheckpointDeclinedException(MaintenanceReason.JobDeadline, DeclineDependency.None, $"The job deadline {_request.Deadline:O} passed");
 
         private bool PastDeadline() => _request.Deadline is { } deadline && _context.Clock.GetUtcNow() >= deadline;
 
@@ -436,64 +441,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         private async Task<(LocalRoot? Root, bool Blocked, BuildResult? Failure)> ChooseRootAsync(DeltaLogSegment segment, long target, CancellationToken cancellationToken)
         {
-            var blocked = false;
-            foreach (var candidate in segment.RootCandidates(target, target - 1))
+            var walk = new RootWalk(_request.KnownUnsupported);
+            HeldRoot? held;
+            try
             {
-                var identity = ObjectIdentity.Of(_context.Table, candidate);
-                _stale.AddRange(_request.KnownUnsupported.Where(x => x.Version == candidate.Version && x != identity));
-                if (_request.KnownUnsupported.Contains(identity))
-                {
-                    blocked = true;
-                    _skipped.Add($"checkpoint {candidate.Version}: unsupported");
-                    continue;
-                }
-                // Each fallback download is new work
-                CheckDeadline();
-                var (fetched, unknown) = await CheckpointInspector.FetchAsync(_context.Transport, _context.Scratch, _context.Memory, _context.Transfer, candidate, cancellationToken, _cache);
-                if (fetched == null)
-                {
-                    // Never fall back past a candidate whose state is unknown
-                    return (null, blocked, Result(BuildStatus.Failed, MaintenanceReason.UnknownCheckpoint, detail: unknown));
-                }
-                if (fetched.Owned)
-                {
-                    _transferBytes += fetched.Length;
-                }
-                var local = new LocalRoot() { File = fetched };
-                try
-                {
-                    if (CheckpointPageScan.IsTorn(local.Path))
-                    {
-                        local.Dispose(_context);
-                        continue;
-                    }
-                    try
-                    {
-                        local.Scan = CheckpointPageScan.Scan(local.Path, _context.Memory);
-                    }
-                    catch (CheckpointDeclinedException e)
-                    {
-                        // Out of the envelope is still valid; it only cannot be a root
-                        blocked = true;
-                        _newestValidRoot ??= candidate.Version;
-                        _skipped.Add($"checkpoint {candidate.Version}: {e.Message}");
-                        local.Dispose(_context);
-                        continue;
-                    }
-                    _newestValidRoot ??= candidate.Version;
-                    local.Marker = CoverageMarker.Parse(local.Scan.Footer.Marker);
-                    // Admitted by the scan, so the download is kept under its identity
-                    local.File = CheckpointInspector.Admit(local.File, _cache, _context.Scratch);
-                }
-                catch
-                {
-                    // Nobody else holds the root yet, so its file, pin or scan charge goes here
-                    local.Dispose(_context);
-                    throw;
-                }
-                return (local, blocked, null);
+                held = await CheckpointProbe.WalkAsync(_context.Transport, _context.Table, _context.Scratch, _context.Memory, _context.Transfer,
+                    segment.RootCandidates(target, target - 1), _cache, walk, CheckDeadline, cancellationToken);
             }
-            return (null, blocked, null);
+            finally
+            {
+                // A decline thrown by the walk reports what it saw so far
+                _stale.AddRange(walk.Stale);
+                _skipped.AddRange(walk.Skipped);
+                _transferBytes += walk.TransferBytes;
+                _newestValidRoot ??= walk.NewestValidRoot;
+            }
+            if (walk.Unknown != null)
+            {
+                // Never fall back past a candidate whose state is unknown
+                return (null, walk.Blocked, Result(BuildStatus.Failed, MaintenanceReason.UnknownCheckpoint, detail: walk.Unknown));
+            }
+            return (held == null ? null : new LocalRoot() { File = held.File, Scan = held.Scan, Marker = held.Marker }, walk.Blocked, null);
         }
 
         private ReadOnlySpan<byte> KeyOf(ReadOnlySpan<byte> record)
@@ -624,6 +592,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             // The tail, latest record per key, into the map; an overflow drains it as a run and starts sort mode
             using (var encoder = new TailRecordEncoder(memory))
             {
+                await using var window = new CommitReadAhead(segment.Storage,
+                    index => segment.Listing.Commits.TryGetValue(rootVersion + 1 + index, out var file) ? file.IOEntry : null,
+                    target - rootVersion, _context.ReadAhead, _context.Transfer, () => !PastDeadline(), cancellationToken);
                 for (long version = rootVersion + 1; version <= target; version++)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -631,12 +602,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
                     _tailCommit = ObjectIdentity.Of(_context.Table, segment.Listing.Commits[version]);
                     var listedSize = segment.Listing.Commits[version].IOEntry.Size ?? 0;
                     _transferBytes += listedSize;
-                    using var admitted = _context.Transfer != null ? await _context.Transfer.AdmitAsync(listedSize, cancellationToken) : null;
-                    using var lines = await segment.OpenCommitAsync(version, memory, _context.LineCap, skipOversizedCommitInfo: true, cancellationToken);
-                    if (lines == null)
+                    using var opened = await window.NextAsync();
+                    if (opened.Stopped)
                     {
-                        throw new DeltaVersionNotAvailableException($"Commit {version} was removed while it was read");
+                        cancellationToken.ThrowIfCancellationRequested();
+                        throw DeadlinePassed();
                     }
+                    using var lines = DeltaLogSegment.Lines(opened.Stream ?? throw new DeltaVersionNotAvailableException($"Commit {version} was removed while it was read"),
+                        memory, _context.LineCap, skipOversizedCommitInfo: true);
                     long lineOrdinal = 0;
                     long? commitTimestamp = null;
                     while (await lines.ReadLineAsync(cancellationToken))

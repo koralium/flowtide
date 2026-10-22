@@ -125,6 +125,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Runs before every delete the sweep submits
         internal Func<DeletionTarget, Task>? BeforeDeleteForTests { get; set; }
 
+        // Sees every delete the sweep settles and every target its runs keep before submission
+        internal Action<DeletionTarget, DeleteOutcome>? Settled { get; init; }
+
         /// <summary>
         /// The settings of every run the sweep makes: one outstanding delete on pinned S3, whose signer is not safe for concurrent requests.
         /// </summary>
@@ -902,7 +905,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
-        private DeletionExecutor NewExecutor() => new DeletionExecutor(_configuration, _storage) { BeforeDeleteForTests = BeforeDeleteForTests };
+        private DeletionExecutor NewExecutor() => new DeletionExecutor(_configuration, _storage) { BeforeDeleteForTests = BeforeDeleteForTests, Settled = Settled, Withheld = Settled };
 
         // A switch that cannot be read counts as on
         private bool DeletesDisabled()

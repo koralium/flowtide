@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableDeletionVectors", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -150,7 +150,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableChangeDataFeed", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -166,7 +166,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (_metadata.Configuration != null &&
                     _metadata.Configuration.TryGetValue("delta.columnMapping.mode", out var mode))
                 {
-                    return !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
+                    // A null mode is none
+                    return mode != null && !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
                 }
                 return false;
             }

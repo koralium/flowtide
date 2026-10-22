@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
+using System.Collections.Frozen;
+
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 {
     /// <summary>
@@ -31,12 +34,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// What a non-build job reports; a promotion is returned before the job opens anything it counts.
+    /// What a non-build job reports; a short admission's promotion may follow counted reads, which the long admission repeats.
     /// </summary>
     internal sealed record CleanupResult(OutcomeKind Kind, MaintenanceReason Reason = MaintenanceReason.None, string? Detail = null)
     {
         // Too many reads for short admission: the job runs again through the long gate
         public bool NeedsLongAdmission { get; init; }
+
+        // A build the worker applies under its lock at settlement; never on a promotion
+        public BuildDemand? Demand { get; init; }
+
+        // The advance's preparation found a head that is not its own commit
+        public bool ForeignHead { get; init; }
+
+        // The advance's plan alone drains longer than admission allows
+        public bool Oversized { get; init; }
 
         public static CleanupResult Promote { get; } = new CleanupResult(OutcomeKind.NoWork) { NeedsLongAdmission = true };
     }
@@ -67,7 +79,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// An admitted non-build job's limits and issuance gate; issuance never resumes once it stops.
+    /// An admitted non-build job's limits and issuance gate; issuance never resumes once it stops, except to record settled work past a deadline or a due build.
     /// </summary>
     internal sealed class CleanupContext
     {
@@ -79,6 +91,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private readonly JobRun _run;
         private readonly TimeProvider _clock;
         private IssuanceStop _stopped;
+        // Set once settling starts, whatever stop was latched before
+        private bool _closed;
 
         public CleanupContext(JobRun run, TimeProvider clock)
         {
@@ -91,7 +105,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Admitted through the long gate
         public required bool Long { get; init; }
 
-        // Counted reads this admission allows; a job needing more returns a promotion before its first counted read
+        // Counted reads this admission allows; a job needing more returns a promotion
         public required long ReadLimit { get; init; }
 
         // Guarded by _lock
@@ -137,6 +151,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        /// <summary>
+        /// Counts this many reads against this admission at once; false, counting nothing, when fewer are left.
+        /// </summary>
+        public bool TryCountReads(long count)
+        {
+            lock (_lock)
+            {
+                if (count > ReadLimit - _readsUsed)
+                {
+                    return false;
+                }
+                _readsUsed += count;
+                return true;
+            }
+        }
+
         // On the options clock
         public required DateTimeOffset Deadline { get; init; }
 
@@ -154,6 +184,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // Cancelled when the worker stops; the deadline and a due build never cancel it
         public required CancellationToken Stop { get; init; }
+
+        // The sink's checkpoint interval, which bounds the commits an advance reads after its newest checkpoint
+        public int CheckpointInterval { get; init; }
+
+        // As the worker's builds choose an Auto root
+        public bool RebuildLegacyCheckpoints { get; init; }
+
+        // Commit opens a long plan keeps ahead of its reader; 1 reads one at a time
+        public int ReadAhead { get; init; } = 1;
+
+        // The roots the worker's builds skip, as known at admission
+        public IReadOnlySet<ObjectIdentity> KnownUnsupported { get; init; } = FrozenSet<ObjectIdentity>.Empty;
+
+        // The process's runnable demand, which new expensive work is admitted against
+        public CapacityLedger? Capacity { get; init; }
+
+        // The worker's own stop token, which owns the capacity leases its jobs hold
+        public CancellationToken CapacityOwner { get; init; }
 
         // A build of the same table is due, so the job yields at its next cooperative point
         public bool BuildDue => _run.YieldRequested;
@@ -192,16 +240,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        /// <summary>
+        /// The stop CheckStop would find, without latching it.
+        /// </summary>
+        public IssuanceStop PeekStop()
+        {
+            lock (_lock)
+            {
+                return _stopped != IssuanceStop.None ? _stopped : PendingLocked();
+            }
+        }
+
         private IssuanceStop LatchLocked()
         {
             if (_stopped == IssuanceStop.None)
             {
-                _stopped = Stop.IsCancellationRequested ? IssuanceStop.Stopped
-                    : _run.YieldRequested ? IssuanceStop.BuildDue
-                    : _clock.GetUtcNow() >= Deadline ? IssuanceStop.Deadline
-                    : IssuanceStop.None;
+                _stopped = PendingLocked();
             }
             return _stopped;
+        }
+
+        private IssuanceStop PendingLocked()
+        {
+            return Stop.IsCancellationRequested ? IssuanceStop.Stopped
+                : _run.YieldRequested ? IssuanceStop.BuildDue
+                : _clock.GetUtcNow() >= Deadline ? IssuanceStop.Deadline
+                : IssuanceStop.None;
         }
 
         /// <summary>
@@ -211,26 +275,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         {
             lock (_lock)
             {
-                if (LatchLocked() != IssuanceStop.None)
-                {
-                    return null;
-                }
-                Task task;
-                try
-                {
-                    task = operation(Stop);
-                }
-                catch (Exception e)
-                {
-                    task = Task.FromException(e);
-                }
-                if (_issued.Count >= PruneAt)
-                {
-                    _issued.RemoveAll(x => x.IsCompleted);
-                }
-                _issued.Add(task);
-                return task;
+                return LatchLocked() == IssuanceStop.None ? IssueLocked(operation) : null;
             }
+        }
+
+        /// <summary>
+        /// Starts a remote operation that records work already settled, which a passed deadline or a due build does not refuse; null once the worker stopped or the job returned.
+        /// </summary>
+        public Task? TryIssueSettled(Func<CancellationToken, Task> operation)
+        {
+            lock (_lock)
+            {
+                // Latched without refusing
+                LatchLocked();
+                return _closed || Stop.IsCancellationRequested ? null : IssueLocked(operation);
+            }
+        }
+
+        private Task IssueLocked(Func<CancellationToken, Task> operation)
+        {
+            Task task;
+            try
+            {
+                task = operation(Stop);
+            }
+            catch (Exception e)
+            {
+                task = Task.FromException(e);
+            }
+            if (_issued.Count >= PruneAt)
+            {
+                _issued.RemoveAll(x => x.IsCompleted);
+            }
+            _issued.Add(task);
+            return task;
         }
 
         /// <summary>
@@ -241,6 +319,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             Task[] pending;
             lock (_lock)
             {
+                _closed = true;
                 if (_stopped == IssuanceStop.None)
                 {
                     _stopped = IssuanceStop.Closed;
