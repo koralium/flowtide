@@ -13,6 +13,7 @@
 using FlowtideDotNet.Base;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
@@ -33,11 +34,59 @@ namespace FlowtideDotNet.TestFramework.Internal
         private int _batchIndex = 0;
         private string _tableName;
 
+        // Table column index for each output column
+        private readonly int[] _columnMapping;
+
         public TestDataSource(TestDataTable table, ReadRelation readRelation, DataflowBlockOptions options) : base(options)
         {
             this._table = table;
             _tableName = readRelation.NamedTable.DotSeperated;
             this._readRelation = readRelation;
+            _columnMapping = CreateColumnMapping(table, readRelation);
+        }
+
+        private static int[] CreateColumnMapping(TestDataTable table, ReadRelation readRelation)
+        {
+            var tableNames = table.GetSchema().Names;
+            var baseColumns = new int[readRelation.BaseSchema.Names.Count];
+            for (int i = 0; i < baseColumns.Length; i++)
+            {
+                var name = readRelation.BaseSchema.Names[i];
+                var index = tableNames.IndexOf(name);
+                if (index < 0)
+                {
+                    index = tableNames.FindIndex(x => x.Equals(name, StringComparison.OrdinalIgnoreCase));
+                }
+                if (index < 0)
+                {
+                    throw new InvalidOperationException($"Column '{name}' does not exist in test data table '{readRelation.NamedTable.DotSeperated}'.");
+                }
+                baseColumns[i] = index;
+            }
+
+            if (!readRelation.EmitSet)
+            {
+                return baseColumns;
+            }
+            var mapping = new int[readRelation.Emit.Count];
+            for (int i = 0; i < mapping.Length; i++)
+            {
+                mapping[i] = baseColumns[readRelation.Emit[i]];
+            }
+            return mapping;
+        }
+
+        /// <summary>
+        /// Copies mapped columns, stored batches are shared between reads.
+        /// </summary>
+        private EventBatchWeighted Project(EventBatchWeighted batch)
+        {
+            var columns = new IColumn[_columnMapping.Length];
+            for (int i = 0; i < _columnMapping.Length; i++)
+            {
+                columns[i] = batch.EventBatchData.Columns[_columnMapping[i]].Copy(MemoryAllocator);
+            }
+            return new EventBatchWeighted(batch.Weights.Copy(MemoryAllocator), batch.Iterations.Copy(MemoryAllocator), new EventBatchData(columns));
         }
 
         public override string DisplayName => _tableName;
@@ -64,7 +113,7 @@ namespace FlowtideDotNet.TestFramework.Internal
             {
                 sentData = true;
                 _batchIndex++;
-                await output.SendAsync(new StreamEventBatch(batch));
+                await output.SendAsync(new StreamEventBatch(Project(batch)));
             }
             if (sentData)
             {
@@ -97,7 +146,7 @@ namespace FlowtideDotNet.TestFramework.Internal
             while(_table.TryGetNextBatch(_batchIndex, out var batch))
             {
                 _batchIndex++;
-                await output.SendAsync(new StreamEventBatch(batch));
+                await output.SendAsync(new StreamEventBatch(Project(batch)));
             }
             await output.SendWatermark(new Base.Watermark(_tableName, LongWatermarkValue.Create(_batchIndex)));
             output.ExitCheckpointLock();

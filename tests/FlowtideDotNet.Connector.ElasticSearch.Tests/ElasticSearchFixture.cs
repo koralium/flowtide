@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Connector.CosmosDB.Tests
                 .WithPortBinding(9300, true)
                 .WithEnvironment("discovery.type", "single-node")
                 .WithEnvironment("xpack.security.enabled", "false")
+                // Without a fixed heap Elasticsearch takes half of the host memory
+                .WithEnvironment("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
                 .WithWaitStrategy(Wait.ForUnixContainer().AddCustomWaitStrategy(new WaitUntil()))
                 .Build();
             await container.StartAsync();

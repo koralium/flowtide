@@ -1848,6 +1848,90 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// A handoff must not resume after the failure teardown
+        /// </summary>
+        [Fact]
+        public async Task HandoffDecidedBeforeAFailureDoesNotResumeAfterItsTeardown()
+        {
+            var testName = "e2e_resume_after_teardown";
+            _generator.Generate(500);
+
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var failures = new ConcurrentBag<(string Substream, Exception? Exception)>();
+            var fileProviders = new ConcurrentDictionary<string, KeepAliveMemoryFileProvider>();
+            var hub = new LocalSubstreamCommunicationHub();
+            Base.Engine.DataflowStream? staying = null;
+            int armed = 1;
+            int tornDown = 0;
+            int resumedAfterTeardown = 0;
+
+            bool IsStaying(string streamName) =>
+                streamName.Contains(testName, StringComparison.Ordinal) && streamName.Contains("substream_0", StringComparison.Ordinal);
+
+            // Fail substream_0 and wait for its teardown before the resume
+            SubstreamReadOperator.BeforeResumeHookForTests = streamName =>
+            {
+                if (!IsStaying(streamName) || Interlocked.CompareExchange(ref armed, 0, 1) != 1)
+                {
+                    return;
+                }
+                var teardowns = _logBuffers["substream_0"].LinesContaining("Failure handling stop and dispose finished").Count;
+                _ = staying!.InjectFailureForTests(new InvalidOperationException("substream_0 fails while a handoff resumes"));
+                Assert.True(SpinWait.SpinUntil(
+                    () => _logBuffers["substream_0"].LinesContaining("Failure handling stop and dispose finished").Count > teardowns,
+                    TimeSpan.FromSeconds(30)), "substream_0's failure teardown did not finish.");
+                Volatile.Write(ref tornDown, 1);
+            };
+            SubstreamReadOperator.ResumedHookForTests = (streamName, readOperator) =>
+            {
+                if (IsStaying(streamName) && Volatile.Read(ref tornDown) == 1)
+                {
+                    Interlocked.Increment(ref resumedAfterTeardown);
+                }
+            };
+            try
+            {
+                var substream0 = BuildSubstream(testName, "substream_0", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                var substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: false);
+                staying = substream0;
+                await substream0.StartAsync();
+                await substream1.StartAsync();
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
+
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0, substream1);
+                await AwaitBounded(substream1.StopAsync(), "handoff stop");
+                await substream1.DisposeAsync();
+                lock (_streams)
+                {
+                    _streams.Remove(substream1);
+                }
+                await CheckpointSettle.WaitForCheckpointsToSettle(substream0);
+
+                substream1 = BuildSubstream(testName, "substream_1", hub, fileProviders, latestData, failures, announceCleanHandoff: true);
+                var returningStart = substream1.StartAsync();
+                await WaitUntil(() => Volatile.Read(ref tornDown) == 1, () => "the handoff to reach the resume");
+                await AwaitBounded(returningStart, "returning start");
+
+                Assert.Equal(0, Volatile.Read(ref resumedAfterTeardown));
+
+                // The group recovers and data flows again
+                _generator.Generate(250);
+                await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
+                Assert.DoesNotContain(failures, f => f.Exception != null && !f.Exception.Message.Contains("fails while a handoff resumes", StringComparison.Ordinal));
+            }
+            catch
+            {
+                DumpLogBuffers("resume_after_teardown");
+                throw;
+            }
+            finally
+            {
+                SubstreamReadOperator.BeforeResumeHookForTests = null;
+                SubstreamReadOperator.ResumedHookForTests = null;
+            }
+        }
+
+        /// <summary>
         /// Peer confirms during the timeout teardown, the stop ends cleanly.
         /// </summary>
         [Fact]

@@ -987,7 +987,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
 
             var dt = value.AsTimestamp.ToDateTimeOffset();
 
-            if (dt.TryFormat(memory.Span, out var bytesWritten, format))
+            if (dt.TryFormat(memory.Span, out var bytesWritten, format, CultureInfo.InvariantCulture))
             {
                 result._type = ArrowTypeId.String;
                 result._stringValue = new StringValue(memory.Slice(0, bytesWritten));

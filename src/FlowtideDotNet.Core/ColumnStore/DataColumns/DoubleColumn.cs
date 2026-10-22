@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
@@ -236,8 +237,85 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
             Span<byte> buffer = stackalloc byte[8];
-            BinaryPrimitives.WriteDoubleLittleEndian(buffer, _data[index]);
+            var val = _data[index];
+            if (val == 0.0)
+            {
+                val = 0.0; // Normalize -0.0 to +0.0 (zero out the sign bit), this is done so all 0.0 goes to the same partition
+            }
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, val);
             hashAlgorithm.Append(buffer);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+
+                var val = _data[index];
+                if (val == 0.0)
+                {
+                    val = 0.0; // Normalize -0.0 to +0.0 (zero out the sign bit), this is done so all 0.0 goes to the same partition
+                }
+
+                long bits = BitConverter.DoubleToInt64Bits(val);
+
+                if (!BitConverter.IsLittleEndian)
+                {
+                    bits = BinaryPrimitives.ReverseEndianness(bits);
+                }
+
+                ref var state = ref states[i];
+                XxHash32Implementation.AppendLong(bits, ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            var val = _data[index];
+            if (val == 0.0)
+            {
+                val = 0.0; // Normalize -0.0 to +0.0 (zero out the sign bit), this is done so all 0.0 goes to the same partition
+            }
+
+            long bits = BitConverter.DoubleToInt64Bits(val);
+
+            if (!BitConverter.IsLittleEndian)
+            {
+                bits = BinaryPrimitives.ReverseEndianness(bits);
+            }
+            XxHash32Implementation.AppendLong(bits, ref state);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+
+                var val = _data[index];
+                if (val == 0.0)
+                {
+                    val = 0.0;
+                }
+
+                long bits = BitConverter.DoubleToInt64Bits(val);
+
+                if (!BitConverter.IsLittleEndian)
+                {
+                    bits = BinaryPrimitives.ReverseEndianness(bits);
+                }
+
+                destination[i] = XxHash32Implementation.HashSingleLong(bits);
+            }
         }
 
         int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)

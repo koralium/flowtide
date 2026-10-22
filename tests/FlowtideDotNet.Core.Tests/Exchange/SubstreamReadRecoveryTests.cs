@@ -56,6 +56,52 @@ public class SubstreamReadRecoveryTests : OperatorTestBase
         }
     }
 
+    /// <summary>
+    /// A handoff resume is refused once its run has ended
+    /// </summary>
+    [Fact]
+    public async Task AHandoffResumeIsRefusedOnceTheRunItWasDecidedInEnded()
+    {
+        var hub = new LocalSubstreamCommunicationHub();
+        var point = new SubstreamCommunicationPoint(NullLogger.Instance, "a", "b", hub.CreateFactory("a").GetCommunicationHandler("b", "a"));
+        _ = new SubstreamCommunicationPoint(NullLogger.Instance, "b", "a", hub.CreateFactory("b").GetCommunicationHandler("a", "b"));
+        var reader = new SubstreamReadOperator(point, new SubstreamExchangeReferenceRelation { SubStreamName = "b", ExchangeTargetId = 1 }, new DataflowBlockOptions());
+        await InitializeOperator(reader);
+        var decided = reader.Run;
+        Assert.True(SubstreamReadOperator.TryResumeAllAfterPeerReconnect([reader], [decided]));
+        Assert.True(point.IsSubscribed(1));
+        point.Unsubscribe(1);
+
+        reader.Complete();
+        try { await reader.Completion.WaitAsync(TimeSpan.FromSeconds(10)); }
+        catch (OperationCanceledException) { }
+        await reader.DisposeAsync();
+        Assert.False(SubstreamReadOperator.TryResumeAllAfterPeerReconnect([reader], [decided]));
+        Assert.False(point.IsSubscribed(1));
+
+        reader.CreateBlock();
+        await ReinitializeOperator(reader);
+        try
+        {
+            Assert.NotEqual(decided, reader.Run);
+            Assert.False(SubstreamReadOperator.TryResumeAllAfterPeerReconnect([reader], [decided]));
+            Assert.False(point.IsSubscribed(1));
+            Assert.True(SubstreamReadOperator.TryResumeAllAfterPeerReconnect([reader], [reader.Run]));
+            point.Unsubscribe(1);
+
+            await reader.OnFailure(0);
+            Assert.False(SubstreamReadOperator.TryResumeAllAfterPeerReconnect([reader], [reader.Run]));
+            Assert.False(point.IsSubscribed(1));
+        }
+        finally
+        {
+            reader.Complete();
+            try { await reader.Completion.WaitAsync(TimeSpan.FromSeconds(10)); }
+            catch (OperationCanceledException) { }
+            await reader.DisposeAsync();
+        }
+    }
+
     private static async Task WaitUntil(Func<bool> condition)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));

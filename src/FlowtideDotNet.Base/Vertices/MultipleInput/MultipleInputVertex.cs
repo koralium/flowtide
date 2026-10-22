@@ -912,6 +912,10 @@ namespace FlowtideDotNet.Base.Vertices
             }
             else
             {
+                if (!Directory.Exists("debugwrite"))
+                {
+                    Directory.CreateDirectory("debugwrite");
+                }
                 allInput = File.CreateText($"debugwrite/{StreamName}-{Name}.vertex.txt");
             }
 #endif

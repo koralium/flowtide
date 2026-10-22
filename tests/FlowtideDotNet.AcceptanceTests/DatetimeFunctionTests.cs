@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using System.Globalization;
 using Xunit.Abstractions;
 
 namespace FlowtideDotNet.AcceptanceTests
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(
                 Orders.Select(o => new
                 {
-                    Orderdate = o.Orderdate.ToString("yyyy-MM-dd HH:mm:ss")
+                    Orderdate = o.Orderdate.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
                 })
                 );
         }
@@ -261,7 +262,7 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(
                 Orders.Select(o => new
                 {
-                    days = (long)o.Orderdate.Date.Subtract(DateTime.Parse("2017-01-01")).TotalDays
+                    days = (long)o.Orderdate.Date.Subtract(DateTime.Parse("2017-01-01", CultureInfo.InvariantCulture)).TotalDays
                 })
             );
         }

@@ -470,9 +470,13 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 var handoffResult = TryAcceptCleanHandoff(restorePoint);
                 if (handoffResult == CleanHandoffResult.Accepted)
                 {
+                    if (!_waves.TryAnswerCleanHandoff(this, out var accepted))
+                    {
+                        // A new wave came after the accept, so the peer retries
+                        return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true, wave: accepted.Wave, peerInInit: true));
+                    }
                     // The peer resumes from this version, its acked commits continue from here.
                     Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-                    var accepted = _waves.Answer(this);
                     return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, cleanReconnect: true, wave: accepted.Wave, peerInInit: accepted.InInit));
                 }
                 if (handoffResult == CleanHandoffResult.RetryLater)
@@ -487,22 +491,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 // The peer restarts in a recovery this stream is not in: everything exchanged with it since the last
                 // checkpoint is void, this stream restarts into the same wave. The peer retries once that is done.
                 _logger.LogInformation("Substream {substreamName} initializes in wave {wave}, restarting into it.", substreamName, wave);
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await DoFailAndRecover(null);
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogWarning(e, "Restarting into the wave of substream {substreamName} failed, its handshake retry runs it again.", substreamName);
-                    }
-                });
+                DispatchRestartIntoWave(wave);
                 return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true, wave: wave, peerInInit: true));
+            }
+            if (!_waves.TryAnswer(this, out var answer))
+            {
+                // Not restarted into the wave yet, so the peer retries
+                _logger.LogDebug("Substream {substreamName} initializes in wave {wave}, this stream has not restarted into {ownWave} yet.", substreamName, wave, answer.Wave);
+                if (_waves.TakeFailedRestartDispatch(out var failedWave))
+                {
+                    DispatchRestartIntoWave(failedWave);
+                }
+                return Task.FromResult(new SubstreamInitializeResponse(true, false, restorePoint, selfEpoch, recordedPeerEpoch, peerDraining: true, wave: answer.Wave, peerInInit: true));
             }
             // The peer (re)starts here, its committed versions count up from this point.
             Interlocked.Exchange(ref _peerLastCommittedVersion, restorePoint);
-            var answer = _waves.Answer(this);
             return Task.FromResult(new SubstreamInitializeResponse(false, true, restorePoint, selfEpoch, recordedPeerEpoch, wave: answer.Wave, peerInInit: answer.InInit));
         }
 
@@ -524,16 +527,18 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         private CleanHandoffResult TryAcceptCleanHandoff(long restorePoint)
         {
+            List<SubstreamReadOperator> readOperators;
+            lock (_readOperators)
+            {
+                readOperators = new List<SubstreamReadOperator>(_readOperators);
+            }
+            // Read runs first so the resume fails if a run ends
+            var runs = readOperators.Select(r => r.Run).ToArray();
             if (_waves.InInit)
             {
                 // Nothing to resume into: this stream starts itself and sends its init events, and its start waits for the
                 // mover's claim, so the mover must not wait here. It starts with this stream through the normal handshake.
                 return CleanHandoffResult.Rejected;
-            }
-            List<SubstreamReadOperator> readOperators;
-            lock (_readOperators)
-            {
-                readOperators = new List<SubstreamReadOperator>(_readOperators);
             }
 
             bool dataWasHandled;
@@ -574,11 +579,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
             }
 
-            // Readers resume all or none, a stop refuses under locks.
-            if (!SubstreamReadOperator.TryResumeAllAfterPeerReconnect(readOperators))
+            SubstreamReadOperator.CleanHandoffCheckedForTests(readOperators);
+            // Resume all readers or none of them
+            if (!SubstreamReadOperator.TryResumeAllAfterPeerReconnect(readOperators, runs))
             {
                 _logger.LogInformation(
-                    "Substream {substreamName} announced a clean handoff at restore point {restorePoint} but this stream began stopping, answering retry.",
+                    "Substream {substreamName} announced a clean handoff at restore point {restorePoint} but this stream began stopping or its run ended, answering retry.",
                     substreamName, restorePoint);
                 return CleanHandoffResult.RetryLater;
             }
@@ -607,6 +613,12 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 return outputList;
             }
 
+            if (_waves.RestartPending)
+            {
+                // Serve nothing from the ended run until the restart begins
+                return outputList;
+            }
+
             int maxCountPerTarget = Math.Max(1, maxEventCount / targetIds.Count);
 
             foreach (var targetId in targetIds)
@@ -632,15 +644,43 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// A peer fails in the wave. This stream restarts into it at its own last version, once per wave, the versions are
         /// compared at the gate of the start. An older wave is a message from a recovery that is over.
         /// </summary>
-        private Task OnPeerRecovering(RecoveryWave wave)
+        private async Task OnPeerRecovering(RecoveryWave wave)
         {
             if (!_waves.TryEnter(wave))
             {
                 _logger.LogDebug("Substream {substreamName} recovers in wave {wave}, this stream is in {ownWave} already.", substreamName, wave, _waves.Current);
-                return Task.CompletedTask;
+                return;
             }
             _logger.LogInformation("Substream {substreamName} recovers in wave {wave}, restarting into it.", substreamName, wave);
-            return DoFailAndRecover(null);
+            try
+            {
+                await DoFailAndRecover(null);
+            }
+            catch
+            {
+                // Record it so a later handshake dispatches the restart again
+                _waves.RestartDispatchFailed(wave);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Restarts this stream into the wave in the background
+        /// </summary>
+        private void DispatchRestartIntoWave(RecoveryWave wave)
+        {
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await DoFailAndRecover(null);
+                }
+                catch (Exception e)
+                {
+                    _waves.RestartDispatchFailed(wave);
+                    _logger.LogWarning(e, "Restarting into the wave of substream {substreamName} failed, a handshake it retries dispatches it again.", substreamName);
+                }
+            });
         }
 
         private async Task<bool> DoFailAndRecover(long? recoveryPoint)
