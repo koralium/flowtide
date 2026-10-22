@@ -156,7 +156,7 @@ Class DeltaLakeOptions  <a class="header-action link-secondary" title="View sour
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_AssumeCompleteStorageListing" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.AssumeCompleteStorageListing">
   AssumeCompleteStorageListing
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L116"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets whether a storage this connector does not recognize, such as a custom wrapper, is vouched for as a whole stack: every listing is complete and in order, Stat returns null only for an object that does not exist, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spellings of another object), and a delete removes exactly the named object, which lets cleanup rely on its listings, absence checks, references and deletes.</p>
@@ -375,6 +375,38 @@ When null the table property delta.parquet.compression.codec is used, and zstd w
 
 
 
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_HistoryRetention_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_HistoryRetention" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention">
+  HistoryRetention
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L121"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets how long the table's history stays readable, in whole hours of at least one day, published as the table's log and deleted file retention; null turns history retention off.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public TimeSpan? HistoryRetention { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.timespan">TimeSpan</a>?</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory*"></a>
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory">
@@ -398,6 +430,70 @@ A deleted row has __weight -1, __modificationDate is the commit time and __versi
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceBytesPerSecond_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceBytesPerSecond" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond">
+  MaintenanceBytesPerSecond
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L106"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the bytes per second all Delta Lake maintenance in the process may read and write, at least 64 MiB; the first sink's value applies to every sink.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public long MaintenanceBytesPerSecond { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int64">long</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceRequestsPerSecond_" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceRequestsPerSecond" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond">
+  MaintenanceRequestsPerSecond
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Gets or sets the storage requests per second all Delta Lake maintenance in the process may make, at least 200; the first sink's value applies to every sink.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MaintenanceRequestsPerSecond { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd></dd>
   </dl>
 
@@ -582,7 +678,7 @@ columns give them up at their next checkpoint, and the table that did not fit ke
 
   <h3 id="FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_RebuildLegacyCheckpoints" data-uid="FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.RebuildLegacyCheckpoints">
   RebuildLegacyCheckpoints
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L101"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.DeltaLake/DeltaLakeOptions.cs/#L111"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Gets or sets whether, when every commit since version 0 is still there, a checkpoint is rebuilt from the full log instead of building on one the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used.</p>

@@ -165,7 +165,7 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 </tr>
 <tr>
 <td>CheckpointInterval</td>
-<td>Only used for writing, a checkpoint is built in the background once this many versions follow the latest one, 0 turns checkpoints off, see <a href="#checkpoints">Checkpoints</a></td>
+<td>Only used for writing, how many versions there are between delta checkpoints, 0 turns it off</td>
 <td>20</td>
 <td>No</td>
 </tr>
@@ -195,32 +195,50 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 </tr>
 <tr>
 <td>CheckpointMaxAge</td>
-<td>Only used for writing, how long published versions may wait for a checkpoint before one is built regardless of the interval, null turns the age trigger off</td>
+<td>Only used for writing, writes a delta checkpoint if a version has waited this long, null turns it off</td>
 <td>24 hours</td>
 <td>No</td>
 </tr>
 <tr>
 <td>MaxConcurrentMaintenanceJobs</td>
-<td>Only used for writing, how many checkpoint builds run at once in the process, the first sink fixes the value, also one with a CheckpointInterval of 0; cleanup jobs run in slots of their own beside them, see <a href="#limits">Limits</a></td>
+<td>Only used for writing, how many checkpoint and cleanup jobs can run at the same time in the process</td>
 <td>2</td>
 <td>No</td>
 </tr>
 <tr>
 <td>MaintenanceTempDirectory</td>
-<td>Only used for writing, the local folder for checkpoint builds, the first sink fixes the value, also one with a CheckpointInterval of 0</td>
+<td>Only used for writing, local folder used when building checkpoints</td>
 <td>./data/tempFiles/deltalake</td>
 <td>No</td>
 </tr>
 <tr>
+<td>MaintenanceRequestsPerSecond</td>
+<td>Only used for writing, max storage requests per second for all background maintenance in the process</td>
+<td>200</td>
+<td>No</td>
+</tr>
+<tr>
+<td>MaintenanceBytesPerSecond</td>
+<td>Only used for writing, max bytes per second for all background maintenance in the process</td>
+<td>64 MiB</td>
+<td>No</td>
+</tr>
+<tr>
 <td>AssumeCompleteStorageListing</td>
-<td>Only used for writing, vouches for a storage the connector does not recognize, such as a custom wrapper, as a whole stack: listings are complete and in order, Stat returns null only for a missing object, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spelling reaches another object), and a delete removes exactly the named object. Maintenance then treats the store as eligible, which also lets it rebuild a torn checkpoint without the full history. It cannot make a known failed store, such as Google Cloud Storage, eligible</td>
+<td>Only used for writing, enables the cleanup on your own storage wrapper, see <a href="#table-maintenance">Table maintenance</a></td>
 <td>False</td>
 <td>No</td>
 </tr>
 <tr>
 <td>RebuildLegacyCheckpoints</td>
-<td>Only used for writing, when every commit since version 0 is still there, rebuild from the whole log instead of building on a checkpoint the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used</td>
+<td>Only used for writing, builds delta checkpoints from the full log instead of continuing from checkpoints written by other tools</td>
 <td>False</td>
+<td>No</td>
+</tr>
+<tr>
+<td>HistoryRetention</td>
+<td>Only used for writing, how long old versions are kept before they are deleted, see <a href="#history-retention">History retention</a></td>
+<td>Null</td>
 <td>No</td>
 </tr>
 </tbody>
@@ -259,7 +277,8 @@ SELECT * FROM my_folder.my_delta_lake_table
 <p>After its first load the source reads the table's log one version at a time, so it needs every commit after its own position. If those are removed
 before the source reads them, the source stops reading the table instead of skipping data:</p>
 <ul>
-<li>The next commit is gone while later versions exist, for example after log retention removed it while the stream was stopped.</li>
+<li>The next commit is gone while later versions exist, for example after log retention, such as the sink's
+<a href="#history-retention">History retention</a>, removed it while the stream was stopped.</li>
 <li>A data or change data file of a version the source has not read yet was removed, for example by <code>VACUUM</code>.</li>
 </ul>
 <p>The source then logs an error, reports itself unhealthy (<code>flowtide_health</code> is 0) and keeps its position, the rest of the stream keeps running.
@@ -328,7 +347,8 @@ WHERE total &gt; 0
 <p>Things to keep in mind:</p>
 <ul>
 <li>Order changes by <code>__version</code>, <code>__modificationDate</code> comes from the writers' clocks and can go back between versions.</li>
-<li>The history starts at the oldest version the log still has. After log cleanup that is the oldest checkpoint, earlier changes are gone.</li>
+<li>The history starts at the oldest version the log still has. After log cleanup that is the oldest checkpoint, earlier changes are gone. With
+<a href="#history-retention">History retention</a> on a Flowtide table it is the oldest version the sink kept, which <code>flowtide_delta_retention_oldest_version</code> shows.</li>
 <li>State that keeps the history, such as the query above, grows with every version.</li>
 <li>A table that already has a column with one of these names can not be read with <code>IncludeChangeHistory</code>.</li>
 </ul>
@@ -371,132 +391,95 @@ This means that the write frequency can be modified by changing how often a chec
 <h5>Warning</h5>
 <p>The delta lake sink does not yet support partitioned tables.</p>
 </div>
-<p>A checkpoint that changes no rows writes no new version of the table, unless it creates the table or starts an <code>INSERT OVERWRITE</code>.</p>
-<h3 id="checkpoints">Checkpoints</h3>
-<p>A Delta checkpoint lets readers start from one file instead of replaying every commit. The sink builds checkpoints in the background, outside
-the commit path: publishing a version only hands its number to the table's maintenance worker, so a large table never delays a commit.</p>
-<p>A checkpoint is built at the newest published version when <code>CheckpointInterval</code> versions follow the latest checkpoint, or when a published version
-has waited <code>CheckpointMaxAge</code>. That wait is counted from when the running stream first saw the version, so a restart starts it again. A build starts from the newest checkpoint below it that it can read within its limits, and replays the commits after it.
-The first checkpoint of a table replays the log from version 0. The output is written in the local temp folder, read back and checked in full, and only
-then published as <code>{version}.checkpoint.parquet</code>, after which <code>_last_checkpoint</code> is updated. The hint is never moved to an older version.</p>
-<p>Checkpoints are classic, single-file checkpoints with <code>add</code>, <code>remove</code>, <code>protocol</code>, <code>metaData</code>, <code>txn</code> and <code>domainMetadata</code> rows. Removes keep no
-statistics or tags, and tombstones older than <code>delta.deletedFileRetentionDuration</code> (one week by default) are dropped.</p>
-<h4 id="limits">Limits</h4>
-<p>All Delta Lake sinks in the process share the maintenance budget:</p>
+<p>A stream checkpoint that changes no rows writes no new version of the table, unless it creates the table, starts an <code>INSERT OVERWRITE</code>, or
+<a href="#history-retention">History retention</a> needs one.</p>
+<h3 id="delta-checkpoints">Delta checkpoints</h3>
+<p>The sink writes a delta checkpoint every <code>CheckpointInterval</code> versions (default 20), so readers do not have to read the entire delta log.
+The checkpoints are built in the background and never slow down or fail the stream.</p>
+<p>If the table already has checkpoints written by another tool, the sink continues from them. If you want the sink to build its own checkpoints
+from the full log instead, set <code>RebuildLegacyCheckpoints</code> to true. This only works if every commit from version 0 still exists.</p>
+<p>Some tables cannot get checkpoints, for instance tables using delta features the sink does not know. Writing still works, but readers have to
+read more of the log, and old history cannot be deleted.</p>
+<p>With the default settings, background maintenance can use around 1.5 GB of memory. Lower <code>MaxConcurrentMaintenanceJobs</code> to use less.
+On S3 it is also a good idea to add an <code>AbortIncompleteMultipartUpload</code> lifecycle rule, which removes the parts of failed checkpoint uploads.</p>
+<h3 id="table-maintenance">Table maintenance</h3>
+<p>The sink deletes files it wrote that no version of the table uses, for instance files from a write that failed. This runs in the background
+on Azure Blob Storage, S3 and local disk. On other storage, such as Google Cloud Storage, files from interrupted writes are left behind.</p>
+<p>If you use your own storage wrapper you can set <code>AssumeCompleteStorageListing</code> to true to enable the cleanup. Only do this if the storage
+always lists every file, otherwise files that are still in use can be deleted.</p>
+<h3 id="history-retention">History retention</h3>
+<p>By default the sink never deletes old versions, which means the delta log and old data files keep growing. To delete old versions, set
+<code>HistoryRetention</code>:</p>
+<pre><code class="lang-csharp">connectors.AddDeltaLakeSink(new DeltaLakeOptions()
+{
+    StorageLocation = Files.Of.LocalDisk(&quot;./testdata&quot;),
+    HistoryRetention = TimeSpan.FromDays(7)
+});
+</code></pre>
+<p>Once a day the sink then deletes the versions that are older than the retention, together with the data files that only those versions used.
+All versions inside the retention can still be read, also with time travel. The value must be at least one day and in whole hours, and it
+only works on Azure Blob Storage, S3 and local disk. The sink also sets the table properties <code>delta.logRetentionDuration</code> and
+<code>delta.deletedFileRetentionDuration</code> to the same value.</p>
+<p>History is usually kept up to around two days longer than the retention, since the cleanup runs once a day and counts from midnight UTC.</p>
+<p>Things to keep in mind:</p>
 <ul>
-<li><code>MaxConcurrentMaintenanceJobs</code> checkpoint builds run at once. Beside them, up to two cleanup jobs (discard drains and staged commit sweeps,
-see <a href="#table-maintenance">Table maintenance</a>) run in slots of their own, which no option changes. A table runs one job at a time, and a
-table waiting for its own earlier job holds no slot.</li>
-<li>Each job, build or cleanup, may use 84 MiB of managed memory and 256 MiB of native Parquet memory. A build keeps up to 64 MiB of it for
-the commits after its starting checkpoint and sorts a larger tail through files in the temp folder. These figures exclude the
-<code>PruningMemoryBytes</code> the sinks keep for deleting rows.</li>
-<li>Downloads share a 128 MiB allowance, admitted by listed size, since the storage clients read whole objects; a larger object runs alone.</li>
-<li>Files in the temp folder share a 4 GiB disk cap. Each write reserves its space first, and a file's space is released only after it is deleted.</li>
-<li>An action line over 4 MiB, or with more than 65,536 entries, declines the build before any of it is buffered. An oversized <code>commitInfo</code> line is skipped.</li>
+<li>The sink should be the only writer to the table. Each commit from another writer delays the cleanup by about one retention period.</li>
+<li>Make sure no reader needs versions older than the retention. This includes a stream reading the table that has been stopped for a while.</li>
+<li>Do not edit or delete the <code>.flowtide-cleanup</code> files in <code>_delta_log</code>, they keep track of the cleanup.</li>
+<li>Do not go back to an older version of Flowtide once the cleanup has run on a table.</li>
 </ul>
-<p>With the defaults this allows about 340 MiB per job and about 1.45 GiB for maintenance in the process (two builds, two cleanup jobs and
-the download allowance), or about 2.45 GiB for the connector together with <code>PruningMemoryBytes</code>. Setting <code>MaxConcurrentMaintenanceJobs</code> to 1
-saves about 340 MiB. These are allocation allowances, not limits on the process's resident memory: runtime memory, memory the allocator
-keeps, the sinks' own file catalogs and the storage listing come on top. A single object larger than the download allowance adds its own size while it downloads.</p>
-<p>A build keeps its starting checkpoint and its output in the temp folder together, and on local disk the output and its published copy, so a
-checkpoint larger than about 2 GiB is not built: the build declines on the disk cap.</p>
-<p>A build that cannot work within these limits declines; the checkpoint is optional, so a decline never fails the stream. It is logged once per reason
-at warning level, shown in the gauges below, and retried with a backoff that starts at one minute and doubles up to 30 minutes. After a failure,
-or a decline that is not held (see below), the retry also waits at least three times as long as the attempt took, so a table whose builds keep
-failing does not keep a build slot busy.</p>
-<h4 id="starting-checkpoints-written-by-others">Starting checkpoints written by others</h4>
-<p>A checkpoint the sink did not write, or one it wrote on top of such a checkpoint, may lack tombstones, transactions or domains that its writer dropped.
-The new checkpoint records this gap in its file metadata and in the <code>delta_checkpoint_inherited_gap</code> gauge. With <code>RebuildLegacyCheckpoints</code> the sink
-instead rebuilds from the whole log, when every commit since version 0 is still there, and builds on its own complete checkpoint after that.</p>
-<p>A starting checkpoint is skipped, and an older readable one used instead when there is one, when its file is outside the limits above (its row
-groups, pages or metadata are too large), when it uses sidecar files, or when it cannot be decoded. The last two are found while it is read, so
-the attempt that finds them fails and the next one skips it. With <code>RebuildLegacyCheckpoints</code>, when no starting checkpoint is left and every
-commit since version 0 is still there, the build replays the log from version 0. A torn checkpoint, one whose file was cut short, is rebuilt in place.</p>
-<p>The build declines when its starting checkpoint:</p>
+<h4 id="large-tables-and-long-histories">Large tables and long histories</h4>
+<p>In our tests, cleaning one day of history on a table with 200 000 files took between 15 and 40 minutes, and one process kept up with
+300 tables that commit every minute, but not with 300 tables that commit every 10 seconds.</p>
+<p>The first cleanup of a table with a long history has to read all of it. On Azure Blob Storage and local disk you can make this faster by
+raising <code>MaintenanceRequestsPerSecond</code> (default 200). On S3 the log is read one file at a time, so a table with a very long history, roughly
+700 000 versions or more, may never finish its first cleanup. Turn on retention early if you use S3.</p>
+<h4 id="turning-it-off">Turning it off</h4>
+<p>Remove <code>HistoryRetention</code> and restart the stream. A cleanup that has started is paused and continues if you turn retention on again.</p>
+<p>To stop all background deletes at once, also those of table maintenance, set this switch at startup:</p>
+<pre><code class="lang-csharp">AppContext.SetSwitch(&quot;FlowtideDotNet.DeltaLake.DisableMaintenanceDeletes&quot;, true);
+</code></pre>
+<h4 id="if-the-cleanup-is-suspended">If the cleanup is suspended</h4>
+<p>If <code>flowtide_delta_retention_state</code> is 6 the cleanup is suspended, and a warning with the reason is logged. Writing to the table still works.</p>
 <ul>
-<li>holds only parsed statistics (<code>stats_parsed</code> without JSON <code>stats</code>), unless they are row counts only, which are converted;</li>
-<li>holds rows that break the Delta specification, or a non-null column the sink does not know.</li>
+<li><code>DeleteFailed</code>: deleting files failed, check that the credentials are allowed to delete.</li>
+<li>Another writer committed during the cleanup: it tries again the next day.</li>
+<li><code>ManifestSuspended</code>: a <code>.flowtide-cleanup</code> file is missing or was changed. Stop the streams that write the table, restore the file from a
+backup and start them again. If there is no backup, turn off <code>HistoryRetention</code>. Nothing more is deleted on the table until this is fixed.</li>
 </ul>
-<p>It also declines when the table names a reader or writer version, or a feature, that is not in the table below.</p>
-<p>A declined build is not retried while nothing it depends on changes: the same starting checkpoints, the commits that hold the protocol, or the
-oversized commit. On storages whose listings report a modification time or an MD5, as local disk does, a checkpoint replaced at the same
-version is picked up at the next attempt. On storages without them it is picked up within 6 hours. A decline that depends on the output itself, such
-as a deletion vector count, is retried at each backoff; its starting checkpoint is then read from the local cache, the commits after it from the
-table again.</p>
+<h3 id="monitoring-maintenance">Monitoring maintenance</h3>
+<p>Warnings are logged as <code>Delta table {table} cleanup: {reason}</code> or <code>Delta table {table} checkpoint maintenance: {reason}</code>.
+These are the most useful gauges:</p>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>Why a classic checkpoint is correct</th>
+<th>Gauge</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>appendOnly, invariants, checkConstraints, generatedColumns, identityColumns, allowColumnDefaults</td>
-<td>They constrain data writes; the checkpoint copies <code>metaData</code> unchanged</td>
+<td><code>flowtide_delta_checkpoint_lag_versions</code></td>
+<td>Versions since the last delta checkpoint</td>
 </tr>
 <tr>
-<td>changeDataFeed</td>
-<td>The specification excludes <code>cdc</code> actions from checkpoints</td>
+<td><code>flowtide_delta_checkpoint_consecutive_failures</code></td>
+<td>Failed checkpoint attempts in a row</td>
 </tr>
 <tr>
-<td>columnMapping, timestampNtz, typeWidening, typeWidening-preview, variantType, variantType-preview</td>
-<td>Schema and type rules live in <code>metaData</code>; statistics and partition values are copied as written</td>
+<td><code>flowtide_delta_retention_state</code></td>
+<td>0 off or not started, 1 idle, 2 preparing, 3 cleaning up, 4 paused, 5 checking another writer's commits, 6 suspended, 7 preparing failed and retried after 24 hours</td>
 </tr>
 <tr>
-<td>deletionVectors</td>
-<td>Deletion vector descriptors are copied; <code>numRecords</code> is required and checked</td>
+<td><code>flowtide_delta_retention_oldest_version</code></td>
+<td>The oldest version that is kept</td>
 </tr>
 <tr>
-<td>rowTracking</td>
-<td><code>baseRowId</code> and <code>defaultRowCommitVersion</code> are copied, and so is the <code>delta.rowTracking</code> domain</td>
-</tr>
-<tr>
-<td>domainMetadata, clustering</td>
-<td>Domains are written; removed domains are not</td>
-</tr>
-<tr>
-<td>v2Checkpoint</td>
-<td>Writers may always create a classic checkpoint</td>
-</tr>
-<tr>
-<td>inCommitTimestamp</td>
-<td>It lives in <code>commitInfo</code> and <code>metaData.configuration</code>; <code>commitInfo</code> is not checkpointed</td>
-</tr>
-<tr>
-<td>icebergCompatV1, icebergCompatV2, materializePartitionColumns</td>
-<td>They constrain data writes only</td>
-</tr>
-<tr>
-<td>vacuumProtocolCheck</td>
-<td>It restricts cleanup, not checkpoints</td>
+<td><code>flowtide_delta_retention_backlog_seconds</code></td>
+<td>How far the cleanup is behind the retention</td>
 </tr>
 </tbody>
 </table>
-<p>Tables with <code>checkpointProtection</code>, <code>catalogManaged</code>, <code>catalogOwned-preview</code> or <code>coordinatedCommits-preview</code> get no checkpoints from the sink:
-the first forbids checkpoints that do not support every protocol feature, and with the others commits may not be in <code>_delta_log</code>.</p>
-<h4 id="storage">Storage</h4>
-<ul>
-<li>Put <code>MaintenanceTempDirectory</code> on the same volume as tables on local disk, so publishing a checkpoint is a rename. Across volumes it is a copy
-that is flushed before the rename.</li>
-<li>Each process locks its own folder under the temp folder, and cleans up folders of processes that are gone only behind their lock. Folders that are
-or hold a link are never cleaned. Where file locks do not work, for example with <code>DOTNET_SYSTEM_IO_DISABLEFILELOCKING</code>, cleanup is skipped and logged.</li>
-<li>An upload that fails is abandoned. On S3, add an <code>AbortIncompleteMultipartUpload</code> lifecycle rule; Azure removes uncommitted blocks after 7 days.</li>
-<li>Where neither the object's metadata nor the listing reports its size, the size check after an upload reads the checkpoint back to count it.</li>
-<li>On a storage that wraps local disk the checkpoint is uploaded, not renamed, so a crash can leave a partial file. The next build finds it torn and
-rebuilds it.</li>
-<li>The storage must allow concurrent calls, since builds of different tables run at the same time as the sinks.</li>
-<li>When <code>_last_checkpoint</code> names a version without a complete checkpoint at or after it, which some readers fail on, the sink builds a checkpoint at
-once to repair it, whatever the interval.</li>
-</ul>
-<h4 id="gauges">Gauges</h4>
-<p>Per table: <code>delta_checkpoint_version</code>, <code>delta_checkpoint_lag_versions</code>, <code>delta_checkpoint_oldest_uncheckpointed_seconds</code>,
-<code>delta_checkpoint_consecutive_failures</code> (failed or declined attempts in a row), <code>delta_checkpoint_skipped</code> (the latest attempt declined), <code>delta_checkpoint_dangling_hint</code>,
-<code>delta_checkpoint_last_duration_ms</code>, <code>delta_checkpoint_last_validation_ms</code>, <code>delta_checkpoint_last_spill_bytes</code>, <code>delta_checkpoint_last_transfer_bytes</code>,
-<code>delta_checkpoint_last_mode</code> (1 when the tail was sorted through files), <code>delta_checkpoint_inherited_gap</code> and <code>delta_checkpoint_detached_jobs</code>.</p>
-<p>For the process, on the <code>FlowtideDotNet.Connector.DeltaLake</code> meter: <code>flowtide_delta_maintenance_running_jobs</code>, <code>_queued_jobs</code>,
-<code>_oldest_wait_seconds</code>, <code>_transfer_bytes</code>, <code>_disk_bytes</code>, <code>_pending_deletion_bytes</code>, <code>_detached_jobs</code>, <code>_tick_ms</code> and <code>_init_failed</code> (1 once a
-sink in this process failed to start its maintenance worker; invalid maintenance settings only log a warning).</p>
 <h3 id="compression">Compression</h3>
 <p>Data and change data files are compressed with zstd by default. The codec is chosen in this order:</p>
 <ol>
@@ -512,8 +495,8 @@ up to <code>PruningMemoryBytes</code> shared by all Delta Lake sinks in the proc
 not fit, the tables holding extra columns give them up at their next checkpoint. The table that did not fit keeps its statistics in the stream's state,
 which can spill to disk, until the stream restarts.</p>
 <h3 id="other-writers">Other writers</h3>
-<p>The sink expects to be the only writer of its table. Before each commit it lists the table's log once, commits that another writer added between two
-checkpoints, such as an <code>OPTIMIZE</code>, are read and kept.</p>
+<p>The sink expects to be the only writer of its table. Commits that another writer adds between two of the sink's commits, such as an <code>OPTIMIZE</code>,
+are picked up and kept.</p>
 <p>If another writer commits the version the sink is publishing, the sink stops publishing instead of overwriting it. It then logs an error, reports itself
 unhealthy (<code>flowtide_health</code> is 0) and keeps every row it receives in the stream's state. It tries again at every later checkpoint, which needs new data
 or a restart of the stream, and continues once the conflicting <code>_delta_log/{version}.json</code> file has been removed.
@@ -521,6 +504,7 @@ Remove it only while the other writer has not committed a later version. When it
 first lists the log and stays stopped if the log holds a later version or a checkpoint at that version.
 Resetting the stream state also recovers, the stream then writes every row again. With <code>INSERT OVERWRITE</code> that replaces the table, with <code>INSERT INTO</code>
 the rows are appended, so empty or recreate the table first.</p>
+<p>With <code>HistoryRetention</code>, commits from another writer also delay the cleanup, see <a href="#history-retention">History retention</a>.</p>
 <h3 id="change-data-feed">Change data feed</h3>
 <p>It is possible to enable flowtide to write change data files which can help speed up change data readers.
 This is done by setting the flag <code>WriteChangeDataOnNewTables</code> to <code>true</code> in the options when configuring the delta lake connector.

@@ -10422,6 +10422,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.EnableDeletionVectorsOnNewTables
   nameWithType: DeltaLakeOptions.EnableDeletionVectorsOnNewTables
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
+  name: HistoryRetention
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_HistoryRetention
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
+  nameWithType: DeltaLakeOptions.HistoryRetention
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention*
+  name: HistoryRetention
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_HistoryRetention_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
+  nameWithType: DeltaLakeOptions.HistoryRetention
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
   name: IncludeChangeHistory
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory
@@ -10435,6 +10448,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
   nameWithType: DeltaLakeOptions.IncludeChangeHistory
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond
+  name: MaintenanceBytesPerSecond
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceBytesPerSecond
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond
+  nameWithType: DeltaLakeOptions.MaintenanceBytesPerSecond
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond*
+  name: MaintenanceBytesPerSecond
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceBytesPerSecond_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceBytesPerSecond
+  nameWithType: DeltaLakeOptions.MaintenanceBytesPerSecond
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond
+  name: MaintenanceRequestsPerSecond
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceRequestsPerSecond
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond
+  nameWithType: DeltaLakeOptions.MaintenanceRequestsPerSecond
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond*
+  name: MaintenanceRequestsPerSecond
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceRequestsPerSecond_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceRequestsPerSecond
+  nameWithType: DeltaLakeOptions.MaintenanceRequestsPerSecond
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.MaintenanceTempDirectory
   name: MaintenanceTempDirectory
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_MaintenanceTempDirectory
