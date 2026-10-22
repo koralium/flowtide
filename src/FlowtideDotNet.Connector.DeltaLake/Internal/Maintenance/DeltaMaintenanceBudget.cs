@@ -43,9 +43,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Deletion slices take one of these instead of a main slot
         public int DeleteJobs { get; init; } = DefaultDeleteJobs;
 
-        public static MaintenanceBudgetSettings From(DeltaLakeOptions options)
+        // Raised only: a short admission's reads must still fit its deadline
+        public long RequestsPerSecond { get; init; } = MaintenanceBuckets.DefaultRequestsPerSecond;
+
+        public long BytesPerSecond { get; init; } = MaintenanceBuckets.DefaultBytesPerSecond;
+
+        /// <summary>
+        /// The rate options, which throw below their defaults.
+        /// </summary>
+        public static (long Requests, long Bytes) Rates(DeltaLakeOptions options)
         {
-            return new MaintenanceBudgetSettings(Math.Max(1, options.MaxConcurrentMaintenanceJobs), Path.GetFullPath(options.MaintenanceTempDirectory ?? DefaultTempDirectory));
+            var requests = options.MaintenanceRequestsPerSecond;
+            if (requests < MaintenanceBuckets.DefaultRequestsPerSecond)
+            {
+                throw new ArgumentException($"MaintenanceRequestsPerSecond is {requests}; use at least {MaintenanceBuckets.DefaultRequestsPerSecond}, the default.", nameof(DeltaLakeOptions.MaintenanceRequestsPerSecond));
+            }
+            var bytes = options.MaintenanceBytesPerSecond;
+            if (bytes < MaintenanceBuckets.DefaultBytesPerSecond)
+            {
+                throw new ArgumentException($"MaintenanceBytesPerSecond is {bytes}; use at least {MaintenanceBuckets.DefaultBytesPerSecond} (64 MiB), the default.", nameof(DeltaLakeOptions.MaintenanceBytesPerSecond));
+            }
+            return (requests, bytes);
+        }
+
+        public static MaintenanceBudgetSettings From(DeltaLakeOptions options, (long Requests, long Bytes) rates)
+        {
+            return new MaintenanceBudgetSettings(Math.Max(1, options.MaxConcurrentMaintenanceJobs), Path.GetFullPath(options.MaintenanceTempDirectory ?? DefaultTempDirectory))
+            {
+                RequestsPerSecond = rates.Requests,
+                BytesPerSecond = rates.Bytes
+            };
         }
     }
 
@@ -108,6 +135,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             Gate = new FifoGate(settings.MaxConcurrentJobs, clock);
             LongGate = new FifoGate(settings.LongJobs, clock);
             DeleteGate = new FifoGate(settings.DeleteJobs, clock);
+            Buckets = new MaintenanceBuckets(TimeProvider.System, settings.RequestsPerSecond, settings.RequestsPerSecond, settings.BytesPerSecond, settings.BytesPerSecond);
+            // Reads the buckets and hand-off a test supplied; drains at the configured rates, never the buckets'
+            Capacity = new CapacityLedger(() => CapacityLedger.Ambient(Buckets, Discards), settings.RequestsPerSecond, settings.BytesPerSecond);
         }
 
         /// <summary>
@@ -142,8 +172,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Discarded outputs handed from sinks to their workers; tests set a smaller allowance
         public DiscardHandOff Discards { get; init; } = new DiscardHandOff();
 
-        // Request and byte rates of all maintenance traffic; on the system clock unless a test supplies its own
-        public MaintenanceBuckets Buckets { get; init; } = new MaintenanceBuckets(TimeProvider.System);
+        // Request and byte rates of all maintenance traffic at the configured rates; on the system clock unless a test supplies its own
+        public MaintenanceBuckets Buckets { get; init; }
+
+        // Runnable demand that admits new expensive cleanup
+        public CapacityLedger Capacity { get; }
 
         public int Registered => Volatile.Read(ref _workers).Length;
 
@@ -296,6 +329,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        // How long the head of the longer-waiting bucket queue has waited
+        public TimeSpan BucketOldestWait
+        {
+            get
+            {
+                var requests = Buckets.Requests.OldestWait;
+                var bytes = Buckets.Bytes.OldestWait;
+                return requests > bytes ? requests : bytes;
+            }
+        }
+
         /// <summary>
         /// Holds the process's budget and registers its gauges once.
         /// </summary>
@@ -357,10 +401,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 meter.CreateObservableGauge("flowtide_delta_maintenance_request_debt", () => budget.Buckets.Requests.Debt);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_byte_debt", () => budget.Buckets.Bytes.Debt);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_bucket_waiters", () => budget.Buckets.Requests.QueueLength + budget.Buckets.Bytes.QueueLength);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_bucket_oldest_wait_seconds", () => budget.BucketOldestWait.TotalSeconds);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_discard_hints", () => budget.Discards.Queued);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_discard_bytes", () => budget.Discards.Charged);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_discard_dropped", () => budget.Discards.Dropped);
                 meter.CreateObservableGauge("flowtide_delta_maintenance_discard_leaked", () => budget.Discards.Leaked);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_runnable_request_equivalents", () => budget.Capacity.Current.Requests);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_runnable_bytes", () => budget.Capacity.Current.Bytes);
+                meter.CreateObservableGauge("flowtide_delta_maintenance_estimated_drain_seconds", () => new[]
+                {
+                    new Measurement<double>(budget.Capacity.DrainSeconds(budget.Capacity.Current), new KeyValuePair<string, object?>("state", "runnable")),
+                    new Measurement<double>(budget.Capacity.DrainSeconds(budget.Capacity.Total(CapacityState.Paused)), new KeyValuePair<string, object?>("state", "paused")),
+                    new Measurement<double>(budget.Capacity.DrainSeconds(budget.Capacity.Total(CapacityState.Suspended)), new KeyValuePair<string, object?>("state", "suspended"))
+                });
             }
         }
     }

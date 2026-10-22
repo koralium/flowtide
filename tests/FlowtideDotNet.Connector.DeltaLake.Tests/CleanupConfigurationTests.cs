@@ -48,7 +48,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         private static DeltaLakeSink Construct(IFileStorage storage, params string[] names)
         {
-            return new DeltaLakeSink(new DeltaLakeOptions() { StorageLocation = storage }, Relation(names), new ExecutionDataflowBlockOptions());
+            return Construct(storage, null, names);
+        }
+
+        private static DeltaLakeSink Construct(IFileStorage storage, Action<DeltaLakeOptions>? configure, params string[] names)
+        {
+            var options = new DeltaLakeOptions() { StorageLocation = storage };
+            configure?.Invoke(options);
+            return new DeltaLakeSink(options, Relation(names), new ExecutionDataflowBlockOptions());
+        }
+
+        // The sink with retention on, as the table name's segments
+        private static CleanupConfiguration ConstructRetained(IFileStorage storage, string table, bool assumeComplete = false)
+        {
+            return Construct(storage, options =>
+            {
+                options.HistoryRetention = Retention.Retention;
+                options.AssumeCompleteStorageListing = assumeComplete;
+            }, table.Split('/')).CleanupForTests;
+        }
+
+        // The sink refuses with retention on and constructs with it off
+        private static void AssertSinkRefused(IFileStorage storage, string table, bool assumeComplete, string option, string remedy)
+        {
+            AssertRefused(() => ConstructRetained(storage, table, assumeComplete), option, remedy);
+            var off = Construct(storage, options => options.AssumeCompleteStorageListing = assumeComplete, table.Split('/')).CleanupForTests;
+            Assert.False(off.OptIns.Any);
+            Assert.False(off.Store.Eligible);
         }
 
         private static void AssertRefused(Func<CleanupConfiguration> validate, string option, string remedy)
@@ -322,8 +348,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     }
                 }
                 // The sink constructs over every store and name
-                Construct(storage!, "c", "t x");
-                Construct(storage!, "c", "..", "t");
+                Assert.False(Construct(storage!, "c", "t x").CleanupForTests.OptIns.Any);
+                Assert.False(Construct(storage!, options => options.HistoryRetention = null, "c", "..", "t").CleanupForTests.OptIns.Any);
             }
             // A storage that cannot be unwrapped is classified as unknown and failed
             Assert.True(CleanupStoreContract.Classify(new BrokenOwnedStorage(StoreFixtures.S3()), "c/t", true).Store.KnownFailed);
@@ -354,6 +380,115 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Construct(storage, LoopbackObjectStore.Container, "tables", "t");
             CleanupConfiguration.Validate(storage, "c/tables/t", false, RetentionAndOrphans);
             Assert.Throws<ArgumentException>(() => CleanupConfiguration.Validate(storage, "c/t x", false, Retention));
+            // A request sent now would be the first the server sees
+            Assert.Null(await storage.Stat("/c/tables/t/x"));
+            Assert.Single(server.Requests);
+        }
+
+        [Theory]
+        [MemberData(nameof(ReservedNames))]
+        public void SinkWithRetentionRefusesS3AndAzureReservedPrefixes(string name)
+        {
+            foreach (var storage in new[] { StoreFixtures.S3(), StoreFixtures.Azure() })
+            {
+                using (storage)
+                {
+                    AssertSinkRefused(storage, name, false, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+                    AssertSinkRefused(storage, name, true, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+                    Assert.True(ConstructRetained(storage, "c/a.b-c_d/T9").Store.Eligible);
+                }
+            }
+        }
+
+        [Theory]
+        [InlineData("c/x/../t")]
+        [InlineData("c/t/..")]
+        [InlineData("c/./t")]
+        [InlineData("c//t")]
+        [InlineData("c/t/")]
+        [InlineData("/c/t")]
+        [InlineData("c\\t")]
+        [InlineData("c/t\u0001")]
+        [InlineData("")]
+        public void SinkWithRetentionRefusesDotDotAndEmptySegments(string name)
+        {
+            var directory = StoreFixtures.TempDirectory(nameof(SinkWithRetentionRefusesDotDotAndEmptySegments));
+            foreach (var storage in new[] { StoreFixtures.S3(), StoreFixtures.Azure(), Files.Of.LocalDisk(directory) })
+            {
+                using (storage)
+                {
+                    AssertSinkRefused(storage, name, false, CleanupConfiguration.StorageOption, "without '.' or '..'");
+                }
+            }
+        }
+
+        [Fact]
+        public void SinkWithRetentionRefusesGcsAndKnownFailedStores()
+        {
+            using (var gcs = StoreFixtures.Gcs())
+            {
+                AssertSinkRefused(gcs, "bucket/t", false, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                AssertSinkRefused(gcs, "bucket/t", true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+            }
+            var known = new IFileStorage[]
+            {
+                Files.Of.AzureBlobStorageWithLocalEmulator(),
+                StoreFixtures.Azure("devstoreaccount1/"),
+                new OwnedForwardingStorage(StoreFixtures.Gcs()),
+                new OwnedForwardingStorage(StoreFixtures.Azure("account/"))
+            };
+            foreach (var storage in known)
+            {
+                using (storage)
+                {
+                    AssertSinkRefused(storage, "c/t", true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                }
+            }
+        }
+
+        [Fact]
+        public void SinkWithRetentionRequiresVouchForUnknownWrapper()
+        {
+            var directory = StoreFixtures.TempDirectory(nameof(SinkWithRetentionRequiresVouchForUnknownWrapper));
+            var wrappers = new IFileStorage[]
+            {
+                new HookFileStorage(Files.Of.InternalMemory(nameof(SinkWithRetentionRequiresVouchForUnknownWrapper))),
+                HookFileStorage.Wrap(Files.Of.LocalDisk(directory)),
+                new ForwardingStorage(StoreFixtures.S3()),
+                Files.Of.InternalMemory(nameof(SinkWithRetentionRequiresVouchForUnknownWrapper) + "raw")
+            };
+            foreach (var storage in wrappers)
+            {
+                AssertSinkRefused(storage, "t", false, CleanupConfiguration.AssertionOption, "Verify that the whole storage stack");
+                var vouched = ConstructRetained(storage, "t", true);
+                Assert.True(vouched.Store.Eligible);
+                Assert.True(vouched.Store.Asserted);
+                Assert.Equal(Retention.Retention, vouched.OptIns.Retention);
+            }
+            AssertRefused(() => ConstructRetained(wrappers[0], "t/../u", true), CleanupConfiguration.StorageOption, "without '.' or '..'");
+        }
+
+        [Fact]
+        public void SinkWithRetentionIssuesNoStorageRequests()
+        {
+            var storage = new HookFileStorage(Files.Of.InternalMemory(nameof(SinkWithRetentionIssuesNoStorageRequests)));
+            Assert.True(ConstructRetained(storage, "t", true).Store.Eligible);
+            Assert.Throws<ArgumentException>(() => ConstructRetained(storage, "t"));
+            Assert.Empty(storage.Requests);
+            // Local disk needs no assertion
+            using var local = Files.Of.LocalDisk(StoreFixtures.TempDirectory(nameof(SinkWithRetentionIssuesNoStorageRequests)));
+            Assert.True(ConstructRetained(local, "t").Store.Eligible);
+        }
+
+        [Theory]
+        [InlineData(StoreFlavor.Azure)]
+        [InlineData(StoreFlavor.S3)]
+        public async Task SinkWithRetentionIssuesNoRequestsToPinnedClients(StoreFlavor flavor)
+        {
+            await using var server = new LoopbackObjectStore(flavor);
+            using var storage = server.CreateStorage();
+            Assert.True(ConstructRetained(storage, $"{LoopbackObjectStore.Container}/tables/t").Store.Eligible);
+            AssertRefused(() => ConstructRetained(storage, $"{LoopbackObjectStore.Container}/t x"), CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
             // A request sent now would be the first the server sees
             Assert.Null(await storage.Stat("/c/tables/t/x"));
             Assert.Single(server.Requests);

@@ -43,6 +43,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
     {
         // The size an inventory listed, null when unknown; pinned Azure orphan runs need it positive
         public long? Size { get; init; }
+
+        // A planned path a foreign change referenced again, passed without a delete
+        public bool Excluded { get; init; }
     }
 
     /// <summary>
@@ -68,7 +71,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         // A short alias or another spelling that names a different long path
         Alias = 8,
         // A size unknown or not positive where a delete needs a positive one: a pinned Azure orphan, or any target on an unknown stack
-        UnknownSize = 9
+        UnknownSize = 9,
+        // An excluded target, which a run passes
+        Excluded = 10
     }
 
     internal enum DeleteStatus : byte
@@ -88,6 +93,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
 
         public bool Done => Status is DeleteStatus.Deleted or DeleteStatus.Absent;
 
+        // Done, or kept only for its exclusion
+        public bool Passes => Done || Reason == KeepReason.Excluded;
+
         public static DeleteOutcome Keep(KeepReason reason) => new DeleteOutcome(DeleteStatus.Kept, reason);
 
         public static DeleteOutcome Fail(Exception error) => new DeleteOutcome(DeleteStatus.Failed) { Error = error };
@@ -98,7 +106,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
     /// </summary>
     internal sealed class DeletionTally
     {
-        private readonly long[] _kept = new long[(int)KeepReason.UnknownSize + 1];
+        private readonly long[] _kept = new long[(int)KeepReason.Excluded + 1];
         private long _deleted;
         private long _absent;
         private long _failed;
@@ -190,6 +198,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         // Called with each target's outcome once DeleteAsync counted it
         internal Action<DeletionTarget, DeleteOutcome>? Settled { get; init; }
 
+        // Called with each target a run keeps before submitting its delete
+        internal Action<DeletionTarget, DeleteOutcome>? Withheld { get; init; }
+
         // Replaces Windows long path resolution, since a short alias without '~' needs a privilege to create
         internal Func<string, string?>? LongPathForTests { get; set; }
 
@@ -234,12 +245,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         }
 
         /// <summary>
+        /// The characters a target's key holds before its table-relative name: the native root and a separator on local disk, the table path and a slash elsewhere.
+        /// </summary>
+        public static int KeyPrefixLength(CleanupConfiguration configuration)
+        {
+            var root = configuration.Store.Store.Kind == StoreKind.LocalDisk ? NativeRootOf(configuration.Store) : null;
+            return (root ?? configuration.Store.Table.Full).Length + 1;
+        }
+
+        /// <summary>
         /// The target of a candidate path key; a key without a deletion path names no target.
         /// </summary>
         public DeletionTarget TargetOf(in PathKey key, TargetKind kind = TargetKind.Payload) => TargetOf(key.DeletionPath ?? string.Empty, kind);
 
         /// <summary>
-        /// Why a target must be kept, judged from its key and kind alone; None when it may be submitted. Makes no request.
+        /// Why a target must be kept, judged from its key, kind and exclusion alone; None when it may be submitted. Makes no request.
         /// </summary>
         public KeepReason Check(DeletionTarget target)
         {
@@ -256,7 +276,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 return KeepReason.Unqualified;
             }
             var relative = Native ? NativeRelative(target.Key) : ObjectRelative(target.Key);
-            return relative == null ? KeepReason.Unqualified : Placement(relative, target.Kind);
+            var placed = relative == null ? KeepReason.Unqualified : Placement(relative, target.Kind);
+            // Only a target that could be deleted is passed for its exclusion
+            return placed == KeepReason.None && target.Excluded ? KeepReason.Excluded : placed;
+        }
+
+        /// <summary>
+        /// Counts a target a run keeps before submitting its delete.
+        /// </summary>
+        public DeleteOutcome Withhold(DeletionTarget target, KeepReason reason)
+        {
+            var kept = DeleteOutcome.Keep(reason);
+            Tally.Add(kept);
+            Withheld?.Invoke(target, kept);
+            return kept;
         }
 
         /// <summary>

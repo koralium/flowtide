@@ -19,6 +19,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Time.Testing;
 using Stowage;
 using System.Text.Json;
+using Xunit.Abstractions;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -26,9 +27,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         private static readonly DateTimeOffset s_now = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
         private readonly string _directory;
+        private readonly ITestOutputHelper _output;
 
-        public DeltaLakeCheckpointBuildTests()
+        public DeltaLakeCheckpointBuildTests(ITestOutputHelper output)
         {
+            _output = output;
             _directory = Path.Combine(Path.GetTempPath(), "bt-" + ScratchOwners.ShortId());
             Directory.CreateDirectory(_directory);
         }
@@ -84,7 +87,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         // Builds into a fresh scratch folder, reads the output back, and checks every ledger is empty afterwards
         private async Task<Built> Build(IFileStorage storage, string table, long version, RootPolicy root = RootPolicy.Auto, long arenaCap = TailReducer.DefaultArenaCap,
-            bool rebuildLegacy = false, IReadOnlySet<ObjectIdentity>? unsupported = null, Action<string>? damage = null, JobMemory? memory = null)
+            bool rebuildLegacy = false, IReadOnlySet<ObjectIdentity>? unsupported = null, Action<string>? damage = null, JobMemory? memory = null, int readAhead = 1, TransferAllowance? transfer = null)
         {
             var directory = _owners.Add(new ScratchDirectory(Path.Combine(_directory, ScratchOwners.ShortId())));
             memory ??= new JobMemory();
@@ -105,7 +108,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     ArenaCap = arenaCap,
                     RebuildLegacyCheckpoints = rebuildLegacy,
                     BeforeValidationForTests = damage,
-                    Publish = false
+                    Publish = false,
+                    ReadAhead = readAhead,
+                    Transfer = transfer
                 };
                 result = await CheckpointBuilder.BuildAsync(context, new BuildRequest() { Version = version, Root = root, KnownUnsupported = unsupported ?? new HashSet<ObjectIdentity>() });
                 if (result.Checkpoint != null)

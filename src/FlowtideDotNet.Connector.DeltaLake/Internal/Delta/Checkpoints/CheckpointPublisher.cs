@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using Stowage;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 {
@@ -32,7 +33,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 // The move, the rename, the size check and the bytes published, all before the first of them
                 await transport.ChargeNativeAsync(3, checkpoint.SizeInBytes, cancellationToken);
-                PublishLocal(scratch, checkpoint, native, freeSpace, faultForTests);
+                await PublishFileAsync(transport, scratch, memory, checkpoint.LocalPath, checkpoint.SizeInBytes, destination, overwrite: true, freeSpace, faultForTests, cancellationToken);
                 var length = new FileInfo(native).Length;
                 if (length != checkpoint.SizeInBytes)
                 {
@@ -41,7 +42,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             }
             else
             {
-                await transport.UploadAsync(checkpoint.LocalPath, destination, memory, cancellationToken);
+                await PublishFileAsync(transport, scratch, memory, checkpoint.LocalPath, checkpoint.SizeInBytes, destination, overwrite: true, freeSpace, faultForTests, cancellationToken);
                 // The cached identity is listed before the size check, or by it when the listing has sizes; a failed listing only skips the cache
                 ObjectIdentity? identity = null;
                 if (cache != null)
@@ -97,11 +98,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             return new PublishResult(true, null);
         }
 
-        // Moves the output next to the destination, then renames it over the canonical name
-        private static void PublishLocal(JobScratch scratch, CheckpointDescriptor checkpoint, string native, Func<string, long>? freeSpace, Action<string>? faultForTests)
+        /// <summary>
+        /// Publishes a scratch file at the destination; without overwrite the scratch file stays and an existing local destination fails the rename.
+        /// </summary>
+        public static async Task PublishFileAsync(ICheckpointTransport transport, JobScratch scratch, JobMemory memory, string local, long size, IOPath destination, bool overwrite,
+            Func<string, long>? freeSpace, Action<string>? faultForTests, CancellationToken cancellationToken)
+        {
+            if (transport.NativePath(destination) is { } native)
+            {
+                PublishLocal(scratch, local, size, native, overwrite, freeSpace, faultForTests);
+                return;
+            }
+            await transport.UploadAsync(local, destination, memory, cancellationToken);
+        }
+
+        // Moves the output next to the destination, or copies it without overwrite, then renames it to the destination's name
+        private static void PublishLocal(JobScratch scratch, string local, long size, string native, bool overwrite, Func<string, long>? freeSpace, Action<string>? faultForTests)
         {
             var ledger = scratch.Ledger;
-            var size = checkpoint.SizeInBytes;
             // The adjacent copy holds its own charge while both files exist
             ledger.Reserve(size);
             var logDirectory = Path.GetDirectoryName(native)!;
@@ -124,23 +138,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             try
             {
                 faultForTests?.Invoke("move");
-                File.Move(checkpoint.LocalPath, temp);
+                if (overwrite)
+                {
+                    File.Move(local, temp);
+                }
+                else
+                {
+                    // The scratch file stays for a retry under another name
+                    File.Copy(local, temp);
+                }
                 // Across file systems the move copied, which no path comparison detects on Unix, so the temp is always made durable
                 using (var file = new FileStream(temp, FileMode.Open, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
                 {
                     file.Flush(true);
                 }
-                // The scratch file is gone, so its charge goes; a copy that could not delete its source keeps that charge until the source is deleted
-                if (File.Exists(checkpoint.LocalPath))
+                if (overwrite)
                 {
-                    scratch.Delete(checkpoint.LocalPath);
-                }
-                else
-                {
-                    ledger.Release(scratch.Release(checkpoint.LocalPath));
+                    // The scratch file is gone, so its charge goes; a copy that could not delete its source keeps that charge until the source is deleted
+                    if (File.Exists(local))
+                    {
+                        scratch.Delete(local);
+                    }
+                    else
+                    {
+                        ledger.Release(scratch.Release(local));
+                    }
                 }
                 faultForTests?.Invoke("rename");
-                File.Move(temp, native, overwrite: true);
+                File.Move(temp, native, overwrite);
                 ledger.Release(size);
             }
             catch

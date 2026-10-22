@@ -11,13 +11,14 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using System.Globalization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
-    // The test host never runs this; ScratchDirectoryTests start the test assembly as a process that holds a scratch folder
+    // The test host never runs this; ScratchDirectoryTests start the test assembly as a process that holds a scratch folder, and manual fixtures run through it
     public static class Program
     {
-        public static int Main(string[] args)
+        public static async Task<int> Main(string[] args)
         {
             if (args.Length == 2 && args[0] == "hold-scratch")
             {
@@ -29,8 +30,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 GC.KeepAlive(directory);
                 return 0;
             }
-            Console.Error.WriteLine("usage: hold-scratch <directory>");
-            return 1;
+            // The first long advance of an upgraded table with more than 100,000 versions before adoption
+            if (args.Length >= 2 && args[0] == "advance-fixture")
+            {
+                var versions = args.Length >= 3 && !args[2].StartsWith("--", StringComparison.Ordinal) ? long.Parse(args[2], CultureInfo.InvariantCulture) : 100_050;
+                var describe = new Dictionary<string, string>()
+                {
+                    ["scratch"] = args[1],
+                    ["profile"] = "local disk, unmetered, fake clock",
+                    ["workload"] = $"seeded history of {versions} versions, adoption 40 below the head, one long plan",
+                    ["offered-load"] = "one table"
+                };
+                return await ManualRun.RunAsync(args, describe, output => AdvancePlannerKit.RunFixtureAsync(args[1], versions, output), Console.Out);
+            }
+            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>]");
+            return ManualRun.HarnessError;
         }
     }
 }

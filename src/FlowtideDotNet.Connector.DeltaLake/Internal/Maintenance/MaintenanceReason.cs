@@ -78,7 +78,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         DeletesDisabled = 58,
         InvalidMaintenanceOptions = 59,
         JobDeadline = 60,
-        InvalidProvenance = 61
+        InvalidProvenance = 61,
+        RetentionNotPublished = 62
     }
 
     /// <summary>

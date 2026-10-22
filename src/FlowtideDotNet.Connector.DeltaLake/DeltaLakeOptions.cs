@@ -96,6 +96,16 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public string? MaintenanceTempDirectory { get; set; }
 
         /// <summary>
+        /// Gets or sets the storage requests per second all Delta Lake maintenance in the process may make, at least 200; the first sink's value applies to every sink.
+        /// </summary>
+        public int MaintenanceRequestsPerSecond { get; set; } = 200;
+
+        /// <summary>
+        /// Gets or sets the bytes per second all Delta Lake maintenance in the process may read and write, at least 64 MiB; the first sink's value applies to every sink.
+        /// </summary>
+        public long MaintenanceBytesPerSecond { get; set; } = 64L * 1024 * 1024;
+
+        /// <summary>
         /// Gets or sets whether, when every commit since version 0 is still there, a checkpoint is rebuilt from the full log instead of building on one the sink did not write (or wrote on top of one), and instead of declining when no starting checkpoint can be used.
         /// </summary>
         public bool RebuildLegacyCheckpoints { get; set; }
@@ -104,6 +114,11 @@ namespace FlowtideDotNet.Connector.DeltaLake
         /// Gets or sets whether a storage this connector does not recognize, such as a custom wrapper, is vouched for as a whole stack: every listing is complete and in order, Stat returns null only for an object that does not exist, a read or delete reaches only the object of exactly the given name (no short-name or trimmed spellings of another object), and a delete removes exactly the named object, which lets cleanup rely on its listings, absence checks, references and deletes.
         /// </summary>
         public bool AssumeCompleteStorageListing { get; set; } = false;
+
+        /// <summary>
+        /// Gets or sets how long the table's history stays readable, in whole hours of at least one day, published as the table's log and deleted file retention; null turns history retention off.
+        /// </summary>
+        public TimeSpan? HistoryRetention { get; set; } = null;
 
         /// <summary>
         /// The clock for every timestamp the sink writes.

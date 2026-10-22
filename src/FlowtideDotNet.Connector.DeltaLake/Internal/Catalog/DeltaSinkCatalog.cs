@@ -185,6 +185,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             return new DeltaTable(table.Metadata, table.Protocol, new List<DeltaAddAction>(), table.Schema, table.Version, Array.Empty<DeltaRemoveFileAction>(), table.Transactions, table.DomainMetadata, table.StartCheckpointVersion);
         }
 
+        private static DeltaTable WithMetadata(DeltaTable header, DeltaMetadataAction metadata)
+        {
+            return new DeltaTable(metadata, header.Protocol, new List<DeltaAddAction>(), header.Schema, header.Version, Array.Empty<DeltaRemoveFileAction>(), header.Transactions, header.DomainMetadata, header.StartCheckpointVersion);
+        }
+
         private void SetSchema(StructType schema, int expectedFiles)
         {
             _layout = PruningLayout.Create(schema, _writtenColumns, _options.StatsPruningColumns);
@@ -341,6 +346,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             {
                 _header = overlay.NewHeader;
                 SetSchema(overlay.NewHeader.Schema, overlay.Adds.Count);
+            }
+            else if (overlay.UpdatedMetadata != null && _header != null)
+            {
+                // Same schema: the projection and the files stay
+                _header = WithMetadata(_header, overlay.UpdatedMetadata);
             }
             if (overlay.RemoveAll)
             {

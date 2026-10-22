@@ -37,6 +37,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public IOPath Table { get; }
 
+        public IFileStorage Storage => _storage;
+
         public DeltaTransactionReader.LogListing Listing { get; }
 
         public long Head => Listing.Head;
@@ -82,17 +84,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         public async Task<BoundedLineReader?> OpenCommitAsync(long version, JobMemory? memory, int cap, bool skipOversizedCommitInfo, CancellationToken cancellationToken = default, bool streamOwnHeader = false)
         {
             var stream = await _storage.OpenRead(Listing.Commits[version].IOEntry.Path, cancellationToken);
-            if (stream == null)
-            {
-                return null;
-            }
+            return stream == null ? null : Lines(stream, memory, cap, skipOversizedCommitInfo, streamOwnHeader);
+        }
+
+        /// <summary>
+        /// The lines of an opened commit; the stream is disposed when the reader cannot be built.
+        /// </summary>
+        public static BoundedLineReader Lines(Stream stream, JobMemory? memory, int cap, bool skipOversizedCommitInfo, bool streamOwnHeader = false)
+        {
             try
             {
                 return new BoundedLineReader(stream, memory, cap, skipOversizedCommitInfo, ownsStream: true, streamOwnHeader);
             }
             catch
             {
-                await stream.DisposeAsync();
+                stream.Dispose();
                 throw;
             }
         }

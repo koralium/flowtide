@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance;
 using Stowage;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
@@ -102,6 +103,92 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 }
                 return await decide(log!, context);
             });
+        }
+
+        /// <summary>
+        /// A started advance's slices: ReadLogAsync above the admission's published version, its evidence relied on from C, C rehashed whole to its header's content, its authority by name, then the caller's decision; every result durable, and spent reads promote.
+        /// </summary>
+        public static ChunkGate ForAdvance(CleanupConfiguration configuration, IFileStorage storage, ActiveAdvance active, Func<LogEvidence, CleanupContext, Task<GateResult>> decide)
+        {
+            return new ChunkGate(true, async context =>
+            {
+                var result = await PassAdvanceAsync(configuration, storage, active, decide, context);
+                // A fresh short admission spends the same reads
+                return result.Verdict == GateVerdict.ReadsSpent ? result with { Verdict = GateVerdict.NeedsLongAdmission, Durable = true } : result with { Durable = true };
+            });
+        }
+
+        private static async Task<GateResult> PassAdvanceAsync(CleanupConfiguration configuration, IFileStorage storage, ActiveAdvance active, Func<LogEvidence, CleanupContext, Task<GateResult>> decide,
+            CleanupContext context)
+        {
+            var (check, log) = await ListingEvidence.ReadLogAsync(configuration, storage, context.Head, context.Stop, context.Memory);
+            if (check != ListingCheck.Passed)
+            {
+                return GateResult.OfListing(check, true);
+            }
+            // Intentional gaps below C pass
+            var validated = await active.Evidence.ValidateAsync(configuration, storage, log!, context, active.C);
+            // A gap after the planned head is a foreign change
+            if (validated.Verdict == GateVerdict.ListingFailed && log!.CheckRange(active.Started.Head + 1, log.Head) != ListingCheck.Passed)
+            {
+                return new GateResult(GateVerdict.ForeignHead, $"Commits after the planned head {active.Started.Head} up to {log.Head} are not all listed") { Head = log.Head };
+            }
+            if (!validated.Passed)
+            {
+                return validated;
+            }
+            var checkpoint = await CheckpointAsync(storage, log!, active, context);
+            if (checkpoint != null)
+            {
+                return checkpoint;
+            }
+            return Authority(log!, active) ?? await decide(log!, context);
+        }
+
+        // C listed at the size and modification time its header names, then rehashed whole to its content; null when it is
+        private static async Task<GateResult?> CheckpointAsync(IFileStorage storage, LogEvidence log, ActiveAdvance active, CleanupContext context)
+        {
+            var destination = active.Destination;
+            var file = ContentProof.Find(log.Listing, active.C, true);
+            if (file == null || (file.IOEntry.Size ?? -1) != destination.ListedSize || (file.IOEntry.LastModificationTime?.UtcTicks ?? -1) != destination.ListedModifiedTicks)
+            {
+                return new GateResult(GateVerdict.CheckpointReplaced, $"Checkpoint {active.C} is not listed as its header names it") { Head = log.Head };
+            }
+            var read = await ProofReader.ReadAsync(storage, file.IOEntry.Path, active.C, file.IOEntry.Size, false, context);
+            return read.Status switch
+            {
+                ProofStatus.Read when read.Length == destination.Length && read.Sha256.AsSpan().SequenceEqual(destination.Sha256) => null,
+                ProofStatus.Preempted => new GateResult(GateVerdict.Preempted, $"Rehashing checkpoint {active.C} stopped") { Stop = read.Stop, Head = log.Head },
+                ProofStatus.ReadsSpent => new GateResult(GateVerdict.ReadsSpent, $"Rehashing checkpoint {active.C} needs a read this admission has spent") { Head = log.Head },
+                _ => new GateResult(GateVerdict.CheckpointReplaced, $"Checkpoint {active.C} is gone or has other content than its header names") { Head = log.Head }
+            };
+        }
+
+        // The group's started record, and its logs-complete past the log phase, listed under its exact association; no other advance's reservation
+        private static GateResult? Authority(LogEvidence log, ActiveAdvance active)
+        {
+            var association = active.Association;
+            var digest = ControlName.D16(association.HeaderSha256);
+            var started = false;
+            var logsComplete = false;
+            foreach (var entry in log.Listing.Controls)
+            {
+                if (entry.Path.IsFolder || !ControlName.TryParse(entry.Name, out var name) || name.Kind is not (ControlKind.Started or ControlKind.LogsComplete or ControlKind.Progress))
+                {
+                    continue;
+                }
+                if (name.Boundary != association.C || !string.Equals(name.AdvanceId, association.AdvanceId, StringComparison.Ordinal) || !string.Equals(name.Digest, digest, StringComparison.Ordinal))
+                {
+                    return new GateResult(GateVerdict.AuthorityChanged, $"Another advance's record reserves version {name.Boundary}") { Head = log.Head };
+                }
+                started |= name.Kind == ControlKind.Started;
+                logsComplete |= name.Kind == ControlKind.LogsComplete;
+            }
+            if (!started || (active.Phase != AdvancePhase.Log && !logsComplete))
+            {
+                return new GateResult(GateVerdict.AuthorityChanged, $"The advance to checkpoint {active.C} has no {(started ? "logs-complete" : "started")} record listed") { Head = log.Head };
+            }
+            return null;
         }
 
         /// <summary>

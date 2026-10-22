@@ -84,6 +84,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IOPath _tablePath;
         // Validated once, so restores reuse it and a changed storage instance is detected
         private readonly CleanupConfiguration _cleanup;
+        // The published value of the validated retention, null with retention off
+        private readonly string? _retentionValue;
+        // Validated once at construction, as retention is
+        private readonly (long Requests, long Bytes) _maintenanceRates;
 
         private IObjectState<bool>? _firstInsertDone;
         private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
@@ -113,6 +117,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private bool _discardFailureWarned;
         private bool _discardKeptWarned;
         private bool _discardDroppedWarned;
+        private long _metadataCommitFailures;
+        private bool _metadataCommitWarned;
+        // A properties or anchor commit failed; its retries without rows stay contained
+        private bool _metadataRetry;
         // Chosen once per run: queued to the worker, or deleted inline by the attempt
         private DiscardMode _discardMode;
         // The run's producer handle on its discard route, in queued mode
@@ -123,6 +131,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private DeletionExecutor? _inlineExecutor;
         private readonly DiscardCounters _discardCounters = new DiscardCounters();
         private readonly SweepCounters _sweepCounters = new SweepCounters();
+        private readonly RetentionCounters _retentionCounters = new RetentionCounters();
 
         // Discarded outputs whose best-effort delete failed
         internal long DiscardDeleteFailures => _discardCounters.Failed;
@@ -136,13 +145,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         // The worker of the latest start, set after that run's discard mode and route
         internal DeltaMaintenanceWorker? StartedWorkerForTests { get; private set; }
 
+        // The settings the latest worker was created with
+        internal MaintenanceWorkerSettings? WorkerSettingsForTests { get; private set; }
+
+        // Properties or anchor commits that failed to stage and wait for the next checkpoint
+        internal long MetadataCommitFailures => Volatile.Read(ref _metadataCommitFailures);
+
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
             this._writeRelation = writeRelation;
             _tableName = string.Join("/", writeRelation.NamedObject.Names);
             // On the original name, before path normalization can hide a segment
-            _cleanup = CleanupConfiguration.Validate(() => options.StorageLocation, _tableName, options.AssumeCompleteStorageListing, CleanupOptIns.Off);
+            _cleanup = CleanupConfiguration.Validate(() => options.StorageLocation, _tableName, options.AssumeCompleteStorageListing, new CleanupOptIns(options.HistoryRetention, null));
+            _retentionValue = _cleanup.OptIns.Retention is { } retention ? RetentionProperties.Format(retention) : null;
+            _maintenanceRates = MaintenanceBudgetSettings.Rates(options);
             _tablePath = _tableName;
 
             if (writeRelation.TableSchema.Struct != null)
@@ -189,6 +206,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _stagedBytes = null;
             _stagedOverlay = null;
             _halted = false;
+            _metadataRetry = false;
             SetHealth(true);
             _catalog?.Dispose();
             _catalog = await DeltaSinkCatalog.Open(stateManagerClient, _options, _tablePath, _writeRelation.TableSchema.Names, MemoryAllocator, Logger);
@@ -233,14 +251,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
                 if (budget == null)
                 {
-                    var settings = MaintenanceBudgetSettings.From(_options);
+                    var settings = MaintenanceBudgetSettings.From(_options, _maintenanceRates);
                     var matches = true;
                     budget = shared.Get(settings, out matches);
                     HoldProducers(budget);
                     if (!matches && !_budgetMismatchWarned)
                     {
                         _budgetMismatchWarned = true;
-                        Logger.LogWarning("Delta table {table} keeps the process's first maintenance settings: {jobs} concurrent jobs in {directory}", _tableName, budget.Settings.MaxConcurrentJobs, budget.Settings.TempDirectory);
+                        Logger.LogWarning("Delta table {table} keeps the process's first maintenance settings: {jobs} concurrent jobs in {directory}, {requests} requests and {bytes} bytes a second", _tableName,
+                            budget.Settings.MaxConcurrentJobs, budget.Settings.TempDirectory, budget.Settings.RequestsPerSecond, budget.Settings.BytesPerSecond);
                     }
                 }
                 if (_options.MaintenanceInitFailsForTests)
@@ -255,16 +274,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 var queued = !deletesDisabled && !replaced && _cleanup.Store.Eligible;
                 // The drain and the staged sweep run with checkpoints off too
                 var cleanup = new DeltaTableCleanup(_cleanup, MeteredFileStorage.Wrap(_options.StorageLocation, budget.Buckets, paging), _options.TimeProvider, _tablePath,
-                    queued ? budget.Discards : null, () => _options.StorageLocation, _discardCounters, Logger, _tableName, _sweepCounters);
-                var worker = new DeltaMaintenanceWorker(budget, new MaintenanceWorkerSettings(_options.CheckpointInterval, _options.CheckpointMaxAge, _options.TimeProvider)
+                    queued ? budget.Discards : null, () => _options.StorageLocation, _discardCounters, Logger, _tableName, _sweepCounters, _retentionCounters);
+                var cleanupEligible = _cleanup.Store.Eligible && !replaced;
+                var workerSettings = new MaintenanceWorkerSettings(_options.CheckpointInterval, _options.CheckpointMaxAge, _options.TimeProvider)
                 {
                     Codec = _options.CompressionCodec,
                     RebuildLegacyCheckpoints = _options.RebuildLegacyCheckpoints,
                     PeriodicEnabled = periodic,
-                    InspectionEnabled = periodic,
+                    // Retention needs the worker's inspection and repairs with periodic builds off too
+                    InspectionEnabled = periodic || (_cleanup.OptIns.Retention != null && cleanupEligible),
                     Paging = paging,
-                    CleanupEligible = _cleanup.Store.Eligible && !replaced
-                }, _options.StorageLocation, _tablePath, _tableName, Logger)
+                    CleanupEligible = cleanupEligible,
+                    Retention = _cleanup.OptIns.Retention
+                };
+                WorkerSettingsForTests = workerSettings;
+                var worker = new DeltaMaintenanceWorker(budget, workerSettings, _options.StorageLocation, _tablePath, _tableName, Logger)
                 { Cleanup = cleanup };
                 if (queued)
                 {
@@ -325,8 +349,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_cleanup_discard_leaked", () => _discardCounters.Leaked);
                 Metrics.CreateObservableGauge("delta_cleanup_sweep_leaked", () => _sweepCounters.PayloadLeaked);
                 Metrics.CreateObservableGauge("delta_cleanup_sweep_leaked_stages", () => _sweepCounters.LeakedStages);
+                Metrics.CreateObservableGauge("delta_retention_commit_failures", () => MetadataCommitFailures);
+                Metrics.CreateObservableGauge("delta_retention_oldest_version", () => TableCleanup?.OldestVersion ?? -1);
+                Metrics.CreateObservableGauge("delta_retention_adoption_version", () => TableCleanup?.AdoptionVersion ?? -1);
+                Metrics.CreateObservableGauge("delta_retention_state", () => (int)RetentionGaugeState());
+                Metrics.CreateObservableGauge("delta_retention_backlog_seconds", () => TableCleanup?.BacklogSeconds ?? -1);
+                Metrics.CreateObservableGauge("delta_retention_repair_wait_seconds", () => _worker?.RepairWaitSeconds ?? 0);
+                Metrics.CreateObservableGauge("delta_retention_repair_blocked", () => _worker?.CoverageState == RetentionState.RepairBlocked ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_retention_payload_remaining", () => TableCleanup?.PayloadRemaining ?? 0);
+                Metrics.CreateObservableGauge("delta_retention_failed_slices", () => TableCleanup?.FailedSlices ?? 0);
+                Metrics.CreateObservableGauge("delta_retention_last_gate_ms", () => _retentionCounters.LastGateMs);
+                Metrics.CreateObservableGauge("delta_retention_last_slice_ms", () => _retentionCounters.LastSliceMs);
+                Metrics.CreateObservableGauge("delta_cleanup_path_rejections", () => _retentionCounters.PathRejections);
+                Metrics.CreateObservableGauge("delta_cleanup_deletes", () => _retentionCounters.DeleteMeasurements());
+                Metrics.CreateObservableGauge("delta_cleanup_listing_declines", () => _retentionCounters.DeclineMeasurements());
+                Metrics.CreateObservableGauge("delta_cleanup_successor_probes", () => _retentionCounters.ProbeMeasurements());
             }
         }
+
+        // The current run's cleanup, null while no worker runs
+        private DeltaTableCleanup? TableCleanup => _worker?.Cleanup as DeltaTableCleanup;
+
+        // Off without a worker; both parts from one read of it
+        private RetentionState RetentionGaugeState()
+        {
+            var worker = _worker;
+            return worker == null ? RetentionState.Off : RetentionStates.Of(worker.CoverageState, (worker.Cleanup as DeltaTableCleanup)?.AdvanceGaugeState ?? RetentionState.Idle);
+        }
+
+        internal RetentionCounters RetentionCountersForTests => _retentionCounters;
 
         // Released at dispose; the entry outlives a restart only while another handle, a producer or a barrier uses it
         private void HoldProducers(DeltaMaintenanceBudget budget)
@@ -618,26 +669,84 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_catalog != null);
 
             await _catalog.ApplyPublished();
+            // Read once; a staged commit acknowledges it to this worker
+            var anchorWorker = _worker;
+            var anchor = anchorWorker?.AnchorRequest ?? 0;
             if (_catalog.IsReady && CatalogHooksForTests.TryGetValue(_tableName, out var hook))
             {
                 await hook(_catalog);
             }
             var readOptions = new DeltaReadOptions() { SkipTombstones = true, Logger = Logger, ReportedCheckpointFailures = _reportedCheckpointFailures };
+            var overwrite = !_firstInsertDone.Value && _writeRelation.Overwrite;
             // A first read lists the log itself
             var validated = false;
             if (!_catalog.IsReady)
             {
-                await _catalog.Validate(readOptions);
+                // A failed attempt can leave the catalog unready; without rows the retry stays contained
+                if (_metadataRetry && !overwrite && !await HasRows())
+                {
+                    try
+                    {
+                        await _catalog.Validate(readOptions);
+                    }
+                    catch (Exception e)
+                    {
+                        MetadataCommitFailed(e);
+                        return;
+                    }
+                }
+                else
+                {
+                    await _catalog.Validate(readOptions);
+                }
                 Validated();
                 validated = true;
             }
-            var overwrite = !_firstInsertDone.Value && _writeRelation.Overwrite;
             if (_catalog.Header != null && !overwrite && !await HasRows())
             {
+                // Uncontained, before any metadata attempt
                 await ClearRows();
                 _firstInsertDone.Value = true;
+                if (anchor == 0 && !PropertiesPending(_catalog.Header))
+                {
+                    return;
+                }
+                // Properties or an anchor without rows never fail the checkpoint
+                try
+                {
+                    await WriteCommit(readOptions, validated, overwrite, true, anchorWorker, anchor);
+                }
+                catch (Exception e)
+                {
+                    MetadataCommitFailed(e);
+                }
                 return;
             }
+            await WriteCommit(readOptions, validated, overwrite, false, anchorWorker, anchor);
+        }
+
+        // Retention on and the table's two keys missing or different; two lookups
+        private bool PropertiesPending(DeltaTable header)
+        {
+            return _retentionValue != null && !RetentionProperties.Matches(header.Metadata.Configuration, _retentionValue);
+        }
+
+        private void MetadataCommitFailed(Exception e)
+        {
+            Interlocked.Increment(ref _metadataCommitFailures);
+            _metadataRetry = true;
+            Logger.Log(_metadataCommitWarned ? LogLevel.Debug : LogLevel.Warning, e, "Delta table {table} could not stage its retention properties or anchor commit, it is tried again at the next checkpoint", _tableName);
+            _metadataCommitWarned = true;
+        }
+
+        // With metadataOnly the temporary tree holds no rows
+        private async Task WriteCommit(DeltaReadOptions readOptions, bool validated, bool overwrite, bool metadataOnly, DeltaMaintenanceWorker? anchorWorker, long anchor)
+        {
+            Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_firstInsertDone != null);
+            Debug.Assert(_pendingCommit != null);
+            Debug.Assert(_catalog != null);
+
             // Before the version, the codec or any file is chosen, another writer may have moved the head
             if (!validated)
             {
@@ -667,6 +776,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
             StructType? schema;
             IReadOnlyDictionary<string, string>? configuration;
+            DeltaMetadataAction? updatedMetadata = null;
             if (table == null)
             {
                 changeDataEnabled = _options.WriteChangeDataOnNewTables;
@@ -707,6 +817,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     tableConfiguration.Add("delta.columnMapping.mode", "name");
                     tableConfiguration.Add("delta.columnMapping.maxColumnId", maxColumnId.ToString());
+                }
+                if (_retentionValue != null)
+                {
+                    tableConfiguration.Add(RetentionProperties.LogKey, _retentionValue);
+                    tableConfiguration.Add(RetentionProperties.DeletedFileKey, _retentionValue);
                 }
 
                 var metadataAction = new DeltaMetadataAction()
@@ -776,12 +891,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         StageId = stageId,
                         AdoptedAt = CommitProvenance.NextEpoch(head, nextVersion),
                         Timestamp = CommitProvenance.NextTimestamp(currentTime, head),
-                        Operation = "WRITE",
+                        Operation = metadataOnly ? "SET TBLPROPERTIES" : "WRITE",
                         CreatedFiles = created
                     }
                 });
 
-                if (table.PartitionColumns.Count > 0)
+                // After commitInfo, which must stay first; recomputed against the validated header
+                if (anchor != 0 || PropertiesPending(table))
+                {
+                    updatedMetadata = DeltaMetadataCopy.Copy(table.Metadata, _retentionValue);
+                    actions.Add(new DeltaAction() { MetaData = updatedMetadata });
+                }
+
+                // A metadata-only commit writes no file and copies the partition columns
+                if (table.PartitionColumns.Count > 0 && !metadataOnly)
                 {
                     throw new NotImplementedException("Partition columns are not implemented yet");
                 }
@@ -789,6 +912,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             var overlay = _catalog.BeginCommit(nextVersion, newHeader);
+            overlay.UpdatedMetadata = updatedMetadata;
             var commitInfo = actions[0].CommitInfo!;
             overlay.Provenance = new CommitProvenance(nextVersion, stageId, commitInfo.AdoptedAt, commitInfo.Timestamp);
             // Every output of this attempt is written inside one producer generation, released once it is staged or failed
@@ -817,88 +941,105 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     _catalog.RestartIds();
                 }
 
-                var codec = ResolveCodec(configuration);
-                _fileExtension = codec.FileExtension;
-                var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
-                // Only used to compare deleted rows, never written
-                var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
-
-                ParquetSharpWriter? cdcWriter = default;
-                if (changeDataEnabled)
+                // Row writers, none for a metadata-only commit
+                if (!metadataOnly)
                 {
-                    cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
-                    cdcWriter.NewBatch();
-                }
+                    var codec = ResolveCodec(configuration);
+                    _fileExtension = codec.FileExtension;
+                    var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
+                    // Only used to compare deleted rows, never written
+                    var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
 
-                writer.NewBatch();
-                deleteWriter.NewBatch();
-
-                // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
-                bool deleteWritten = false;
-
-                // Deleted rows of the current batch and their probes, matched against the catalog per batch
-                var pendingDeletes = new List<RowToDelete>();
-                _probes ??= new ProbeBatch(_catalog.ScanLayout);
-                _probes.Clear();
-                _probes.SetLayout(_catalog.ScanLayout);
-                var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
-                var touchedFiles = new Dictionary<int, DeltaFileRecord>();
-                await foreach (var page in iterator)
-                {
-                    for (int i = 0; i < page.Values.Data.Count; i++)
+                    ParquetSharpWriter? cdcWriter = default;
+                    if (changeDataEnabled)
                     {
-                        var weight = page.Values.Data[i];
-                        if (weight < 0)
-                        {
-                            deleteWritten = true;
-                            int deleteIndex = deleteWriter.WrittenCount;
-                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
-                            deleteWriter.AddRow(rowRef);
-                            if (cdcWriter != null)
-                            {
-                                // One change row per deleted copy, rolled per copy so a large weight stays bounded
-                                for (int v = 0; v > weight; v--)
-                                {
-                                    cdcWriter.AddRow(rowRef, true);
-                                    if (IsFull(cdcWriter))
-                                    {
-                                        await WriteNewCdcFile(cdcWriter, actions, created);
-                                    }
-                                }
-                            }
+                        cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
+                        cdcWriter.NewBatch();
+                    }
 
-                            pendingDeletes.Add(new RowToDelete()
-                            {
-                                DeleteIndex = deleteIndex,
-                                Weight = weight
-                            });
-                            _probes.Add(rowRef);
-                        }
-                        else
+                    writer.NewBatch();
+                    deleteWriter.NewBatch();
+
+                    // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
+                    bool deleteWritten = false;
+
+                    // Deleted rows of the current batch and their probes, matched against the catalog per batch
+                    var pendingDeletes = new List<RowToDelete>();
+                    _probes ??= new ProbeBatch(_catalog.ScanLayout);
+                    _probes.Clear();
+                    _probes.SetLayout(_catalog.ScanLayout);
+                    var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
+                    var touchedFiles = new Dictionary<int, DeltaFileRecord>();
+                    await foreach (var page in iterator)
+                    {
+                        for (int i = 0; i < page.Values.Data.Count; i++)
                         {
-                            // One row per copy, rolled per copy so a large weight stays bounded
-                            var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
-                            for (int v = 0; v < weight; v++)
+                            var weight = page.Values.Data[i];
+                            if (weight < 0)
                             {
-                                writer.AddRow(rowRef);
-                                if (IsFull(writer))
-                                {
-                                    await WriteNewFile(writer, actions, currentTime, overlay, created);
-                                }
+                                deleteWritten = true;
+                                int deleteIndex = deleteWriter.WrittenCount;
+                                var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                                deleteWriter.AddRow(rowRef);
                                 if (cdcWriter != null)
                                 {
-                                    cdcWriter.AddRow(rowRef);
-                                    if (IsFull(cdcWriter))
+                                    // One change row per deleted copy, rolled per copy so a large weight stays bounded
+                                    for (int v = 0; v > weight; v--)
                                     {
-                                        await WriteNewCdcFile(cdcWriter, actions, created);
+                                        cdcWriter.AddRow(rowRef, true);
+                                        if (IsFull(cdcWriter))
+                                        {
+                                            await WriteNewCdcFile(cdcWriter, actions, created);
+                                        }
+                                    }
+                                }
+
+                                pendingDeletes.Add(new RowToDelete()
+                                {
+                                    DeleteIndex = deleteIndex,
+                                    Weight = weight
+                                });
+                                _probes.Add(rowRef);
+                            }
+                            else
+                            {
+                                // One row per copy, rolled per copy so a large weight stays bounded
+                                var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
+                                for (int v = 0; v < weight; v++)
+                                {
+                                    writer.AddRow(rowRef);
+                                    if (IsFull(writer))
+                                    {
+                                        await WriteNewFile(writer, actions, currentTime, overlay, created);
+                                    }
+                                    if (cdcWriter != null)
+                                    {
+                                        cdcWriter.AddRow(rowRef);
+                                        if (IsFull(cdcWriter))
+                                        {
+                                            await WriteNewCdcFile(cdcWriter, actions, created);
+                                        }
                                     }
                                 }
                             }
+                        }
+
+                        // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
+                        if (deleteWriter.WrittenCount >= 100_000)
+                        {
+                            if (table == null)
+                            {
+                                throw new InvalidOperationException("Table should not be null when delete is found");
+                            }
+                            using (var deleteBatch = deleteWriter.GetRecordBatch())
+                            {
+                                await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
+                            }
+                            deleteWriter.NewBatch();
                         }
                     }
 
-                    // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
-                    if (deleteWriter.WrittenCount >= 100_000)
+                    if (deleteWriter.WrittenCount > 0)
                     {
                         if (table == null)
                         {
@@ -908,44 +1049,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         {
                             await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
                         }
-                        deleteWriter.NewBatch();
                     }
-                }
 
-                if (deleteWriter.WrittenCount > 0)
-                {
-                    if (table == null)
+                    await WriteDeleteFiles(fileDeleteVectors, touchedFiles, table, actions, currentTime, writer, overlay, created);
+
+                    if (writer.WrittenCount > 0)
                     {
-                        throw new InvalidOperationException("Table should not be null when delete is found");
+                        await WriteNewFile(writer, actions, currentTime, overlay, created);
                     }
-                    using (var deleteBatch = deleteWriter.GetRecordBatch())
+                    if (cdcWriter != null)
                     {
-                        await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, deleteBatch);
-                    }
-                }
-
-                await WriteDeleteFiles(fileDeleteVectors, touchedFiles, table, actions, currentTime, writer, overlay, created);
-
-                if (writer.WrittenCount > 0)
-                {
-                    await WriteNewFile(writer, actions, currentTime, overlay, created);
-                }
-                if (cdcWriter != null)
-                {
-                    if (deleteWritten)
-                    {
-                        if (cdcWriter.WrittenCount > 0)
+                        if (deleteWritten)
                         {
-                            await WriteNewCdcFile(cdcWriter, actions, created);
+                            if (cdcWriter.WrittenCount > 0)
+                            {
+                                await WriteNewCdcFile(cdcWriter, actions, created);
+                            }
                         }
-                    }
-                    else
-                    {
-                        // Remove written cdc files since there was no delete, the rows are included in the add actions
-                        discarded = RemoveWrittenCdcFiles(actions, created);
-                        if (_discardMode == DiscardMode.Inline)
+                        else
                         {
-                            await DeleteDiscardedInline(discarded);
+                            // Remove written cdc files since there was no delete, the rows are included in the add actions
+                            discarded = RemoveWrittenCdcFiles(actions, created);
+                            if (_discardMode == DiscardMode.Inline)
+                            {
+                                await DeleteDiscardedInline(discarded);
+                            }
                         }
                     }
                 }
@@ -964,6 +1092,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     };
                     _stagedBytes = staged.Bytes;
                     _stagedOverlay = overlay;
+                    if (anchor != 0)
+                    {
+                        anchorWorker!.AnchorStaged(anchor, nextVersion);
+                    }
                     if (discarded != null && _discardMode == DiscardMode.Queued)
                     {
                         // An existing table's id may be null, a claim that never matches

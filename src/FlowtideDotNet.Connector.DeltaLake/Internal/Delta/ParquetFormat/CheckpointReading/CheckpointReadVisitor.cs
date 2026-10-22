@@ -44,6 +44,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
         /// </summary>
         private object? result;
 
+        // Set while a metaData map is read, whose null values are kept
+        private bool keepNullValues;
+
         public CheckpointReadVisitor(Field field, int index)
         {
             indexStack.Push(index);
@@ -527,7 +530,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                 }
                 else if (structType.Fields[c].Name.Equals("configuration", StringComparison.OrdinalIgnoreCase))
                 {
+                    keepNullValues = true;
                     array.Fields[c].Accept(this);
+                    keepNullValues = false;
                     var val = result;
 
                     if (val != null)
@@ -564,7 +569,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                 }
                 else if (structType.Fields[c].Name.Equals("options", StringComparison.OrdinalIgnoreCase))
                 {
+                    keepNullValues = true;
                     array.Fields[c].Accept(this);
+                    keepNullValues = false;
                     deltaMetadataFormat.Options = (Dictionary<string, string>?)result;
                 }
                 fieldStack.Pop();
@@ -716,12 +723,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Checkp
                     indexStack.Pop();
                     fieldStack.Pop();
 
-                    // Check that both key and value is not null
-                    // This check is required since either one can be null when fetched from the result field
-                    // after the Accept call above.
-                    if (key != null && value != null)
+                    // A null key is skipped, a null value outside the metaData maps too
+                    if (key != null && (value != null || keepNullValues))
                     {
-                        vals[key] = value;
+                        vals[key] = value!;
                     }
                 }
 

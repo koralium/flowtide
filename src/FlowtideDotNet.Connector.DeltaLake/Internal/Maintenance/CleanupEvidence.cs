@@ -49,7 +49,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The listing's checks did not complete, or its successor probe started before the last gate
         StaleListing = 18,
         // This admission's counted reads cannot cover the gate; a fresh admission can
-        ReadsSpent = 19
+        ReadsSpent = 19,
+        // An advance's own records no longer authorize it, or another advance reserves
+        AuthorityChanged = 20,
+        // A log name an advance cannot classify
+        Unclassified = 21,
+        // No usable hint at or above an advance's boundary
+        HintUnusable = 22,
+        // The boundary checkpoint is not the content its header names
+        CheckpointReplaced = 23
     }
 
     /// <summary>
@@ -87,6 +95,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // Set when establishment passed
         public CleanupEvidence? Evidence { get; init; }
 
+        // The capability a durable gate checked at a foreign or new-epoch head
+        public TableCapability? Current { get; init; }
+
         public bool Passed => Verdict == GateVerdict.Passed;
 
         // The run's kind, from its evidence once it has one
@@ -112,6 +123,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             GateVerdict.Preempted => Stop == IssuanceStop.Deadline ? MaintenanceReason.JobDeadline : MaintenanceReason.None,
             GateVerdict.Incapable => CleanupCapability.ReasonOf(Capability, Stop),
             GateVerdict.NotOwn or GateVerdict.StageMismatch => MaintenanceReason.CleanupGate,
+            GateVerdict.AuthorityChanged => MaintenanceReason.ManifestSuspended,
+            GateVerdict.Unclassified => MaintenanceReason.UnclassifiedLogFile,
+            GateVerdict.HintUnusable => MaintenanceReason.CleanupGate,
             _ => MaintenanceReason.HistoryChanged
         };
 
@@ -129,6 +143,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     {
         private ContentProof? _frontier;
 
+        // The foreign head a rebase accepted
+        private ContentProof? _accepted;
+
+        // An advance's planned head, rehashed as an anchor wherever the evidence is anchored
+        private ContentProof? _planned;
+
         // The listing sequence when the last gate ended
         private long _gateSequence;
 
@@ -145,7 +165,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public CommitAnchor Anchor { get; }
 
         // Facts trusted only while every source's complete content still hashes the same
-        public TableCapability Capability { get; }
+        public TableCapability Capability { get; private set; }
 
         public string TableId => Anchor.TableId;
 
@@ -405,7 +425,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// Revalidates the evidence against a listing ReadLogAsync checked after the last gate: no rollback, the anchor, frontier and capability sources listed and rehashed in full, and an own head in the anchor's epoch; never throws for runtime failures.
+        /// Takes a foreign head a rebase validated as the frontier and last validated head, with the capability checked there; false for volatile or stopped evidence, a checkpoint or a head below the last validated one.
+        /// </summary>
+        public bool AcceptHead(ContentProof head, TableCapability current)
+        {
+            if (!Durable || StoppedBy != null || head.IsCheckpoint || head.Version < LastValidatedHead)
+            {
+                return false;
+            }
+            _frontier = head;
+            _accepted = head;
+            Frontier = head.Version;
+            LastValidatedHead = head.Version;
+            Capability = current;
+            return true;
+        }
+
+        /// <summary>
+        /// Rehashes a commit proven to an advance's started anchor at every later gate, where missing or replaced it stops the run as the anchor does.
+        /// </summary>
+        public void KeepPlannedHead(ContentProof proof)
+        {
+            _planned = proof;
+        }
+
+        /// <summary>
+        /// Revalidates the evidence against a listing ReadLogAsync checked after the last gate: no rollback, the anchor, a kept planned head, the frontier and capability sources listed and rehashed in full, and an own head in the anchor's epoch; never throws for runtime failures.
         /// </summary>
         public async Task<GateResult> ValidateAsync(CleanupConfiguration configuration, IFileStorage storage, LogEvidence log, CleanupContext context, long? relyFrom = null, GateReads? reads = null)
         {
@@ -446,6 +491,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 {
                     (Anchor.Proof, GateVerdict.AnchorMissing, GateVerdict.AnchorReplaced)
                 };
+                if (_planned != null && _planned.Path.Full != Anchor.Proof.Path.Full)
+                {
+                    checks.Add((_planned, GateVerdict.AnchorMissing, GateVerdict.AnchorReplaced));
+                }
                 if (_frontier != null)
                 {
                     checks.Add((_frontier, GateVerdict.Rollback, GateVerdict.Rollback));
@@ -511,7 +560,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
 
                 var epoch = Epoch(Anchor, headProof);
-                if (epoch != GateVerdict.Passed)
+                // An accepted foreign head passes only while it is the head
+                if (epoch != GateVerdict.Passed && _accepted?.Version != head)
                 {
                     return await ForeignAsync(configuration, storage, log, context, epoch, headProof);
                 }
@@ -545,7 +595,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 CapabilityCheck.Capable when current.Capability!.TableId != TableId =>
                     new GateResult(GateVerdict.TableChanged, $"The table id at {head} is not the anchor's") { Head = head, HeadProof = headProof },
-                CapabilityCheck.Capable => new GateResult(epoch, detail) { Head = head, HeadProof = headProof },
+                CapabilityCheck.Capable => new GateResult(epoch, detail) { Head = head, HeadProof = headProof, Current = current.Capability },
                 _ => OfCapability(current, head)
             };
         }

@@ -150,13 +150,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var storage = new HookFileStorage(inner);
             var logs = new TestLogCollector();
             var commits = 0;
-            DeltaLakeSink.TemporaryTreeCommitHookForTests = name =>
+            var hook = HookTreeCommits(name =>
             {
                 if (name == table)
                 {
                     Interlocked.Increment(ref commits);
                 }
-            };
+            });
             try
             {
                 await using var stream = new DeltaLakeSinkStream(testName, storage);
@@ -196,8 +196,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             finally
             {
-                DeltaLakeSink.TemporaryTreeCommitHookForTests = null;
+                hook.Dispose();
             }
+        }
+
+        // Adds a handler to the sink's static hook beside those of tests running in parallel, until disposed
+        internal static IDisposable HookTreeCommits(Action<string> handler)
+        {
+            UpdateTreeCommitHook(x => (Action<string>?)Delegate.Combine(x, handler));
+            return new TreeCommitHandler(handler);
+        }
+
+        private static void UpdateTreeCommitHook(Func<Action<string>?, Action<string>?> change)
+        {
+            while (true)
+            {
+                var current = Volatile.Read(ref DeltaLakeSink.TemporaryTreeCommitHookForTests);
+                if (Interlocked.CompareExchange(ref DeltaLakeSink.TemporaryTreeCommitHookForTests, change(current), current) == current)
+                {
+                    return;
+                }
+            }
+        }
+
+        private sealed class TreeCommitHandler : IDisposable
+        {
+            private readonly Action<string> _handler;
+
+            public TreeCommitHandler(Action<string> handler)
+            {
+                _handler = handler;
+            }
+
+            public void Dispose() => UpdateTreeCommitHook(x => (Action<string>?)Delegate.Remove(x, _handler));
         }
 
         private static async Task WaitUntil(FlowtideTestStream stream, Func<bool> condition)

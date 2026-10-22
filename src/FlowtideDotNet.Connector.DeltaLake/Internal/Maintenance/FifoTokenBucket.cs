@@ -102,6 +102,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        // No waiter, and more than the reserve on hand
+        public bool HasSpare(long reserve)
+        {
+            lock (_lock)
+            {
+                RefillLocked();
+                return _waiters.Count == 0 && _level > (Int128)reserve * _frequency;
+            }
+        }
+
+        // How long the head of the queue has waited
+        public TimeSpan OldestWait
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _waiters.First is { } first ? _clock.GetElapsedTime(first.Value.Since) : TimeSpan.Zero;
+                }
+            }
+        }
+
         // The largest single take, which never exceeds the burst
         internal long LargestTakeForTests
         {
@@ -116,15 +138,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         private sealed class Waiter
         {
-            public Waiter(long tokens, bool debt)
+            public Waiter(long tokens, bool debt, long since)
             {
                 Tokens = tokens;
                 Debt = debt;
+                Since = since;
             }
 
             public long Tokens { get; }
 
             public bool Debt { get; }
+
+            // The clock's timestamp when it queued
+            public long Since { get; }
 
             public TaskCompletionSource Granted { get; } = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         }
@@ -186,6 +212,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
+        /// <summary>
+        /// Work already done, owed at once without a turn: a deficit every later take waits out.
+        /// </summary>
+        public void Owe(long debt)
+        {
+            if (Incur(debt, 1))
+            {
+                Forfeit(debt);
+            }
+        }
+
         // Records the debt as owed; false when there is none
         private bool Incur(long debt, long turn)
         {
@@ -228,7 +265,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 else
                 {
-                    waiter = new Waiter(tokens, debt);
+                    waiter = new Waiter(tokens, debt, _clock.GetTimestamp());
                     node = _waiters.AddLast(waiter);
                     ScheduleLocked();
                 }

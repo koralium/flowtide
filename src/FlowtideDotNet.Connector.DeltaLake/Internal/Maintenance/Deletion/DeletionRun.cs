@@ -115,6 +115,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         public int Issued { get; init; }
 
         public string? Detail { get; init; }
+
+        // From the first issuance until every submitted delete settled
+        public TimeSpan Elapsed { get; init; }
+
+        // From the first issuance to the last, excluding the final settlement
+        public TimeSpan IssuanceWindow { get; init; }
+
+        // Spent passing the gate
+        public TimeSpan GateElapsed { get; init; }
     }
 
     /// <summary>
@@ -140,7 +149,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         private static readonly TimeSpan s_retryStep = TimeSpan.FromMilliseconds(250);
 
         // Estimated managed bytes per buffered target beside its key's characters
-        private const long TargetOverheadBytes = 48;
+        public const long TargetOverheadBytes = 48;
 
         private readonly DeletionExecutor _executor;
         private readonly ChunkGate _gate;
@@ -235,10 +244,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
             {
                 return End(new SliceResult(Durable ? SliceStatus.Retry : SliceStatus.Stopped, MaintenanceReason.ListingIneligible, Cursor) { Detail = "The storage instance changed during the run" });
             }
+            var gateStarted = _clock.GetTimestamp();
             var gate = await _gate.PassAsync(context);
+            var gateElapsed = _clock.GetElapsedTime(gateStarted);
             if (!gate.Passed)
             {
-                return OfGate(gate);
+                return Timed(OfGate(gate), gateElapsed);
             }
 
             var buffer = new SliceBuffer();
@@ -250,7 +261,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 }
                 catch (CheckpointDeclinedException e) when (buffer.Targets.Count == 0)
                 {
-                    return new SliceResult(SliceStatus.Retry, e.Reason, Cursor) { Gate = gate, Detail = e.Message };
+                    return new SliceResult(SliceStatus.Retry, e.Reason, Cursor) { Gate = gate, Detail = e.Message, GateElapsed = gateElapsed };
                 }
                 catch (CheckpointDeclinedException)
                 {
@@ -258,13 +269,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 }
                 catch (OperationCanceledException) when (context.Stop.IsCancellationRequested)
                 {
-                    return new SliceResult(SliceStatus.Retry, MaintenanceReason.None, Cursor) { Gate = gate, Stop = IssuanceStop.Stopped };
+                    return new SliceResult(SliceStatus.Retry, MaintenanceReason.None, Cursor) { Gate = gate, Stop = IssuanceStop.Stopped, GateElapsed = gateElapsed };
                 }
                 catch (Exception e)
                 {
-                    return new SliceResult(SliceStatus.Retry, MaintenanceReason.Transient, Cursor) { Gate = gate, Detail = $"{e.GetType().Name}: {e.Message}" };
+                    return new SliceResult(SliceStatus.Retry, MaintenanceReason.Transient, Cursor) { Gate = gate, Detail = $"{e.GetType().Name}: {e.Message}", GateElapsed = gateElapsed };
                 }
-                return await IssueAsync(context, gate, buffer);
+                return Timed(await IssueAsync(context, gate, buffer), gateElapsed, buffer.Elapsed, buffer.IssuanceWindow);
             }
             finally
             {
@@ -282,6 +293,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
 
             // The source has nothing after the buffered targets
             public bool Exhausted;
+
+            // From the first issuance until every submitted delete settled
+            public TimeSpan Elapsed;
+
+            // From the first issuance to the last
+            public TimeSpan IssuanceWindow;
         }
 
         // Reads from the cursor until the path or byte limit
@@ -345,7 +362,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                         disabled = true;
                         break;
                     }
-                    if (_clock.GetElapsedTime(started) >= _settings.IssuanceTime)
+                    var issuing = _clock.GetElapsedTime(started);
+                    if (issuing >= _settings.IssuanceTime)
                     {
                         break;
                     }
@@ -358,9 +376,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                     var reason = _executor.Check(target);
                     if (reason != KeepReason.None)
                     {
-                        var kept = DeleteOutcome.Keep(reason);
-                        _executor.Tally.Add(kept);
-                        outcomes[i] = kept;
+                        outcomes[i] = _executor.Withhold(target, reason);
                         // A changed storage invalidates every later target too
                         if (reason == KeepReason.StorageChanged)
                         {
@@ -380,6 +396,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                     pending.Add(task!);
                     issued++;
                     reached = i + 1;
+                    buffer.IssuanceWindow = issuing;
                 }
             }
             finally
@@ -390,6 +407,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                     await task;
                 }
             }
+            buffer.Elapsed = _clock.GetElapsedTime(started);
             Reached = Math.Max(Reached, Cursor + reached);
 
             // The cursor passes settled targets in order; it stops at a durable or log target not done, and at a volatile failure before its leak limit
@@ -405,7 +423,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 {
                     break;
                 }
-                if (!outcome.Done)
+                if (!outcome.Passes)
                 {
                     var holds = durable || targets[i].Kind == TargetKind.Log;
                     if (outcome.Reason == KeepReason.StorageChanged)
@@ -547,7 +565,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                     prefix = false;
                     continue;
                 }
-                if (!settled.Done)
+                if (!settled.Passes)
                 {
                     if (strict || (settled.Status == DeleteStatus.Failed && !LeaksAt(Cursor + i)))
                     {
@@ -568,6 +586,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
 
         // A failure at this position reaches the leak limit, so the slice counts it and passes it
         private bool LeaksAt(long position) => _failedAt == position && _failedSlices + 1 >= MaxFailedSlices;
+
+        // The slice's times, also on the end it latched
+        private SliceResult Timed(SliceResult result, TimeSpan gate, TimeSpan issuance = default, TimeSpan window = default)
+        {
+            var timed = result with { GateElapsed = gate, Elapsed = issuance, IssuanceWindow = window };
+            if (ReferenceEquals(_ended, result))
+            {
+                _ended = timed;
+            }
+            return timed;
+        }
 
         // A stopped or suspended run keeps its end for every later slice
         private SliceResult End(SliceResult result)

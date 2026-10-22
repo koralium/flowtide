@@ -11,16 +11,20 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stowage;
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 {
     /// <summary>
-    /// One sink run's non-build work: the discard drain over the run's route and the staged sweep, both through the maintenance meter.
+    /// One sink run's non-build work: the discard drain over the run's route, the staged sweep and the daily advance, all through the maintenance meter.
     /// </summary>
     internal sealed class DeltaTableCleanup : IMaintenanceCleanup
     {
@@ -39,13 +43,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private readonly ILogger _logger;
         private readonly string _tableName;
         private readonly StagedSweep _sweep;
+        private readonly AdvanceJob _advance;
         private long _warned;
         private int _leaksWarned;
         private Decline? _declined;
+        // The daily slot of the latest concluded advance
+        private long _advancedSlot = long.MinValue;
+        // The daily slot of the latest foreign-head decline
+        private long _foreignSlot = long.MinValue;
+        // The started advance the delete turns execute, null without one
+        private ActiveAdvance? _active;
+        // A moving average of the advance's per-delete latency
+        private long _latencyTicks = CapacityEstimator.DefaultLatency.Ticks;
+        private readonly RetentionCounters _retention;
+        // O, A and the newest started or done advance's cutoff in UTC ticks, unknown until this run learns them
+        private long _oldest = -1;
+        private long _adoption = -1;
+        private long _cutoffTicks = long.MinValue;
+        // Paths and consecutive failed slices the latest retired advance left, none after a done
+        private long _retiredRemaining;
+        private int _retiredFailures;
+        // The advance state outside the delete turns, as the latest job left it
+        private volatile RetentionState _held = RetentionState.Idle;
+        // Set by a ManifestSuspended decline until a recovery leaves nothing unresolved
+        private volatile bool _manifestSuspended;
 
         // Storage is the run's meter, handOff is null for an inline run, and current reads the sink's storage now
         public DeltaTableCleanup(CleanupConfiguration configuration, IFileStorage storage, TimeProvider clock, IOPath table, DiscardHandOff? handOff, Func<IFileStorage?> current,
-            DiscardCounters counters, ILogger? logger, string tableName, SweepCounters? sweepCounters = null)
+            DiscardCounters counters, ILogger? logger, string tableName, SweepCounters? sweepCounters = null, RetentionCounters? retentionCounters = null)
         {
             _configuration = configuration;
             _storage = storage;
@@ -54,6 +79,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             _current = current;
             _counters = counters;
             _sweepCounters = sweepCounters ?? new SweepCounters();
+            _retention = retentionCounters ?? new RetentionCounters();
             _logger = logger ?? NullLogger.Instance;
             _tableName = tableName;
             if (handOff != null)
@@ -67,8 +93,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 MaxOutstanding = configuration.Store.Store is { Kind: StoreKind.S3, Pinned: true } ? 1 : DeletionRun.MaxOutstanding,
                 DeletesDisabled = IssuanceDisabled
             };
-            _sweep = new StagedSweep(configuration, storage, clock, Settings);
+            _sweep = new StagedSweep(configuration, storage, clock, Settings) { Settled = _retention.Add };
+            _advance = new AdvanceJob(configuration, storage, clock) { HandOff = Adopt, Latency = () => Latency, Hooks = AdvanceHooksForTests, Warn = Warn, Prepared = Prepared, Recovered = Recovered, Counters = _retention };
+            AdvanceOffset = OffsetOf(storage, table);
         }
+
+        // Where in each UTC day the table's advance falls
+        internal TimeSpan AdvanceOffset { get; init; }
+
+        internal AdvanceJob AdvanceForTests => _advance;
 
         // Every delete slice of this run uses these; tests lower the drain's limits
         public DeletionRunSettings Settings { get; internal set; }
@@ -89,6 +122,103 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         internal StagedSweep SweepForTests => _sweep;
 
+        internal ActiveAdvance? ActiveForTests => Volatile.Read(ref _active);
+
+        // Every turn of the started advance passes these
+        internal AdvanceHooks AdvanceHooksForTests { get; } = new AdvanceHooks();
+
+        internal AdvancePhaseSlice LogPhaseForTests { get; set; } = AdvanceLogPhase.RunSliceAsync;
+
+        internal AdvancePhaseSlice PayloadPhaseForTests { get; set; } = AdvancePayloadPhase.RunSliceAsync;
+
+        // The advance's per-delete latency, which its demand is priced at
+        internal TimeSpan Latency => TimeSpan.FromTicks(Interlocked.Read(ref _latencyTicks));
+
+        // The sink's counts this run adds to
+        internal RetentionCounters Counters => _retention;
+
+        // The oldest retained version, -1 while unknown or with retention off
+        internal long OldestVersion => _configuration.OptIns.Retention == null ? -1 : Interlocked.Read(ref _oldest);
+
+        // The adoption version, -1 while unknown or with retention off
+        internal long AdoptionVersion => _configuration.OptIns.Retention == null ? -1 : Interlocked.Read(ref _adoption);
+
+        // Seconds from the newest started or done advance's cutoff to the cutoff now, -1 while unknown or with retention off
+        internal double BacklogSeconds
+        {
+            get
+            {
+                var cutoff = Interlocked.Read(ref _cutoffTicks);
+                if (_configuration.OptIns.Retention is not { } retention || cutoff == long.MinValue)
+                {
+                    return -1;
+                }
+                var now = BoundarySelector.Midnight(_clock.GetUtcNow(), retention) + DateTimeOffset.UnixEpoch.UtcTicks;
+                return now > cutoff ? (double)(now - cutoff) / TimeSpan.TicksPerSecond : 0;
+            }
+        }
+
+        // Paths the started advance has left until its done, else those the latest retired one left
+        internal long PayloadRemaining => Volatile.Read(ref _active) switch
+        {
+            null => Interlocked.Read(ref _retiredRemaining),
+            { Phase: AdvancePhase.Done } => 0,
+            var active => Remaining(active)
+        };
+
+        // Consecutive failed slices at the started advance's position, else those the latest retired one left
+        internal int FailedSlices => Volatile.Read(ref _active) switch
+        {
+            null => Volatile.Read(ref _retiredFailures),
+            { Phase: AdvancePhase.Done } => 0,
+            var active => active.Failures
+        };
+
+        // The started advance's part of the state gauge, else the state the latest job left
+        internal RetentionState AdvanceGaugeState => Volatile.Read(ref _active) is { } active ? active.State switch
+        {
+            AdvanceState.Runnable => RetentionState.Runnable,
+            AdvanceState.Paused => RetentionState.Paused,
+            AdvanceState.Rebasing => RetentionState.Rebasing,
+            _ => RetentionState.Suspended
+        } : _held;
+
+        // O and A as each preparation found them
+        private void Prepared(PreparedAdvance prepared)
+        {
+            Interlocked.Exchange(ref _oldest, prepared.O);
+            Interlocked.Exchange(ref _adoption, prepared.A);
+        }
+
+        // A recovery that leaves nothing unresolved ends a manifest suspension
+        private void Recovered(RecoveryResult recovered)
+        {
+            if (recovered.Unresolved.Count == 0)
+            {
+                _manifestSuspended = false;
+            }
+        }
+
+        /// <summary>
+        /// Takes a started or resumed advance into the delete turns; the advance job's hand-off.
+        /// </summary>
+        internal void Adopt(ActiveAdvance active)
+        {
+            Interlocked.Exchange(ref _oldest, active.Started.O);
+            Interlocked.Exchange(ref _adoption, active.Started.A);
+            Interlocked.Exchange(ref _cutoffTicks, active.CutoffTicks);
+            Volatile.Write(ref _active, active);
+        }
+
+        /// <summary>
+        /// Moves the latency average toward a slice's per-delete latency, a quarter of the way for a full slice and in proportion to the deletes counted for a smaller one.
+        /// </summary>
+        internal void ObserveLatency(TimeSpan perDelete, int deletes)
+        {
+            var latency = Interlocked.Read(ref _latencyTicks);
+            Interlocked.Exchange(ref _latencyTicks, latency + (perDelete.Ticks - latency) / (4L * Settings.MaxPaths) * deletes);
+        }
+
         /// <summary>
         /// Only a queued run's delete turn has work of its own, while its route holds hints; the worker asks IsDue instead; lock-free.
         /// </summary>
@@ -98,32 +228,77 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// A queued run's delete turn is due once its route's drainable hints fill a turn, the oldest waited the hand-off's spacing, the allowance runs short, or a failed-closed mark waits; lock-free.
+        /// A queued run's delete turn is due once its route's drainable hints fill a turn, the oldest waited the hand-off's spacing, the allowance runs short, or a failed-closed mark waits, and any run's while a started advance runs or pauses; the advance at the run's first chance and after each finished one, then once a day at the table's offset, and while a started advance waits for its rebase; lock-free.
         /// </summary>
         public bool IsDue(JobKind kind, long head, DateTimeOffset now)
         {
-            return kind == JobKind.Deletion && _handOff != null && _handOff.Find(_route) is { } entry && entry.IsDue(head, now, DeltaMaintenanceWorker.MaxHintsPerTurn);
+            var active = Volatile.Read(ref _active);
+            if (kind == JobKind.Advance)
+            {
+                return _configuration.OptIns.Retention != null && (active == null ? SlotOf(now) > Interlocked.Read(ref _advancedSlot) : active.State == AdvanceState.Rebasing) && !StorageChanged();
+            }
+            return kind == JobKind.Deletion && ((_handOff != null && _handOff.Find(_route) is { } entry && entry.IsDue(head, now, DeltaMaintenanceWorker.MaxHintsPerTurn))
+                || active is { State: AdvanceState.Runnable or AdvanceState.Paused });
         }
 
         public async Task<CleanupResult> RunAsync(JobKind kind, CleanupContext context)
         {
+            if (kind == JobKind.Advance)
+            {
+                if (Volatile.Read(ref _active) is { State: AdvanceState.Rebasing } rebasing)
+                {
+                    var rebased = await AdvanceRebase.RunAsync(rebasing, ExecutionTurn(), context);
+                    Retire(rebasing, context);
+                    return Counted(rebased);
+                }
+                var slot = SlotOf(_clock.GetUtcNow());
+                var advanced = await _advance.RunAsync(context);
+                // A second foreign head in the slot waits for another day
+                if (Concluded(advanced, context) || (advanced.ForeignHead && Interlocked.Exchange(ref _foreignSlot, slot) == slot))
+                {
+                    Interlocked.Exchange(ref _advancedSlot, slot);
+                }
+                if (advanced.Kind == OutcomeKind.Declined && advanced.Reason == MaintenanceReason.ManifestSuspended)
+                {
+                    _manifestSuspended = true;
+                }
+                if (Volatile.Read(ref _active) == null)
+                {
+                    _held = Held(context);
+                }
+                return Counted(advanced);
+            }
             if (kind == JobKind.Deletion)
             {
+                var drained = new CleanupResult(OutcomeKind.NoWork);
                 // A drain that serviced nothing declines its turn, so the worker backs off
                 if (Volatile.Read(ref _declined) is { } declined && ReferenceEquals(declined.Context, context) && Interlocked.CompareExchange(ref _declined, null, declined) == declined)
                 {
-                    return new CleanupResult(OutcomeKind.Declined, declined.Reason, declined.Detail);
+                    drained = new CleanupResult(OutcomeKind.Declined, declined.Reason, declined.Detail);
                 }
-                return new CleanupResult(OutcomeKind.NoWork);
+                if (Volatile.Read(ref _active) is not { } active)
+                {
+                    return drained;
+                }
+                // The started advance's slice after the drain
+                var paused = active.State == AdvanceState.Paused;
+                var turned = await AdvanceExecution.RunTurnAsync(active, ExecutionTurn(), LogPhaseForTests, PayloadPhaseForTests, context);
+                Retire(active, context);
+                // The slice that paused the advance for a changed storage, not its retries
+                if (!paused && turned.Reason == MaintenanceReason.DeletesDisabled && StorageChanged())
+                {
+                    _retention.AddDecline(ListingCheck.StorageChanged);
+                }
+                return turned.Kind == OutcomeKind.NoWork && !turned.NeedsLongAdmission ? drained : Counted(turned);
             }
             if (kind != JobKind.StagedSweep)
             {
-                // No advance or orphan work exists yet
+                // No orphan work exists yet
                 return new CleanupResult(OutcomeKind.NoWork);
             }
             try
             {
-                return await _sweep.RunAsync(context);
+                return Counted(await _sweep.RunAsync(context));
             }
             catch (OperationCanceledException) when (context.Stop.IsCancellationRequested)
             {
@@ -267,6 +442,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             if (StorageChanged())
             {
                 var dropped = entry.DropAll();
+                // The drain that drops hints, not each later turn
+                if (dropped > 0)
+                {
+                    _retention.AddDecline(ListingCheck.StorageChanged);
+                }
                 Dropped(dropped, MaintenanceReason.ListingIneligible, "The storage instance changed during the run, so its discard hints cannot drain");
                 return new DrainResult(dropped);
             }
@@ -301,6 +481,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 entry.Prune();
                 _counters.Add(turn.Executor.Tally);
+                _retention.Add(TargetKind.Payload, turn.Executor.Tally);
                 if (turn.Reason != MaintenanceReason.None && !turn.Progressed)
                 {
                     DeclineTurn(entry, context, turn.Reason, turn.Detail!);
@@ -430,6 +611,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     if (keep != KeepReason.None)
                     {
                         turn.Executor.Tally.Add(DeleteOutcome.Keep(keep));
+                        _retention.AddPathRejection();
                         Warn(MaintenanceReason.PathRejected, $"A discarded output is kept, its name is not deletable here: {keep}");
                         continue;
                     }
@@ -491,6 +673,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Keep(turn, MaintenanceReason.Transient, $"Discard hints are kept, the log listing failed: {e.GetType().Name}: {e.Message}");
                 return null;
             }
+            _retention.AddListing(check);
             switch (check)
             {
                 case ListingCheck.Passed:
@@ -524,6 +707,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     case GateVerdict.Passed:
                         break;
                     case GateVerdict.StorageChanged:
+                        _retention.AddDecline(ListingCheck.StorageChanged);
                         DropAll(entry, turn);
                         return false;
                     case GateVerdict.NotPublished:
@@ -626,6 +810,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     }
                     if ((slice.Status is SliceStatus.Stopped or SliceStatus.Disabled) && StorageChanged())
                     {
+                        _retention.AddDecline(ListingCheck.StorageChanged);
                         DropAll(entry, turn);
                         return;
                     }
@@ -802,6 +987,98 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 _counters.AddDropped(hints);
                 Warn(reason, $"{detail} ({hints} hints)");
             }
+        }
+
+        // The index of the latest daily offset at or before the time
+        private long SlotOf(DateTimeOffset now)
+        {
+            var since = now.UtcTicks - AdvanceOffset.Ticks;
+            return since >= 0 ? since / TimeSpan.TicksPerDay : (since + 1) / TimeSpan.TicksPerDay - 1;
+        }
+
+        private AdvanceTurn ExecutionTurn() => new AdvanceTurn(_configuration, _storage, _clock, Settings, AdvanceHooksForTests, Warn) { Latency = () => Latency, ObserveLatency = ObserveLatency, Counters = _retention };
+
+        // A finished or suspended advance leaves the delete turns; a suspension concludes the day, a finished advance asks for the next
+        private void Retire(ActiveAdvance active, CleanupContext context)
+        {
+            if (active.Phase != AdvancePhase.Done && active.State != AdvanceState.Suspended)
+            {
+                return;
+            }
+            // A done leaves C the oldest retained version; a suspension keeps its authority
+            var done = active.Phase == AdvancePhase.Done;
+            if (done)
+            {
+                Interlocked.Exchange(ref _oldest, active.C);
+            }
+            // Only the gauges' scalars outlive the advance's turns
+            Interlocked.Exchange(ref _retiredRemaining, done ? 0 : Remaining(active));
+            Interlocked.Exchange(ref _retiredFailures, done ? 0 : active.Failures);
+            _held = Held(context);
+            Interlocked.CompareExchange(ref _active, null, active);
+            Interlocked.Exchange(ref _advancedSlot, done ? long.MinValue : SlotOf(_clock.GetUtcNow()));
+        }
+
+        // Planned paths not yet processed
+        private static long Remaining(ActiveAdvance active) => Math.Max(0, active.Started.Totals.Emitted - active.Processed);
+
+        // Outside the delete turns: a manifest suspension, else the most severe of this owner's leases of the table, else idle
+        private RetentionState Held(CleanupContext context)
+        {
+            if (_manifestSuspended)
+            {
+                return RetentionState.Suspended;
+            }
+            return context.Capacity?.StateOf(context.CapacityOwner, TableLeases.KeyOf(RawStorage.Unwrap(_storage), _configuration.Store.Table)) switch
+            {
+                CapacityState.Suspended => RetentionState.Suspended,
+                CapacityState.Paused => RetentionState.Paused,
+                CapacityState.Runnable => RetentionState.Runnable,
+                _ => RetentionState.Idle
+            };
+        }
+
+        // A result that rejected a path, counted once
+        private CleanupResult Counted(CleanupResult result)
+        {
+            if (result.Reason == MaintenanceReason.PathRejected)
+            {
+                _retention.AddPathRejection();
+            }
+            return result;
+        }
+
+        // A stable hash of the table's lease key, spread over the day
+        private static TimeSpan OffsetOf(IFileStorage storage, IOPath table)
+        {
+            string key;
+            try
+            {
+                key = TableLeases.KeyOf(RawStorage.Unwrap(storage), table);
+            }
+            catch
+            {
+                key = table.Full;
+            }
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(key));
+            return TimeSpan.FromTicks((long)(BinaryPrimitives.ReadUInt64LittleEndian(hash) % (ulong)TimeSpan.TicksPerDay));
+        }
+
+        // Settled for the day: work done or found absent, or a decline that waits for another day; a foreign head waits for the anchor that restores coverage
+        private static bool Concluded(CleanupResult result, CleanupContext context)
+        {
+            if (result.NeedsLongAdmission || result.ForeignHead || context.Stopped != IssuanceStop.None)
+            {
+                return false;
+            }
+            return result.Kind switch
+            {
+                OutcomeKind.Completed or OutcomeKind.AlreadyValid or OutcomeKind.NoWork => true,
+                OutcomeKind.Declined => result.Oversized || result.Reason is not (MaintenanceReason.None or MaintenanceReason.Transient or MaintenanceReason.ListingIneligible or MaintenanceReason.JobDeadline
+                    or MaintenanceReason.ManagedMemoryCap or MaintenanceReason.NativeMemoryCap or MaintenanceReason.DiskCap or MaintenanceReason.RetentionNotPublished
+                    or MaintenanceReason.DeleteBacklog),
+                _ => false
+            };
         }
 
         // The kill switch, or a storage this run must not delete through

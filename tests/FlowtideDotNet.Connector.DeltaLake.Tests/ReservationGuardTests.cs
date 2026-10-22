@@ -460,6 +460,44 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task ReservationRestoredWithRetentionOff()
+        {
+            var storage = Memory();
+            await DeltaMaintenanceWorkerTests.Commits(storage, 0, 6);
+            await Root(storage, 3);
+            // An advance to 4 that started, its records valid
+            var fixture = CleanupRecordKit.Fixture(c: 4, o: 0, head: 6, firstJson: 0);
+            var part = CleanupRecordKit.Part(fixture, 0, "/t/a.parquet");
+            var header = CleanupRecordKit.Header(fixture, part);
+            var records = new[] { part, header, CleanupRecordKit.Started(fixture, header) };
+            foreach (var record in records)
+            {
+                await CleanupRecordKit.PlantAsync(storage, "t", record);
+            }
+
+            // A first start, then a restart; neither has a cleanup
+            foreach (var start in new[] { "first", "restart" })
+            {
+                var rig = Create(storage, interval: 100);
+                rig.Worker.Published(6);
+                await rig.TickAsync();
+
+                Assert.Equal(3, rig.Worker.LastCompleted);
+                Assert.Equal(4, rig.Worker.Fence.ReservedFloor);
+                Assert.Null(await DeltaMaintenanceWorkerTests.Hint(rig.Storage));
+                Assert.True(rig.Worker.RequestBuild(new BuildDemand(4, RootPolicy.Auto)));
+                await rig.TickAsync();
+                Assert.Equal((OutcomeKind.Declined, MaintenanceReason.CleanupGate), (rig.Worker.LastOutcomeForTests!.Kind, rig.Worker.LastOutcomeForTests.Reason));
+                Assert.Equal(new long[] { 3 }, await DeltaMaintenanceWorkerTests.Checkpoints(rig.Storage));
+                foreach (var record in records)
+                {
+                    Assert.Equal(record.Bytes, await DeltaTestKit.ReadBytes(storage, Log + record.Name));
+                }
+                await rig.Worker.StopAsync(TimeSpan.FromSeconds(30));
+            }
+        }
+
+        [Fact]
         public async Task InspectionFindsControlsWithoutAnotherRequest()
         {
             var root = Path.Combine(_directory, "hinted");

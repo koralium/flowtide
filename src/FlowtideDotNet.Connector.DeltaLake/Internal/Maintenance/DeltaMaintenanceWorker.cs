@@ -12,9 +12,12 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Stowage;
+using System.Collections.Frozen;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 {
@@ -36,6 +39,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The classified store is eligible for cleanup and still the configured one; off, a torn rebuild also needs every commit from zero
         public bool CleanupEligible { get; init; }
 
+        // The history retention at sink construction; null turns retention off
+        public TimeSpan? Retention { get; init; }
+
         public const long DefaultShortReads = 20_000;
 
         // Counted reads a short admission allows; a job needing more is promoted to the long gate
@@ -46,6 +52,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // On the options clock from admission; cooperative, for every long job
         public TimeSpan LongDeadline { get; init; } = TimeSpan.FromHours(6);
+
+        // Commit opens a long job keeps ahead of its reader; null derives them from the store and the budget's request rate
+        public int? ReadAhead { get; init; }
 
         // The staged sweep runs at the first hand-off of each sink run, then this long after it completes
         public TimeSpan SweepPeriod { get; init; } = TimeSpan.FromDays(1);
@@ -96,6 +105,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     internal sealed record BuildDemand(long Target, RootPolicy Root);
 
     /// <summary>
+    /// The sink's acknowledgement that it staged a commit for an anchor generation at a version.
+    /// </summary>
+    internal sealed record StagedAnchor(long Generation, long Version);
+
+    /// <summary>
     /// What a worker keeps of its last completed build: fixed-size figures, never the history the build listed.
     /// </summary>
     internal sealed record BuildMetrics(double ValidationMs, long SpillBytes, long TransferBytes, BuildMode Mode, bool InheritedGap, long? RootVersion, byte[]? Sha256)
@@ -108,10 +122,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     {
         public BuildResult? Build { get; init; }
 
+        // A cutoff build a cleanup job asks for
+        public BuildDemand? Demand { get; init; }
+
         // The memo that held, for a held decline
         public DeclineMemo? Memo { get; init; }
 
         public Exception? Error { get; init; }
+
+        // As the cleanup result reported it
+        public bool ForeignHead { get; init; }
     }
 
     /// <summary>
@@ -134,6 +154,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // Null for a latest-head build
         public BuildDemand? Demand { get; }
+
+        // A build-kind job that only discovers retention coverage
+        public bool Discovery { get; init; }
 
         // Linked to the worker's stop; a due build cancels it while non-build work waits
         public required CancellationTokenSource Cancellation { get; init; }
@@ -210,6 +233,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // How long a kind that found nothing to act on waits while it still has work
         private static readonly TimeSpan s_noWorkFloor = TimeSpan.FromMinutes(1);
 
+        // How long a retention repair that cannot succeed by retrying stays blocked
+        internal static readonly TimeSpan BlockedFor = TimeSpan.FromHours(24);
+
         private readonly object _sync = new object();
         private readonly DeltaMaintenanceBudget _budget;
         private readonly MaintenanceWorkerSettings _settings;
@@ -217,6 +243,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private readonly IOPath _table;
         private readonly string _leaseKey;
         private readonly string _tableName;
+        // Commit opens a long job keeps ahead of its reader
+        private readonly int _readAhead;
         private readonly ILogger _logger;
         private readonly CancellationTokenSource _cancellation = new CancellationTokenSource();
         private readonly Dictionary<ObjectIdentity, long> _unsupportedRoots = new Dictionary<ObjectIdentity, long>();
@@ -249,6 +277,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private DateTimeOffset _demandRetryAt = DateTimeOffset.MinValue;
         private DateTimeOffset? _sweepDueAt;
         private ControlFence _fence = ControlFence.None;
+        // The anchor channel, lock-free: the outstanding generation or 0, the latest generation issued, and the sink's latest acknowledgement
+        private long _anchorWanted;
+        private long _anchorGeneration;
+        private StagedAnchor? _anchorStaged;
+        // Retention coverage: confirmed, a pending repair that holds periodic builds back, and a repair blocked until a time on the options clock
+        private bool _covered;
+        private bool _repairPending;
+        // When the pending repair began, on the options clock
+        private DateTimeOffset? _repairSince;
+        private DateTimeOffset? _blockedUntil;
+        private MaintenanceReason _blockedReason;
+        // Discovery runs again after a repair, a transient decline or a table id change
+        private bool _rediscover;
+        private long _discoveredAt = -1;
+        private int _discoveryFailures;
+        private DateTimeOffset _discoveryRetryAt = DateTimeOffset.MinValue;
+        private string? _retentionTableId;
+        private bool _retentionAdmitted;
         private readonly KindSchedule[] _schedules = { new KindSchedule(), new KindSchedule(), new KindSchedule(), new KindSchedule(), new KindSchedule() };
 
         // Discard hints a delete turn services before its slice
@@ -274,7 +320,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             _tableName = tableName;
             _logger = logger ?? NullLogger.Instance;
             _leaseKey = TableLeases.KeyOf(storage, table);
+            _readAhead = settings.ReadAhead ?? CommitReadAhead.Depth(StoreDescriptor.Of(RawStorage.Unwrap(storage)), budget.Settings.RequestsPerSecond);
         }
+
+        internal int ReadAheadForTests => _readAhead;
 
         internal WorkerHooks? HooksForTests { get; set; }
 
@@ -342,6 +391,73 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
             }
         }
+
+        // A marked gap-free lineage reaches the adoption epoch, as the latest discovery found
+        internal bool CoverageConfirmed
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _covered;
+                }
+            }
+        }
+
+        // An outstanding anchor or repair build holds periodic builds back
+        internal bool RepairPending
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _repairPending;
+                }
+            }
+        }
+
+        // On the options clock; null while no repair is blocked
+        internal (DateTimeOffset Until, MaintenanceReason Reason)? Blocked
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _blockedUntil is { } until ? (until, _blockedReason) : null;
+                }
+            }
+        }
+
+        // Seconds the pending retention repair has waited on the options clock, 0 without one
+        internal double RepairWaitSeconds
+        {
+            get
+            {
+                lock (_sync)
+                {
+                    return _repairSince is { } since ? Math.Max(0, (_settings.OptionsClock.GetUtcNow() - since).TotalSeconds) : 0;
+                }
+            }
+        }
+
+        // The coverage part of the state gauge: off, a blocked repair, coverage unconfirmed or its repair pending, else idle
+        internal RetentionState CoverageState
+        {
+            get
+            {
+                if (!RetentionOn)
+                {
+                    return RetentionState.Off;
+                }
+                lock (_sync)
+                {
+                    return _blockedUntil != null ? RetentionState.RepairBlocked : !_covered || _repairPending ? RetentionState.Coverage : RetentionState.Idle;
+                }
+            }
+        }
+
+        // Discovery is gated on retention, an eligible store and inspection
+        private bool RetentionOn => _settings.Retention != null && _settings.CleanupEligible && _settings.InspectionEnabled;
 
         public long Target => Interlocked.Read(ref _target);
 
@@ -568,7 +684,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// Asks for a checkpoint at exactly the demand's version and root policy; false while a different demand is pending or when the worker builds nothing.
+        /// Asks for a checkpoint at exactly the demand's version and root policy; false while a different demand is pending, above the hand-off, or when the worker builds nothing.
         /// </summary>
         public bool RequestBuild(BuildDemand demand)
         {
@@ -578,20 +694,70 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 {
                     return _demand == demand;
                 }
-                if (!_settings.InspectionEnabled)
+                if (!_settings.InspectionEnabled || demand.Target > Interlocked.Read(ref _target))
                 {
                     return false;
                 }
-                // The same target keeps its retry time
-                if (_demandBackoffTarget != demand.Target)
-                {
-                    _demandBackoffTarget = demand.Target;
-                    _demandFailures = 0;
-                    _demandRetryAt = DateTimeOffset.MinValue;
-                }
-                _demand = demand;
+                SetDemand(demand);
                 return true;
             }
+        }
+
+        // Under the lock, with the slot empty
+        private void SetDemand(BuildDemand demand)
+        {
+            // The same target keeps its retry time
+            if (_demandBackoffTarget != demand.Target)
+            {
+                _demandBackoffTarget = demand.Target;
+                _demandFailures = 0;
+                _demandRetryAt = DateTimeOffset.MinValue;
+            }
+            _demand = demand;
+        }
+
+        /// <summary>
+        /// The anchor generation the sink should stage a commit for, 0 for none; a volatile read that never takes the lock.
+        /// </summary>
+        public long AnchorRequest => Volatile.Read(ref _anchorWanted);
+
+        /// <summary>
+        /// The sink staged a commit for the generation at the version; never takes the lock, and the worker's read ignores an acknowledgement of an older generation.
+        /// </summary>
+        public void AnchorStaged(long generation, long version)
+        {
+            Volatile.Write(ref _anchorStaged, new StagedAnchor(generation, version));
+            // Answered: the sink stages nothing more for this generation
+            Interlocked.CompareExchange(ref _anchorWanted, 0, generation);
+        }
+
+        /// <summary>
+        /// Asks the sink for an anchor commit and returns its generation, the outstanding one while it is not staged; worker code only, one caller at a time.
+        /// </summary>
+        internal long RequestAnchor()
+        {
+            var wanted = Volatile.Read(ref _anchorWanted);
+            if (wanted != 0)
+            {
+                return wanted;
+            }
+            var generation = Interlocked.Increment(ref _anchorGeneration);
+            Volatile.Write(ref _anchorWanted, generation);
+            return generation;
+        }
+
+        // The version the latest requested anchor was staged at, null while it is not staged
+        internal long? AnchorStagedVersion => Volatile.Read(ref _anchorStaged) is { } staged && staged.Generation == Volatile.Read(ref _anchorGeneration) ? staged.Version : null;
+
+        // Under the lock: asks for an anchor unless one is outstanding or the latest one is staged above what the caller saw
+        private void WantAnchor(long seen)
+        {
+            // The outstanding request is read before the staged version
+            if (Volatile.Read(ref _anchorWanted) != 0 || (AnchorStagedVersion is { } staged && staged > seen))
+            {
+                return;
+            }
+            RequestAnchor();
         }
 
         public void Tick(DateTimeOffset now)
@@ -616,7 +782,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 if (_run != null)
                 {
-                    if (_run.Kind == JobKind.Build)
+                    if (_run.Kind == JobKind.Build && !_run.Discovery)
                     {
                         // Queued time never dates versions; only versions first seen while the job runs do
                         if (_run.Admitted && t > Math.Max(Math.Max(_run.T, _run.ObservedHead), _lastCompleted) && _aboveOrigin == null)
@@ -626,9 +792,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     }
                     else if (_settings.InspectionEnabled)
                     {
-                        // Cleanup dates versions as an idle tick does, and a due build preempts queued or delete-class work
+                        // Cleanup and discovery date versions as an idle tick does, and a due build preempts queued or delete-class work
                         DateUncovered(t, now);
-                        if (PeriodicDue(t, now) || DemandDue())
+                        if (_run.Kind != JobKind.Build && (PeriodicDue(t, now) || DemandDue(t)))
                         {
                             Preempt(_run);
                         }
@@ -637,15 +803,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 var kind = JobKind.Build;
                 BuildDemand? demand = null;
+                var discovery = false;
                 var due = false;
                 if (_settings.InspectionEnabled)
                 {
                     DateUncovered(t, now);
-                    due = PeriodicDue(t, now);
-                    if (!due && DemandDue())
+                    // A demand, then a discovery that may hold periodic builds back, then a periodic build
+                    if (DemandDue(t))
                     {
                         due = true;
                         demand = _demand;
+                    }
+                    else if (DiscoveryDue(t))
+                    {
+                        due = true;
+                        discovery = true;
+                    }
+                    else
+                    {
+                        due = PeriodicDue(t, now);
                     }
                 }
                 // Cleanup only after the mandatory inspection, and only when no build is due
@@ -658,7 +834,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 {
                     return;
                 }
-                var run = new JobRun(t, kind, demand) { Cancellation = CancellationTokenSource.CreateLinkedTokenSource(_cancellation.Token) };
+                var run = new JobRun(t, kind, demand) { Discovery = discovery, Cancellation = CancellationTokenSource.CreateLinkedTokenSource(_cancellation.Token) };
                 _run = run;
                 try
                 {
@@ -687,10 +863,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
-        // The latest-head build: inspection, a dangling hint, the interval or the age trigger, outside its backoff
+        // The latest-head build: inspection, a dangling hint, the interval or the age trigger, outside its backoff and never past a pending retention repair
         private bool PeriodicDue(long t, DateTimeOffset now)
         {
-            if (_inspected && t <= _lastCompleted && _repairDue == null)
+            if (_repairPending || (_inspected && t <= _lastCompleted && _repairDue == null))
             {
                 return false;
             }
@@ -704,8 +880,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 || (_settings.PeriodicEnabled && _settings.MaxAge is { } maxAge && _oldestOrigin is { } origin && now - origin >= maxAge);
         }
 
-        // After the inspection, outside the demand's own backoff
-        private bool DemandDue() => _demand != null && _inspected && _settings.OptionsClock.GetUtcNow() >= _demandRetryAt;
+        // After the inspection, at a handed-off target, outside the demand's own backoff
+        private bool DemandDue(long t) => _demand != null && _inspected && _demand.Target <= t && _settings.OptionsClock.GetUtcNow() >= _demandRetryAt;
+
+        // After the inspection with no demand pending: a blocked repair expired, a rediscovery is wanted, or a staged anchor was handed off
+        private bool DiscoveryDue(long t)
+        {
+            if (!RetentionOn || !_inspected || _demand != null)
+            {
+                return false;
+            }
+            var options = _settings.OptionsClock.GetUtcNow();
+            if (options < _discoveryRetryAt)
+            {
+                return false;
+            }
+            if (_blockedUntil is { } until)
+            {
+                return options >= until;
+            }
+            return _rediscover || (AnchorStagedVersion is { } staged && staged <= t && staged > _discoveredAt);
+        }
 
         // The oldest uncovered version's origin, cleared once nothing is uncovered or nothing is owed
         private void DateUncovered(long t, DateTimeOffset now)
@@ -730,6 +925,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             foreach (var kind in s_cleanupOrder)
             {
+                // With retention on, an advance needs confirmed coverage and no blocked repair
+                if (kind == JobKind.Advance && RetentionOn && (!_covered || _blockedUntil != null))
+                {
+                    continue;
+                }
                 if (options >= _schedules[(int)kind].RetryAt && Cleanup!.IsDue(kind, t, options))
                 {
                     return kind;
@@ -837,7 +1037,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                         run.Long = true;
                         run.State = JobState.Waiting;
                         // Cleanup asked to yield, or facing a due build, gives way before it waits again
-                        if (run.Kind != JobKind.Build && (run.YieldRequested || (_settings.InspectionEnabled && (PeriodicDue(Interlocked.Read(ref _target), _budget.Clock.GetUtcNow()) || DemandDue()))))
+                        var head = Interlocked.Read(ref _target);
+                        if (run.Kind != JobKind.Build && (run.YieldRequested || (_settings.InspectionEnabled && (PeriodicDue(head, _budget.Clock.GetUtcNow()) || DemandDue(head)))))
                         {
                             Preempt(run);
                         }
@@ -916,6 +1117,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             run.AdmittedAt = _budget.Clock.GetUtcNow();
             run.Admitted = true;
             run.TableId = _tableId;
+            // A table id change drops the coverage state
+            if (RetentionOn && (!_retentionAdmitted || run.TableId != _retentionTableId))
+            {
+                if (_retentionAdmitted)
+                {
+                    ForgetCoverage();
+                }
+                _retentionAdmitted = true;
+                _retentionTableId = run.TableId;
+            }
             if (run.Kind != JobKind.Build)
             {
                 return;
@@ -943,6 +1154,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         private async Task BuildJobAsync(JobRun run, CancellationToken token)
         {
+            if (run.Discovery)
+            {
+                await DiscoveryJobAsync(run, token);
+                return;
+            }
             bool inspected;
             lock (_sync)
             {
@@ -956,6 +1172,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 {
                     Warn(MaintenanceReason.CleanupGate, kept, null);
                 }
+                // Before periodic dispatch, from the inspection's listing unless its rebuild changed the log
+                var discovery = RetentionOn ? await DiscoverAsync(run, inspection.Segment, release: false, token) : null;
                 lock (_sync)
                 {
                     _lastCompleted = inspection.LastCompleted;
@@ -963,6 +1181,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     _repairDue = inspection.RepairDue;
                     run.Covered = inspection.LastCompleted;
                     DateCoverage(run, inspection.LastCompleted);
+                    if (discovery != null)
+                    {
+                        ApplyDiscovery(discovery);
+                    }
                     if (inspection.RepairDeclined is { } declined)
                     {
                         run.Outcome = new JobOutcome(OutcomeKind.Declined, MaintenanceReason.TornRepairDeclined, $"{declined.Reason}: {declined.Detail}");
@@ -971,6 +1193,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     {
                         run.Outcome = new JobOutcome(OutcomeKind.NoWork);
                     }
+                }
+                if (discovery != null)
+                {
+                    WarnDiscovery(discovery);
                 }
             }
 
@@ -1024,6 +1250,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private async Task CleanupJobAsync(JobRun run, CancellationToken token)
         {
             var cleanup = Cleanup!;
+            // Only an advance reads them
+            IReadOnlySet<ObjectIdentity> known = FrozenSet<ObjectIdentity>.Empty;
+            if (run.Kind == JobKind.Advance)
+            {
+                lock (_sync)
+                {
+                    known = _unsupportedRoots.Keys.ToHashSet();
+                }
+            }
             var context = new CleanupContext(run, _settings.OptionsClock)
             {
                 Kind = run.Kind,
@@ -1035,7 +1270,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Scratch = run.Scratch!,
                 Memory = run.Memory,
                 Transfer = _budget.Transfer,
-                Stop = token
+                Stop = token,
+                CheckpointInterval = _settings.Interval,
+                RebuildLegacyCheckpoints = _settings.RebuildLegacyCheckpoints,
+                ReadAhead = run.Long ? _readAhead : 1,
+                KnownUnsupported = known,
+                Capacity = _budget.Capacity,
+                CapacityOwner = _cancellation.Token
             };
             CleanupResult result;
             var drained = 0;
@@ -1070,6 +1311,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 (_, OutcomeKind.NoWork) when drained > 0 => new JobOutcome(OutcomeKind.Completed),
                 _ => new JobOutcome(result.Kind, result.Reason, result.Detail)
             };
+            if (result.Demand != null)
+            {
+                run.Outcome = run.Outcome with { Demand = result.Demand };
+            }
+            if (result.ForeignHead)
+            {
+                run.Outcome = run.Outcome with { ForeignHead = true };
+            }
         }
 
         private async Task HoldAsync(string point)
@@ -1101,6 +1350,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                         {
                             ApplyCleanupOutcome(run, duration);
                         }
+                        else if (run.Discovery)
+                        {
+                            ApplyDiscoveryOutcome(run, duration);
+                        }
                         else
                         {
                             if (run.Demand != null)
@@ -1111,6 +1364,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                             {
                                 ApplyOutcome(run, Interlocked.Read(ref _target), duration);
                             }
+                            LoseCoverageOnGap(run.Outcome);
                             _lastDurationMs = duration.TotalMilliseconds;
                         }
                     }
@@ -1186,6 +1440,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         private bool DueAfterInspection(JobRun run)
         {
+            if (_repairPending)
+            {
+                return false;
+            }
             if (_repairDue != null)
             {
                 return true;
@@ -1321,24 +1579,70 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     if (_demand == run.Demand)
                     {
                         _demand = null;
-                        _demandFailures = 0;
+                        // A repair keeps its failures until a destination read confirms it
+                        if (!_repairPending)
+                        {
+                            _demandFailures = 0;
+                        }
                         _demandRetryAt = DateTimeOffset.MinValue;
+                    }
+                    // A repair releases periodic builds only once a destination read proves its coverage
+                    if (_repairPending)
+                    {
+                        _rediscover = true;
+                        _discoveryRetryAt = DateTimeOffset.MinValue;
                     }
                     break;
                 case OutcomeKind.Declined:
                 case OutcomeKind.HeldDecline:
-                    // Final for this request; the target keeps its retry time
-                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
                     if (_demand == run.Demand)
                     {
                         _demand = null;
                     }
+                    // Only a repair blocks; a cutoff build backs off
+                    if (RetentionOn && _repairPending && Lasting(outcome.Reason))
+                    {
+                        Block(outcome.Reason);
+                        break;
+                    }
+                    // Final for this request; the target keeps its retry time
+                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
+                    if (_repairPending)
+                    {
+                        // A repair that keeps declining blocks once its backoff saturates
+                        if (Saturated(_demandFailures))
+                        {
+                            Block(outcome.Reason);
+                            break;
+                        }
+                        // Otherwise it is discovered again after the backoff
+                        _rediscover = true;
+                        _discoveryRetryAt = _demandRetryAt;
+                    }
                     break;
                 case OutcomeKind.Failed:
-                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
+                    var unsupported = false;
                     if (outcome.Build?.RootIdentity is { } root && outcome.Reason is MaintenanceReason.RootDecodeFailure or MaintenanceReason.SidecarRoot)
                     {
                         AddUnsupported(root, _budget.NextFactSequence());
+                        unsupported = true;
+                    }
+                    Backoff(ref _demandFailures, ref _demandRetryAt, duration);
+                    if (RetentionOn && Saturated(_demandFailures))
+                    {
+                        // A demand that keeps failing is dropped, and a repair blocks
+                        _demand = null;
+                        if (_repairPending)
+                        {
+                            Block(outcome.Reason);
+                        }
+                    }
+                    else if (_repairPending && (unsupported || outcome.Reason == MaintenanceReason.TargetNotInLog))
+                    {
+                        // A repair whose root is unsupported or whose target left the log is discovered again after the backoff
+                        _demand = null;
+                        _rediscover = true;
+                        _discoveryRetryAt = _demandRetryAt;
                     }
                     break;
             }
@@ -1349,6 +1653,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         {
             var schedule = _schedules[(int)run.Kind];
             var kind = run.Outcome!.Kind;
+            if (RetentionOn)
+            {
+                // Republished by the anchor commit's metaData
+                if (run.Outcome.Reason == MaintenanceReason.RetentionNotPublished)
+                {
+                    WantAnchor(run.ObservedHead);
+                }
+                // A cutoff build at a handed-off version, only over confirmed coverage and into an empty slot
+                if (run.Outcome.Demand is { } cutoff && cutoff.Target <= run.ObservedHead && _covered && _blockedUntil == null && _demand == null)
+                {
+                    SetDemand(cutoff);
+                }
+                // An advance that found the cutoff's root gapped or a head it cannot establish ends coverage
+                if (run.Kind == JobKind.Advance && _covered && (run.Outcome is { Kind: OutcomeKind.NoWork, Reason: MaintenanceReason.NoAdmissibleRoot } || run.Outcome.ForeignHead))
+                {
+                    _covered = false;
+                    _rediscover = true;
+                    Backoff(ref _discoveryFailures, ref _discoveryRetryAt, duration);
+                }
+            }
             if (run.Kind == JobKind.StagedSweep)
             {
                 // Due a period after any attempt that ran; a failure backs off and preempted work stays due
@@ -1397,6 +1721,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 var schedule = _schedules[(int)run.Kind];
                 Backoff(ref schedule.Failures, ref schedule.RetryAt, spent);
             }
+            else if (run.Discovery)
+            {
+                Backoff(ref _discoveryFailures, ref _discoveryRetryAt, spent);
+            }
             else if (run.Demand != null)
             {
                 Backoff(ref _demandFailures, ref _demandRetryAt, spent);
@@ -1427,6 +1755,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             retryAt = _settings.OptionsClock.GetUtcNow() + delay;
         }
 
+        // The backoff of this many failures has reached its cap
+        private static bool Saturated(int failures) => failures > 0 && (s_backoffBase.Ticks << Math.Min(failures - 1, 5)) >= s_backoffCap.Ticks;
+
         private static JobOutcome OutcomeOf(BuildResult result)
         {
             var kind = result.Status switch
@@ -1450,8 +1781,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             };
         }
 
-        // HintKept: why a control record kept the hint below a valid checkpoint
-        private sealed record Inspection(long LastCompleted, long? RepairDue, BuildResult? RepairDeclined, string? HintKept);
+        // HintKept: why a control record kept the hint below a valid checkpoint; Segment: the listing it made, null once a rebuild changed the log
+        private sealed record Inspection(long LastCompleted, long? RepairDue, BuildResult? RepairDeclined, string? HintKept, DeltaLogSegment? Segment);
 
         /// <summary>
         /// Classifies the newest checkpoint at or below T once per run; nothing above T is considered.
@@ -1471,6 +1802,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             long lastCompleted = -1;
             BuildResult? repairDeclined = null;
             string? hintKept = null;
+            var changed = false;
             var checkpoint = segment.Listing.Checkpoints.FirstOrDefault(x => x.Version <= target);
             if (checkpoint != null)
             {
@@ -1513,6 +1845,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                                 case BuildStatus.Completed:
                                 case BuildStatus.AlreadyValid:
                                     lastCompleted = checkpoint.Version;
+                                    changed = true;
                                     break;
                                 case BuildStatus.Declined:
                                     // A later build above the torn checkpoint can still supersede it
@@ -1531,7 +1864,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             // Kernel fails on a hint with no complete checkpoint at or after it, so that hint is due for repair
             long? repairDue = CheckpointInspector.IsDangling(hint, segment, target) ? hint!.Version : null;
-            return new Inspection(lastCompleted, repairDue, repairDeclined, hintKept);
+            return new Inspection(lastCompleted, repairDue, repairDeclined, hintKept, changed ? null : segment);
         }
 
         // What a fetch may read from the cache; nothing without a table id
@@ -1540,6 +1873,276 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             lock (_sync)
             {
                 return run.TableId != null ? new RootCacheScope(_budget.Scratch.Cache, _storage, run.TableId, _weakFloor) : null;
+            }
+        }
+
+        // One listing and a discovery over it; a pending repair is released only by a destination read
+        private async Task DiscoveryJobAsync(JobRun run, CancellationToken token)
+        {
+            bool release;
+            lock (_sync)
+            {
+                release = _repairPending;
+            }
+            var discovery = await DiscoverAsync(run, null, release, token);
+            bool blocked;
+            lock (_sync)
+            {
+                blocked = ApplyDiscovery(discovery);
+            }
+            if (blocked)
+            {
+                Warn(MaintenanceReason.HistoryChanged, discovery.Kind == DiscoveryKind.Anchor
+                    ? $"Another writer kept committing above the anchor commits; the retention repair waits {BlockedFor}"
+                    : $"Repair builds kept going unconfirmed as the table changed; the retention repair waits {BlockedFor}", null);
+            }
+            run.Outcome = discovery.Kind is DiscoveryKind.Declined or DiscoveryKind.Undecided
+                ? new JobOutcome(OutcomeKind.Declined, discovery.Reason, discovery.Detail)
+                : new JobOutcome(OutcomeKind.NoWork);
+        }
+
+        // Throws only when the worker stops or the reads need long admission; a failed read leaves the discovery undecided
+        private async Task<Discovery> DiscoverAsync(JobRun run, DeltaLogSegment? segment, bool release, CancellationToken token)
+        {
+            try
+            {
+                segment ??= await new StowageCheckpointTransport(_storage, _table).ListAsync(token);
+                return await CoverageDiscovery.DiscoverAsync(segment, run.ObservedHead, release, _settings.RebuildLegacyCheckpoints, new CoverageReads(this, run, token));
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (LongAdmissionNeededException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                return new Discovery(DiscoveryKind.Undecided, run.ObservedHead, Reason: ReasonOf(e), Detail: e.Message);
+            }
+        }
+
+        // Under the lock: a decided discovery replaces the coverage state, an undecided one runs again after a backoff; true when a repair that stayed unconfirmed blocked
+        private bool ApplyDiscovery(Discovery discovery)
+        {
+            if (discovery.Kind == DiscoveryKind.Undecided)
+            {
+                _rediscover = true;
+                Backoff(ref _discoveryFailures, ref _discoveryRetryAt, default);
+                // A pending repair whose discovery stays undecided blocks once that backoff saturates
+                if (_repairPending && Saturated(_discoveryFailures))
+                {
+                    Block(discovery.Reason);
+                }
+                return false;
+            }
+            // Asked for again, as after a repair build, not brought by a handed-off anchor
+            var again = _rediscover;
+            _rediscover = false;
+            _discoveredAt = Math.Max(_discoveredAt, discovery.V);
+            _discoveryFailures = 0;
+            _discoveryRetryAt = DateTimeOffset.MinValue;
+            _blockedUntil = null;
+            // A pending repair starts without the failures or backoff of an earlier demand
+            if (!_repairPending && discovery.Kind is DiscoveryKind.Anchor or DiscoveryKind.Repair)
+            {
+                _demandFailures = 0;
+                _demandRetryAt = DateTimeOffset.MinValue;
+            }
+            switch (discovery.Kind)
+            {
+                case DiscoveryKind.Covered:
+                    // A confirmed repair's failures end with it
+                    if (_repairPending)
+                    {
+                        _demandFailures = 0;
+                    }
+                    _covered = true;
+                    _repairPending = false;
+                    _repairSince = null;
+                    break;
+                case DiscoveryKind.Anchor:
+                    _covered = false;
+                    // A repair that keeps needing anchors past their backoff blocks as a failing one does
+                    if (Unconfirmed(discovery.V))
+                    {
+                        return true;
+                    }
+                    _repairPending = true;
+                    _repairSince ??= _settings.OptionsClock.GetUtcNow();
+                    WantAnchor(discovery.V);
+                    break;
+                case DiscoveryKind.Repair:
+                    // A completed repair build its confirmation found unconfirmed counts as the anchor arm does; a failed one counted already
+                    if (again && _demandRetryAt == DateTimeOffset.MinValue && Unconfirmed(discovery.V))
+                    {
+                        return true;
+                    }
+                    // Discovered again while pending, the repair keeps the failures and backoff of its earlier targets
+                    var failures = _repairPending ? _demandFailures : 0;
+                    var retryAt = _repairPending ? _demandRetryAt : DateTimeOffset.MinValue;
+                    _covered = false;
+                    _repairPending = true;
+                    _repairSince ??= _settings.OptionsClock.GetUtcNow();
+                    if (_demand == null)
+                    {
+                        SetDemand(discovery.Demand!);
+                        _demandFailures = Math.Max(_demandFailures, failures);
+                        _demandRetryAt = retryAt > _demandRetryAt ? retryAt : _demandRetryAt;
+                    }
+                    else if (_demand != discovery.Demand)
+                    {
+                        // With the slot taken, discovered again once it settles
+                        _rediscover = true;
+                    }
+                    break;
+                case DiscoveryKind.Declined:
+                    _covered = false;
+                    Block(discovery.Reason);
+                    break;
+            }
+            return false;
+        }
+
+        // Under the lock: a pending repair found unconfirmed past its backoff counts once; true when that blocks it
+        private bool Unconfirmed(long v)
+        {
+            // A race lost at this target already counted
+            var counted = _demandBackoffTarget == v && _demandRetryAt != DateTimeOffset.MinValue;
+            if (!_repairPending || _settings.OptionsClock.GetUtcNow() < _demandRetryAt || counted)
+            {
+                return false;
+            }
+            Backoff(ref _demandFailures, ref _demandRetryAt, default);
+            if (!Saturated(_demandFailures))
+            {
+                return false;
+            }
+            Block(MaintenanceReason.HistoryChanged);
+            return true;
+        }
+
+        // A discovery job's findings were applied in the job; only a failure that escaped it backs off
+        private void ApplyDiscoveryOutcome(JobRun run, TimeSpan duration)
+        {
+            if (run.Outcome!.Kind == OutcomeKind.Failed)
+            {
+                _rediscover = true;
+                Backoff(ref _discoveryFailures, ref _discoveryRetryAt, duration);
+            }
+        }
+
+        // Under the lock: a built checkpoint that inherited a gap ends confirmed coverage, which is discovered again
+        private void LoseCoverageOnGap(JobOutcome? outcome)
+        {
+            if (_covered && outcome is { Kind: OutcomeKind.Completed, Build.Checkpoint.Marker.Inherited: not null })
+            {
+                _covered = false;
+                _rediscover = true;
+            }
+        }
+
+        // Under the lock: a repair a retry cannot fix waits a day, and periodic builds resume meanwhile
+        private void Block(MaintenanceReason reason)
+        {
+            _blockedUntil = _settings.OptionsClock.GetUtcNow() + BlockedFor;
+            _blockedReason = reason;
+            _repairPending = false;
+            _repairSince = null;
+        }
+
+        // Under the lock: the demand, anchor, block and coverage of another table id are dropped and discovered again
+        private void ForgetCoverage()
+        {
+            _demand = null;
+            _demandBackoffTarget = null;
+            _demandFailures = 0;
+            _demandRetryAt = DateTimeOffset.MinValue;
+            _covered = false;
+            _repairPending = false;
+            _repairSince = null;
+            _blockedUntil = null;
+            _discoveryFailures = 0;
+            _discoveryRetryAt = DateTimeOffset.MinValue;
+            _rediscover = _inspected;
+            Interlocked.Exchange(ref _anchorWanted, 0);
+            Volatile.Write(ref _anchorStaged, null);
+        }
+
+        // Declines a retry can resolve: races, transient errors and resource caps; a long build's deadline is not one
+        private static bool Lasting(MaintenanceReason reason) => reason is not (MaintenanceReason.CheckpointExists or MaintenanceReason.TargetNotInLog
+            or MaintenanceReason.Transient or MaintenanceReason.Unexpected
+            or MaintenanceReason.ManagedMemoryCap or MaintenanceReason.NativeMemoryCap or MaintenanceReason.DiskCap);
+
+        private void WarnDiscovery(Discovery discovery)
+        {
+            if (discovery.Kind is DiscoveryKind.Declined or DiscoveryKind.Undecided)
+            {
+                Warn(discovery.Reason, discovery.Detail, null);
+            }
+        }
+
+        /// <summary>
+        /// A discovery's reads, each one counted: strict commit headers, the Auto walk with the worker's unsupported roots, and uncached destination reads.
+        /// </summary>
+        private sealed class CoverageReads : ICoverageReads
+        {
+            private readonly DeltaMaintenanceWorker _worker;
+            private readonly JobRun _run;
+            private readonly CancellationToken _token;
+            private readonly IReadOnlySet<ObjectIdentity> _known;
+            private readonly RootCacheScope? _cache;
+            private long _reads;
+
+            public CoverageReads(DeltaMaintenanceWorker worker, JobRun run, CancellationToken token)
+            {
+                _worker = worker;
+                _run = run;
+                _token = token;
+                lock (worker._sync)
+                {
+                    _known = worker._unsupportedRoots.Keys.ToHashSet();
+                }
+                _cache = worker.CacheScope(run);
+            }
+
+            public async Task<CommitProvenance?> ProvenanceAsync(LogTransactionFile commit)
+            {
+                Count();
+                var header = await CommitHeaderReader.ReadAsync(_worker._storage, commit.IOEntry.Path, HeaderMode.Strict, null, _token);
+                return header == null ? null : CommitProvenance.FromStrict(commit.Version, header);
+            }
+
+            public Task<RootPrediction> PredictAsync(IReadOnlyList<LogTransactionFile> candidates)
+            {
+                return CheckpointProbe.PredictAutoRootAsync(new StowageCheckpointTransport(_worker._storage, _worker._table), _run.Scratch!, _run.Memory, _worker._budget.Transfer,
+                    candidates, _known, _cache, Count, _token);
+            }
+
+            public async Task<bool?> ConfirmAsync(LogTransactionFile checkpoint)
+            {
+                Count();
+                var read = await DestinationCheckpoint.ReadAsync(_worker._table, _worker._storage, checkpoint, _run.Scratch!, _run.Memory, _worker._budget.Transfer, null, null, _token);
+                return read.Status switch
+                {
+                    DestinationStatus.Read => read.GapFree,
+                    DestinationStatus.Invalid => false,
+                    _ => null
+                };
+            }
+
+            // Before each read: a short admission whose reads are spent is promoted, a long one stops at its deadline
+            private void Count()
+            {
+                if (_run.Deadline is { } deadline && _worker._settings.OptionsClock.GetUtcNow() >= deadline)
+                {
+                    throw new CheckpointDeclinedException(MaintenanceReason.JobDeadline, DeclineDependency.None, $"The job deadline {deadline:O} passed");
+                }
+                if (!_run.Long && ++_reads > _worker._settings.ShortReads)
+                {
+                    throw new LongAdmissionNeededException();
+                }
             }
         }
 
@@ -1565,6 +2168,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 Codec = _settings.Codec,
                 RebuildLegacyCheckpoints = _settings.RebuildLegacyCheckpoints,
                 CleanupEligible = _settings.CleanupEligible,
+                ReadAhead = run.Long ? _readAhead : 1,
                 PublishFaultForTests = HooksForTests?.PublishFault
             };
             var request = new BuildRequest()
@@ -1620,6 +2224,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                         _budget.AddDetached(1);
                     }
                 }
+                // This worker's demand no longer counts as runnable
+                _budget.Capacity.Pause(_cancellation.Token);
             }
             catch (Exception e)
             {

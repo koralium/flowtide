@@ -210,6 +210,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References
             }
         }
 
+        /// <summary>
+        /// Streams the candidates whose comparison key a protection entry holds, both sides read once in key order; each set must have been created for its side, and both hold keys of one domain.
+        /// </summary>
+        public static PathSetIntersection Intersection(PathSet candidates, PathSet protection)
+        {
+            if (candidates.Role != PathRole.Candidate || protection.Role != PathRole.Protection)
+            {
+                throw new ArgumentException($"An intersection takes a candidate set and a protection set, not {candidates.Role} and {protection.Role}");
+            }
+            // Keys of different domains never compare equal
+            if (candidates.Domain != protection.Domain)
+            {
+                throw new ArgumentException($"An intersection takes two sets of one key domain, not {candidates.Domain?.Identity} and {protection.Domain?.Identity}");
+            }
+            var left = candidates.Open();
+            try
+            {
+                return new PathSetIntersection(left, protection.Open());
+            }
+            catch
+            {
+                left.Dispose();
+                throw;
+            }
+        }
+
         private void Reserve(int length)
         {
             if (_buffer.Length >= length)
@@ -345,6 +371,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References
         public ReadOnlySpan<byte> DeletionPath => _candidates.DeletionPath;
 
         public ReadOnlySpan<byte> Payload => _candidates.Payload;
+
+        public string DeletionPathText => Encoding.UTF8.GetString(_candidates.DeletionPath);
+
+        public void Dispose()
+        {
+            _candidates.Dispose();
+            _protection.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Candidates a protection key holds, merged in key order with one cursor on each side; an entry without a deletion path is never emitted.
+    /// </summary>
+    internal sealed class PathSetIntersection : IDisposable
+    {
+        private readonly PathSetReader _candidates;
+        private readonly PathSetReader _protection;
+        private bool _started;
+        private bool _protectionHas;
+
+        internal PathSetIntersection(PathSetReader candidates, PathSetReader protection)
+        {
+            _candidates = candidates;
+            _protection = protection;
+        }
+
+        public bool MoveNext()
+        {
+            if (!_started)
+            {
+                _started = true;
+                _protectionHas = _protection.MoveNext();
+            }
+            while (_protectionHas && _candidates.MoveNext())
+            {
+                var key = _candidates.Key;
+                while (_protectionHas && _protection.Key.SequenceCompareTo(key) < 0)
+                {
+                    _protectionHas = _protection.MoveNext();
+                }
+                if (_protectionHas && _protection.Key.SequenceEqual(key) && !_candidates.DeletionPath.IsEmpty)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         public string DeletionPathText => Encoding.UTF8.GetString(_candidates.DeletionPath);
 
