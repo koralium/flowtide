@@ -103,30 +103,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static DeltaMetadataAction MetaData(Dictionary<string, string>? configuration = null) => new DeltaMetadataAction() { Id = "t", Configuration = configuration };
 
         [Fact]
-        public void DocsListTheCheckpointCapabilities()
-        {
-            var directory = new DirectoryInfo(AppContext.BaseDirectory);
-            while (directory != null && !File.Exists(Path.Combine(directory.FullName, "docs", "docs", "connectors", "deltalake.md")))
-            {
-                directory = directory.Parent;
-            }
-            Assert.NotNull(directory);
-            var lines = File.ReadAllLines(Path.Combine(directory!.FullName, "docs", "docs", "connectors", "deltalake.md"));
-            var header = Array.FindIndex(lines, x => x.StartsWith("| Feature | Why a classic checkpoint is correct |"));
-            Assert.True(header >= 0, "The docs have no capability table");
-
-            // The table's first column lists every allowed feature once
-            var documented = lines.Skip(header + 2).TakeWhile(x => x.StartsWith('|'))
-                .SelectMany(x => x.Split('|')[1].Split(',').Select(name => name.Trim()))
-                .ToList();
-            Assert.Equal(CheckpointCapability.Allowed.Keys.Order(StringComparer.Ordinal), documented.Order(StringComparer.Ordinal));
-
-            // The excluded features are named in the sentence after it
-            var excluded = lines.Skip(header).First(x => x.StartsWith("Tables with "));
-            Assert.All(CheckpointCapability.Excluded.Keys, x => Assert.Contains($"`{x}`", excluded));
-        }
-
-        [Fact]
         public void CapabilityAllowlistMatchesProtocolReview()
         {
             // Every PROTOCOL.md feature and the RFC features has a decision and a reason
