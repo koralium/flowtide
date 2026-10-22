@@ -16,6 +16,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
 using Microsoft.Extensions.Time.Testing;
 using Stowage;
 using System.Diagnostics.Metrics;
+using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -575,12 +576,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             };
             void Record(Instrument instrument, double value, ReadOnlySpan<KeyValuePair<string, object?>> tags)
             {
-                var name = instrument.Name;
+                var name = new StringBuilder(instrument.Name);
                 foreach (var tag in tags)
                 {
-                    name += $"{{{tag.Key}={tag.Value}}}";
+                    name.Append('{').Append(tag.Key).Append('=').Append(tag.Value).Append('}');
                 }
-                values[name] = value;
+                values[name.ToString()] = value;
             }
             listener.SetMeasurementEventCallback<long>((instrument, value, tags, _) => Record(instrument, value, tags));
             listener.SetMeasurementEventCallback<double>((instrument, value, tags, _) => Record(instrument, value, tags));

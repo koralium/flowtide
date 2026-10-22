@@ -210,7 +210,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // A quarter of the way as a full slice, or one delete's share of it
             var counted = issuing ? settings.MaxPaths : 1;
-            var expected = CapacityEstimator.DefaultLatency + (elapsed - CapacityEstimator.DefaultLatency) * counted / (4 * settings.MaxPaths);
+            var expected = CapacityEstimator.DefaultLatency + (elapsed - CapacityEstimator.DefaultLatency) * counted / (4.0 * settings.MaxPaths);
             Assert.InRange(rig.Cleanup.Latency, expected - TimeSpan.FromMilliseconds(1), expected + TimeSpan.FromMilliseconds(1));
         }
 
