@@ -121,6 +121,11 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public TimeSpan? HistoryRetention { get; set; } = null;
 
         /// <summary>
+        /// Gets or sets how often files under the table that no retained version references are swept, at least one day and seven or more recommended; requires history retention, null turns scheduled sweeps off.
+        /// </summary>
+        public TimeSpan? OrphanFileSweepInterval { get; set; } = null;
+
+        /// <summary>
         /// The clock for every timestamp the sink writes.
         /// </summary>
         internal TimeProvider TimeProvider { get; set; } = TimeProvider.System;

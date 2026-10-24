@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     internal sealed class CleanupConfiguration
     {
         internal const string RetentionOption = nameof(DeltaLakeOptions.HistoryRetention);
-        internal const string OrphanOption = "OrphanFileSweepInterval";
+        internal const string OrphanOption = nameof(DeltaLakeOptions.OrphanFileSweepInterval);
         internal const string AssertionOption = nameof(DeltaLakeOptions.AssumeCompleteStorageListing);
         internal const string StorageOption = nameof(DeltaLakeOptions.StorageLocation);
 

@@ -18,7 +18,6 @@ using Microsoft.Extensions.Time.Testing;
 using Stowage;
 using Stowage.Impl;
 using System.Collections.Concurrent;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Xunit.Abstractions;
@@ -298,36 +297,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return ChunkGate.ForStages(configuration, storage, (_, _) => Task.FromResult(new GateResult(GateVerdict.Passed)));
         }
 
-        // A directory link: a symbolic link where the process may create one, otherwise a Windows junction; false when neither can be made
-        private bool TryLinkDirectory(string link, string target)
+        // A directory link, removed with the test's folders; false when none can be made
+        private async Task<bool> TryLinkDirectoryAsync(string link, string target)
         {
-            try
-            {
-                Directory.CreateSymbolicLink(link, target);
-                _links.Add(link);
-                return true;
-            }
-            catch (IOException)
-            {
-            }
-            catch (UnauthorizedAccessException)
-            {
-            }
-            if (!OperatingSystem.IsWindows())
-            {
-                return false;
-            }
-            var start = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, RedirectStandardOutput = true, RedirectStandardError = true, CreateNoWindow = true };
-            start.ArgumentList.Add("/c");
-            start.ArgumentList.Add("mklink");
-            start.ArgumentList.Add("/J");
-            start.ArgumentList.Add(link);
-            start.ArgumentList.Add(target);
-            using var process = Process.Start(start)!;
-            process.StandardOutput.ReadToEnd();
-            process.StandardError.ReadToEnd();
-            process.WaitForExit();
-            if (process.ExitCode != 0 || !Directory.Exists(link))
+            if (!await DirectoryLinks.TryCreateAsync(link, target))
             {
                 return false;
             }
@@ -408,7 +381,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // Windows can always make a junction; elsewhere a file system that takes no symbolic link is the only reason to skip
             var probe = Path.Combine(_directory, "probe-" + ScratchOwners.ShortId());
-            if (!OperatingSystem.IsWindows() && !TryLinkDirectory(probe, outside))
+            if (!OperatingSystem.IsWindows() && !await TryLinkDirectoryAsync(probe, outside))
             {
                 _output.WriteLine("SKIPPED: this file system creates no directory link");
                 return;
@@ -417,7 +390,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // The table root itself is a link to another directory
             var linkedRoot = Path.Combine(_directory, ScratchOwners.ShortId());
             Directory.CreateDirectory(linkedRoot);
-            Assert.True(TryLinkDirectory(Path.Combine(linkedRoot, "t"), Path.Combine(outside, "root")), "No link at the table root");
+            Assert.True(await TryLinkDirectoryAsync(Path.Combine(linkedRoot, "t"), Path.Combine(outside, "root")), "No link at the table root");
             var table = Local(root: linkedRoot);
             Assert.Equal(DeleteOutcome.Keep(KeepReason.ReparsePoint), await table.Executor.DeleteAsync(table.Target("part-1.parquet"), false, default));
             Assert.True(File.Exists(Path.Combine(outside, "root", "part-1.parquet")));
@@ -425,12 +398,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var plain = Local();
             plain.Put("part-4.parquet");
             // A directory between the root and the target is a link
-            Assert.True(TryLinkDirectory(plain.Native("sub"), Path.Combine(outside, "sub")), "No link between the root and the target");
+            Assert.True(await TryLinkDirectoryAsync(plain.Native("sub"), Path.Combine(outside, "sub")), "No link between the root and the target");
             Assert.Equal(DeleteOutcome.Keep(KeepReason.ReparsePoint), await plain.Executor.DeleteAsync(plain.Target("sub/part-2.parquet"), false, default));
             Assert.True(File.Exists(Path.Combine(outside, "sub", "part-2.parquet")));
 
             // The target itself is a link: a file link where the process may create one, otherwise a directory link
-            Assert.True(TryLinkFile(plain.Native("part-3.parquet"), Path.Combine(outside, "leaf.parquet")) || TryLinkDirectory(plain.Native("part-3.parquet"), Path.Combine(outside, "leaf")), "No link at the target");
+            Assert.True(TryLinkFile(plain.Native("part-3.parquet"), Path.Combine(outside, "leaf.parquet")) || await TryLinkDirectoryAsync(plain.Native("part-3.parquet"), Path.Combine(outside, "leaf")), "No link at the target");
             Assert.Equal(DeleteOutcome.Keep(KeepReason.ReparsePoint), await plain.Executor.DeleteAsync(plain.Target("part-3.parquet"), false, default));
             Assert.True(File.Exists(plain.Native("part-3.parquet")) || Directory.Exists(plain.Native("part-3.parquet")));
             Assert.True(File.Exists(Path.Combine(outside, "leaf.parquet")));
@@ -899,6 +872,95 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.True(server.Contains("t/dir/inner.parquet"));
         }
 
+        [Theory]
+        [InlineData(StoreFlavor.Azure)]
+        [InlineData(StoreFlavor.AzureHns)]
+        public async Task AzureOrphanSubmissionComparesFrozenIdentity(StoreFlavor flavor)
+        {
+            await using var server = new LoopbackObjectStore(flavor);
+            var cloud = Cloud(server);
+            var frozen = LoopbackObjectStore.FixedTime.AddDays(-3);
+            server.Put("t/grown.parquet", new byte[7], frozen);
+            server.Put("t/retimed.parquet", new byte[5], frozen.AddSeconds(1));
+            server.Put("t/same.parquet", new byte[5], frozen);
+            server.Put("t/untimed.parquet", new byte[5], frozen.AddSeconds(1));
+            cloud.ClearRequests();
+
+            DeletionTarget Frozen(string name) => cloud.Target(name) with { Size = 5, Modified = frozen };
+            Assert.Equal(DeleteOutcome.Keep(KeepReason.IdentityChanged), await cloud.Executor.DeleteAsync(Frozen("grown.parquet"), true, default));
+            Assert.Equal(DeleteOutcome.Keep(KeepReason.IdentityChanged), await cloud.Executor.DeleteAsync(Frozen("retimed.parquet"), true, default));
+            Assert.Equal(DeleteStatus.Deleted, (await cloud.Executor.DeleteAsync(Frozen("same.parquet"), true, default)).Status);
+            // A target without a frozen time is compared on size alone
+            Assert.Equal(DeleteStatus.Deleted, (await cloud.Executor.DeleteAsync(Frozen("untimed.parquet") with { Modified = null }, true, default)).Status);
+
+            Assert.Equal(new[]
+            {
+                "HEAD /c/t/grown.parquet HTTP/1.1", "HEAD /c/t/retimed.parquet HTTP/1.1",
+                "HEAD /c/t/same.parquet HTTP/1.1", "DELETE /c/t/same.parquet HTTP/1.1",
+                "HEAD /c/t/untimed.parquet HTTP/1.1", "DELETE /c/t/untimed.parquet HTTP/1.1"
+            }, server.Requests);
+            Assert.True(server.Contains("t/grown.parquet"));
+            Assert.True(server.Contains("t/retimed.parquet"));
+            Assert.False(server.Contains("t/same.parquet"));
+            Assert.Equal(2, cloud.Executor.Tally.KeptFor(KeepReason.IdentityChanged));
+        }
+
+        [Theory]
+        [InlineData(StoreFlavor.Azure)]
+        [InlineData(StoreFlavor.AzureHns)]
+        public async Task AzureOrphanProbeErrorKeepsTheObject(StoreFlavor flavor)
+        {
+            await using var server = new LoopbackObjectStore(flavor);
+            var cloud = Cloud(server);
+            server.Put("t/broken.parquet", new byte[5]);
+            server.Put("t/fine.parquet", new byte[5]);
+            server.Intercept = (method, target) => method == "HEAD" && target == "/c/t/broken.parquet" ? (500, "") : null;
+            cloud.ClearRequests();
+
+            Assert.Equal(DeleteOutcome.Keep(KeepReason.ProbeError), await cloud.Executor.DeleteAsync(cloud.Target("broken.parquet") with { Size = 5 }, true, default));
+            Assert.Equal(1, cloud.Buckets.Requests.Charged);
+            Assert.Equal(DeleteStatus.Deleted, (await cloud.Executor.DeleteAsync(cloud.Target("fine.parquet") with { Size = 5 }, true, default)).Status);
+
+            Assert.Equal(new[] { "HEAD /c/t/broken.parquet HTTP/1.1", "HEAD /c/t/fine.parquet HTTP/1.1", "DELETE /c/t/fine.parquet HTTP/1.1" }, server.Requests);
+            Assert.True(server.Contains("t/broken.parquet"));
+            Assert.False(server.Contains("t/fine.parquet"));
+            Assert.Equal(1, cloud.Executor.Tally.KeptFor(KeepReason.ProbeError));
+            Assert.Equal(0, cloud.Executor.Tally.Failed);
+        }
+
+        [Theory]
+        [InlineData(StoreFlavor.Azure)]
+        [InlineData(StoreFlavor.AzureHns)]
+        public async Task AzureOrphanFolderAtSubmissionIsDirectory(StoreFlavor flavor)
+        {
+            await using var server = new LoopbackObjectStore(flavor);
+            var cloud = Cloud(server);
+            server.Put("t/unsized.parquet", new byte[5]);
+            server.Put("t/sized.parquet", new byte[5]);
+            server.Put("t/file.parquet", new byte[5]);
+            // The probe reports a folder for a name frozen as a file, with and without a size
+            cloud.Owned.StatAnswer = (path, entry) => path.Name switch
+            {
+                "unsized.parquet" => new IOEntry(path.Full + "/"),
+                "sized.parquet" => new IOEntry(path.Full + "/") { Size = 5 },
+                _ => entry
+            };
+            cloud.ClearRequests();
+
+            Assert.Equal(DeleteOutcome.Keep(KeepReason.Directory), await cloud.Executor.DeleteAsync(cloud.Target("unsized.parquet") with { Size = 5 }, true, default));
+            Assert.Equal(DeleteOutcome.Keep(KeepReason.Directory), await cloud.Executor.DeleteAsync(cloud.Target("sized.parquet") with { Size = 5 }, true, default));
+            Assert.Equal(DeleteStatus.Deleted, (await cloud.Executor.DeleteAsync(cloud.Target("file.parquet") with { Size = 5 }, true, default)).Status);
+
+            Assert.Equal(new[]
+            {
+                "HEAD /c/t/unsized.parquet HTTP/1.1", "HEAD /c/t/sized.parquet HTTP/1.1",
+                "HEAD /c/t/file.parquet HTTP/1.1", "DELETE /c/t/file.parquet HTTP/1.1"
+            }, server.Requests);
+            Assert.True(server.Contains("t/unsized.parquet"));
+            Assert.True(server.Contains("t/sized.parquet"));
+            Assert.Equal(2, cloud.Executor.Tally.KeptFor(KeepReason.Directory));
+        }
+
         [Fact]
         public async Task ExecutorKeepsEverythingOnAChangedOrInexactStore()
         {
@@ -944,7 +1006,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await using var server = new LoopbackObjectStore(StoreFlavor.Azure);
             var cloud = Cloud(server);
             server.Put("t/a.parquet");
-            server.Put("t/b.parquet");
+            server.Put("t/b.parquet", new byte[1]);
             Assert.Equal(DeleteStatus.Deleted, (await cloud.Executor.DeleteAsync(cloud.Target("a.parquet"), false, default)).Status);
             Assert.Equal(1, cloud.Buckets.Requests.Charged);
             // An orphan's submission Stat is charged as well
@@ -979,18 +1041,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Rewrites a delivered listing
         public Func<IReadOnlyCollection<IOEntry>, IReadOnlyCollection<IOEntry>>? AfterLs { get; set; }
 
+        // Recursive listings as "Ls path", in order
+        public ConcurrentQueue<string> Recursive { get; } = new ConcurrentQueue<string>();
+
+        // Rewrites a delivered recursive listing after AfterLs
+        public Func<IOPath, IReadOnlyCollection<IOEntry>, IReadOnlyCollection<IOEntry>>? AfterRecursiveLs { get; set; }
+
+        // The index in Calls of the first recursive listing, -1 before one
+        private int _firstRecursive = -1;
+
         public int Listings(string folder) => Calls.Count(x => x == "Ls " + folder);
+
+        // Calls after the first recursive listing, none before one
+        public IReadOnlyList<string> CallsAfterRecursive()
+        {
+            var first = Volatile.Read(ref _firstRecursive);
+            return first < 0 ? Array.Empty<string>() : Calls.Skip(first + 1).ToList();
+        }
 
         public async Task<IReadOnlyCollection<IOEntry>> Ls(IOPath? path = null, bool recurse = false, CancellationToken cancellationToken = default)
         {
             var folder = path ?? IOPath.Root;
+            if (recurse)
+            {
+                Interlocked.CompareExchange(ref _firstRecursive, Calls.Count, -1);
+                Recursive.Enqueue("Ls " + folder.Full);
+            }
             Calls.Enqueue("Ls " + folder.Full);
             if (BeforeLs != null)
             {
                 await BeforeLs(folder);
             }
             var listed = await Inner.Ls(path, recurse, cancellationToken);
-            return AfterLs != null ? AfterLs(listed) : listed;
+            listed = AfterLs != null ? AfterLs(listed) : listed;
+            return recurse && AfterRecursiveLs != null ? AfterRecursiveLs(folder, listed) : listed;
         }
 
         public async Task<IOEntry?> Stat(IOPath path, CancellationToken cancellationToken = default)

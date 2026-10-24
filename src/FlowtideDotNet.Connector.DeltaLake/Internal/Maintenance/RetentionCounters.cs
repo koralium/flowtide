@@ -52,7 +52,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
     }
 
     /// <summary>
-    /// Per-sink counts of cleanup deletes by class and outcome, path rejections, listing declines and successor probes, and the latest advance slice's timings; they outlive restarts.
+    /// Per-sink counts of cleanup deletes by class and outcome, path rejections, listing declines, successor probes, orphan keeps, barriers and candidate probes, and the latest advance slice's timings; they outlive restarts.
     /// </summary>
     internal sealed class RetentionCounters
     {
@@ -67,12 +67,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private static readonly KeyValuePair<string, object?>[] s_checks = Tags<ListingCheck>("check", Checks);
         private static readonly KeyValuePair<string, object?>[] s_results = Tags<ProbeResult>("result", Results);
 
+        // The keep reasons an orphan listing or run counts, in measurement order
+        private static readonly KeepReason[] s_orphanReasons = [KeepReason.Unqualified, KeepReason.UnknownSize, KeepReason.IdentityChanged, KeepReason.ProbeError, KeepReason.Directory];
+        private static readonly KeyValuePair<string, object?>[] s_orphanKept = Array.ConvertAll(s_orphanReasons, x => new KeyValuePair<string, object?>("reason", TagOf(x)));
+
+        // The orphan barrier outcomes counted, in measurement order
+        private static readonly BarrierOutcome[] s_barrierOutcomes = [BarrierOutcome.Timeout, BarrierOutcome.StuckProducer];
+        private static readonly KeyValuePair<string, object?>[] s_barrier = Array.ConvertAll(s_barrierOutcomes, x => new KeyValuePair<string, object?>("outcome", TagOf(x)));
+
         private readonly long[] _deletes = new long[Kinds * Outcomes];
         private readonly long[] _declines = new long[Checks];
         private readonly long[] _probes = new long[Results];
+        private readonly long[] _orphanKept = new long[s_orphanReasons.Length];
+        private readonly long[] _barrier = new long[s_barrierOutcomes.Length];
+        private readonly long[] _candidateProbes = new long[Results];
         private long _pathRejections;
         private long _lastGateTicks;
         private long _lastSliceTicks;
+        private long _orphanListed;
 
         public long Deletes(TargetKind kind, DeleteStatus status) => Interlocked.Read(ref _deletes[(int)kind * Outcomes + (int)status]);
 
@@ -81,6 +93,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public long Probes(ProbeResult result) => Interlocked.Read(ref _probes[(int)result]);
 
         public long PathRejections => Interlocked.Read(ref _pathRejections);
+
+        // Entries the latest orphan root listing delivered
+        public long OrphanListed => Interlocked.Read(ref _orphanListed);
+
+        public long OrphanKept(KeepReason reason)
+        {
+            var index = Array.IndexOf(s_orphanReasons, reason);
+            return index >= 0 ? Interlocked.Read(ref _orphanKept[index]) : 0;
+        }
+
+        public long Barrier(BarrierOutcome outcome)
+        {
+            var index = Array.IndexOf(s_barrierOutcomes, outcome);
+            return index >= 0 ? Interlocked.Read(ref _barrier[index]) : 0;
+        }
+
+        // Pinned Azure orphan submission probes
+        public long CandidateProbes(ProbeResult result) => Interlocked.Read(ref _candidateProbes[(int)result]);
 
         public double LastGateMs => TimeSpan.FromTicks(Interlocked.Read(ref _lastGateTicks)).TotalMilliseconds;
 
@@ -145,6 +175,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             Interlocked.Exchange(ref _lastSliceTicks, slice.Ticks);
         }
 
+        public void SetOrphanListed(long count) => Interlocked.Exchange(ref _orphanListed, count);
+
+        /// <summary>
+        /// One entry an orphan listing or run kept for a counted reason; other reasons are not counted.
+        /// </summary>
+        public void AddOrphanKept(KeepReason reason)
+        {
+            var index = Array.IndexOf(s_orphanReasons, reason);
+            if (index >= 0)
+            {
+                Interlocked.Increment(ref _orphanKept[index]);
+            }
+        }
+
+        /// <summary>
+        /// One orphan barrier that timed out or found a stuck producer; other outcomes are not counted.
+        /// </summary>
+        public void AddBarrier(BarrierOutcome outcome)
+        {
+            var index = Array.IndexOf(s_barrierOutcomes, outcome);
+            if (index >= 0)
+            {
+                Interlocked.Increment(ref _barrier[index]);
+            }
+        }
+
+        /// <summary>
+        /// One pinned Azure orphan submission probe's result.
+        /// </summary>
+        public void AddCandidateProbe(ProbeResult result)
+        {
+            if ((uint)result < Results)
+            {
+                Interlocked.Increment(ref _candidateProbes[(int)result]);
+            }
+        }
+
         public IEnumerable<Measurement<long>> DeleteMeasurements()
         {
             var measurements = new Measurement<long>[Kinds * Outcomes];
@@ -160,7 +227,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// Every check but Passed, from the drain's turn listing, each started advance's slice gate and the storage-changed declines; preparation, rebase, staged sweep and drain slice listings are not counted.
+        /// Every check but Passed, from the drain's turn listing, each started advance's slice gate, the orphan sweep's root listing, log projection and second and third log listings, and the storage-changed declines; preparation, rebase, staged sweep and drain slice listings are not counted.
         /// </summary>
         public IEnumerable<Measurement<long>> DeclineMeasurements()
         {
@@ -173,7 +240,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// Successor probes of the drain's turn listing and each started advance's slice gate, absent once the listing or gate passed; an advance gate that declined after its listing passed counts none, and preparation, rebase, staged sweep and drain slice probes are not counted.
+        /// Successor probes of the drain's turn listing, each started advance's slice gate and the orphan sweep's root, second and third log listings, absent once the listing or gate passed; an advance gate that declined after its listing passed counts none, and preparation, rebase, staged sweep and drain slice probes are not counted.
         /// </summary>
         public IEnumerable<Measurement<long>> ProbeMeasurements()
         {
@@ -181,6 +248,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             for (int result = 0; result < Results; result++)
             {
                 measurements[result] = new Measurement<long>(Interlocked.Read(ref _probes[result]), s_results[result]);
+            }
+            return measurements;
+        }
+
+        public IEnumerable<Measurement<long>> OrphanKeptMeasurements()
+        {
+            var measurements = new Measurement<long>[s_orphanReasons.Length];
+            for (int index = 0; index < measurements.Length; index++)
+            {
+                measurements[index] = new Measurement<long>(Interlocked.Read(ref _orphanKept[index]), s_orphanKept[index]);
+            }
+            return measurements;
+        }
+
+        public IEnumerable<Measurement<long>> BarrierMeasurements()
+        {
+            var measurements = new Measurement<long>[s_barrierOutcomes.Length];
+            for (int index = 0; index < measurements.Length; index++)
+            {
+                measurements[index] = new Measurement<long>(Interlocked.Read(ref _barrier[index]), s_barrier[index]);
+            }
+            return measurements;
+        }
+
+        public IEnumerable<Measurement<long>> CandidateProbeMeasurements()
+        {
+            var measurements = new Measurement<long>[Results];
+            for (int result = 0; result < Results; result++)
+            {
+                measurements[result] = new Measurement<long>(Interlocked.Read(ref _candidateProbes[result]), s_results[result]);
             }
             return measurements;
         }

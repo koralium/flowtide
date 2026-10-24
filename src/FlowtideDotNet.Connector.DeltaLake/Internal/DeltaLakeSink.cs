@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             this._writeRelation = writeRelation;
             _tableName = string.Join("/", writeRelation.NamedObject.Names);
             // On the original name, before path normalization can hide a segment
-            _cleanup = CleanupConfiguration.Validate(() => options.StorageLocation, _tableName, options.AssumeCompleteStorageListing, new CleanupOptIns(options.HistoryRetention, null));
+            _cleanup = CleanupConfiguration.Validate(() => options.StorageLocation, _tableName, options.AssumeCompleteStorageListing, new CleanupOptIns(options.HistoryRetention, options.OrphanFileSweepInterval));
             _retentionValue = _cleanup.OptIns.Retention is { } retention ? RetentionProperties.Format(retention) : null;
             _maintenanceRates = MaintenanceBudgetSettings.Rates(options);
             _tablePath = _tableName;
@@ -364,6 +364,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_cleanup_deletes", () => _retentionCounters.DeleteMeasurements());
                 Metrics.CreateObservableGauge("delta_cleanup_listing_declines", () => _retentionCounters.DeclineMeasurements());
                 Metrics.CreateObservableGauge("delta_cleanup_successor_probes", () => _retentionCounters.ProbeMeasurements());
+                Metrics.CreateObservableGauge("delta_cleanup_orphan_listed", () => _retentionCounters.OrphanListed);
+                Metrics.CreateObservableGauge("delta_cleanup_orphan_kept", () => _retentionCounters.OrphanKeptMeasurements());
+                Metrics.CreateObservableGauge("delta_cleanup_orphan_barrier", () => _retentionCounters.BarrierMeasurements());
+                Metrics.CreateObservableGauge("delta_cleanup_orphan_candidate_probes", () => _retentionCounters.CandidateProbeMeasurements());
             }
         }
 

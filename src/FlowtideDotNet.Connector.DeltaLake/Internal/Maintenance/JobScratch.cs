@@ -34,6 +34,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         public DiskLedger Ledger => _owner.Ledger;
 
+        // The process's scratch folder this job's folder lies in
+        internal ScratchDirectory Owner => _owner;
+
         // Files this folder still tracks
         public IReadOnlyCollection<string> Files => _charges.Keys.Union(_streams.Keys).ToList();
 

@@ -461,6 +461,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         public long Target => Interlocked.Read(ref _target);
 
+        /// <summary>
+        /// Whether this worker maintains the table on the route; never throws.
+        /// </summary>
+        internal bool Serves(DiscardRoute route)
+        {
+            try
+            {
+                return DiscardRoute.Of(_storage, _table).Equals(route);
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         // Published versions after the latest checkpoint, 0 when this worker owes no checkpoint
         public long LagVersions
         {
@@ -925,8 +940,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             foreach (var kind in s_cleanupOrder)
             {
-                // With retention on, an advance needs confirmed coverage and no blocked repair
-                if (kind == JobKind.Advance && RetentionOn && (!_covered || _blockedUntil != null))
+                // With retention on, an advance or an orphan sweep needs confirmed coverage and no blocked repair
+                if ((kind == JobKind.Advance || kind == JobKind.Orphan) && RetentionOn && (!_covered || _blockedUntil != null))
                 {
                     continue;
                 }
@@ -1266,6 +1281,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 ReadLimit = run.Long ? long.MaxValue : _settings.ShortReads,
                 Deadline = run.Deadline!.Value,
                 Head = run.ObservedHead,
+                PublishedNow = () => Interlocked.Read(ref _target),
                 TableId = run.TableId,
                 Scratch = run.Scratch!,
                 Memory = run.Memory,
@@ -1276,7 +1292,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 ReadAhead = run.Long ? _readAhead : 1,
                 KnownUnsupported = known,
                 Capacity = _budget.Capacity,
-                CapacityOwner = _cancellation.Token
+                CapacityOwner = _cancellation.Token,
+                Producers = _budget.Producers
             };
             CleanupResult result;
             var drained = 0;
@@ -2226,6 +2243,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 // This worker's demand no longer counts as runnable
                 _budget.Capacity.Pause(_cancellation.Token);
+                (Cleanup as IDisposable)?.Dispose();
             }
             catch (Exception e)
             {

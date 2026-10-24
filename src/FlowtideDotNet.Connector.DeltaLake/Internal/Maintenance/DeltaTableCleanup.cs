@@ -24,9 +24,9 @@ using System.Text;
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 {
     /// <summary>
-    /// One sink run's non-build work: the discard drain over the run's route, the staged sweep and the daily advance, all through the maintenance meter.
+    /// One sink run's non-build work: the discard drain over the run's route, the staged sweep, the daily advance and the orphan sweep, all through the maintenance meter.
     /// </summary>
-    internal sealed class DeltaTableCleanup : IMaintenanceCleanup
+    internal sealed class DeltaTableCleanup : IMaintenanceCleanup, IDisposable
     {
         // Leak kinds, each warned once per run
         private const int DiscardLeak = 1;
@@ -44,6 +44,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private readonly string _tableName;
         private readonly StagedSweep _sweep;
         private readonly AdvanceJob _advance;
+        private readonly OrphanSweep _orphan;
         private long _warned;
         private int _leaksWarned;
         private Decline? _declined;
@@ -67,6 +68,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         private volatile RetentionState _held = RetentionState.Idle;
         // Set by a ManifestSuspended decline until a recovery leaves nothing unresolved
         private volatile bool _manifestSuspended;
+        // On the options clock; the first scheduled orphan sweep falls on the grid point after it
+        private readonly DateTimeOffset _started;
+        // The orphan grid slot of the latest concluded sweep
+        private long _orphanSlot = long.MinValue;
+        // 1 while a requested orphan sweep has not concluded
+        private int _orphanRequested;
+        // The registered orphan run the delete turns execute, null without one
+        private OrphanRun? _orphanRun;
+        // 1 once disposed
+        private int _disposed;
 
         // Storage is the run's meter, handOff is null for an inline run, and current reads the sink's storage now
         public DeltaTableCleanup(CleanupConfiguration configuration, IFileStorage storage, TimeProvider clock, IOPath table, DiscardHandOff? handOff, Func<IFileStorage?> current,
@@ -95,6 +106,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             };
             _sweep = new StagedSweep(configuration, storage, clock, Settings) { Settled = _retention.Add };
             _advance = new AdvanceJob(configuration, storage, clock) { HandOff = Adopt, Latency = () => Latency, Hooks = AdvanceHooksForTests, Warn = Warn, Prepared = Prepared, Recovered = Recovered, Counters = _retention };
+            _orphan = new OrphanSweep(configuration, storage, clock, _logger, tableName, _retention)
+            {
+                Warn = Warn,
+                Prepared = Prepared,
+                Recovered = Recovered,
+                Register = RegisterOrphan,
+                RunSettings = () => Settings,
+                Latency = () => Latency
+            };
+            _started = clock.GetUtcNow();
             AdvanceOffset = OffsetOf(storage, table);
         }
 
@@ -102,6 +123,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         internal TimeSpan AdvanceOffset { get; init; }
 
         internal AdvanceJob AdvanceForTests => _advance;
+
+        internal OrphanSweep OrphanForTests => _orphan;
+
+        /// <summary>
+        /// Asks this run for one orphan sweep, joining a request that has not concluded; never throws.
+        /// </summary>
+        internal OrphanSweepRequestResult RequestOrphanSweep()
+        {
+            if (_configuration.OptIns.Retention == null || !_configuration.Store.Eligible || !_configuration.Store.Store.DirectoryExclusion || StorageChanged())
+            {
+                return OrphanSweepRequestResult.Unavailable;
+            }
+            return Interlocked.CompareExchange(ref _orphanRequested, 1, 0) == 0 ? OrphanSweepRequestResult.Scheduled : OrphanSweepRequestResult.AlreadyPending;
+        }
 
         // Every delete slice of this run uses these; tests lower the drain's limits
         public DeletionRunSettings Settings { get; internal set; }
@@ -211,6 +246,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
+        /// Takes an orphan sweep's run into the delete turns; publishes before checking for a dispose, and disposes a run it cannot keep.
+        /// </summary>
+        internal void RegisterOrphan(OrphanRun run)
+        {
+            run.Warn = Warn;
+            run.BeforeDeleteForTests = BeforeDeleteForTests;
+            run.Latency = () => Latency;
+            run.ObserveLatency = ObserveLatency;
+            if (Interlocked.CompareExchange(ref _orphanRun, run, null) != null)
+            {
+                // Another run is registered
+                run.Dispose();
+                return;
+            }
+            // A dispose that ran before the exchange found nothing to release
+            if (Volatile.Read(ref _disposed) != 0 && Interlocked.CompareExchange(ref _orphanRun, null, run) == run)
+            {
+                run.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Releases a registered orphan run's targets file, charge and lease; a later registration is released at once.
+        /// </summary>
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref _disposed, 1);
+            Interlocked.Exchange(ref _orphanRun, null)?.Dispose();
+        }
+
+        /// <summary>
         /// Moves the latency average toward a slice's per-delete latency, a quarter of the way for a full slice and in proportion to the deletes counted for a smaller one.
         /// </summary>
         internal void ObserveLatency(TimeSpan perDelete, int deletes)
@@ -228,7 +294,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         /// <summary>
-        /// A queued run's delete turn is due once its route's drainable hints fill a turn, the oldest waited the hand-off's spacing, the allowance runs short, or a failed-closed mark waits, and any run's while a started advance runs or pauses; the advance at the run's first chance and after each finished one, then once a day at the table's offset, and while a started advance waits for its rebase; lock-free.
+        /// A queued run's delete turn is due once its route's drainable hints fill a turn, the oldest waited the hand-off's spacing, the allowance runs short, or a failed-closed mark waits, and any run's while a started advance runs or pauses or an orphan run is registered; the advance at the run's first chance and after each finished one, then once a day at the table's offset, and while a started advance waits for its rebase; the orphan sweep while no advance is started or held and no orphan run is registered, on request or at each interval grid point after the run's start; lock-free.
         /// </summary>
         public bool IsDue(JobKind kind, long head, DateTimeOffset now)
         {
@@ -237,8 +303,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 return _configuration.OptIns.Retention != null && (active == null ? SlotOf(now) > Interlocked.Read(ref _advancedSlot) : active.State == AdvanceState.Rebasing) && !StorageChanged();
             }
+            if (kind == JobKind.Orphan)
+            {
+                // Orphan planning defers to an advance held outside the delete turns and to a registered run
+                return _configuration.OptIns.Retention != null && active == null && _held == RetentionState.Idle && Volatile.Read(ref _orphanRun) == null && (Volatile.Read(ref _orphanRequested) != 0
+                    || (_configuration.OptIns.OrphanSweepInterval != null && OrphanSlotOf(now) > Math.Max(Interlocked.Read(ref _orphanSlot), OrphanSlotOf(_started)))) && !StorageChanged();
+            }
             return kind == JobKind.Deletion && ((_handOff != null && _handOff.Find(_route) is { } entry && entry.IsDue(head, now, DeltaMaintenanceWorker.MaxHintsPerTurn))
-                || active is { State: AdvanceState.Runnable or AdvanceState.Paused });
+                || active is { State: AdvanceState.Runnable or AdvanceState.Paused } || Volatile.Read(ref _orphanRun) is { Ended: false });
         }
 
         public async Task<CleanupResult> RunAsync(JobKind kind, CleanupContext context)
@@ -278,7 +350,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 if (Volatile.Read(ref _active) is not { } active)
                 {
-                    return drained;
+                    if (Volatile.Read(ref _orphanRun) is not { } orphan)
+                    {
+                        return drained;
+                    }
+                    // The registered orphan run's slice after the drain
+                    var sliced = await orphan.RunSliceAsync(context);
+                    if (orphan.Ended)
+                    {
+                        Interlocked.CompareExchange(ref _orphanRun, null, orphan);
+                    }
+                    return sliced.Kind == OutcomeKind.NoWork && !sliced.NeedsLongAdmission ? drained : Counted(sliced);
                 }
                 // The started advance's slice after the drain
                 var paused = active.State == AdvanceState.Paused;
@@ -291,9 +373,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 return turned.Kind == OutcomeKind.NoWork && !turned.NeedsLongAdmission ? drained : Counted(turned);
             }
+            if (kind == JobKind.Orphan)
+            {
+                // Captured before the run, as the advance's slot is
+                var orphanSlot = OrphanSlotOf(_clock.GetUtcNow());
+                var swept = await _orphan.RunAsync(context);
+                // A deadline the sweep passed without stopping at it still leaves the attempt due
+                context.CheckStop();
+                if (Concluded(swept, context))
+                {
+                    // Never back to an earlier grid point after the clock steps back
+                    if (orphanSlot > Interlocked.Read(ref _orphanSlot))
+                    {
+                        Interlocked.Exchange(ref _orphanSlot, orphanSlot);
+                    }
+                    Interlocked.Exchange(ref _orphanRequested, 0);
+                }
+                // The advance state the sweep's preparation left
+                if (swept.Kind == OutcomeKind.Declined && swept.Reason == MaintenanceReason.ManifestSuspended)
+                {
+                    _manifestSuspended = true;
+                }
+                _held = Held(context);
+                return Counted(swept);
+            }
             if (kind != JobKind.StagedSweep)
             {
-                // No orphan work exists yet
                 return new CleanupResult(OutcomeKind.NoWork);
             }
             try
@@ -996,6 +1101,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             return since >= 0 ? since / TimeSpan.TicksPerDay : (since + 1) / TimeSpan.TicksPerDay - 1;
         }
 
+        // The index of the latest orphan interval grid point at or before the time, anchored at the advance's offset; MinValue without an interval
+        private long OrphanSlotOf(DateTimeOffset now)
+        {
+            if (_configuration.OptIns.OrphanSweepInterval is not { } interval)
+            {
+                return long.MinValue;
+            }
+            var since = now.UtcTicks - AdvanceOffset.Ticks;
+            return since >= 0 ? since / interval.Ticks : (since + 1) / interval.Ticks - 1;
+        }
+
         private AdvanceTurn ExecutionTurn() => new AdvanceTurn(_configuration, _storage, _clock, Settings, AdvanceHooksForTests, Warn) { Latency = () => Latency, ObserveLatency = ObserveLatency, Counters = _retention };
 
         // A finished or suspended advance leaves the delete turns; a suspension concludes the day, a finished advance asks for the next
@@ -1064,10 +1180,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             return TimeSpan.FromTicks((long)(BinaryPrimitives.ReadUInt64LittleEndian(hash) % (ulong)TimeSpan.TicksPerDay));
         }
 
-        // Settled for the day: work done or found absent, or a decline that waits for another day; a foreign head waits for the anchor that restores coverage
+        // Settled for the day: work done or found absent, or a decline that waits for another day; a foreign head waits for the anchor that restores coverage, and a passed deadline or a deferring decline stays due
         private static bool Concluded(CleanupResult result, CleanupContext context)
         {
-            if (result.NeedsLongAdmission || result.ForeignHead || context.Stopped != IssuanceStop.None)
+            if (result.NeedsLongAdmission || result.ForeignHead || result.Defers || context.Stopped != IssuanceStop.None)
             {
                 return false;
             }
