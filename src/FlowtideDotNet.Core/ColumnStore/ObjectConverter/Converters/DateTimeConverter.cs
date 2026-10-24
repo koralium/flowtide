@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Core.ColumnStore.ObjectConverter.Converters
             if (value.Type == ArrowTypeId.Timestamp)
             {
                 var timestamp = value.AsTimestamp;
-                return timestamp.ToDateTimeOffset().DateTime;
+                return new DateTime(timestamp.ticks);
             }
 
             throw new NotImplementedException($"Can not deserialize {value.Type} to datetime");

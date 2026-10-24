@@ -449,7 +449,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
             {
                 var dt = value.AsTimestamp.ToDateTimeOffset();
                 // Remove hours, seconds, etc so its only year month day left
-                var newDate = new DateTimeOffset(dt.Year, dt.Month, dt.Day, 0, 0, 0, TimeSpan.Zero);
+                var newDate = new DateTimeOffset(dt.Year, dt.Month, dt.Day, 0, 0, 0, dt.Offset);
 
                 result._type = ArrowTypeId.Timestamp;
                 result._timestampValue = new TimestampTzValue(newDate);
@@ -478,7 +478,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
             var valueStr = value.AsString.ToString();
             var formatStr = format.AsString.ToString();
 
-            if (DateTimeOffset.TryParseExact(valueStr, formatStr, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt))
+            if (DateTimeOffset.TryParseExact(valueStr, formatStr, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dt))
             {
                 result._type = ArrowTypeId.Timestamp;
                 result._timestampValue = new TimestampTzValue(dt);
@@ -1281,6 +1281,17 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
 
             xval = x.AsTimestamp.ToDateTimeOffset();
             yval = y.AsTimestamp.ToDateTimeOffset();
+            // Use the start offset, or UTC if it overflows
+            var endTicks = y.AsTimestamp.ticks + xval.Offset.Ticks;
+            if (endTicks >= DateTime.MinValue.Ticks && endTicks <= DateTime.MaxValue.Ticks)
+            {
+                yval = yval.ToOffset(xval.Offset);
+            }
+            else
+            {
+                xval = xval.ToUniversalTime();
+                yval = yval.ToUniversalTime();
+            }
             return true;
         }
 
@@ -1678,7 +1689,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
             var converted = FlowtideRoundCalendar.RoundCalendarScalar(dto.DateTime, roundingMode, calendarUnit, calendarOrigin, (int)multipleInt, default);
 
             result._type = ArrowTypeId.Timestamp;
-            result._timestampValue = new TimestampTzValue(converted);
+            result._timestampValue = new TimestampTzValue(new DateTimeOffset(converted, dto.Offset));
             return result;
         }
     }

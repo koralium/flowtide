@@ -37,18 +37,54 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
 
         public IDataValue GetValue(ref Utf8JsonReader reader)
         {
-            var val = reader.GetDateTimeOffset();
+            var val = ReadTimestamp(ref reader);
             return new TimestampTzValue(val);
         }
 
         public void ReadMaxValue(ref Utf8JsonReader reader)
         {
-            _maxValue = reader.GetDateTimeOffset();
+            _maxValue = ReadTimestamp(ref reader);
         }
 
         public void ReadMinValue(ref Utf8JsonReader reader)
         {
-            _minValue = reader.GetDateTimeOffset();
+            _minValue = ReadTimestamp(ref reader);
+        }
+
+        // Strings without an offset are UTC
+        private static DateTimeOffset ReadTimestamp(ref Utf8JsonReader reader)
+        {
+            if (!reader.TryGetDateTimeOffset(out var value))
+            {
+                // Near the date limits only the UTC reading fits
+                var dateTime = reader.GetDateTime();
+                if (dateTime.Kind == DateTimeKind.Unspecified)
+                {
+                    return new DateTimeOffset(dateTime, TimeSpan.Zero);
+                }
+                return reader.GetDateTimeOffset();
+            }
+            Span<byte> buffer = stackalloc byte[64];
+            var text = reader.ValueIsEscaped || reader.HasValueSequence ? buffer.Slice(0, reader.CopyString(buffer)) : reader.ValueSpan;
+            if (HasOffset(text))
+            {
+                return value;
+            }
+            return new DateTimeOffset(value.DateTime, TimeSpan.Zero);
+        }
+
+        private static bool HasOffset(ReadOnlySpan<byte> text)
+        {
+            // The date part has dashes, skip it
+            for (int i = 10; i < text.Length; i++)
+            {
+                var c = text[i];
+                if (c == 'Z' || c == 'z' || c == '+' || c == '-')
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public void ReadNullValue(ref Utf8JsonReader reader)

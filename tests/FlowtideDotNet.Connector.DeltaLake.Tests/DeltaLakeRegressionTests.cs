@@ -1,4 +1,4 @@
-// Licensed under the Apache License, Version 2.0 (the "License")
+﻿// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -475,6 +475,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var probe = new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero).AddTicks(1234567);
 
             Assert.True(stats.ValueComparers!["v"].IsInBetween(new TimestampTzValue(probe)));
+        }
+
+        [Fact]
+        public void TimestampProbeWithOffsetMatchesUtcStatistics()
+        {
+            var schema = SingleColumnSchema(new TimestampType());
+            var stats = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"2024-01-01T10:00:00.000+00:00\"},\"maxValues\":{\"v\":\"2024-01-01T10:00:00.000+00:00\"},\"nullCount\":{\"v\":0}}");
+            var probe = new DateTimeOffset(2024, 1, 1, 12, 0, 0, TimeSpan.FromHours(2));
+
+            Assert.True(stats.ValueComparers!["v"].IsInBetween(new TimestampTzValue(probe)));
+        }
+
+        [Fact]
+        public void TimestampStatisticsWithoutOffsetAreUtc()
+        {
+            var schema = SingleColumnSchema(new TimestampType());
+            var offsetless = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"2024-01-01T10:00:00.000\"},\"maxValues\":{\"v\":\"2024-01-01T10:00:00.000\"},\"nullCount\":{\"v\":0}}");
+            var escaped = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"2024-01-01T12:00:00.000\\u002B02:00\"},\"maxValues\":{\"v\":\"2024-01-01T12:00:00.000\\u002B02:00\"},\"nullCount\":{\"v\":0}}");
+            var fullyEscaped = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"\\u0032\\u0030\\u0032\\u0034\\u002D\\u0030\\u0031\\u002D\\u0030\\u0031\\u0054\\u0031\\u0032\\u003A\\u0030\\u0030\\u003A\\u0030\\u0030\\u002E\\u0030\\u0030\\u0030\\u002B\\u0030\\u0032\\u003A\\u0030\\u0030\"},\"maxValues\":{\"v\":\"\\u0032\\u0030\\u0032\\u0034\\u002D\\u0030\\u0031\\u002D\\u0030\\u0031\\u0054\\u0031\\u0032\\u003A\\u0030\\u0030\\u003A\\u0030\\u0030\\u002E\\u0030\\u0030\\u0030\\u002B\\u0030\\u0032\\u003A\\u0030\\u0030\"},\"nullCount\":{\"v\":0}}");
+            var probe = new TimestampTzValue(new DateTimeOffset(2024, 1, 1, 10, 0, 0, TimeSpan.Zero));
+
+            Assert.True(offsetless.ValueComparers!["v"].IsInBetween(probe));
+            Assert.True(escaped.ValueComparers!["v"].IsInBetween(probe));
+            Assert.True(fullyEscaped.ValueComparers!["v"].IsInBetween(probe));
+
+            var minimum = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"0001-01-01T00:00:00\"},\"maxValues\":{\"v\":\"0001-01-01T00:00:00\"},\"nullCount\":{\"v\":0}}");
+            Assert.True(minimum.ValueComparers!["v"].IsInBetween(new TimestampTzValue(DateTimeOffset.MinValue)));
+        }
+
+        [Fact]
+        public void DateProbeWithOffsetMatchesUtcDateStatistics()
+        {
+            var schema = SingleColumnSchema(new DateType());
+            var stats = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"v\":\"2024-01-01\"},\"maxValues\":{\"v\":\"2024-01-01\"},\"nullCount\":{\"v\":0}}");
+            var probe = new TimestampTzValue(new DateTimeOffset(2024, 1, 2, 1, 0, 0, TimeSpan.FromHours(2)));
+
+            Assert.True(stats.ValueComparers!["v"].IsInBetween(probe));
         }
 
         [Fact]

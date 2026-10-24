@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Globalization;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
@@ -39,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 }
                 return false;
             }
-            var dateValue = StoredValue.Date(value.AsTimestamp.ToDateTimeOffset().DateTime);
+            var dateValue = StoredValue.Date(new DateTime(value.AsTimestamp.ticks));
 
             if (_minValue != null && _minValue > dateValue)
             {
@@ -68,7 +69,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_minValue != null)
             {
-                writer.WriteString(propertyName, _minValue.Value.ToString("yyyy-MM-dd"));
+                writer.WriteString(propertyName, _minValue.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             }
         }
 
@@ -76,7 +77,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_maxValue != null)
             {
-                writer.WriteString(propertyName, _maxValue.Value.ToString("yyyy-MM-dd"));
+                writer.WriteString(propertyName, _maxValue.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             }
         }
 

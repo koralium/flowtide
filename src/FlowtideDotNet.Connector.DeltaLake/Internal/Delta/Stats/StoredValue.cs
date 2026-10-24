@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
         // Same instant as ToDateTimeOffset, without building one
         public static long TimestampMilliseconds(in TimestampTzValue value)
         {
-            return (value.ticks - value.offset * TimeSpan.TicksPerMinute - s_unixEpochTicks) / TimeSpan.TicksPerMillisecond;
+            return (value.ticks - s_unixEpochTicks) / TimeSpan.TicksPerMillisecond;
         }
 
         public static DateTime Date(DateTime value)

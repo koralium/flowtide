@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Globalization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
 {
@@ -24,10 +25,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
             }
 
             var val = value.AsTimestamp;
-            var dt = val.ToDateTimeOffset();
+            var dt = new DateTimeOffset(val.ticks, TimeSpan.Zero);
 
             // write in iso standard, 1970-01-01T00:00:00.123456Z
-            return dt.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ");
+            return dt.ToString("yyyy-MM-ddTHH:mm:ss.ffffffZ", CultureInfo.InvariantCulture);
         }
     }
 }
