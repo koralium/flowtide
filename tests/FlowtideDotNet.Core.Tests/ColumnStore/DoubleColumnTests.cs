@@ -214,5 +214,27 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(columnHash, valueHash);
         }
+
+        [Fact]
+        public void TestAddToHashNegativeZero()
+        {
+            Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new DoubleValue(-0.0)
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            column.GetValueAt(0, default).AddToHash(hash);
+            var valueHash = hash.GetHashAndReset();
+
+            new DoubleValue(0.0).AddToHash(hash);
+            var zeroHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, valueHash);
+            Assert.Equal(zeroHash, valueHash);
+        }
     }
 }

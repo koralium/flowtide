@@ -88,7 +88,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 var (min, max) = Bounds(random, () => start.AddDays(random.Next(0, 6)).AddHours(random.Next(0, 24)));
                 var nullCount = NullCount(random);
-                IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new TimestampTzValue(start.AddDays(random.Next(-1, 7)).AddMinutes(random.Next(0, 1440)));
+                IDataValue probe = random.Next(8) == 0 ? NullValue.Instance : new TimestampTzValue(new DateTimeOffset(start.AddDays(random.Next(-1, 7)).AddMinutes(random.Next(0, 1440)), TimeSpan.Zero).ToOffset(TimeSpan.FromMinutes(random.Next(-2, 3) * 60)));
                 AssertSame(new DateStatisticsComparer(min, max, nullCount), PruningType.Date, probe, exact: true);
             }
         }

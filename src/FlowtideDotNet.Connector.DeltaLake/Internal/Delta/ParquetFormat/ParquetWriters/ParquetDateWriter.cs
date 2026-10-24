@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _builder.AppendNull();
                 return 4;
             }
-            var dateValue = value.AsTimestamp.ToDateTimeOffset().DateTime;
+            var dateValue = new DateTime(value.AsTimestamp.ticks);
 
             WriteValue(dateValue);
             return 4;

@@ -175,6 +175,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                 case ArrowTypeId.Timestamp:
                     _timestampValue.AddToHash(hashAlgorithm);
                     return;
+                case ArrowTypeId.Struct:
+                    _structValue!.AddToHash(hashAlgorithm);
+                    return;
             }
             throw new NotImplementedException($"{Type} is not supported for hashing.");
         }

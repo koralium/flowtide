@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -35,7 +36,7 @@ namespace FlowtideDotNet.Connector.Files.Internal.XmlFiles.XmlParsers
             switch (reader.NodeType)
             {
                 case XmlNodeType.Text:
-                    if (DateTimeOffset.TryParse(reader.Value, out var i))
+                    if (DateTimeOffset.TryParse(reader.Value, null, DateTimeStyles.AssumeUniversal, out var i))
                     {
                         returnVal = new TimestampTzValue(i);
                     }

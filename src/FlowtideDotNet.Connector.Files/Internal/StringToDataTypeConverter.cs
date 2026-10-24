@@ -136,7 +136,7 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         }
                         else
                         {
-                            if (DateTime.TryParse(s, out DateTime date))
+                            if (DateTime.TryParse(s, null, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime date))
                             {
                                 c.Add(new TimestampTzValue(date));
                             }
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Connector.Files.Internal
                         }
                         else
                         {
-                            if (DateTimeOffset.TryParse(s, out DateTimeOffset date))
+                            if (DateTimeOffset.TryParse(s, null, DateTimeStyles.AssumeUniversal, out DateTimeOffset date))
                             {
                                 c.Add(new TimestampTzValue(date));
                             }

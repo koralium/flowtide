@@ -115,7 +115,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 case BsonType.Null:
                     return NullValue.Instance;
                 case BsonType.Timestamp:
-                    return new TimestampTzValue(bsonValue.AsBsonTimestamp.Timestamp, 0);
+                    return new Int64Value(bsonValue.AsBsonTimestamp.Timestamp);
                 case BsonType.Document:
                     return BsonMapToDataValue(bsonValue.AsBsonDocument);
                 case BsonType.Array:

@@ -99,10 +99,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             }
             if (value.Type == ArrowTypeId.String)
             {
-                if (DateTimeOffset.TryParse(value.AsString.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsedTime))
+                if (DateTimeOffset.TryParse(value.AsString.ToString(), CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsedTime))
                 {
                     result._type = ArrowTypeId.Timestamp;
-                    result._timestampValue = new TimestampTzValue(parsedTime.Ticks, (short)parsedTime.Offset.TotalMinutes);
+                    result._timestampValue = new TimestampTzValue(parsedTime);
                     return result;
                 }
             }
@@ -166,14 +166,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             if (value.Type == ArrowTypeId.Timestamp)
             {
                 result._type = ArrowTypeId.String;
-                var dto = value.AsTimestamp.ToDateTimeOffset();
+                var dto = new DateTimeOffset(value.AsTimestamp.ticks, TimeSpan.Zero);
                 if (dto.TryFormat(container.utf8bytes, out var bytesWritten, "yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture))
                 {
                     result._stringValue = new StringValue(container.utf8bytes.AsMemory().Slice(0, bytesWritten));
                 }
                 else
                 {
-                    result._stringValue = new StringValue(value.AsTimestamp.ToDateTimeOffset().ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture));
+                    result._stringValue = new StringValue(dto.ToString("yyyy-MM-ddTHH:mm:ss.fffZ", CultureInfo.InvariantCulture));
                 }
 
                 return result;

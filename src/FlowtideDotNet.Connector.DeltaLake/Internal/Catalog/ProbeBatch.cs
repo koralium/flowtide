@@ -204,7 +204,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private static long DateProbe<T>(in T value)
             where T : IDataValue
         {
-            return StoredValue.Date(value.AsTimestamp.ToDateTimeOffset().DateTime).Ticks;
+            return StoredValue.Date(new DateTime(value.AsTimestamp.ticks)).Ticks;
         }
 
         // Milliseconds of the stored timestamp

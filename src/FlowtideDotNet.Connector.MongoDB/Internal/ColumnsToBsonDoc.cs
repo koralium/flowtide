@@ -66,7 +66,7 @@ namespace FlowtideDotNet.Connector.MongoDB.Internal
                 case ArrowTypeId.Decimal128:
                     return new BsonDecimal128(value.AsDecimal);
                 case ArrowTypeId.Timestamp:
-                    return new BsonDateTime(value.AsTimestamp.ToDateTimeOffset().DateTime);
+                    return new BsonDateTime(new DateTime(value.AsTimestamp.ticks, DateTimeKind.Utc));
                 case ArrowTypeId.List:
                     return ToBsonArray(value);
                 case ArrowTypeId.Map:
