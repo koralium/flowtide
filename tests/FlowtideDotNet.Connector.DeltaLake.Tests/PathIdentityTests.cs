@@ -924,7 +924,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(0, cloud.Owed);
         }
 
-        private static string? ShortName(string path)
+        internal static string? ShortName(string path)
         {
             var buffer = new char[1024];
             var length = GetShortPathNameW(path, buffer, (uint)buffer.Length);

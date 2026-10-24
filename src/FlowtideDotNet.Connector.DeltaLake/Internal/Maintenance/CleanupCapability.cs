@@ -116,6 +116,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // No history, and a root was skipped for a fixed memory or disk cap
         public bool RootOverCap { get; init; }
 
+        // The memory or disk cap the check stopped at, None otherwise
+        public MaintenanceReason Cap { get; init; }
+
         public MaintenanceReason Reason => CleanupCapability.ReasonOf(Check, Stop);
     }
 
@@ -267,7 +270,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             catch (CheckpointDeclinedException e) when (IsCap(e.Reason))
             {
-                return new CapabilityResult(CapabilityCheck.Unavailable, Detail: e.Message) { Reads = state.Reads };
+                return new CapabilityResult(CapabilityCheck.Unavailable, Detail: e.Message) { Reads = state.Reads, Cap = e.Reason };
             }
             catch (CheckpointDeclinedException e)
             {
@@ -284,7 +287,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         }
 
         // A resource limit, never a fact about the table
-        private static bool IsCap(MaintenanceReason reason) => reason is MaintenanceReason.ManagedMemoryCap or MaintenanceReason.NativeMemoryCap or MaintenanceReason.DiskCap;
+        internal static bool IsCap(MaintenanceReason reason) => reason is MaintenanceReason.ManagedMemoryCap or MaintenanceReason.NativeMemoryCap or MaintenanceReason.DiskCap;
 
         private static async Task<CapabilityResult> CheckCoreAsync(IOPath table, IFileStorage storage, LogEvidence log, CleanupContext context, IReadOnlyCollection<long>? prove, int lineCap,
             ReplayState state)
@@ -310,7 +313,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
 
             var skipped = new List<string>();
-            var capped = false;
+            var cap = MaintenanceReason.None;
             long rootVersion = -1;
             foreach (var candidate in candidates)
             {
@@ -330,7 +333,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 }
                 if (root.Skipped != null)
                 {
-                    capped |= root.Capped;
+                    cap = root.Cap == MaintenanceReason.None ? cap : root.Cap;
                     skipped.Add($"checkpoint {candidate.Version}: {root.Skipped}");
                     continue;
                 }
@@ -342,9 +345,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                 if (!fromZero)
                 {
                     // A root skipped for a memory or disk cap leaves the table undecided
+                    var capped = cap != MaintenanceReason.None;
                     return new CapabilityResult(capped ? CapabilityCheck.Unavailable : CapabilityCheck.MissingHistory,
                         Detail: $"No usable root and commits before {segment.SuffixStart(head)} are missing: {string.Join("; ", skipped)}")
-                    { RootOverCap = capped };
+                    { RootOverCap = capped, Cap = cap };
                 }
                 if (state.Reads + head + 1 > context.ReadLimit)
                 {
@@ -423,8 +427,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             return new CapabilityResult(CapabilityCheck.ReadsSpent, Detail: $"The replay needs {reads} more reads and this admission has {context.ReadsRemaining} of its {context.ReadLimit} left");
         }
 
-        // Capped: skipped for a memory or disk cap rather than for its content
-        private readonly record struct RootRead(string? Changed, string? Skipped, bool Capped = false);
+        // Cap: the memory or disk cap it was skipped for, None for its content
+        private readonly record struct RootRead(string? Changed, string? Skipped, MaintenanceReason Cap = MaintenanceReason.None);
 
         // Downloads the root to job scratch while hashing it, then reads only its protocol and metaData
         private static async Task<RootRead> ReadRootAsync(IOPath table, IFileStorage storage, LogTransactionFile file, CleanupContext context, ReplayState state)
@@ -433,7 +437,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             var scratch = context.Scratch;
             if (listed > scratch.Ledger.Cap)
             {
-                return new RootRead(null, $"{listed} bytes, over the {scratch.Ledger.Cap} byte disk cap", Capped: true);
+                return new RootRead(null, $"{listed} bytes, over the {scratch.Ledger.Cap} byte disk cap", MaintenanceReason.DiskCap);
             }
             var download = scratch.NewPath(".capability.parquet");
             var buffer = Array.Empty<byte>();
@@ -492,7 +496,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
                     }
                     catch (CheckpointDeclinedException e)
                     {
-                        return new RootRead(null, e.Message, IsCap(e.Reason));
+                        return new RootRead(null, e.Message, IsCap(e.Reason) ? e.Reason : MaintenanceReason.None);
                     }
                     if (protocol == null || metaData == null)
                     {

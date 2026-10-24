@@ -182,6 +182,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         internal IReadOnlyList<IMaintenanceWorker> WorkersForTests => Volatile.Read(ref _workers);
 
+        /// <summary>
+        /// The first registered worker that maintains the table on the route, null when none does.
+        /// </summary>
+        internal DeltaMaintenanceWorker? WorkerFor(DiscardRoute route)
+        {
+            foreach (var worker in Volatile.Read(ref _workers))
+            {
+                if (worker is DeltaMaintenanceWorker candidate && candidate.Serves(route))
+                {
+                    return candidate;
+                }
+            }
+            return null;
+        }
+
         internal bool TimerActive
         {
             get

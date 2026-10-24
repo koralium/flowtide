@@ -350,6 +350,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance
         internal static Task<AdvancePlan?> ReadAllAsync(IFileStorage storage, IReadOnlyList<IOEntry> entries, CommitReferenceExtractor extractor, CleanupContext context,
             MaintenanceReason changed) => ReadAllAsync(storage, entries, extractor, context, changed, null, null, false);
 
+        // With each object's resolutions charged after it
+        internal static Task<AdvancePlan?> ReadAllAsync(IFileStorage storage, IReadOnlyList<IOEntry> entries, CommitReferenceExtractor extractor, CleanupContext context,
+            MaintenanceReason changed, PathCanonicalizer identity) => ReadAllAsync(storage, entries, extractor, context, changed, identity, null, charge: true);
+
         // With each object's resolutions charged or kept owed after it, when an identity is given
         private static async Task<AdvancePlan?> ReadAllAsync(IFileStorage storage, IReadOnlyList<IOEntry> entries, CommitReferenceExtractor extractor, CleanupContext context,
             MaintenanceReason changed, PathCanonicalizer? identity, ResolutionReads? resolutions, bool charge)

@@ -47,8 +47,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The advance's preparation found a head that is not its own commit
         public bool ForeignHead { get; init; }
 
-        // The advance's plan alone drains longer than admission allows
+        // The job alone exceeds what its admission or its caps allow
         public bool Oversized { get; init; }
+
+        // A decline that leaves the attempt due
+        public bool Defers { get; init; }
 
         public static CleanupResult Promote { get; } = new CleanupResult(OutcomeKind.NoWork) { NeedsLongAdmission = true };
     }
@@ -173,6 +176,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The published version at admission
         public required long Head { get; init; }
 
+        // The worker's published version now, null when the context has no worker
+        public Func<long>? PublishedNow { get; init; }
+
         // Advisory, as for builds
         public required string? TableId { get; init; }
 
@@ -202,6 +208,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         // The worker's own stop token, which owns the capacity leases its jobs hold
         public CancellationToken CapacityOwner { get; init; }
+
+        // The budget's producer generations, which the orphan barrier drains
+        public ProducerGenerations? Producers { get; init; }
 
         // A build of the same table is due, so the job yields at its next cooperative point
         public bool BuildDue => _run.YieldRequested;

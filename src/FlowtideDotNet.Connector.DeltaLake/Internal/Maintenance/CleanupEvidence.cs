@@ -103,6 +103,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         // The run's kind, from its evidence once it has one
         public bool Durable { get; init; }
 
+        // The memory or disk cap that left the gate unavailable, None otherwise
+        public MaintenanceReason Cap { get; init; }
+
         public GateAction Action => Verdict switch
         {
             GateVerdict.Passed => GateAction.Proceed,
@@ -293,7 +296,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             catch (Exception e)
             {
-                return new GateResult(GateVerdict.Unavailable, $"{e.GetType().Name}: {e.Message}") { Head = head };
+                return new GateResult(GateVerdict.Unavailable, $"{e.GetType().Name}: {e.Message}")
+                {
+                    Head = head,
+                    Cap = e is CheckpointDeclinedException declined && CleanupCapability.IsCap(declined.Reason) ? declined.Reason : MaintenanceReason.None
+                };
             }
         }
 
@@ -349,7 +356,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             CapabilityCheck.ReadsSpent => new GateResult(GateVerdict.ReadsSpent, result.Detail) { Capability = result.Check, Head = head },
             CapabilityCheck.Preempted => new GateResult(GateVerdict.Preempted, result.Detail) { Capability = result.Check, Stop = result.Stop, Head = head },
             CapabilityCheck.Changed => new GateResult(GateVerdict.Changed, result.Detail) { Capability = result.Check, Head = head },
-            CapabilityCheck.Unavailable => new GateResult(GateVerdict.Unavailable, result.Detail) { Capability = result.Check, Head = head },
+            CapabilityCheck.Unavailable => new GateResult(GateVerdict.Unavailable, result.Detail) { Capability = result.Check, Head = head, Cap = result.Cap },
             _ => new GateResult(GateVerdict.Incapable, result.Detail) { Capability = result.Check, Head = head }
         };
 

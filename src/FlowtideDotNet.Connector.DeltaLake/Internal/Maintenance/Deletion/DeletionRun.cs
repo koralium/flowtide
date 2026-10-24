@@ -151,6 +151,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         // Estimated managed bytes per buffered target beside its key's characters
         public const long TargetOverheadBytes = 48;
 
+        // Estimated managed bytes of a buffered target's frozen MD5 beside its characters
+        public const long Md5OverheadBytes = 32;
+
+        // What a slice buffer charges for a target's frozen MD5
+        public static long Md5Bytes(string? md5) => md5 == null ? 0 : Md5OverheadBytes + 2L * md5.Length;
+
         private readonly DeletionExecutor _executor;
         private readonly ChunkGate _gate;
         private readonly IDeletionSource _source;
@@ -309,7 +315,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
             while (more && buffer.Targets.Count < _settings.MaxPaths)
             {
                 var target = reader.Current;
-                var size = TargetOverheadBytes + 2L * (target.Key?.Length ?? 0);
+                var size = TargetOverheadBytes + 2L * (target.Key?.Length ?? 0) + Md5Bytes(target.Md5);
                 if (buffer.Targets.Count > 0 && buffer.Charged + size > _settings.MaxBufferBytes)
                 {
                     break;

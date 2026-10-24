@@ -37,10 +37,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         public const string Container = "c";
 
+        // Every object's time unless a test sets another, and every directory's
+        public static readonly DateTimeOffset FixedTime = new DateTimeOffset(2009, 9, 9, 9, 20, 2, TimeSpan.Zero);
+
         private readonly TcpListener _listener;
         private readonly CancellationTokenSource _stop = new CancellationTokenSource();
         private readonly object _lock = new object();
         private readonly Dictionary<string, byte[]> _objects = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+        private readonly Dictionary<string, DateTimeOffset> _modified = new Dictionary<string, DateTimeOffset>(StringComparer.Ordinal);
+        private DateTimeOffset _now = FixedTime;
         private readonly Dictionary<string, Dictionary<string, byte[]>> _uploads = new Dictionary<string, Dictionary<string, byte[]>>(StringComparer.Ordinal);
         private readonly Task _accept;
         private int _uploadIds;
@@ -81,14 +86,56 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 : Files.Of.AzureBlobStorage(Endpoint, "account", Convert.ToBase64String(new byte[32]));
         }
 
-        // An object's name within the container or bucket
-        public void Put(string name, byte[]? content = null)
+        // The time every object write is stamped with, whole seconds as the services report them
+        public DateTimeOffset Now
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _now;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    _now = value;
+                }
+            }
+        }
+
+        // An object's name within the container or bucket, stamped with Now unless a time is given
+        public void Put(string name, byte[]? content = null, DateTimeOffset? modified = null)
         {
             lock (_lock)
             {
-                _objects[name] = content ?? Encoding.UTF8.GetBytes(name);
+                Store(name, content ?? Encoding.UTF8.GetBytes(name));
+                if (modified is { } time)
+                {
+                    _modified[name] = time;
+                }
             }
         }
+
+        // Under the lock
+        private void Store(string name, byte[] content)
+        {
+            _objects[name] = content;
+            _modified[name] = _now;
+        }
+
+        // Under the lock
+        private bool Remove(string name)
+        {
+            _modified.Remove(name);
+            return _objects.Remove(name);
+        }
+
+        // Under the lock
+        private DateTimeOffset ModifiedOf(string name) => _modified.TryGetValue(name, out var time) ? time : FixedTime;
+
+        private static string HttpDate(DateTimeOffset time) => time.UtcDateTime.ToString("r", CultureInfo.InvariantCulture);
 
         public bool Contains(string name)
         {
@@ -379,22 +426,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     {
                         var ids = XDocument.Parse(Encoding.UTF8.GetString(body)).Root!.Elements().Select(x => x.Value).ToList();
                         var blocks = Upload(name);
-                        _objects[name] = ids.SelectMany(id => blocks[id]).ToArray();
+                        Store(name, ids.SelectMany(id => blocks[id]).ToArray());
                         _uploads.Remove(name);
                         return Text(201, "");
                     }
-                    _objects[name] = body;
+                    Store(name, body);
                     return Text(201, "");
                 case "GET":
                     return _objects.TryGetValue(name, out var content)
-                        ? new Response(200, content, new Dictionary<string, string>() { ["Content-Type"] = "application/octet-stream", ["Last-Modified"] = "Wed, 09 Sep 2009 09:20:02 GMT", ["ETag"] = "\"0x1\"" })
+                        ? new Response(200, content, new Dictionary<string, string>() { ["Content-Type"] = "application/octet-stream", ["Last-Modified"] = HttpDate(ModifiedOf(name)), ["ETag"] = "\"0x1\"" })
                         : Text(404, "<Error><Code>BlobNotFound</Code></Error>");
                 case "HEAD":
                     return _objects.TryGetValue(name, out var head)
-                        ? new Response(200, Array.Empty<byte>(), new Dictionary<string, string>() { ["Content-Length"] = head.Length.ToString(CultureInfo.InvariantCulture), ["Last-Modified"] = "Wed, 09 Sep 2009 09:20:02 GMT", ["ETag"] = "\"0x1\"", ["x-ms-blob-type"] = "BlockBlob" })
+                        ? new Response(200, Array.Empty<byte>(), new Dictionary<string, string>() { ["Content-Length"] = head.Length.ToString(CultureInfo.InvariantCulture), ["Last-Modified"] = HttpDate(ModifiedOf(name)), ["ETag"] = "\"0x1\"", ["x-ms-blob-type"] = "BlockBlob" })
                         : Text(404, "");
                 case "DELETE":
-                    return _objects.Remove(name) ? Text(202, "") : Text(404, "<Error><Code>BlobNotFound</Code></Error>");
+                    return Remove(name) ? Text(202, "") : Text(404, "<Error><Code>BlobNotFound</Code></Error>");
             }
             return Text(400, "<Error><Code>UnsupportedHttpVerb</Code></Error>");
         }
@@ -457,7 +504,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     continue;
                 }
                 var properties = new XElement("Properties",
-                    new XElement("Last-Modified", "Wed, 09 Sep 2009 09:20:02 GMT"),
+                    new XElement("Last-Modified", HttpDate(item.Directory ? FixedTime : ModifiedOf(item.Name))),
                     new XElement("Etag", "0x8CBFF45D8A29A19"),
                     new XElement("Content-Length", item.Directory ? 0 : _objects[item.Name].Length),
                     new XElement("Content-Type", "application/octet-stream"),
@@ -523,25 +570,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             if (method == "POST" && query.TryGetValue("uploadId", out var completeUpload))
             {
                 var parts = _uploads[completeUpload!];
-                _objects[name] = parts.OrderBy(x => int.Parse(x.Key, CultureInfo.InvariantCulture)).SelectMany(x => x.Value).ToArray();
+                Store(name, parts.OrderBy(x => int.Parse(x.Key, CultureInfo.InvariantCulture)).SelectMany(x => x.Value).ToArray());
                 _uploads.Remove(completeUpload!);
                 return Text(200, $"<CompleteMultipartUploadResult><Bucket>{Container}</Bucket><Key>{SecurityElement(name)}</Key><ETag>\"x\"</ETag></CompleteMultipartUploadResult>");
             }
             switch (method)
             {
                 case "PUT":
-                    _objects[name] = body;
+                    Store(name, body);
                     return new Response(200, Array.Empty<byte>(), new Dictionary<string, string>() { ["ETag"] = "\"x\"" });
                 case "GET":
                     return _objects.TryGetValue(name, out var content)
-                        ? new Response(200, content, new Dictionary<string, string>() { ["Content-Type"] = "application/octet-stream", ["Last-Modified"] = "Wed, 09 Sep 2009 09:20:02 GMT", ["ETag"] = "\"x\"" })
+                        ? new Response(200, content, new Dictionary<string, string>() { ["Content-Type"] = "application/octet-stream", ["Last-Modified"] = HttpDate(ModifiedOf(name)), ["ETag"] = "\"x\"" })
                         : Text(404, "<Error><Code>NoSuchKey</Code></Error>");
                 case "HEAD":
                     return _objects.TryGetValue(name, out var head)
-                        ? new Response(200, Array.Empty<byte>(), new Dictionary<string, string>() { ["Content-Length"] = head.Length.ToString(CultureInfo.InvariantCulture), ["Last-Modified"] = "Wed, 09 Sep 2009 09:20:02 GMT", ["ETag"] = "\"x\"" })
+                        ? new Response(200, Array.Empty<byte>(), new Dictionary<string, string>() { ["Content-Length"] = head.Length.ToString(CultureInfo.InvariantCulture), ["Last-Modified"] = HttpDate(ModifiedOf(name)), ["ETag"] = "\"x\"" })
                         : Text(404, "");
                 case "DELETE":
-                    _objects.Remove(name);
+                    Remove(name);
                     return Text(204, "");
             }
             return Text(400, "<Error><Code>NotImplemented</Code></Error>");
@@ -601,7 +648,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 root.Add(new XElement("Contents",
                     new XElement("Key", item.Name),
-                    new XElement("LastModified", "2009-09-09T09:20:02.000Z"),
+                    new XElement("LastModified", ModifiedOf(item.Name).UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture)),
                     new XElement("ETag", "\"x\""),
                     new XElement("Size", _objects[item.Name].Length),
                     new XElement("StorageClass", "STANDARD")));

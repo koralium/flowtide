@@ -27,6 +27,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static readonly CleanupOptIns Retention = new CleanupOptIns(TimeSpan.FromDays(7), null);
         private static readonly CleanupOptIns RetentionAndOrphans = new CleanupOptIns(TimeSpan.FromDays(7), TimeSpan.FromDays(7));
 
+        // Each sink construction case runs with retention alone and with orphan sweeping too
+        private static readonly CleanupOptIns[] OptInVariants = { Retention, RetentionAndOrphans };
+
         // Names the pinned S3 and Azure clients would send unencoded, so the service could read another name or another request
         public static TheoryData<string> ReservedNames => new TheoryData<string>
         {
@@ -58,20 +61,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return new DeltaLakeSink(options, Relation(names), new ExecutionDataflowBlockOptions());
         }
 
-        // The sink with retention on, as the table name's segments
-        private static CleanupConfiguration ConstructRetained(IFileStorage storage, string table, bool assumeComplete = false)
+        // The sink with the opt-ins on, as the table name's segments
+        private static CleanupConfiguration ConstructRetained(IFileStorage storage, string table, CleanupOptIns optIns, bool assumeComplete = false)
         {
             return Construct(storage, options =>
             {
-                options.HistoryRetention = Retention.Retention;
+                options.HistoryRetention = optIns.Retention;
+                options.OrphanFileSweepInterval = optIns.OrphanSweepInterval;
                 options.AssumeCompleteStorageListing = assumeComplete;
             }, table.Split('/')).CleanupForTests;
         }
 
-        // The sink refuses with retention on and constructs with it off
-        private static void AssertSinkRefused(IFileStorage storage, string table, bool assumeComplete, string option, string remedy)
+        // The sink refuses with the opt-ins on and constructs with them off
+        private static void AssertSinkRefused(IFileStorage storage, string table, CleanupOptIns optIns, bool assumeComplete, string option, string remedy)
         {
-            AssertRefused(() => ConstructRetained(storage, table, assumeComplete), option, remedy);
+            AssertRefused(() => ConstructRetained(storage, table, optIns, assumeComplete), option, remedy);
             var off = Construct(storage, options => options.AssumeCompleteStorageListing = assumeComplete, table.Split('/')).CleanupForTests;
             Assert.False(off.OptIns.Any);
             Assert.False(off.Store.Eligible);
@@ -393,9 +397,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 using (storage)
                 {
-                    AssertSinkRefused(storage, name, false, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
-                    AssertSinkRefused(storage, name, true, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
-                    Assert.True(ConstructRetained(storage, "c/a.b-c_d/T9").Store.Eligible);
+                    foreach (var optIns in OptInVariants)
+                    {
+                        AssertSinkRefused(storage, name, optIns, false, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+                        AssertSinkRefused(storage, name, optIns, true, CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+                        var accepted = ConstructRetained(storage, "c/a.b-c_d/T9", optIns);
+                        Assert.True(accepted.Store.Eligible);
+                        Assert.Equal(optIns, accepted.OptIns);
+                    }
                 }
             }
         }
@@ -417,7 +426,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 using (storage)
                 {
-                    AssertSinkRefused(storage, name, false, CleanupConfiguration.StorageOption, "without '.' or '..'");
+                    foreach (var optIns in OptInVariants)
+                    {
+                        AssertSinkRefused(storage, name, optIns, false, CleanupConfiguration.StorageOption, "without '.' or '..'");
+                    }
                 }
             }
         }
@@ -427,8 +439,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             using (var gcs = StoreFixtures.Gcs())
             {
-                AssertSinkRefused(gcs, "bucket/t", false, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
-                AssertSinkRefused(gcs, "bucket/t", true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                foreach (var optIns in OptInVariants)
+                {
+                    AssertSinkRefused(gcs, "bucket/t", optIns, false, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                    AssertSinkRefused(gcs, "bucket/t", optIns, true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                }
             }
             var known = new IFileStorage[]
             {
@@ -441,7 +456,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 using (storage)
                 {
-                    AssertSinkRefused(storage, "c/t", true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                    foreach (var optIns in OptInVariants)
+                    {
+                        AssertSinkRefused(storage, "c/t", optIns, true, CleanupConfiguration.StorageOption, $"{CleanupConfiguration.AssertionOption} cannot repair");
+                    }
                 }
             }
         }
@@ -457,27 +475,54 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new ForwardingStorage(StoreFixtures.S3()),
                 Files.Of.InternalMemory(nameof(SinkWithRetentionRequiresVouchForUnknownWrapper) + "raw")
             };
-            foreach (var storage in wrappers)
+            // Only the pinned in-memory store tells directories apart from files
+            var orphansAccepted = new[] { false, false, false, true };
+            for (int i = 0; i < wrappers.Length; i++)
             {
-                AssertSinkRefused(storage, "t", false, CleanupConfiguration.AssertionOption, "Verify that the whole storage stack");
-                var vouched = ConstructRetained(storage, "t", true);
+                var storage = wrappers[i];
+                // The missing assertion is reported before the orphan opt-in
+                foreach (var optIns in OptInVariants)
+                {
+                    AssertSinkRefused(storage, "t", optIns, false, CleanupConfiguration.AssertionOption, "Verify that the whole storage stack");
+                }
+                var vouched = ConstructRetained(storage, "t", Retention, true);
                 Assert.True(vouched.Store.Eligible);
                 Assert.True(vouched.Store.Asserted);
                 Assert.Equal(Retention.Retention, vouched.OptIns.Retention);
+                if (orphansAccepted[i])
+                {
+                    var orphans = ConstructRetained(storage, "t", RetentionAndOrphans, true);
+                    Assert.True(orphans.Store.Eligible);
+                    Assert.Equal(RetentionAndOrphans, orphans.OptIns);
+                }
+                else
+                {
+                    AssertRefused(() => ConstructRetained(storage, "t", RetentionAndOrphans, true), CleanupConfiguration.OrphanOption, "Disable orphan sweeping");
+                }
             }
-            AssertRefused(() => ConstructRetained(wrappers[0], "t/../u", true), CleanupConfiguration.StorageOption, "without '.' or '..'");
+            foreach (var optIns in OptInVariants)
+            {
+                AssertRefused(() => ConstructRetained(wrappers[0], "t/../u", optIns, true), CleanupConfiguration.StorageOption, "without '.' or '..'");
+            }
         }
 
         [Fact]
         public void SinkWithRetentionIssuesNoStorageRequests()
         {
             var storage = new HookFileStorage(Files.Of.InternalMemory(nameof(SinkWithRetentionIssuesNoStorageRequests)));
-            Assert.True(ConstructRetained(storage, "t", true).Store.Eligible);
-            Assert.Throws<ArgumentException>(() => ConstructRetained(storage, "t"));
+            Assert.True(ConstructRetained(storage, "t", Retention, true).Store.Eligible);
+            AssertRefused(() => ConstructRetained(storage, "t", RetentionAndOrphans, true), CleanupConfiguration.OrphanOption, "Disable orphan sweeping");
+            foreach (var optIns in OptInVariants)
+            {
+                Assert.Throws<ArgumentException>(() => ConstructRetained(storage, "t", optIns));
+            }
             Assert.Empty(storage.Requests);
             // Local disk needs no assertion
             using var local = Files.Of.LocalDisk(StoreFixtures.TempDirectory(nameof(SinkWithRetentionIssuesNoStorageRequests)));
-            Assert.True(ConstructRetained(local, "t").Store.Eligible);
+            foreach (var optIns in OptInVariants)
+            {
+                Assert.True(ConstructRetained(local, "t", optIns).Store.Eligible);
+            }
         }
 
         [Theory]
@@ -487,11 +532,62 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             await using var server = new LoopbackObjectStore(flavor);
             using var storage = server.CreateStorage();
-            Assert.True(ConstructRetained(storage, $"{LoopbackObjectStore.Container}/tables/t").Store.Eligible);
-            AssertRefused(() => ConstructRetained(storage, $"{LoopbackObjectStore.Container}/t x"), CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+            foreach (var optIns in OptInVariants)
+            {
+                Assert.True(ConstructRetained(storage, $"{LoopbackObjectStore.Container}/tables/t", optIns).Store.Eligible);
+                AssertRefused(() => ConstructRetained(storage, $"{LoopbackObjectStore.Container}/t x", optIns), CleanupConfiguration.StorageOption, CleanupStoreContract.QualifiedCharacters);
+            }
             // A request sent now would be the first the server sees
             Assert.Null(await storage.Stat("/c/tables/t/x"));
             Assert.Single(server.Requests);
+        }
+
+        [Fact]
+        public void OrphanIntervalValidationAtConstruction()
+        {
+            var directory = StoreFixtures.TempDirectory(nameof(OrphanIntervalValidationAtConstruction));
+            using var storage = Files.Of.LocalDisk(directory);
+            foreach (var interval in new[] { TimeSpan.FromHours(23), TimeSpan.FromDays(1) - TimeSpan.FromTicks(1), TimeSpan.Zero, TimeSpan.FromDays(-7), TimeSpan.MinValue })
+            {
+                AssertConstructionRefused(storage, Retention.Retention, interval, CleanupConfiguration.OrphanOption, "use at least one day");
+            }
+            AssertConstructionRefused(storage, null, TimeSpan.FromDays(7), CleanupConfiguration.RetentionOption, "required by orphan sweeping");
+
+            // With the largest whole-hours retention
+            var largest = TimeSpan.FromTicks(TimeSpan.MaxValue.Ticks / TimeSpan.TicksPerHour * TimeSpan.TicksPerHour);
+            foreach (var interval in new[] { TimeSpan.FromDays(1), TimeSpan.FromDays(7), TimeSpan.MaxValue })
+            {
+                var options = new DeltaLakeOptions() { StorageLocation = storage, HistoryRetention = largest, OrphanFileSweepInterval = interval };
+                foreach (var sink in new[] { new DeltaLakeSink(options, Relation("t"), new ExecutionDataflowBlockOptions()), Assert.IsType<DeltaLakeSink>(new DeltaLakeSinkFactory(options).CreateSink(Relation("t"), null!, new ExecutionDataflowBlockOptions())) })
+                {
+                    Assert.Equal(interval, sink.CleanupForTests.OptIns.OrphanSweepInterval);
+                    Assert.Equal(largest, sink.CleanupForTests.OptIns.Retention);
+                    Assert.True(sink.CleanupForTests.Store.Eligible);
+                }
+            }
+            Assert.False(Construct(storage, "t").CleanupForTests.OptIns.Any);
+        }
+
+        // The constructor and the factory every stream uses both refuse
+        private static void AssertConstructionRefused(IFileStorage storage, TimeSpan? retention, TimeSpan interval, string option, string remedy)
+        {
+            var options = new DeltaLakeOptions() { StorageLocation = storage, HistoryRetention = retention, OrphanFileSweepInterval = interval };
+            AssertRefused(() => new DeltaLakeSink(options, Relation("t"), new ExecutionDataflowBlockOptions()).CleanupForTests, option, remedy);
+            AssertRefused(() => ((DeltaLakeSink)new DeltaLakeSinkFactory(options).CreateSink(Relation("t"), null!, new ExecutionDataflowBlockOptions())).CleanupForTests, option, remedy);
+        }
+
+        [Fact]
+        public void AzureOrphanConstructionRequiresQualifiedDirectoryExclusion()
+        {
+            // Azure underneath, behind a wrapper classification never looks through
+            using var storage = new ForwardingStorage(StoreFixtures.Azure());
+            AssertRefused(() => ConstructRetained(storage, "c/t", RetentionAndOrphans, true), CleanupConfiguration.OrphanOption, "Disable orphan sweeping");
+            var retained = ConstructRetained(storage, "c/t", Retention, true);
+            Assert.True(retained.Store.Eligible);
+            Assert.False(retained.Store.Store.DirectoryExclusion);
+            // The pinned client itself qualifies for both
+            using var pinned = StoreFixtures.Azure();
+            Assert.True(ConstructRetained(pinned, "c/t", RetentionAndOrphans).Store.Eligible);
         }
 
         [Fact]

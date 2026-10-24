@@ -101,16 +101,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         private int _current;
         private bool _eof;
 
-        public RunCursor(string path, JobMemory memory)
+        // Offset is where an entry starts, 0 for the first
+        public RunCursor(string path, JobMemory memory, long offset = 0)
         {
             _memory = memory;
             _buffer = memory.Allocate(RunWriter.BufferSize);
             try
             {
                 _file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete, 1, FileOptions.SequentialScan);
+                if (offset > 0)
+                {
+                    _file.Seek(offset, SeekOrigin.Begin);
+                }
             }
             catch
             {
+                _file?.Dispose();
                 memory.Free(_buffer);
                 throw;
             }

@@ -13,6 +13,7 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using Stowage;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
@@ -309,9 +310,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         /// <summary>
         /// Lists the table's log through the current storage for absence evidence, checks it, rejects a head below the known published floor or an uninterpreted control record, and probes the head's successor; a listing error propagates as a transient failure and a stop as cancellation.
         /// </summary>
-        public static Task<(ListingCheck Check, LogEvidence? Log)> ReadLogAsync(CleanupConfiguration configuration, IFileStorage current, long publishedFloor, CancellationToken cancellationToken, JobMemory? memory = null)
+        public static Task<(ListingCheck Check, LogEvidence? Log)> ReadLogAsync(CleanupConfiguration configuration, IFileStorage current, long publishedFloor, CancellationToken cancellationToken, JobMemory? memory = null,
+            Action? listed = null)
         {
-            return ReadAsync(configuration, current, publishedFloor, EvidencePurpose.Absence, cancellationToken, memory);
+            return ReadAsync(configuration, current, publishedFloor, EvidencePurpose.Absence, cancellationToken, memory, listed);
         }
 
         /// <summary>
@@ -320,12 +322,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public static async Task<(ListingCheck Check, StageEvidence? Stages)> ReadStagesAsync(CleanupConfiguration configuration, IFileStorage current, long publishedFloor, CancellationToken cancellationToken,
             JobMemory? memory = null)
         {
-            var (check, log) = await ReadAsync(configuration, current, publishedFloor, EvidencePurpose.StageOnly, cancellationToken, memory);
+            var (check, log) = await ReadAsync(configuration, current, publishedFloor, EvidencePurpose.StageOnly, cancellationToken, memory, null);
             return log == null ? (check, null) : (check, new StageEvidence(log));
         }
 
+        // Listed runs as the listing returns, before its checks and its successor probe
         private static async Task<(ListingCheck Check, LogEvidence? Log)> ReadAsync(CleanupConfiguration configuration, IFileStorage current, long publishedFloor, EvidencePurpose purpose,
-            CancellationToken cancellationToken, JobMemory? memory)
+            CancellationToken cancellationToken, JobMemory? memory, Action? listed)
         {
             if (configuration.StorageChanged(current))
             {
@@ -338,6 +341,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
             var folder = store.Table.Combine(DeltaTransactionReader.DeltaLogDirName);
             var delivered = await current.Ls(folder, recurse: false, cancellationToken);
+            listed?.Invoke();
             var check = Check(store, folder, false, delivered, out var listing, memory, purpose);
             if (check != ListingCheck.Passed)
             {
@@ -399,6 +403,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             return DeltaTransactionReader.TryGetCommitVersion(name.Substring(1, CommitNameLength), out version);
         }
 
+        /// <summary>
+        /// The version and the id a stage file name carries: .{version:D20}.json.{id}.tmp with a nonempty id.
+        /// </summary>
+        public static bool TryGetStageId(string name, out long version, [NotNullWhen(true)] out string? id)
+        {
+            id = null;
+            if (!TryGetStageVersion(name, out version))
+            {
+                return false;
+            }
+            const int start = 1 + CommitNameLength + 1;
+            id = name.Substring(start, name.Length - start - StageSuffix.Length);
+            return true;
+        }
+
         // The requested folder lies in the table's bucket or container under a qualified prefix
         private static bool QualifiesFolder(CleanupStoreContract store, IOPath folder)
         {
@@ -413,8 +432,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             }
         }
 
-        // A nonrecursive listing holds only direct children
-        private static bool IsDescendant(string full, int folderLength)
+        // Below a subfolder of the folder, the subfolder itself excluded
+        internal static bool IsDescendant(string full, int folderLength)
         {
             var end = full[^1] == '/' ? full.Length - 1 : full.Length;
             return full.IndexOf('/', folderLength, end - folderLength) >= 0;

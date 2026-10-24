@@ -14,6 +14,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References;
 using Stowage;
 using Stowage.Impl;
+using System.Buffers.Binary;
 using System.Globalization;
 using System.Runtime.InteropServices;
 
@@ -44,6 +45,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         // The size an inventory listed, null when unknown; pinned Azure orphan runs need it positive
         public long? Size { get; init; }
 
+        // The modification time an inventory listed, null when unknown
+        public DateTimeOffset? Modified { get; init; }
+
+        // The MD5 an inventory listed, null when unknown
+        public string? Md5 { get; init; }
+
         // A planned path a foreign change referenced again, passed without a delete
         public bool Excluded { get; init; }
     }
@@ -64,7 +71,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         Folder = 4,
         // A payload inside a log, or a log file outside the table's log or not named as its kind
         Misplaced = 5,
-        // A directory on disk, or a folder an unknown stack's Stat reports
+        // A directory on disk, or a folder an unknown stack's or the Azure submission probe's Stat reports
         Directory = 6,
         // A reparse point at the table root, between it and the target, or the target itself
         ReparsePoint = 7,
@@ -73,7 +80,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
         // A size unknown or not positive where a delete needs a positive one: a pinned Azure orphan, or any target on an unknown stack
         UnknownSize = 9,
         // An excluded target, which a run passes
-        Excluded = 10
+        Excluded = 10,
+        // A pinned Azure orphan whose size, modification time or MD5 differs from its inventory's
+        IdentityChanged = 11,
+        // A pinned Azure orphan whose submission probe failed
+        ProbeError = 12
     }
 
     internal enum DeleteStatus : byte
@@ -106,7 +117,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
     /// </summary>
     internal sealed class DeletionTally
     {
-        private readonly long[] _kept = new long[(int)KeepReason.Excluded + 1];
+        private readonly long[] _kept = new long[(int)KeepReason.ProbeError + 1];
         private long _deleted;
         private long _absent;
         private long _failed;
@@ -572,6 +583,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
 
         private static long Parse(ReadOnlySpan<char> digits) => long.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out var value) ? value : long.MaxValue;
 
+        // A 16-byte MD5 from the hex the pinned Stat reports or the base64 its listing reports; null for any other text
+        private static UInt128? Md5Of(string? text)
+        {
+            if (text is { Length: 32 } && UInt128.TryParse(text, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var hex))
+            {
+                return hex;
+            }
+            Span<byte> bytes = stackalloc byte[16];
+            return text != null && Convert.TryFromBase64String(text, bytes, out var written) && written == bytes.Length ? BinaryPrimitives.ReadUInt128BigEndian(bytes) : null;
+        }
+
         // Unvouched: nobody vouched that a Stat showing nothing means a missing object
         private async Task<DeleteOutcome> DeleteObjectAsync(DeletionTarget target, bool orphan, CancellationToken cancellationToken, bool unvouched = false)
         {
@@ -584,14 +606,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion
                 {
                     return DeleteOutcome.Keep(KeepReason.UnknownSize);
                 }
-                var entry = await Storage.Stat(path, cancellationToken);
+                IOEntry? entry;
+                try
+                {
+                    entry = await Storage.Stat(path, cancellationToken);
+                }
+                catch
+                {
+                    return DeleteOutcome.Keep(KeepReason.ProbeError);
+                }
                 if (entry == null)
                 {
                     return new DeleteOutcome(DeleteStatus.Absent);
                 }
-                if (entry.Path.IsFolder || entry.Size is not > 0)
+                if (entry.Path.IsFolder)
+                {
+                    return DeleteOutcome.Keep(KeepReason.Directory);
+                }
+                if (entry.Size is not > 0)
                 {
                     return DeleteOutcome.Keep(KeepReason.UnknownSize);
+                }
+                // Identity frozen at the inventory: size always, time and MD5 when both sides know them
+                if (entry.Size != target.Size || (target.Modified is { } frozen && entry.LastModificationTime is { } modified && modified != frozen)
+                    || (Md5Of(target.Md5) is { } frozenMd5 && Md5Of(entry.MD5) is { } probedMd5 && probedMd5 != frozenMd5))
+                {
+                    return DeleteOutcome.Keep(KeepReason.IdentityChanged);
                 }
             }
             else if (kind == StoreKind.Unknown)

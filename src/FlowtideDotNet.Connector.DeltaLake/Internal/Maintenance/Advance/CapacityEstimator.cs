@@ -22,8 +22,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance
     /// <param name="Outstanding">Payload deletes in flight at once.</param>
     /// <param name="OrphanCandidates">Azure orphan candidates, each probed for a positive size.</param>
     /// <param name="KeyExtra">Characters a payload target's key holds beyond the path its part names.</param>
+    /// <param name="PathBytes">UTF-8 bytes of the payload paths no part holds.</param>
+    /// <param name="Md5Bytes">What a slice buffer charges for the payload targets' frozen MD5s.</param>
     internal readonly record struct AdvanceDemandInputs(long LogTargets, long PayloadPaths, int Parts, long PartBytes, long CheckpointBytes, long AnchorBytes, long CapabilityBytes, int CapabilityObjects,
-        long LogEntries, ListingPaging Paging, int Outstanding, TimeSpan Latency, long OrphanCandidates = 0, bool UnknownStore = false, long KeyExtra = 0);
+        long LogEntries, ListingPaging Paging, int Outstanding, TimeSpan Latency, long OrphanCandidates = 0, bool UnknownStore = false, long KeyExtra = 0, long PathBytes = 0, long Md5Bytes = 0);
 
     /// <summary>
     /// An advance's request and byte demand; no root listing enters it.
@@ -40,6 +42,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance
 
         // A buffered target of the longest path a part holds
         private const long CostliestTarget = DeletionRun.TargetOverheadBytes + 2L * ControlRecords.MaxPathBytes;
+
+        // The charge of the longest frozen MD5
+        private const long CostliestMd5 = DeletionRun.Md5OverheadBytes + 2L * OrphanCandidatePayload.MaxMd5Bytes;
 
         // A slice's issuance time, which its deletes' latency spends
         private static readonly long s_issuanceTicks = new DeletionRunSettings().IssuanceTime.Ticks;
@@ -88,11 +93,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance
             {
                 return 0;
             }
-            // Each target's overhead and key characters, at most its path's UTF-8 bytes and the key's extra characters
+            // Each target's overhead and key characters, at most its path's UTF-8 bytes and the key's extra characters, and its frozen MD5
             var charged = DeletionRun.TargetOverheadBytes * (Int128)inputs.PayloadPaths
                 + 2 * Int128.Max(0, inputs.PartBytes - inputs.Parts * (Int128)ControlRecords.PartLength(0, 0) - 4 * (Int128)inputs.PayloadPaths)
-                + 2 * (Int128)inputs.KeyExtra * inputs.PayloadPaths;
-            return charged / Int128.Max(1, DeletionRunSettings.DefaultMaxBufferBytes - CostliestTarget - 2 * (Int128)inputs.KeyExtra + 1);
+                + 2 * (Int128)inputs.PathBytes
+                + 2 * (Int128)inputs.KeyExtra * inputs.PayloadPaths
+                + inputs.Md5Bytes;
+            var costliest = CostliestTarget + (inputs.Md5Bytes > 0 ? CostliestMd5 : 0);
+            return charged / Int128.Max(1, DeletionRunSettings.DefaultMaxBufferBytes - costliest - 2 * (Int128)inputs.KeyExtra + 1);
         }
 
         // A delete waiting on latency counts as the requests the bucket could have granted meanwhile; in whole ticks, rounded up once

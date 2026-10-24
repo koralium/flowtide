@@ -179,8 +179,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance
             return TimeSpan.FromTicks(slice.Elapsed.Ticks * Math.Min(Math.Max(1, outstanding), slice.Issued) / slice.Issued);
         }
 
-        // The deletes a slice counts for, by the share of its path limit or of its issuance time it spent issuing
-        private static int Measured(SliceResult slice, DeletionRunSettings settings)
+        /// <summary>
+        /// The deletes a slice counts for, by the share of its path limit or of its issuance time it spent issuing.
+        /// </summary>
+        public static int Measured(SliceResult slice, DeletionRunSettings settings)
         {
             return (int)Math.Min(Math.Max(slice.Issued, settings.MaxPaths * slice.IssuanceWindow.Ticks / settings.IssuanceTime.Ticks), settings.MaxPaths);
         }
