@@ -241,6 +241,12 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 <td>Null</td>
 <td>No</td>
 </tr>
+<tr>
+<td>OrphanFileSweepInterval</td>
+<td>Only used for writing, how often files that no version of the table uses are deleted, needs <code>HistoryRetention</code>, see <a href="#orphan-files">Orphan files</a></td>
+<td>Null</td>
+<td>No</td>
+</tr>
 </tbody>
 </table>
 <p>The options given to <code>AddDeltaLakeCatalog</code> apply to every table the catalog reads or writes.</p>
@@ -404,7 +410,8 @@ read more of the log, and old history cannot be deleted.</p>
 On S3 it is also a good idea to add an <code>AbortIncompleteMultipartUpload</code> lifecycle rule, which removes the parts of failed checkpoint uploads.</p>
 <h3 id="table-maintenance">Table maintenance</h3>
 <p>The sink deletes files it wrote that no version of the table uses, for instance files from a write that failed. This runs in the background
-on Azure Blob Storage, S3 and local disk. On other storage, such as Google Cloud Storage, files from interrupted writes are left behind.</p>
+on Azure Blob Storage, S3 and local disk. Files from a write that was interrupted, for instance by a crash, can be left behind. The
+<a href="#orphan-files">orphan file sweep</a> can delete them.</p>
 <p>If you use your own storage wrapper you can set <code>AssumeCompleteStorageListing</code> to true to enable the cleanup. Only do this if the storage
 always lists every file, otherwise files that are still in use can be deleted.</p>
 <h3 id="history-retention">History retention</h3>
@@ -435,7 +442,7 @@ only works on Azure Blob Storage, S3 and local disk. The sink also sets the tabl
 raising <code>MaintenanceRequestsPerSecond</code> (default 200). On S3 the log is read one file at a time, so a table with a very long history, roughly
 700 000 versions or more, may never finish its first cleanup. Turn on retention early if you use S3.</p>
 <h4 id="turning-it-off">Turning it off</h4>
-<p>Remove <code>HistoryRetention</code> and restart the stream. A cleanup that has started is paused and continues if you turn retention on again.</p>
+<p>Remove <code>HistoryRetention</code> and <code>OrphanFileSweepInterval</code> and restart the stream. A cleanup that has started is paused and continues if you turn retention on again.</p>
 <p>To stop all background deletes at once, also those of table maintenance, set this switch at startup:</p>
 <pre><code class="lang-csharp">AppContext.SetSwitch(&quot;FlowtideDotNet.DeltaLake.DisableMaintenanceDeletes&quot;, true);
 </code></pre>
@@ -447,8 +454,71 @@ raising <code>MaintenanceRequestsPerSecond</code> (default 200). On S3 the log i
 <li><code>ManifestSuspended</code>: a <code>.flowtide-cleanup</code> file is missing or was changed. Stop the streams that write the table, restore the file from a
 backup and start them again. If there is no backup, turn off <code>HistoryRetention</code>. Nothing more is deleted on the table until this is fixed.</li>
 </ul>
+<h3 id="orphan-files">Orphan files</h3>
+<p>Files in the table folder that no version of the table uses are orphan files, for instance files left behind when a crash interrupts a
+write. It is possible to let the sink delete them in the background by setting <code>OrphanFileSweepInterval</code>. Once every interval a
+sweep deletes the files older than <code>HistoryRetention</code> plus one hour that no kept version of the table uses. The interval must be at
+least one day. The sweep needs <code>HistoryRetention</code> and only works on Azure Blob Storage, S3 and local disk, not on your own storage
+wrapper:</p>
+<pre><code class="lang-csharp">connectors.AddDeltaLakeSink(new DeltaLakeOptions()
+{
+    StorageLocation = Files.Of.LocalDisk(&quot;./testdata&quot;),
+    HistoryRetention = TimeSpan.FromDays(7),
+    OrphanFileSweepInterval = TimeSpan.FromDays(7)
+});
+</code></pre>
+<p>Things to keep in mind:</p>
+<ul>
+<li>The sweep can delete any unused file in the table folder, also files that Flowtide did not write. It skips Delta tables inside the
+table folder, and files and folders whose names start with <code>.</code> or <code>_</code>, except the <code>_change_data</code> folder at the top of the table.
+Keep any other files out of the table folder.</li>
+<li>A sweep keeps the names of all files in the table folder in memory while it checks them. Plan for about 2.5 GB for one million
+files on the host with the largest table.</li>
+<li>One sweep deletes at most 100 000 files, the next sweeps delete the rest.</li>
+<li>A sweep is skipped, and tried again later, if the table gets a new version while the sweep lists its files. Listing a million
+files can take a minute or more, so on a large table that gets a new version every minute the sweeps may never finish.</li>
+<li>Each commit from another writer or from an older version of Flowtide pauses the sweeps, usually for about one retention period.</li>
+</ul>
+<h4 id="running-a-sweep-now">Running a sweep now</h4>
+<p>Sweeps run on a schedule, not when the stream starts. It is possible to run one now with <code>DeltaLakeMaintenance.RequestOrphanSweep</code>.
+Pass the same storage object you gave as <code>StorageLocation</code> and the table name without the catalog, for example <code>my_folder/my_table</code>
+for <code>my_catalog.my_folder.my_table</code>. This also works without <code>OrphanFileSweepInterval</code>.</p>
+<pre><code class="lang-csharp">var storage = Files.Of.LocalDisk(&quot;./testdata&quot;);
+connectorManager.AddDeltaLakeCatalog(&quot;my_catalog&quot;, new DeltaLakeOptions()
+{
+    StorageLocation = storage,
+    HistoryRetention = TimeSpan.FromDays(7)
+});
+
+// Later, while the stream is running
+var result = DeltaLakeMaintenance.RequestOrphanSweep(storage, &quot;my_table&quot;);
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Scheduled</code></td>
+<td>A sweep runs in the background. A restart before it has finished drops the request.</td>
+</tr>
+<tr>
+<td><code>AlreadyPending</code></td>
+<td>An earlier request has not finished yet, this one joins it.</td>
+</tr>
+<tr>
+<td><code>Unavailable</code></td>
+<td>No running stream in this process writes the table with <code>HistoryRetention</code> on this storage, or the storage does not support the sweep.</td>
+</tr>
+</tbody>
+</table>
 <h3 id="monitoring-maintenance">Monitoring maintenance</h3>
-<p>Warnings are logged as <code>Delta table {table} cleanup: {reason}</code> or <code>Delta table {table} checkpoint maintenance: {reason}</code>.
+<p>Warnings are logged as <code>Delta table {table} cleanup: {reason}</code> or <code>Delta table {table} checkpoint maintenance: {reason}</code>. After a
+start, the first orphan sweep that lists the table's files logs a warning with how many it found and about how much memory they take,
+to help you size the host.
 These are the most useful gauges:</p>
 <table>
 <thead>

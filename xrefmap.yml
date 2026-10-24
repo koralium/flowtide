@@ -10325,6 +10325,28 @@ references:
   commentId: F:FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Zstd
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaCompressionCodec.Zstd
   nameWithType: DeltaCompressionCodec.Zstd
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance
+  name: DeltaLakeMaintenance
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.html
+  commentId: T:FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance
+  nameWithType: DeltaLakeMaintenance
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep(Stowage.IFileStorage,System.String)
+  name: RequestOrphanSweep(IFileStorage, string)
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeMaintenance_RequestOrphanSweep_Stowage_IFileStorage_System_String_
+  commentId: M:FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep(Stowage.IFileStorage,System.String)
+  name.vb: RequestOrphanSweep(IFileStorage, String)
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep(Stowage.IFileStorage, string)
+  fullName.vb: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep(Stowage.IFileStorage, String)
+  nameWithType: DeltaLakeMaintenance.RequestOrphanSweep(IFileStorage, string)
+  nameWithType.vb: DeltaLakeMaintenance.RequestOrphanSweep(IFileStorage, String)
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep*
+  name: RequestOrphanSweep
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeMaintenance_RequestOrphanSweep_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeMaintenance.RequestOrphanSweep
+  nameWithType: DeltaLakeMaintenance.RequestOrphanSweep
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions
   name: DeltaLakeOptions
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html
@@ -10526,6 +10548,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OneVersionPerCheckpoint
   nameWithType: DeltaLakeOptions.OneVersionPerCheckpoint
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval
+  name: OrphanFileSweepInterval
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_OrphanFileSweepInterval
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval
+  nameWithType: DeltaLakeOptions.OrphanFileSweepInterval
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval*
+  name: OrphanFileSweepInterval
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_OrphanFileSweepInterval_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.OrphanFileSweepInterval
+  nameWithType: DeltaLakeOptions.OrphanFileSweepInterval
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.PruningMemoryBytes
   name: PruningMemoryBytes
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_PruningMemoryBytes
@@ -10909,6 +10944,30 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils.Z85.EncodeGuid
   nameWithType: Z85.EncodeGuid
+- uid: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult
+  name: OrphanSweepRequestResult
+  href: api/FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.html
+  commentId: T:FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult
+  fullName: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult
+  nameWithType: OrphanSweepRequestResult
+- uid: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.AlreadyPending
+  name: AlreadyPending
+  href: api/FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.html#FlowtideDotNet_Connector_DeltaLake_OrphanSweepRequestResult_AlreadyPending
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.AlreadyPending
+  fullName: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.AlreadyPending
+  nameWithType: OrphanSweepRequestResult.AlreadyPending
+- uid: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Scheduled
+  name: Scheduled
+  href: api/FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.html#FlowtideDotNet_Connector_DeltaLake_OrphanSweepRequestResult_Scheduled
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Scheduled
+  fullName: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Scheduled
+  nameWithType: OrphanSweepRequestResult.Scheduled
+- uid: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Unavailable
+  name: Unavailable
+  href: api/FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.html#FlowtideDotNet_Connector_DeltaLake_OrphanSweepRequestResult_Unavailable
+  commentId: F:FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Unavailable
+  fullName: FlowtideDotNet.Connector.DeltaLake.OrphanSweepRequestResult.Unavailable
+  nameWithType: OrphanSweepRequestResult.Unavailable
 - uid: FlowtideDotNet.Connector.ElasticSearch
   name: FlowtideDotNet.Connector.ElasticSearch
   href: api/FlowtideDotNet.Connector.ElasticSearch.html
