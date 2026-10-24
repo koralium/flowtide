@@ -148,6 +148,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         Requests.Enqueue(request);
                         while (await reader.ReadLineAsync(Stop) is { Length: > 0 })
                         {
+                            // Headers are not used
                         }
                         string response;
                         if (request.StartsWith("GET /c?", StringComparison.Ordinal) && request.Contains("comp=list", StringComparison.Ordinal))

@@ -126,11 +126,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(OutcomeKind.Completed, swept.Kind);
             var requests = run.Requests();
             var steps = new List<string>();
-            foreach (var request in requests.Skip(run.RecursiveListing(requests)[^1] + 1))
+            var kinds = requests.Skip(run.RecursiveListing(requests)[^1] + 1).Select(request => request == PinnedOrphanRun.Successor ? "HEAD"
+                : (request.Contains("comp=list") || request.Contains("list-type=2")) && request.Contains("delimiter=") ? "LIST"
+                : "OTHER");
+            foreach (var step in kinds)
             {
-                var step = request == PinnedOrphanRun.Successor ? "HEAD"
-                    : (request.Contains("comp=list") || request.Contains("list-type=2")) && request.Contains("delimiter=") ? "LIST"
-                    : "OTHER";
                 // A listing's pages are one step
                 if (step != "LIST" || steps.LastOrDefault() != "LIST")
                 {

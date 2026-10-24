@@ -222,6 +222,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             {
                 while (await proof.ReadAsync(buffer, context.Stop) > 0)
                 {
+                    // Read only to reach the end
                 }
             }
             finally
