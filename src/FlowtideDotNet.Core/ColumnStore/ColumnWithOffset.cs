@@ -70,12 +70,20 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child) where T : IDataValue
         {
             var offset = offsets[index];
+            if (offset == NullValueIndex)
+            {
+                return ArrowTypeId.Null - dataValue.Type;
+            }
             return innerColumn.CompareTo(offset, dataValue, child);
         }
 
         public int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
         {
             var offset = offsets[thisIndex];
+            if (offset == NullValueIndex)
+            {
+                return ArrowTypeId.Null - otherColumn.GetTypeAt(otherIndex, default);
+            }
             return innerColumn.CompareTo(otherColumn, offset, otherIndex);
         }
 

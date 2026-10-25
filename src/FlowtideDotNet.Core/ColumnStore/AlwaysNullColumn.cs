@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         int IColumn.Count => throw new NotImplementedException();
 
-        ArrowTypeId IColumn.Type => throw new NotImplementedException();
+        ArrowTypeId IColumn.Type => ArrowTypeId.Null;
 
         StructHeader? IColumn.StructHeader => default;
 
@@ -55,12 +55,12 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child) where T : IDataValue
         {
-            return 0;
+            return ArrowTypeId.Null - dataValue.Type;
         }
 
         public int CompareTo(in IColumn otherColumn, in int thisIndex, in int otherIndex)
         {
-            return 0;
+            return ArrowTypeId.Null - otherColumn.GetTypeAt(otherIndex, default);
         }
 
         public void Dispose()

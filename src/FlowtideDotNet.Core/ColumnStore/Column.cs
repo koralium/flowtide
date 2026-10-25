@@ -643,6 +643,11 @@ namespace FlowtideDotNet.Core.ColumnStore
         public int CompareTo<T>(in int index, in T dataValue, in ReferenceSegment? child)
             where T : IDataValue
         {
+            if (child != null && !HasFields())
+            {
+                // Only structs and maps have fields, others read as a missing field
+                return ArrowTypeId.Null - dataValue.Type;
+            }
             if (dataValue.Type == _type)
             {
                 if (_type == ArrowTypeId.Null)
@@ -659,15 +664,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             {
                 return _dataColumn!.CompareTo(index, dataValue, child, default);
             }
+            else if (child != null)
+            {
+                // The value belongs to a field, not to the column type
+                if (_nullCounter > 0)
+                {
+                    return _dataColumn!.CompareTo(index, in dataValue, child, in _validityList);
+                }
+                return _dataColumn!.CompareTo(index, in dataValue, child, in BitmapList.None);
+            }
             else
             {
-                if (_nullCounter > 0 && dataValue.IsNull)
+                // A null row sorts before every other type
+                if (_nullCounter > 0 && !_validityList.Get(index))
                 {
-                    if (_validityList.Get(index))
-                    {
-                        return 1;
-                    }
-                    return 0;
+                    return ArrowTypeId.Null - dataValue.Type;
+                }
+                if (dataValue.IsNull)
+                {
+                    return 1;
                 }
                 return _type - dataValue.Type;
             }
@@ -727,6 +742,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                     otherIsNull = !resolvedOtherColumn._validityList.Get(resolvedOtherIndex);
                 }
 
+                // A union keeps its nulls inside the union column
+                if (otherIsNull && _type == ArrowTypeId.Union)
+                {
+                    thisIsNull = _dataColumn!.GetTypeAt(thisIndex, default) == ArrowTypeId.Null;
+                }
+
                 if (thisIsNull || otherIsNull)
                 {
                     if (thisIsNull && otherIsNull) return 0;
@@ -750,6 +771,16 @@ namespace FlowtideDotNet.Core.ColumnStore
         public (int, int) SearchBoundries<T>(in T value, in int start, in int end, in ReferenceSegment? child, bool desc = false)
             where T : IDataValue
         {
+            if (child != null && !HasFields())
+            {
+                // A missing field is null, same as an all null column
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return start <= end ? (start, end) : (~start, ~start);
+                }
+                var nextIndex = end + 1;
+                return (~nextIndex, ~nextIndex);
+            }
             if (_type == value.Type)
             {
                 if (_type == ArrowTypeId.Null)
@@ -812,11 +843,43 @@ namespace FlowtideDotNet.Core.ColumnStore
                     var index = end + 1;
                     return (~index, ~index);
                 }
+                else if (_nullCounter > 0 && !desc)
+                {
+                    // Nulls sort first, the value goes after them
+                    var index = FirstNonNull(start, end);
+                    return (~index, ~index);
+                }
                 else
                 {
                     return (~start, ~start);
                 }
             }
+        }
+
+        // Union rows can be structs or maps
+        private bool HasFields()
+        {
+            return _type == ArrowTypeId.Struct || _type == ArrowTypeId.Map || _type == ArrowTypeId.Union;
+        }
+
+        // Nulls are a prefix of a sorted range
+        private int FirstNonNull(int start, int end)
+        {
+            int low = start;
+            int high = end + 1;
+            while (low < high)
+            {
+                int mid = low + ((high - low) >> 1);
+                if (_validityList.Get(mid))
+                {
+                    high = mid;
+                }
+                else
+                {
+                    low = mid + 1;
+                }
+            }
+            return low;
         }
 
         public (IArrowArray, IArrowType) ToArrowArray()

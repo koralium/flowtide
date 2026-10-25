@@ -294,10 +294,19 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         {
             var typeIndex = _typeList[index];
             var type = (sbyte)_valueColumns[typeIndex].Type;
+            if (child != null)
+            {
+                // Only structs and maps have fields, others read as a missing field
+                if (type == (sbyte)ArrowTypeId.Struct || type == (sbyte)ArrowTypeId.Map)
+                {
+                    return _valueColumns[typeIndex].CompareTo(_offsets.Get(index), in value, child, default);
+                }
+                return ArrowTypeId.Null - value.Type;
+            }
             if (type == (sbyte)value.Type)
             {
-                var valueColumnIndex = _typeIds[(byte)type];
-                var valueColumn = _valueColumns[valueColumnIndex];
+                // Structs have one column per header, use the row's own column
+                var valueColumn = _valueColumns[typeIndex];
                 return valueColumn.CompareTo(_offsets.Get(index), in value, child, default);
             }
             else
