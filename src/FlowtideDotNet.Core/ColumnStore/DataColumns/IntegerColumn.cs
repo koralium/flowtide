@@ -456,7 +456,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         // This is wider, for now to just inserts
                         for (int i = sortedLookup.Length - 1; i >= 0; i--)
                         {
-                            _list.InsertAt(insertPositions[i], integerColumn._list.Get(sortedLookup[i]), memoryAllocator);
+                            // A null row gets a placeholder value
+                            var lookup = sortedLookup[i];
+                            _list.InsertAt(insertPositions[i], lookup == lookupNullIndex ? 0 : integerColumn._list.Get(lookup), memoryAllocator);
                         }
                         return;
                     }
