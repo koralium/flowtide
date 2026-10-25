@@ -125,10 +125,6 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                 }
                 return -1;
             }
-            else if (value.Type == ArrowTypeId.Null)
-            {
-                return 1;
-            }
             if (child != null)
             {
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
@@ -156,6 +152,10 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
             else
             {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 1;
+                }
                 var structValue = value.AsStruct;
                 var headerCompare = _header.CompareTo(structValue.Header);
 

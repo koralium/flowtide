@@ -119,6 +119,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return length - (otherEnd - otherStart);
                 }
 
+                // All keys first, then the values, same as DataValueComparer
                 for (int i = 0; i < length; i++)
                 {
                     var otherKeyVal = mapColumn._keyColumn.GetValueAt(otherStart + i, default);
@@ -127,6 +128,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                     {
                         return keyCompareVal;
                     }
+                }
+                for (int i = 0; i < length; i++)
+                {
                     var otherValueVal = mapColumn._valueColumn.GetValueAt(otherStart + i, default);
                     var valueCompareVal = _valueColumn.CompareTo(startOffset + i, otherValueVal, default);
                     if (valueCompareVal != 0)
@@ -224,10 +228,6 @@ namespace FlowtideDotNet.Core.ColumnStore
                 }
                 return -1;
             }
-            else if (value.Type == ArrowTypeId.Null)
-            {
-                return 1;
-            }
             if (child != null)
             {
                 if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
@@ -250,6 +250,10 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             else
             {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 1;
+                }
                 // Compare on the map level
                 var map = value.AsMap;
                 var (startOffset, endOffset) = GetOffsets(in index);
@@ -272,6 +276,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             return keyCompareVal;
                         }
+                    }
+                    for (int i = 0; i < length; i++)
+                    {
                         var otherValueVal = refmap.mapColumn._valueColumn.GetValueAt(otherStart + i, default);
                         var valueCompareVal = _valueColumn.CompareTo(startOffset + i, otherValueVal, default);
                         if (valueCompareVal != 0)
@@ -300,7 +307,9 @@ namespace FlowtideDotNet.Core.ColumnStore
                         {
                             return keyCompareVal;
                         }
-                        //var valueVal = _valueColumn.GetValueAt(startOffset + i, default);
+                    }
+                    for (int i = 0; i < length; i++)
+                    {
                         mapValue.GetValueAt(i, dataValueContainer);
                         var valueCompareVal = _valueColumn.CompareTo(startOffset + i, dataValueContainer, default);
                         if (valueCompareVal != 0)
