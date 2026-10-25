@@ -760,6 +760,84 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
         }
 
         /// <summary>
+        /// sub1's ended run must not accept or serve sub2
+        /// </summary>
+        [Fact]
+        public async Task PeerRestartingBeforeTheWaveJoinerRestartedFetchesNothingFromTheEndedRun()
+        {
+            var testName = "restart_before_joiner";
+            var names = new[] { "sub1", "sub2" };
+            _generator.Generate(100);
+            var latestData = new ConcurrentDictionary<string, EventBatchData>();
+            var hub = new LocalSubstreamCommunicationHub();
+            var failures = new ConcurrentBag<string>();
+            var commits = new ConcurrentQueue<(string Substream, long Version)>();
+            var factories = names.ToDictionary(n => n, n => new ScriptedFactory(hub.CreateFactory(n)));
+            var streams = names.ToDictionary(n => n, n => BuildSubstream(testName, TwoSubstreamSql, n, factories[n], latestData, failures, commits));
+            var sub1Log = _logBuffers["sub1"];
+            var sub2Log = _logBuffers["sub2"];
+            int commitsAtCrash = 0;
+            string Outcome() =>
+                $"states {string.Join(" ", streams.Select(s => $"{s.Key}={s.Value.State}"))}; sub2 rows={RowCount(latestData, "sub2")}/{_generator.Users.Count}; " +
+                $"commits after the crash={string.Join(",", commits.Skip(commitsAtCrash).Select(c => $"{c.Substream}:{c.Version}"))}; " +
+                $"sub2 handshakes={string.Join(",", factories["sub2"].Requests.Select(Describe))}; failures={string.Join(" | ", failures)}";
+            bool Running() => streams.Values.All(s => s.State == StreamStateValue.Running) && RowCount(latestData, "sub2") == _generator.Users.Count;
+
+            using var teardown = new ManualResetEventSlim();
+            var tearingDown = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            StreamContext.BeforeFailureDisposeForTests = streamName =>
+            {
+                // Hold sub1's teardown before it stops serving sub2
+                if (streamName == $"{testName.Length}_{testName}_sub1" && tearingDown.TrySetResult())
+                {
+                    teardown.Wait(TimeSpan.FromSeconds(30));
+                }
+            };
+            try
+            {
+                foreach (var stream in streams.Values)
+                {
+                    await stream.StartAsync();
+                }
+                await WaitUntil(() => Running() && CommonCommittedVersion(commits, names).HasValue, "the first run", TimeSpan.FromSeconds(30), Outcome);
+
+                // Hold sub2's fetches and check twice for one in flight
+                factories["sub2"].HoldFetches = true;
+                bool Unfetched() => sub1Log.LinesContaining("stores locking event Checkpoint").Count > sub2Log.LinesContaining("processing event of type Checkpoint").Count;
+                _generator.Generate(10);
+                await WaitUntil(Unfetched, "a checkpoint barrier in sub1's target", TimeSpan.FromSeconds(30), Outcome);
+                await Task.Delay(200);
+                await WaitUntil(Unfetched, "a checkpoint barrier still in sub1's target", TimeSpan.FromSeconds(30), Outcome);
+
+                commitsAtCrash = commits.Count;
+                var requestsAtCrash = factories["sub2"].Requests.Count;
+                await streams["sub2"].InjectFailureForTests(new InvalidOperationException("crash sub2"));
+                await tearingDown.Task.WaitAsync(TimeSpan.FromSeconds(30));
+                var eventsAtCrash = sub2Log.LinesContaining("processing event of type").Count;
+                factories["sub2"].HoldFetches = false;
+                // sub2 handshakes again while sub1 is still tearing down
+                await WaitUntil(() => factories["sub2"].Requests.Skip(requestsAtCrash).Any(r => r.Response != null), "sub2's handshake in its wave", TimeSpan.FromSeconds(30), Outcome);
+                await Task.Delay(500);
+                Assert.DoesNotContain(factories["sub2"].Requests.Skip(requestsAtCrash), r => r.Response?.Success == true);
+                Assert.Equal(eventsAtCrash, sub2Log.LinesContaining("processing event of type").Count);
+                teardown.Set();
+
+                await WaitUntil(() => Running() && CommonCommittedVersion(commits, names, commitsAtCrash).HasValue, "the group to run again", TimeSpan.FromSeconds(60), Outcome);
+                _output.WriteLine(Outcome());
+            }
+            catch
+            {
+                DumpLogBuffers(testName, Outcome());
+                throw;
+            }
+            finally
+            {
+                StreamContext.BeforeFailureDisposeForTests = null;
+                teardown.Set();
+            }
+        }
+
+        /// <summary>
         /// sub1 joins a peer's wave in its handshake while its other exchange's target is still wired to the ended run.
         /// </summary>
         [Fact]
@@ -1178,6 +1256,9 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             // Its fail-and-recover notifications are lost, only its handshakes carry its wave.
             public volatile bool DropFailAndRecover;
 
+            // Fetches come back empty while this is set
+            public volatile bool HoldFetches;
+
             // Target and wave of every durability claim sent.
             public ConcurrentDictionary<string, byte> ClaimWaves { get; } = new ConcurrentDictionary<string, byte>();
 
@@ -1245,7 +1326,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             public Task<IReadOnlyList<SubstreamEventData>> FetchData(IReadOnlySet<int> targetIds, int numberOfEvents, CancellationToken cancellationToken)
             {
-                if (_factory.Dead) return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
+                if (_factory.Dead || _factory.HoldFetches) return Task.FromResult<IReadOnlyList<SubstreamEventData>>(Array.Empty<SubstreamEventData>());
                 return _inner.FetchData(targetIds, numberOfEvents, cancellationToken);
             }
 

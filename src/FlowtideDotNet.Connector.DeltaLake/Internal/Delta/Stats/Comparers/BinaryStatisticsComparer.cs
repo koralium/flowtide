@@ -64,21 +64,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             }
         }
 
+        // Json text cannot hold invalid utf8, which leaves a bound out; valid values are cut like strings, comparing bytes alike
         public void WriteMaxValue(Utf8JsonWriter writer, string propertyName)
         {
-            // Json text cannot hold invalid utf8, leave unbounded
             if (_maxValue != null && Utf8.IsValid(_maxValue))
             {
-                writer.WriteString(propertyName, _maxValue);
+                StringStatisticsComparer.WriteMaxBound(writer, propertyName, _maxValue);
             }
         }
 
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
-            // Json text cannot hold invalid utf8, leave unbounded
             if (_minValue != null && Utf8.IsValid(_minValue))
             {
-                writer.WriteString(propertyName, _minValue);
+                StringStatisticsComparer.WriteMinBound(writer, propertyName, _minValue);
             }
         }
 

@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Core.Tests.ColumnStore
 {
@@ -317,6 +318,58 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal(-3, high2);
             Assert.Equal(-1, low3);
             Assert.Equal(-1, high3);
+        }
+
+        [Fact]
+        public void TestAddToHashWithChild()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StructValue(StructHeader.Create("a", "b"), new Int64Value(1), new Int64Value(2)),
+                new StructValue(StructHeader.Create("a", "b"), new Int64Value(1), new Int64Value(3))
+            };
+            List<ReferenceSegment> children = new List<ReferenceSegment>()
+            {
+                new MapKeyReferenceSegment() { Key = "a" },
+                new MapKeyReferenceSegment() { Key = "c" },
+                new StructReferenceSegment() { Field = 1 },
+                new StructReferenceSegment() { Field = 2 }
+            };
+
+            var hash = new XxHash32();
+            foreach (var child in children)
+            {
+                for (int i = 0; i < 2; i++)
+                {
+                    column.AddToHash(i, child, hash);
+                    var columnHash = hash.GetHashAndReset();
+
+                    column.GetValueAt(i, child).AddToHash(hash);
+                    var valueHash = hash.GetHashAndReset();
+
+                    Assert.Equal(valueHash, columnHash);
+                }
+            }
+        }
+
+        [Fact]
+        public void TestAddToHashFromContainer()
+        {
+            using Column column = new Column(GlobalMemoryManager.Instance)
+            {
+                new StructValue(StructHeader.Create("a", "b"), new Int64Value(1), new Int64Value(2))
+            };
+
+            var hash = new XxHash32();
+            column.AddToHash(0, default, hash);
+            var columnHash = hash.GetHashAndReset();
+
+            DataValueContainer container = new DataValueContainer();
+            column.GetValueAt(0, container, default);
+            container.AddToHash(hash);
+            var containerHash = hash.GetHashAndReset();
+
+            Assert.Equal(columnHash, containerHash);
         }
     }
 }

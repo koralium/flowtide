@@ -172,7 +172,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         var skipReason = CheckpointSkipReason(currentTableState);
                         if (skipReason == null)
                         {
-                            await DeltaCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
+                            await LegacyCheckpointWriter.WriteCheckpoint(_options.StorageLocation, _tablePath, currentTableState);
                         }
                         else if (_checkpointSkipReasons.Add(skipReason))
                         {

@@ -92,6 +92,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         /// </summary>
         public long? StartCheckpointVersion => _startCheckpointVersion;
 
+        /// <summary>
+        /// The first-line header of the head commit when the read replayed it, null otherwise.
+        /// </summary>
+        internal CommitHeader? HeadHeader { get; set; }
+
         private List<DeltaFile> ParseFiles()
         {
             var statisticsJsonOptions = new JsonSerializerOptions();
@@ -125,7 +130,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableDeletionVectors", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -145,7 +150,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableChangeDataFeed", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -161,7 +166,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (_metadata.Configuration != null &&
                     _metadata.Configuration.TryGetValue("delta.columnMapping.mode", out var mode))
                 {
-                    return !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
+                    // A null mode is none
+                    return mode != null && !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
                 }
                 return false;
             }

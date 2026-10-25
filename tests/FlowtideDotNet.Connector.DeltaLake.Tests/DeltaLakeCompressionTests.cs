@@ -22,7 +22,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task NewTablesWriteZstdFiles()
         {
-            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}"));
+            // Owned, so the in-memory store below is classified and its discarded change files are deleted inline
+            var storage = new OwnedHookFileStorage(Files.Of.InternalMemory($"./{nameof(NewTablesWriteZstdFiles)}"));
             DeltaLakeOptions? sinkOptions = null;
             await using var stream = new DeltaLakeSinkStream(nameof(NewTablesWriteZstdFiles), storage, options =>
             {
@@ -150,12 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 using var conn = new DuckDB.NET.Data.DuckDBConnection("DataSource=:memory:");
                 conn.Open();
-                using (var setup = conn.CreateCommand())
-                {
-                    var extensionsDir = Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/");
-                    setup.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
-                    setup.ExecuteNonQuery();
-                }
+                DeltaTestKit.LoadDuckDbDelta(conn, Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/"));
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = $"SELECT count(*) FROM delta_scan('{Path.Join(tempPath, "test").Replace("\\", "/")}')";
                 var count = Convert.ToInt64(cmd.ExecuteScalar());

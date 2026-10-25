@@ -103,7 +103,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Metadata(UserSchema)
             };
             var staged = await DeltaTransactionWriter.StageCommit(storage, "t", 0, actions);
-            Assert.True(staged.Bytes.FirstLine()!.Length > 64 * 1024);
+            Assert.True(Array.IndexOf(staged.Bytes.ToArray(), (byte)'\n') > 64 * 1024);
             var pending = new DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length, CheckpointId = 1 };
             Assert.Equal(PublishOutcome.Published, (await DeltaTransactionWriter.PublishCommit(storage, "t", pending, staged.Bytes, checkSuccessor: false)).Outcome);
 

@@ -12,24 +12,19 @@
 
 using Apache.Arrow;
 using Apache.Arrow.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using Stowage;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
+namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
-    internal class LastCheckpointInfo
-    {
-        [JsonPropertyName("version")]
-        public long Version { get; set; }
-
-        [JsonPropertyName("size")]
-        public long Size { get; set; }
-    }
-
-    internal static class DeltaCheckpointWriter
+    // The checkpoint writer as of eff80ba18, writes the legacy roots that later builds start from
+    internal static class LegacyCheckpointWriter
     {
         public static async Task WriteCheckpoint(IFileStorage storage, IOPath tablePath, DeltaTable table, ParquetSharp.WriterProperties? writerProperties = null)
         {

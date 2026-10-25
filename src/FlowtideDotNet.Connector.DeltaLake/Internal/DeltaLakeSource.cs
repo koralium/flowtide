@@ -51,6 +51,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         private readonly ReadRelation _readRelation;
         private readonly DeltaLakeOptions _options;
+        private readonly DeltaHistoryColumns _history;
         private IObjectState<DeltaLakeSourceState>? _state;
         private DeltaTable? _table;
         private IDeltaFormatReader? _reader;
@@ -77,6 +78,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         {
             this._readRelation = readRelation;
             this._options = options;
+            _history = DeltaHistoryColumns.Create(readRelation.BaseSchema.Names, options.IncludeChangeHistory);
             _tableName = string.Join("/", readRelation.NamedTable.Names);
             _tableLoc = _tableName;
         }
@@ -165,12 +167,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         /// <summary>
-        /// Reads both added and deleted files and compute the delta between them
+        /// Reads both added and deleted files and compute the delta between them,
+        /// change data files are only buffered for the change history
         /// </summary>
         /// <param name="deltaCommit"></param>
         /// <param name="output"></param>
         /// <returns></returns>
-        private async Task<DeltaLoadOutcome> LoadFileData(DeltaCommit deltaCommit, IngressOutput<StreamEventBatch> output)
+        private async Task<DeltaLoadOutcome> LoadBufferedData(DeltaCommit deltaCommit, IngressOutput<StreamEventBatch> output)
         {
             Debug.Assert(_state?.Value != null);
             Debug.Assert(_changesTree != null);
@@ -178,7 +181,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             await output.EnterCheckpointLock();
             try
             {
-                await BufferFileChanges(deltaCommit);
+                if (deltaCommit.CdcFiles.Count > 0)
+                {
+                    await BufferCdcChanges(deltaCommit);
+                }
+                else
+                {
+                    await BufferFileChanges(deltaCommit);
+                }
             }
             // Nothing was sent yet, the buffered changes are dropped
             catch (DeltaFileNotFoundException e)
@@ -188,7 +198,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 HaltOnMissingFile(e.Path);
                 return DeltaLoadOutcome.Halted;
             }
-            await SendBufferedChanges(output);
+            await SendBufferedChanges(output, DeltaHistoryColumns.CommitTime(deltaCommit), _state.Value.CurrentVersion + 1);
 
             _hasCheckpointed = false;
             _state.Value.CurrentVersion = _state.Value.CurrentVersion + 1;
@@ -196,6 +206,46 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
             output.ExitCheckpointLock();
             return DeltaLoadOutcome.Loaded;
+        }
+
+        // Pre and post images of untouched columns cancel out
+        private async Task BufferCdcChanges(DeltaCommit deltaCommit)
+        {
+            Debug.Assert(_reader != null);
+            Debug.Assert(_changesTree != null);
+
+            foreach (var file in deltaCommit.CdcFiles)
+            {
+                Debug.Assert(file.Path != null);
+                var batches = _reader.ReadCdcFile(_options.StorageLocation, _tableLoc, file.Path, file.PartitionValues, MemoryAllocator);
+
+                await foreach (var batch in batches)
+                {
+                    for (int i = 0; i < batch.count; i++)
+                    {
+                        await _changesTree.RMWNoResult(new ColumnRowReference() { referenceBatch = batch.data, RowIndex = i }, batch.weights[i], (input, current, exists) =>
+                        {
+                            if (exists)
+                            {
+                                var newWeight = current + input;
+
+                                if (newWeight == 0)
+                                {
+                                    return (0, GenericWriteOperation.Delete);
+                                }
+
+                                return (newWeight, GenericWriteOperation.Upsert);
+                            }
+                            else
+                            {
+                                return (input, GenericWriteOperation.Upsert);
+                            }
+                        });
+                    }
+                    batch.data.Dispose();
+                    batch.weights.Dispose();
+                }
+            }
         }
 
         // Reads both added and removed files into the changes tree, nothing is sent
@@ -367,7 +417,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
         }
 
-        private async Task SendBufferedChanges(IngressOutput<StreamEventBatch> output)
+        private async Task SendBufferedChanges(IngressOutput<StreamEventBatch> output, long? commitTime, long version)
         {
             Debug.Assert(_changesTree != null);
             Debug.Assert(_eventsCounter != null);
@@ -392,7 +442,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                 _eventsCounter.Add(weights.Count);
                 _eventsProcessed.Add(weights.Count);
-                await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                await output.SendAsync(new StreamEventBatch(_history.ToBatch(columns, weights, iterations, commitTime, version, MemoryAllocator)));
             }
 
             await _changesTree.Clear();
@@ -436,7 +486,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     continue;
                 }
 
-                var outcome = commitInfo.CdcFiles.Count > 0 ? await LoadCdcData(commitInfo, output) : await LoadFileData(commitInfo, output);
+                // Change history buffers change data, untouched columns cancel
+                var outcome = commitInfo.CdcFiles.Count > 0 && !_history.Enabled ? await LoadCdcData(commitInfo, output) : await LoadBufferedData(commitInfo, output);
                 if (outcome == DeltaLoadOutcome.Halted)
                 {
                     return;
@@ -550,10 +601,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     throw new InvalidOperationException($"Delta Lake Table {_tableName} does not exist");
                 }
+                var clash = _history.Enabled ? latestTable.Schema.Fields.FirstOrDefault(x => DeltaHistoryColumns.IsHistoryColumn(x.Name)) : null;
+                if (clash != null)
+                {
+                    throw new InvalidOperationException($"Delta Lake Table {_tableName} has a column named {clash.Name}, it can not be read with {nameof(DeltaLakeOptions.IncludeChangeHistory)}");
+                }
                 // Only a first start reads a snapshot, a restore continues from its version
                 if (_state.Value.CurrentVersion == -1)
                 {
-                    _table = _options.OneVersionPerCheckpoint ? await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, 0, readOptions) : latestTable;
+                    var fromFirstVersion = _options.OneVersionPerCheckpoint || _options.StartFromFirstVersion;
+                    _table = fromFirstVersion ? await DeltaTransactionReader.ReadTable(_options.StorageLocation, _tableLoc, 0, readOptions) : latestTable;
                     if (_table == null)
                     {
                         throw new InvalidOperationException($"Delta Lake Table {_tableName} does not exist");
@@ -561,14 +618,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 }
 
                 var reader = new ParquetSharpReader();
-                reader.Initialize(latestTable, _readRelation.BaseSchema.Names);
+                reader.Initialize(latestTable, _history.DataColumns);
                 _reader = reader;
             }
 
             _changesTree = await stateManagerClient.GetOrCreateTree("changes", new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>()
             {
-                Comparer = new ColumnComparer(_readRelation.BaseSchema.Names.Count),
-                KeySerializer = new ColumnStoreSerializer(_readRelation.BaseSchema.Names.Count, MemoryAllocator),
+                Comparer = new ColumnComparer(_history.DataColumns.Count),
+                KeySerializer = new ColumnStoreSerializer(_history.DataColumns.Count, MemoryAllocator),
                 MemoryAllocator = MemoryAllocator,
                 ValueSerializer = new PrimitiveListValueContainerSerializer<int>(MemoryAllocator)
             });
@@ -594,6 +651,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Debug.Assert(_table != null);
                 Debug.Assert(_reader != null);
                 await output.EnterCheckpointLock();
+                var snapshotTime = _history.Enabled ? await SnapshotTime(_table) : null;
                 foreach (var file in _table.AddFiles)
                 {
                     Debug.Assert(file.Path != null);
@@ -618,7 +676,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                         _eventsCounter.Add(batch.count);
                         _eventsProcessed.Add(batch.count);
-                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, batch.data)));
+                        await output.SendAsync(new StreamEventBatch(_history.ToBatch(batch.data, weights, iterations, snapshotTime, _table.Version, MemoryAllocator)));
                     }
                 }
 
@@ -636,6 +694,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
 
             await RegisterTrigger(DeltaLoadName, _options.DeltaCheckInterval);
+        }
+
+        // File times when cleanup removed the commit
+        private async Task<long?> SnapshotTime(DeltaTable table)
+        {
+            var commit = await DeltaTransactionReader.ReadVersionCommit(_options.StorageLocation, _tableLoc, table.Version);
+            return (commit != null ? DeltaHistoryColumns.CommitTime(commit) : null) ?? DeltaHistoryColumns.LatestAddTime(table.AddFiles);
         }
     }
 }

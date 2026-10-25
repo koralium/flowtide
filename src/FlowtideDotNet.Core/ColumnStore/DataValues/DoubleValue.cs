@@ -62,7 +62,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
             Span<byte> buffer = stackalloc byte[8];
-            BinaryPrimitives.WriteDoubleLittleEndian(buffer, AsDouble);
+            var val = AsDouble;
+            if (val == 0.0)
+            {
+                val = 0.0; // Normalize -0.0 to +0.0, same as DoubleColumn
+            }
+            BinaryPrimitives.WriteDoubleLittleEndian(buffer, val);
             hashAlgorithm.Append(buffer);
         }
 

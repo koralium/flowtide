@@ -14,6 +14,7 @@ using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowEncoders;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
+using System.Globalization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders
 {
@@ -57,7 +58,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowP
                 throw new ArgumentException($"Partition value for {physicalName} not found");
             }
 
-            if (!DateTimeOffset.TryParse(value, out var dateValue))
+            if (!DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var dateValue))
             {
                 throw new ArgumentException($"Partition value for {physicalName} is not a date");
             }

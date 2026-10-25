@@ -55,6 +55,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private bool _entered = true;
         // A start began in the current wave: its run may have fetched events in it, its failure needs a new one.
         private bool _startedInCurrent;
+        // Set on the first start of the substream
+        private bool _hasStarted;
+        // The wave whose restart failed to dispatch
+        private RecoveryWave? _failedDispatchWave;
         // The wave the last start began in, what a come-down derives from.
         private RecoveryWave _startWave;
         // A run in the current wave ended in a stop, a running peer cannot tell the next start from it.
@@ -128,6 +132,82 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         }
 
         /// <summary>
+        /// True when a new wave still waits for its restart
+        /// </summary>
+        public bool RestartPending
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _hasStarted && !_startedInCurrent;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Answers a peer handshake, refused while a restart is pending
+        /// </summary>
+        public bool TryAnswer(SubstreamCommunicationPoint point, out (RecoveryWave Wave, bool InInit) answer)
+        {
+            lock (_lock)
+            {
+                answer = (_current, _entered);
+                if (_hasStarted && !_startedInCurrent)
+                {
+                    return false;
+                }
+                _answered[point] = _current;
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Remember a failed restart if the wave is still current
+        /// </summary>
+        public void RestartDispatchFailed(RecoveryWave wave)
+        {
+            lock (_lock)
+            {
+                if (wave == _current)
+                {
+                    _failedDispatchWave = wave;
+                }
+            }
+        }
+
+        /// <summary>
+        /// True once if the restart into wave should be dispatched again
+        /// </summary>
+        public bool TakeFailedRestartDispatch(out RecoveryWave wave)
+        {
+            lock (_lock)
+            {
+                wave = _current;
+                var take = _failedDispatchWave == _current && _hasStarted && !_startedInCurrent;
+                _failedDispatchWave = null;
+                return take;
+            }
+        }
+
+        /// <summary>
+        /// Answers a clean handoff, also refused while in init
+        /// </summary>
+        public bool TryAnswerCleanHandoff(SubstreamCommunicationPoint point, out (RecoveryWave Wave, bool InInit) answer)
+        {
+            lock (_lock)
+            {
+                answer = (_current, _entered);
+                if (_entered || (_hasStarted && !_startedInCurrent))
+                {
+                    return false;
+                }
+                _answered[point] = _current;
+                return true;
+            }
+        }
+
+        /// <summary>
         /// True when the wave outranks the current one: the substream is in it now and has to restart into it.
         /// </summary>
         public bool TryEnter(RecoveryWave wave)
@@ -176,6 +256,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
             {
                 _entered = true;
                 _startedInCurrent = true;
+                _hasStarted = true;
+                _failedDispatchWave = null;
                 _startWave = _current;
                 return _current;
             }
@@ -241,18 +323,6 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _startedInCurrent = true;
                 _startWave = wave;
                 return _answered.Any(answered => !ReferenceEquals(answered.Key, adopter) && answered.Value < wave);
-            }
-        }
-
-        /// <summary>
-        /// The wave and init state a peer's handshake is answered with, recorded in the same step so an adopt sees it.
-        /// </summary>
-        public (RecoveryWave Wave, bool InInit) Answer(SubstreamCommunicationPoint point)
-        {
-            lock (_lock)
-            {
-                _answered[point] = _current;
-                return (_current, _entered);
             }
         }
 

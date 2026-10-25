@@ -32,7 +32,13 @@ namespace FlowtideDotNet.Core.Tests.Exchange
                 var answering = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "a", hub.CreateFactory("self").GetCommunicationHandler("a", "self"), waves: waves);
                 var adopting = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "b", hub.CreateFactory("self").GetCommunicationHandler("b", "self"), waves: waves);
                 using var go = new Barrier(2);
-                var answer = Task.Run(() => { go.SignalAndWait(); return waves.Answer(answering).Wave; });
+                var answer = Task.Run(() =>
+                {
+                    go.SignalAndWait();
+                    // Not started yet, so no restart is pending
+                    Assert.True(waves.TryAnswer(answering, out var answered));
+                    return answered.Wave;
+                });
                 var adopt = Task.Run(() => { go.SignalAndWait(); return waves.Adopt(adopted, adopting); });
                 await Task.WhenAll(answer, adopt);
                 Assert.True(adopt.Result || answer.Result == adopted, $"iteration {i}: answered {answer.Result} and the adopt did not see it");
@@ -54,6 +60,108 @@ namespace FlowtideDotNet.Core.Tests.Exchange
             Assert.False(waves.InInit);
             waves.Stopped();
             Assert.True(waves.InInit);
+        }
+
+        /// <summary>
+        /// A new wave after a start waits for a restart
+        /// </summary>
+        [Fact]
+        public void ARestartIsPendingFromAWaveAfterAStartUntilTheRestartBegins()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var waves = new SubstreamRecoveryWaves();
+            var point = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "a", hub.CreateFactory("self").GetCommunicationHandler("a", "self"), waves: waves);
+
+            // Before the first start a peer wave needs no restart
+            var first = new RecoveryWave(1, Guid.NewGuid());
+            Assert.True(waves.TryEnter(first));
+            Assert.False(waves.RestartPending);
+            Assert.True(waves.TryAnswer(point, out _));
+            waves.ForStart();
+            waves.StartCompleted();
+            Assert.False(waves.RestartPending);
+
+            // A peer wave and our own failure need one restart
+            var peers = new RecoveryWave(2, Guid.NewGuid());
+            Assert.True(waves.TryEnter(peers));
+            Assert.True(waves.RestartPending);
+            Assert.False(waves.TryAnswer(point, out var held));
+            Assert.Equal(peers, held.Wave);
+            Assert.Equal(peers, waves.ForFailure());
+            Assert.True(waves.RestartPending);
+            waves.ForStart();
+            Assert.False(waves.RestartPending);
+            Assert.True(waves.TryAnswer(point, out _));
+
+            // Failure, mint and lowering each make a restart pending
+            var minted = waves.ForFailure();
+            Assert.True(minted > peers);
+            Assert.True(waves.RestartPending);
+            waves.ForStart();
+            waves.MintAbove(waves.Current);
+            Assert.True(waves.RestartPending);
+            waves.ForStart();
+            waves.MintForLowering(0);
+            Assert.True(waves.RestartPending);
+            waves.ForStart();
+
+            // A stop and an adopted wave need no restart
+            waves.Stopped();
+            Assert.False(waves.RestartPending);
+            waves.Adopt(new RecoveryWave(waves.Current.Counter + 1, Guid.NewGuid()), point);
+            Assert.False(waves.RestartPending);
+        }
+
+        /// <summary>
+        /// A refused answer must not be seen by a later adopt
+        /// </summary>
+        [Fact]
+        public void ARefusedAnswerIsNotRecorded()
+        {
+            var hub = new LocalSubstreamCommunicationHub();
+            var waves = new SubstreamRecoveryWaves();
+            var answering = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "a", hub.CreateFactory("self").GetCommunicationHandler("a", "self"), waves: waves);
+            var adopting = new SubstreamCommunicationPoint(NullLogger.Instance, "self", "b", hub.CreateFactory("self").GetCommunicationHandler("b", "self"), waves: waves);
+            waves.ForStart();
+            waves.StartCompleted();
+
+            Assert.True(waves.TryEnter(new RecoveryWave(1, Guid.NewGuid())));
+            Assert.False(waves.TryAnswer(answering, out _));
+            Assert.False(waves.TryAnswerCleanHandoff(answering, out _));
+            waves.ForStart();
+
+            Assert.False(waves.Adopt(new RecoveryWave(2, Guid.NewGuid()), adopting));
+        }
+
+        /// <summary>
+        /// A failed restart is taken once and only in its wave
+        /// </summary>
+        [Fact]
+        public void AFailedRestartDispatchIsTakenOnlyInItsOwnWave()
+        {
+            var waves = new SubstreamRecoveryWaves();
+            waves.ForStart();
+            waves.StartCompleted();
+
+            var first = new RecoveryWave(1, Guid.NewGuid());
+            var second = new RecoveryWave(2, Guid.NewGuid());
+            Assert.True(waves.TryEnter(first));
+            Assert.True(waves.TryEnter(second));
+            waves.RestartDispatchFailed(second);
+            waves.RestartDispatchFailed(first);
+            Assert.True(waves.TakeFailedRestartDispatch(out var taken));
+            Assert.Equal(second, taken);
+            Assert.False(waves.TakeFailedRestartDispatch(out _));
+
+            var third = new RecoveryWave(3, Guid.NewGuid());
+            waves.RestartDispatchFailed(second);
+            Assert.True(waves.TryEnter(third));
+            Assert.False(waves.TakeFailedRestartDispatch(out _));
+
+            waves.ForStart();
+            waves.RestartDispatchFailed(third);
+            Assert.True(waves.ForFailure() > third);
+            Assert.False(waves.TakeFailedRestartDispatch(out _));
         }
 
         /// <summary>

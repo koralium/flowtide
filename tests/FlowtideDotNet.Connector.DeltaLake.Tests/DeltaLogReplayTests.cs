@@ -17,6 +17,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Stowage;
 using System.Globalization;
 using System.Text.Json;
@@ -238,14 +239,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WriteCommit(storage, "t", 0, Protocol(), Metadata(IdSchema), Add("a.parquet"));
             var fromCommits = await DeltaTransactionReader.ReadTable(storage, "t");
             Assert.NotNull(fromCommits);
-            await DeltaCheckpointWriter.WriteCheckpoint(storage, "t", fromCommits);
+            await LegacyCheckpointWriter.WriteCheckpoint(storage, "t", fromCommits);
 
             var fromCheckpoint = await DeltaTransactionReader.ReadTable(storage, "t");
             Assert.NotNull(fromCheckpoint);
             await WriteCommit(storage, "t", 1, Add("b.parquet"));
             var next = await DeltaTransactionReader.ReadTable(storage, "t");
             Assert.NotNull(next);
-            await DeltaCheckpointWriter.WriteCheckpoint(storage, "t", next);
+            await LegacyCheckpointWriter.WriteCheckpoint(storage, "t", next);
             var fromSecondCheckpoint = await DeltaTransactionReader.ReadTable(storage, "t");
 
             Assert.Equal(0, fromCheckpoint.StartCheckpointVersion);
@@ -775,14 +776,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task VersionCommitIncludesCommitInfo()
         {
             var storage = Files.Of.InternalMemory($"./{nameof(VersionCommitIncludesCommitInfo)}");
-            var commitInfo = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "WRITE" } } };
+            var commitInfo = new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { Data = new Dictionary<string, object>() { ["operation"] = "WRITE", ["engineInfo"] = "other" } } };
             await WriteCommit(storage, "t", 0, commitInfo, Protocol(), Metadata(IdSchema));
 
             var commit = await DeltaTransactionReader.ReadVersionCommit(storage, "t", 0);
 
             Assert.NotNull(commit);
             Assert.NotNull(commit.CommitInfo);
-            Assert.Equal("WRITE", commit.CommitInfo.Data!["operation"].ToString());
+            Assert.Equal("WRITE", commit.CommitInfo.Operation);
+            // Fields without a typed property stay in the extension data
+            Assert.Equal("other", commit.CommitInfo.Data!["engineInfo"].ToString());
         }
 
         [Fact]
@@ -807,34 +810,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             ");
 
             await WaitForVersion(storage, "test", stream, 0);
+            await stream.Maintenance.TickAndSettleAsync(0);
             for (int version = 1; version <= 5; version++)
             {
                 // Each delete re-adds the file with a new deletion vector
                 stream.DeleteUser(stream.Users[0]);
                 await WaitForVersion(storage, "test", stream, version);
+                await stream.Maintenance.TickAndSettleAsync(version);
             }
 
-            var jsonOnly = await CopyLog(storage, "test", $"{nameof(SinkCheckpointsMatchFullReplay)}_json", IsNotCheckpoint);
-            var table = await DeltaTransactionReader.ReadTable(storage, "test");
-            var replay = await DeltaTransactionReader.ReadTable(jsonOnly, "test");
+            var table = await DeltaTransactionReader.ReadTable(storage, "test", 4, new DeltaReadOptions() { SkipTombstones = false });
 
             Assert.NotNull(table);
-            Assert.NotNull(replay);
             Assert.Equal(4, table.StartCheckpointVersion);
             Assert.Contains(table.AddFiles, x => x.DeletionVector != null);
-            // Flowtide checkpoints do not carry tombstones before Phase 3
-            Assert.Equal(DescribeLive(replay), DescribeLive(table));
+            Assert.NotEmpty(table.Tombstones);
+            // The checkpoint keeps tombstones, so its content equals the full history
+            Assert.Equal(await CheckpointOracle.FullHistory(storage, "test", 4, DateTimeOffset.UtcNow), await DeltaTestKit.CheckpointLines(storage, "test", 4));
+            // And the production reader starting from it agrees with a replay of the JSON alone
+            var jsonOnly = await CopyLog(storage, "test", $"{nameof(SinkCheckpointsMatchFullReplay)}_json", IsNotCheckpoint);
+            var replay = await DeltaTransactionReader.ReadTable(jsonOnly, "test");
+            var latest = await DeltaTransactionReader.ReadTable(storage, "test");
+            Assert.Equal(DescribeLive(replay!), DescribeLive(latest!));
         }
 
         [Theory]
         [InlineData("txn")]
         [InlineData("domain")]
-        public async Task SinkSkipsCheckpointsWhileTheTableHoldsTransactionsOrDomains(string kept)
+        public async Task SinkCheckpointsKeepTransactionsAndDomains(string kept)
         {
-            // The checkpoint writer would drop them, so no checkpoint is written
-            var testName = $"{nameof(SinkSkipsCheckpointsWhileTheTableHoldsTransactionsOrDomains)}_{kept}";
+            var testName = $"{nameof(SinkCheckpointsKeepTransactionsAndDomains)}_{kept}";
             var storage = Files.Of.InternalMemory($"./{testName}");
-            await WriteCommit(storage, "test", 0, Protocol(), Metadata(UserSchema), kept == "txn" ? Txn("external-app", 3) : Domain("external.domain", "{}"));
+            await WriteCommit(storage, "test", 0, DeltaTestKit.ProtocolWith("domainMetadata"), Metadata(UserSchema), kept == "txn" ? Txn("external-app", 3) : Domain("external.domain", "{}"));
 
             await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
             {
@@ -855,17 +862,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             ");
 
             await WaitForVersion(storage, "test", stream, 1);
+            await stream.Maintenance.TickAndSettleAsync(1);
             // Checkpoints are due at versions 2 and 4
             for (int version = 2; version <= 5; version++)
             {
                 stream.DeleteUser(stream.Users[0]);
                 await WaitForVersion(storage, "test", stream, version);
+                await stream.Maintenance.TickAndSettleAsync(version);
             }
 
             var logFiles = await storage.Ls("/test/_delta_log/");
-            Assert.DoesNotContain(logFiles, x => x.Name.Contains(".checkpoint."));
+            Assert.Contains(logFiles, x => x.Name == "00000000000000000004.checkpoint.parquet");
+            // Commit 0 is below the checkpoint, so what it added is read from the checkpoint
             var table = await DeltaTransactionReader.ReadTable(storage, "test");
             Assert.NotNull(table);
+            Assert.Equal(4, table.StartCheckpointVersion);
             if (kept == "txn")
             {
                 Assert.Equal(3, table.Transactions["external-app"].Version);
@@ -874,7 +885,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Assert.Equal("{}", table.DomainMetadata["external.domain"].Configuration);
             }
-            Assert.Single(warnings.Messages, x => x.Contains("no checkpoint is written"));
+            Assert.DoesNotContain(warnings.Messages, x => x.Contains("checkpoint"));
         }
 
         private sealed class CollectingLoggerProvider : Microsoft.Extensions.Logging.ILoggerProvider, Microsoft.Extensions.Logging.ILogger
@@ -906,8 +917,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task SinkCheckpointKeepsTheParsedRecordCountOfDeletionVectorFiles()
         {
             var storage = Files.Of.InternalMemory($"./{nameof(SinkCheckpointKeepsTheParsedRecordCountOfDeletionVectorFiles)}");
-            await WriteClassicCheckpoint(storage, "test", 0, AddWithParsedStatistics,
-                ("protocol", new object?[] { 1, 2 }),
+            await WriteClassicCheckpoint(storage, "test", 0, WithProtocolFeatures(AddWithParsedStatistics),
+                DeletionVectorProtocolRow(),
                 ("metaData", new object?[] { "table-id", UserSchema, 0L }),
                 ("add", new object?[] { "old.parquet", 1L, 0L, true, null, DeletionVectorRow(), new object?[] { 42L, true } }));
 
@@ -932,8 +943,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // The spec requires numRecords on every file with a deletion vector, a checkpoint without it is invalid
             var testName = $"{nameof(SinkSkipsCheckpointsWhileDeletionVectorFilesLackARecordCount)}_{id}";
             var storage = Files.Of.InternalMemory($"./{testName}");
-            await WriteClassicCheckpoint(storage, "test", 0, AddWithParsedStatistics,
-                ("protocol", new object?[] { 1, 2 }),
+            await WriteClassicCheckpoint(storage, "test", 0, WithProtocolFeatures(AddWithParsedStatistics),
+                DeletionVectorProtocolRow(),
                 ("metaData", new object?[] { "table-id", UserSchema, 0L }),
                 ("add", new object?[] { "old.parquet", 1L, 0L, true, statistics, DeletionVectorRow(), null }));
             var warnings = new CollectingLoggerProvider();
@@ -946,12 +957,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             if (checkpointExpected)
             {
                 Assert.Equal(new[] { "00000000000000000000.checkpoint.parquet", "00000000000000000002.checkpoint.parquet", "00000000000000000004.checkpoint.parquet" }, checkpoints);
-                Assert.DoesNotContain(warnings.Messages, x => x.Contains("deletion vectors but no record count"));
+                Assert.DoesNotContain(warnings.Messages, x => x.Contains(nameof(MaintenanceReason.DvWithoutRecordCount)));
             }
             else
             {
                 Assert.Equal(new[] { "00000000000000000000.checkpoint.parquet" }, checkpoints);
-                Assert.Single(warnings.Messages, x => x.Contains("deletion vectors but no record count"));
+                Assert.Single(warnings.Messages, x => x.Contains(nameof(MaintenanceReason.DvWithoutRecordCount)));
             }
         }
 
@@ -978,20 +989,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             ");
 
             await WaitForVersion(storage, "test", stream, 1);
+            await stream.Maintenance.TickAndSettleAsync(1);
             for (long next = 2; next <= version; next++)
             {
                 stream.Generate(1);
                 await WaitForVersion(storage, "test", stream, next);
+                await stream.Maintenance.TickAndSettleAsync(next);
             }
         }
 
-        private static object?[] DeletionVectorRow()
+        // Reader 3 and writer 7 with deletion vectors, for hand-written checkpoints holding deletion vector rows
+        internal static (string Column, object?[] Values) DeletionVectorProtocolRow()
+        {
+            return ("protocol", new object?[] { 3, 7, new[] { "deletionVectors" }, new[] { "deletionVectors" } });
+        }
+
+        internal static Dictionary<string, (string Name, IArrowType Type)[]> WithProtocolFeatures(IReadOnlyDictionary<string, (string Name, IArrowType Type)[]> columns)
+        {
+            return new Dictionary<string, (string Name, IArrowType Type)[]>(columns)
+            {
+                ["protocol"] = new (string, IArrowType)[]
+                {
+                    ("minReaderVersion", Int32Type.Default), ("minWriterVersion", Int32Type.Default),
+                    ("readerFeatures", new ListType(StringType.Default)), ("writerFeatures", new ListType(StringType.Default))
+                }
+            };
+        }
+
+        internal static object?[] DeletionVectorRow()
         {
             return new object?[] { "u", Z85.EncodeGuid(Guid.Parse("d2c639aa-8816-431a-aaf6-d3fe2512ff61")), 1, 40, 1L };
         }
 
         // Adds with a deletion vector and parsed statistics
-        private static Dictionary<string, (string Name, IArrowType Type)[]> AddWithParsedStatistics => new Dictionary<string, (string Name, IArrowType Type)[]>(CheckpointColumns)
+        internal static Dictionary<string, (string Name, IArrowType Type)[]> AddWithParsedStatistics => new Dictionary<string, (string Name, IArrowType Type)[]>(CheckpointColumns)
         {
             ["add"] = new (string, IArrowType)[]
             {
@@ -1225,7 +1256,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Child fields of each top level checkpoint column, in the order rows list their values
-        private static readonly Dictionary<string, (string Name, IArrowType Type)[]> CheckpointColumns = new()
+        internal static readonly Dictionary<string, (string Name, IArrowType Type)[]> CheckpointColumns = new()
         {
             ["protocol"] = new (string, IArrowType)[] { ("minReaderVersion", Int32Type.Default), ("minWriterVersion", Int32Type.Default) },
             ["metaData"] = new (string, IArrowType)[] { ("id", StringType.Default), ("schemaString", StringType.Default), ("createdTime", Int64Type.Default) },
@@ -1243,7 +1274,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return WriteClassicCheckpoint(storage, table, version, CheckpointColumns, rows);
         }
 
-        private static async Task WriteClassicCheckpoint(IFileStorage storage, string table, long version, IReadOnlyDictionary<string, (string Name, IArrowType Type)[]> columns, params (string Column, object?[] Values)[] rows)
+        internal static async Task WriteClassicCheckpoint(IFileStorage storage, string table, long version, IReadOnlyDictionary<string, (string Name, IArrowType Type)[]> columns, params (string Column, object?[] Values)[] rows)
         {
             var fields = new List<Field>();
             var arrays = new List<IArrowArray>();
@@ -1253,14 +1284,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var children = new List<IArrowArray>();
                 for (int c = 0; c < childFields.Count; c++)
                 {
-                    children.Add(BuildArray(childFields[c].DataType, rows.Select(x => x.Column == column ? x.Values[c] : null)));
+                    children.Add(BuildArray(childFields[c].DataType, rows.Select(x => x.Column == column && x.Values != null ? x.Values[c] : null)));
                 }
                 var validity = new ArrowBuffer.BitmapBuilder();
                 int nullCount = 0;
                 foreach (var row in rows)
                 {
-                    validity.Append(row.Column == column);
-                    if (row.Column != column)
+                    // A row naming a column with null values keeps the column in the schema but null in that row
+                    var present = row.Column == column && row.Values != null;
+                    validity.Append(present);
+                    if (!present)
                     {
                         nullCount++;
                     }
@@ -1335,6 +1368,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         foreach (var value in values)
                         {
                             if (value == null) builder.AppendNull(); else builder.Append(Convert.ToDouble(value));
+                        }
+                        return builder.Build();
+                    }
+                case ListType listType when listType.ValueDataType is StringType:
+                    {
+                        var builder = new ListArray.Builder(StringType.Default);
+                        var items = (StringArray.Builder)builder.ValueBuilder;
+                        foreach (var value in values)
+                        {
+                            if (value == null)
+                            {
+                                builder.AppendNull();
+                                continue;
+                            }
+                            builder.Append();
+                            foreach (var item in (string[])value)
+                            {
+                                items.Append(item);
+                            }
                         }
                         return builder.Build();
                     }

@@ -53,6 +53,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         internal static Action<string, long, long>? PairedCheckpointHookForTests;
         // Test hook: stream, reader; fires under the reader locks.
         internal static Action<string, SubstreamReadOperator>? ResumedHookForTests;
+        // Test hook called after the handoff checks, before the resume
+        internal static Action<string>? BeforeResumeHookForTests;
         // Test hook: stream, peer version; simulates a drifted peer.
         internal static Func<string, long, long>? PeerBarrierVersionForTests;
 
@@ -74,6 +76,10 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         private volatile bool _peerStopConsumedCommitted;
         // Set by the first stop barrier, only restore clears it.
         private volatile bool _stopping;
+        // Set when the run fails or is disposed, guarded by _lock
+        private bool _runEnded;
+        // Counts restores so a new run is detected, guarded by _lock
+        private long _run;
         // A returning peer's restarted pipeline sends one init watermarks event that must be
         // consumed without forwarding, a second init downstream would skew barrier alignment.
         private volatile bool _swallowNextInitWatermarks;
@@ -162,6 +168,8 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 _peerStopConsumed = false;
                 _peerStopConsumedCommitted = false;
                 _stopping = false;
+                _runEnded = false;
+                _run++;
                 _swallowNextInitWatermarks = false;
                 _localCheckpointSeen = false;
                 _uncoveredForwards = false;
@@ -579,6 +587,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             // This epochs stop deadline must not fire into the next.
             _stopAlignmentCancel?.Cancel();
+            EndRun();
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             _communicationPoint.OnStreamFailure();
             // Best effort, the other substream may be unreachable and waiting for its response
@@ -592,8 +601,21 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         {
             // The fetch loop must not keep delivering events after the operator is disposed
             _stopAlignmentCancel?.Cancel();
+            // Also end the run here since OnFailure can be skipped
+            EndRun();
             _communicationPoint.Unsubscribe(_exchangeReferenceRelation.ExchangeTargetId);
             return base.DisposeAsync();
+        }
+
+        /// <summary>
+        /// Call before the unsubscribe so a later resume is refused
+        /// </summary>
+        private void EndRun()
+        {
+            lock (_lock)
+            {
+                _runEnded = true;
+            }
         }
 
         public override Task CheckpointDone(long checkpointVersion)
@@ -679,10 +701,32 @@ namespace FlowtideDotNet.Core.Operators.Exchange
         /// </summary>
         internal bool PeerStopConsumedCommitted => _peerStopConsumedCommitted;
 
+        internal static void CleanHandoffCheckedForTests(IReadOnlyList<SubstreamReadOperator> readOperators)
+        {
+            if (readOperators.Count > 0)
+            {
+                BeforeResumeHookForTests?.Invoke(readOperators[0].StreamName);
+            }
+        }
+
         /// <summary>
-        /// Resumes every reader or none, a stop refuses under locks.
+        /// The current run, read it before the handoff checks
         /// </summary>
-        internal static bool TryResumeAllAfterPeerReconnect(IReadOnlyList<SubstreamReadOperator> readOperators)
+        internal long Run
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _run;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Resumes every reader or none, refused if stopping or the run ended
+        /// </summary>
+        internal static bool TryResumeAllAfterPeerReconnect(IReadOnlyList<SubstreamReadOperator> readOperators, IReadOnlyList<long> runs)
         {
             var taken = new bool[readOperators.Count];
             try
@@ -694,7 +738,7 @@ namespace FlowtideDotNet.Core.Operators.Exchange
                 }
                 for (int i = 0; i < readOperators.Count; i++)
                 {
-                    if (readOperators[i]._stopping)
+                    if (readOperators[i]._stopping || readOperators[i]._runEnded || readOperators[i]._run != runs[i])
                     {
                         return false;
                     }
