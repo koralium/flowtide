@@ -66,6 +66,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly TimeSpan getTimestampInterval;
         private readonly bool _useColumnStore;
         private int _operatorId = 0;
+        private readonly List<(CheckRelation Relation, IReadOnlyList<string> CheckIds)> _builtChecks = new List<(CheckRelation Relation, IReadOnlyList<string> CheckIds)>();
         private Dictionary<int, RelationTree> _doneRelations;
         private Dictionary<string, ColumnIterationOperator> _iterationOperators = new Dictionary<string, ColumnIterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
@@ -97,6 +98,9 @@ namespace FlowtideDotNet.Core.Engine
                 GetOrBuildRelation(i);
             }
         }
+
+        // Every check relation built in this stream with the ids its operator reports, filled by BuildPlan.
+        internal IReadOnlyList<(CheckRelation Relation, IReadOnlyList<string> CheckIds)> BuiltChecks => _builtChecks;
 
         private RelationTree GetOrBuildRelation(int index)
         {
@@ -689,6 +693,7 @@ namespace FlowtideDotNet.Core.Engine
             {
                 checkIds[i] = $"{prefix}{id}:{i}";
             }
+            _builtChecks.Add((checkRelation, checkIds));
 
             var op = new ColumnCheckOperator(checkRelation, functionsRegister, dataflowStreamBuilder.StreamNotificationReceiver, checkIds, DefaultBlockOptions);
             if (state != null)

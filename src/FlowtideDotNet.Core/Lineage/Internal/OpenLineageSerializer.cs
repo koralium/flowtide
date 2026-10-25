@@ -16,19 +16,27 @@ using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
 {
-    internal class OpenLineageSerializer
+    internal static class OpenLineageSerializer
     {
+        // Only GroupBy changes, it becomes GROUP_BY.
+        private static readonly JsonSerializerOptions s_options = new JsonSerializerOptions()
+        {
+            WriteIndented = false,
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            Converters =
+            {
+                new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseUpper)
+            }
+        };
+
         public static string Serialize(OpenLineageEvent e)
         {
-            return JsonSerializer.Serialize(e, new JsonSerializerOptions()
-            {
-                WriteIndented = true,
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-                Converters =
-                {
-                    new JsonStringEnumConverter(new EnumUppercaseNamingPolicy())
-                }
-            });
+            return JsonSerializer.Serialize(e, s_options);
+        }
+
+        public static byte[] SerializeToUtf8Bytes(OpenLineageEvent e)
+        {
+            return JsonSerializer.SerializeToUtf8Bytes(e, s_options);
         }
     }
 }
