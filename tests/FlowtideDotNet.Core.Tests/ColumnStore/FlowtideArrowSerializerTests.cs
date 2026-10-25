@@ -15,8 +15,10 @@ using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using System.Buffers;
 using System.Runtime.InteropServices;
@@ -290,6 +292,29 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.Equal("a", stringArray.GetString(0));
             Assert.Equal(17, (long)intArray.GetValue(0)!);
             Assert.Equal("b", stringArray.GetString(1));
+        }
+
+        [Fact]
+        public void DeserializeUnionIgnoresOuterNullCount()
+        {
+            var unionColumn = new UnionColumn(GlobalMemoryManager.Instance);
+            unionColumn.Add(new Int64Value(1), GlobalMemoryManager.Instance);
+            unionColumn.Add(new StringValue("a"), GlobalMemoryManager.Instance);
+            unionColumn.Add(NullValue.Instance, GlobalMemoryManager.Instance);
+            Column column = new Column(1, unionColumn, default(BitmapList), FlowtideDotNet.Core.ColumnStore.ArrowTypeId.Union, GlobalMemoryManager.Instance);
+
+            var batch = new EventBatchData([column]);
+            var serializer = new EventBatchSerializer();
+            var bufferWriter = new ArrayBufferWriter<byte>();
+            serializer.SerializeEventBatch(bufferWriter, batch, 3);
+
+            var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bufferWriter.WrittenSpan.ToArray()));
+            EventBatchDeserializer batchDeserializer = new EventBatchDeserializer(GlobalMemoryManager.Instance);
+            var deserializedColumn = batchDeserializer.DeserializeBatch(ref reader).EventBatch.Columns[0];
+
+            Assert.Equal(1, deserializedColumn.GetValueAt(0, default).AsLong);
+            Assert.Equal("a", deserializedColumn.GetValueAt(1, default).AsString.ToString());
+            Assert.True(deserializedColumn.GetValueAt(2, default).IsNull);
         }
 
         [Fact]

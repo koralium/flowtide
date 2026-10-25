@@ -1333,6 +1333,49 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             }
         }
 
+        [Fact]
+        public void InsertNullRangeKeepsLaterUnionValues()
+        {
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new Int64Value(1));
+            column.Add(new StringValue("a"));
+            column.Add(NullValue.Instance);
+            column.InsertNullRange(3, 1);
+
+            using Column other = Column.Create(GlobalMemoryManager.Instance);
+            other.Add(new Int64Value(2));
+            other.Add(new StringValue("b"));
+            column.InsertRangeFrom(4, other, 0, 2);
+
+            Assert.True(column.GetValueAt(3, default).IsNull);
+            Assert.Equal(2, column.GetValueAt(4, default).AsLong);
+            Assert.Equal("b", column.GetValueAt(5, default).AsString.ToString());
+            Assert.True(column.CompareTo(column, 4, 2) > 0);
+            Assert.True(column.CompareTo(column, 2, 4) < 0);
+        }
+
+        [Fact]
+        public void NullStructKeepsLaterUnionChildValues()
+        {
+            var structHeader = StructHeader.Create("x");
+            using Column column = Column.Create(GlobalMemoryManager.Instance);
+            column.Add(new StructValue(structHeader, new Int64Value(1)));
+            column.Add(new StructValue(structHeader, new StringValue("a")));
+
+            using Column nulls = Column.Create(GlobalMemoryManager.Instance);
+            nulls.Add(NullValue.Instance);
+            column.InsertRangeFrom(2, nulls, 0, 1);
+
+            using Column other = Column.Create(GlobalMemoryManager.Instance);
+            other.Add(new StructValue(structHeader, new Int64Value(2)));
+            other.Add(new StructValue(structHeader, new StringValue("b")));
+            column.InsertRangeFrom(3, other, 0, 2);
+
+            Assert.True(column.GetValueAt(2, default).IsNull);
+            Assert.Equal(2, column.GetValueAt(3, default).AsStruct.GetAt(0).AsLong);
+            Assert.Equal("b", column.GetValueAt(4, default).AsStruct.GetAt(0).AsString.ToString());
+        }
+
         private static IDataValue RandomValue(Random r)
         {
             switch (r.Next(4))
