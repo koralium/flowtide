@@ -1035,6 +1035,77 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             AssertNullValue(target, 3);
             AssertStringValue(target, 4, "a");
         }
+
+        [Fact]
+        public void InsertFromNullSentinelIntoUnionFromNullableColumn()
+        {
+            using var target = new Column(GlobalMemoryManager.Instance);
+            target.Add(new Int64Value(10));
+            target.Add(new StringValue("a"));
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(new Int64Value(5));
+            source.Add(NullValue.Instance);
+
+            Span<int> lookup = stackalloc int[] { -1, 0 };
+            Span<int> positions = stackalloc int[] { 0, 1 };
+
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
+
+            Assert.Equal(4, target.Count);
+            AssertNullValue(target, 0);
+            AssertIntValue(target, 1, 10);
+            AssertIntValue(target, 2, 5);
+            AssertStringValue(target, 3, "a");
+        }
+
+        [Fact]
+        public void InsertFromNullSentinelWhenNullColumnBecomesUnion()
+        {
+            using var target = CreateNullColumn(1);
+
+            using var source = new Column(GlobalMemoryManager.Instance);
+            source.Add(new Int64Value(10));
+            source.Add(new DoubleValue(20));
+            source.Add(NullValue.Instance);
+
+            Span<int> lookup = stackalloc int[] { 0, -1, 1, 2 };
+            Span<int> positions = stackalloc int[] { 1, 1, 1, 1 };
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
+
+            using var next = new Column(GlobalMemoryManager.Instance);
+            next.Add(new Int64Value(5));
+            next.Add(new DoubleValue(1.5));
+
+            Span<int> nextLookup = stackalloc int[] { 0 };
+            Span<int> nextPositions = stackalloc int[] { 0 };
+            ReadOnlySpan<int> nsl = nextLookup; ReadOnlySpan<int> nip = nextPositions; target.InsertFrom(next, in nsl, in nip, -1);
+
+            Assert.Equal(6, target.Count);
+            AssertIntValue(target, 0, 5);
+            AssertNullValue(target, 1);
+            AssertIntValue(target, 2, 10);
+            AssertNullValue(target, 3);
+            Assert.Equal(20, target.GetValueAt(4, default).AsDouble);
+            AssertNullValue(target, 5);
+        }
+
+        [Fact]
+        public void InsertFromNullSentinelIntoWiderIntColumn()
+        {
+            using var target = CreateIntColumn(1000);
+            using var source = CreateIntColumn(5);
+
+            Span<int> lookup = stackalloc int[] { -1, 0 };
+            Span<int> positions = stackalloc int[] { 0, 1 };
+
+            ReadOnlySpan<int> sl = lookup; ReadOnlySpan<int> ip = positions; target.InsertFrom(source, in sl, in ip, -1);
+
+            Assert.Equal(3, target.Count);
+            AssertNullValue(target, 0);
+            AssertIntValue(target, 1, 1000);
+            AssertIntValue(target, 2, 5);
+        }
     }
 }
 

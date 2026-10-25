@@ -1683,7 +1683,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                             }
                         }
 
-                        if (incomingNullCount > 0 || _nullCounter > 0)
+                        // A union keeps its nulls inside the union column
+                        if (_type != ArrowTypeId.Union && (incomingNullCount > 0 || _nullCounter > 0))
                         {
                             if (incomingNullCount > 0)
                             {
@@ -1749,7 +1750,7 @@ namespace FlowtideDotNet.Core.ColumnStore
                         // Fix for null values, validity list should perhaps be passed later to insert from
                         for (int i = sortedLookup.Length - 1; i >= 0; i--)
                         {
-                            var value = other.GetValueAt(sortedLookup[i], default);
+                            IDataValue value = sortedLookup[i] == lookupNullIndex ? NullValue.Instance : other.GetValueAt(sortedLookup[i], default);
                             _dataColumn.InsertAt(insertPositions[i], value, _memoryAllocator!);
                         }
                     }
