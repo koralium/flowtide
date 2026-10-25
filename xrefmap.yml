@@ -26787,6 +26787,12 @@ references:
   commentId: T:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState
   fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState
   nameWithType: CompareColumnState
+- uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.HasNoValues
+  name: HasNoValues
+  href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_HasNoValues
+  commentId: F:FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.HasNoValues
+  fullName: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.HasNoValues
+  nameWithType: CompareColumnState.HasNoValues
 - uid: FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.HasValidityBitmap
   name: HasValidityBitmap
   href: api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html#FlowtideDotNet_Core_ColumnStore_Sort_CompareColumnState_HasValidityBitmap

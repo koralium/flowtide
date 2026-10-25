@@ -1457,7 +1457,7 @@
   "api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html": {
     "href": "api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnState.html",
     "title": "Enum CompareColumnState | Flowtide.NET",
-    "summary": "Enum CompareColumnState Namespace FlowtideDotNet.Core.ColumnStore.Sort Assembly FlowtideDotNet.Core.dll [Flags] public enum CompareColumnState : ushort Fields HasValidityBitmap = 256 IsIndirectView = 512 OffsetContainsNull = 1024 SortDescending = 2048 SortNullsSwapped = 4096 TypeMask = 255"
+    "summary": "Enum CompareColumnState Namespace FlowtideDotNet.Core.ColumnStore.Sort Assembly FlowtideDotNet.Core.dll [Flags] public enum CompareColumnState : ushort Fields HasNoValues = 8192 HasValidityBitmap = 256 IsIndirectView = 512 OffsetContainsNull = 1024 SortDescending = 2048 SortNullsSwapped = 4096 TypeMask = 255"
   },
   "api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html": {
     "href": "api/FlowtideDotNet.Core.ColumnStore.Sort.CompareColumnStateBuilder.html",
