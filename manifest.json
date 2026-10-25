@@ -6859,6 +6859,216 @@
     },
     {
       "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubAspect.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubAspect.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubAspect",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubAspect.yml\" sourcestartlinenumber=\"1\">Named DataHub aspect value in Pegasus JSON.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubDataset.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubDataset.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubDataset",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubDataset.yml\" sourcestartlinenumber=\"1\">Platform, name and environment of a DataHub dataset.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubDatasetContext.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubDatasetContext.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubDatasetContext",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubDatasetContext.yml\" sourcestartlinenumber=\"1\">Table passed to the dataset resolver.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubEntityContext.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubEntityContext.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubEntityContext",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubEntityContext.yml\" sourcestartlinenumber=\"1\">Entity passed to the aspect provider.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubEntityType.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubEntityType.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubEntityType",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubEntityType.yml\" sourcestartlinenumber=\"1\">Kind of entity served to DataHub.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentContext.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentContext.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubIncidentContext",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentContext.yml\" sourcestartlinenumber=\"1\">Check passed to the incident priority resolver.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentPriority.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentPriority.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubIncidentPriority",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubIncidentPriority.yml\" sourcestartlinenumber=\"1\">Priority of a DataHub incident.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubLineageOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubLineageOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubLineageOptions",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubLineageOptions.yml\" sourcestartlinenumber=\"1\">Options for the DataHub lineage endpoint.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubLineageStore.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubLineageStore.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubLineageStore",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubLineageStore.yml\" sourcestartlinenumber=\"1\">Serves stream lineage as DataHub entities.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubNamespaceOptions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubNamespaceOptions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubNamespaceOptions",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubNamespaceOptions.yml\" sourcestartlinenumber=\"1\">DataHub naming of one lineage namespace.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubSnapshot.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.DataHubSnapshot.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.DataHubSnapshot",
+      "Summary": "<p sourcefile=\"api/FlowtideDotNet.Lineage.DataHub.DataHubSnapshot.yml\" sourcestartlinenumber=\"1\">Every entity served to DataHub at one point in time.</p>\n"
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideBuilderDataHubExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideBuilderDataHubExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.FlowtideBuilderDataHubExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideDataHubEndpointRouteBuilderExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideDataHubEndpointRouteBuilderExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.FlowtideDataHubEndpointRouteBuilderExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideDataHubLineageExtensions.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.FlowtideDataHubLineageExtensions.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub.FlowtideDataHubLineageExtensions",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
+      "source_relative_path": "api/FlowtideDotNet.Lineage.DataHub.yml",
+      "output": {
+        ".html": {
+          "relative_path": "api/FlowtideDotNet.Lineage.DataHub.html"
+        }
+      },
+      "version": "",
+      "Uid": null,
+      "IsMRef": true,
+      "Title": "FlowtideDotNet.Lineage.DataHub",
+      "Summary": null
+    },
+    {
+      "type": "ManagedReference",
       "source_relative_path": "api/FlowtideDotNet.MiMalloc.MiHeapBinUsage.yml",
       "output": {
         ".html": {
@@ -12768,6 +12978,16 @@
       "output": {
         ".html": {
           "relative_path": "docs/monitoring/azuremonitor.html"
+        }
+      },
+      "version": ""
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/monitoring/datahub.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/monitoring/datahub.html"
         }
       },
       "version": ""

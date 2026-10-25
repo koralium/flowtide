@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>DataHub | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="DataHub | Flowtide.NET ">
+      
+      
+      <link rel="icon" href="../../images/favicon.ico">
+      <link rel="stylesheet" href="../../public/docfx.min.css">
+      <link rel="stylesheet" href="../../public/main.css">
+      <meta name="docfx:navrel" content="../../toc.html">
+      <meta name="docfx:tocrel" content="../toc.html">
+      
+      <meta name="docfx:rel" content="../../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/blob/main/docs/docs/monitoring/datahub.md/#L1">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../../index.html">
+            <img id="logo" class="svg" src="../../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="">
+<h1 id="datahub">DataHub</h1>
+
+<p>Flowtide can serve stream lineage over HTTP the way a <a href="https://datahubproject.io/">DataHub</a> server does, so DataHub can pull it with its built-in <code>datahub</code> source, the source that replicates one DataHub instance into another.
+The lineage arrives as native DataHub metadata, so no SQL is parsed and every dataset keeps its own platform.</p>
+<ul>
+<li>Every stream becomes a <strong>data flow</strong> with the orchestrator <code>flowtide</code>.</li>
+<li>Every table a stream writes becomes a <strong>data job</strong> in that flow, with the tables it reads as inputs and column lineage between them.</li>
+<li>Every table read or written becomes a <strong>dataset</strong> with a schema, unless turned off.</li>
+<li>The <code>flowtide</code> <strong>data platform</strong> gets a display name and a logo, unless turned off.</li>
+<li>Every <a href="../expressions/scalarfunctions/check.html">check</a> becomes an <strong>assertion</strong> on the datasets it guards, with its latest status, unless turned off.</li>
+<li>Every data job gets a <strong>run</strong> per stream, or per substream of a distributed stream, with its current state, unless turned off.</li>
+</ul>
+<p>Install the NuGet package <code>FlowtideDotNet.Lineage.DataHub</code>. Everything below is in the namespace <code>FlowtideDotNet.Lineage.DataHub</code>.</p>
+<h2 id="setup-with-dependency-injection">Setup with Dependency Injection</h2>
+<p>Add the following code to your <em>Program.cs</em>:</p>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideStream(&quot;orders&quot;)
+    // ...
+    .AddDataHubLineage(opt =&gt;
+    {
+        opt.MapNamespace(&quot;mssql&quot;, m =&gt; m.Database = &quot;shop&quot;);
+    });
+
+var app = builder.Build();
+
+app.MapFlowtideDataHubLineage(&quot;/datahub&quot;);
+</code></pre>
+<ul>
+<li><code>AddDataHubLineage</code> opts a stream in. All opted-in streams share one <code>DataHubLineageStore</code> and one set of options, so the options it configures apply to every stream. When several streams configure them, all callbacks run in registration order and a later one wins on a conflict.</li>
+<li><code>AddFlowtideDataHubLineage</code> configures the same options without a stream, for example in a shared startup method. It can be called any number of times.</li>
+<li>A <code>DataHubLineageStore</code> singleton registered before these calls is used instead of the default one, and the options callbacks then have no effect. Call <code>ExpectStream</code> on it yourself to get the warm-up behaviour.</li>
+</ul>
+<h2 id="setup-with-flowtidebuilder">Setup with FlowtideBuilder</h2>
+<p>Create a store, pass it to each stream with <code>WithDataHubLineageStore</code>, and map it:</p>
+<pre><code class="lang-csharp">var store = new DataHubLineageStore(new DataHubLineageOptions()
+    .MapNamespace(&quot;mssql&quot;, m =&gt; m.Database = &quot;shop&quot;));
+
+var stream = new FlowtideBuilder(&quot;orders&quot;)
+    .AddPlan(plan)
+    .AddConnectorManager(connectorManager)
+    .WithStateOptions(stateOptions)
+    .WithDataHubLineageStore(store)
+    .Build();
+
+app.MapFlowtideDataHubLineage(store, &quot;/datahub&quot;);
+</code></pre>
+<ul>
+<li>Lineage needs a connector manager. Without one, a warning is logged and the stream is not registered.</li>
+<li>The stream is registered after a successful <code>Build()</code>. A lineage failure is logged and never fails <code>Build()</code>.</li>
+<li>The options are copied when the store is created, so later changes to them are ignored.</li>
+</ul>
+<h3 id="distributed-streams">Distributed streams</h3>
+<p>Each substream registers separately, and the store merges the substreams of a stream into one data flow under its logical name.</p>
+<p>With <code>DistributedStreamBuilder</code>:</p>
+<pre><code class="lang-csharp">distributedStreamBuilder.ConfigureSubstream((substreamName, builder) =&gt; builder.WithDataHubLineageStore(store));
+</code></pre>
+<p>With Orleans, register the store as a singleton and set it in <code>ConfigureBuilder</code>:</p>
+<pre><code class="lang-csharp">var store = new DataHubLineageStore();
+services.AddSingleton(store);
+
+services.AddFlowtideOrleans(connectors =&gt; { ... }, (streamName, substreamName, storage) =&gt; { ... },
+    options =&gt;
+    {
+        options.ConfigureBuilder = (streamName, substreamName, flowtideBuilder) =&gt;
+        {
+            flowtideBuilder.WithDataHubLineageStore(store);
+        };
+    });
+</code></pre>
+<p>Each process serves only the substreams built in it. There is no aggregation across a cluster.</p>
+<h2 id="datahub-recipe">DataHub Recipe</h2>
+<p>Point <code>datahub_api</code> at the route prefix and turn on <code>pull_from_datahub_api</code>:</p>
+<pre><code class="lang-yaml">pipeline_name: &quot;flowtide-lineage&quot;
+datahub_api:
+  server: &quot;https://flowtide.example.com/datahub&quot;
+  token: &quot;${FLOWTIDE_TOKEN}&quot;
+source:
+  type: datahub
+  config:
+    pull_from_datahub_api: true
+</code></pre>
+<ul>
+<li><strong>UI ingestion.</strong> Create a source with a custom recipe and leave the sink out. The data then goes to the DataHub instance that runs the ingestion, and the schedule, run history and secrets are managed by DataHub. DataHub sets <code>pipeline_name</code> itself.</li>
+<li><strong>CLI ingestion.</strong> Add a <code>datahub-rest</code> sink that points at your DataHub GMS, and keep <code>pipeline_name</code>. The source has stateful ingestion on by default, which fails to start without it.</li>
+<li><strong>Always set a non-empty token.</strong> The value can be anything Flowtide accepts. Without a token, or with one that resolves to an empty string, the DataHub CLI sends the <code>DATAHUB_SYSTEM_CLIENT_ID</code> and <code>DATAHUB_SYSTEM_CLIENT_SECRET</code> environment variables to the <code>datahub_api</code> server as basic authentication, and the DataHub ingestion executor has both set.</li>
+<li><strong>Stateful ingestion</strong> can stay at its default. Flowtide reports that no checkpoint exists, and the source stores none.</li>
+<li><strong>Expected warning.</strong> With CLI ingestion and a <code>datahub-rest</code> sink, the CLI tries to write a run report to the <code>datahub_api</code> server at the start of a run. Flowtide refuses the write, so the log shows <code>Reporting failed on start</code>. The run summary still reaches DataHub through the sink.</li>
+<li><strong>CLI version.</strong> The <code>pull_from_datahub_api</code> option is hidden from the DataHub documentation. Tested with DataHub 1.7 (CLI 1.7.0.2). Pin the CLI version of the ingestion source so a DataHub upgrade does not change the client unnoticed.</li>
+</ul>
+<p>The source reads every entity on every run, one request per entity, and writes each aspect in full.</p>
+<h2 id="routes">Routes</h2>
+<p><code>MapFlowtideDataHubLineage</code> maps the calls the <code>datahub</code> source makes, under its prefix (default <code>/datahub</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Content</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET {prefix}/config</code></td>
+<td>Server configuration the CLI checks before a run.</td>
+</tr>
+<tr>
+<td><code>POST {prefix}/api/graphql</code></td>
+<td><code>scrollAcrossEntities</code>, pages through every entity urn.</td>
+</tr>
+<tr>
+<td><code>GET {prefix}/entitiesV2/{urn}</code></td>
+<td>Aspects of one entity. An unknown urn has no aspects.</td>
+</tr>
+<tr>
+<td><code>POST {prefix}/aspects</code></td>
+<td><code>getTimeseriesAspectValues</code> returns nothing, writes are refused.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Warm-up.</strong> Streams opted in with <code>AddDataHubLineage</code> are expected by the store.
+The routes return 503 with <code>Retry-After: 10</code> until all expected streams have registered, or until <code>WarmupTimeout</code> (default 2 minutes) has passed since the store was created, so an early run fails instead of replicating part of the lineage.
+With <code>FlowtideBuilder</code>, call <code>store.ExpectStream(&quot;orders&quot;)</code> to get the same behaviour.</p>
+<p><strong>Authorization.</strong> The routes are anonymous unless a convention is applied, and they expose every dataset name, schema, column lineage and custom aspect.
+<code>MapFlowtideDataHubLineage</code> returns the route group, so conventions apply to all routes. The CLI sends the recipe token as <code>Authorization: Bearer &lt;token&gt;</code>:</p>
+<pre><code class="lang-csharp">app.MapFlowtideDataHubLineage().RequireAuthorization(&quot;lineage&quot;);
+</code></pre>
+<h2 id="configuration-options">Configuration Options</h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Env</td>
+<td><code>string</code></td>
+<td><code>PROD</code></td>
+<td>Environment of datasets, flows and jobs. Must be a DataHub environment such as <code>PROD</code>, <code>DEV</code> or <code>QA</code>. <code>CERT</code> needs DataHub 1.7 or later.</td>
+</tr>
+<tr>
+<td>ExcludedNamespaces</td>
+<td><code>ISet&lt;string&gt;</code></td>
+<td>empty</td>
+<td>Namespaces left out, such as <code>console</code> or <code>blackhole</code>. Matches the full namespace or the part before <code>://</code>.</td>
+</tr>
+<tr>
+<td>IncludeConnectorSchema</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Asks connectors for their table schema at build and uses it for dataset schemas. The SQL Server connector queries metadata for every table.</td>
+</tr>
+<tr>
+<td>IncludeDatasetMetadata</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Serves status and schema for every dataset. See <strong>Dataset Metadata</strong>.</td>
+</tr>
+<tr>
+<td>WarmupTimeout</td>
+<td><code>TimeSpan</code></td>
+<td>2 minutes</td>
+<td>Longest time the routes answer 503 while expected streams are missing.</td>
+</tr>
+<tr>
+<td>DatasetResolver</td>
+<td><code>Func&lt;DataHubDatasetContext, DataHubDataset?&gt;?</code></td>
+<td><code>null</code></td>
+<td>Overrides the platform, name, platform instance and environment of a table. Returning <code>null</code> keeps the default.</td>
+</tr>
+<tr>
+<td>AspectProvider</td>
+<td><code>Func&lt;DataHubEntityContext, IEnumerable&lt;DataHubAspect&gt;?&gt;?</code></td>
+<td><code>null</code></td>
+<td>Adds aspects to flows, jobs, datasets and assertions. See <strong>Custom Aspects</strong>.</td>
+</tr>
+<tr>
+<td>IncludePlatformInfo</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Serves the <code>flowtide</code> data platform. See <strong>Flowtide Platform</strong>.</td>
+</tr>
+<tr>
+<td>PlatformLogoUrl</td>
+<td><code>string?</code></td>
+<td>The Flowtide logo on GitHub</td>
+<td>Logo of the <code>flowtide</code> data platform. <code>null</code> leaves the logo out.</td>
+</tr>
+<tr>
+<td>IncludeChecks</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Serves checks as assertions with their latest status. See <strong>Data Quality Checks</strong>.</td>
+</tr>
+<tr>
+<td>RaiseIncidents</td>
+<td><code>bool</code></td>
+<td><code>false</code></td>
+<td>Raises an incident while a check fails and resolves it when the check passes. Needs <code>IncludeChecks</code>. See <strong>Incidents</strong>.</td>
+</tr>
+<tr>
+<td>IncidentPriority</td>
+<td><code>DataHubIncidentPriority</code></td>
+<td><code>Medium</code></td>
+<td>Priority of raised incidents, <code>Critical</code>, <code>High</code>, <code>Medium</code> or <code>Low</code>, and the severity of failing checks.</td>
+</tr>
+<tr>
+<td>IncidentPriorityResolver</td>
+<td><code>Func&lt;DataHubIncidentContext, DataHubIncidentPriority?&gt;?</code></td>
+<td><code>null</code></td>
+<td>Overrides the priority and severity per check. Returning <code>null</code> keeps <code>IncidentPriority</code>.</td>
+</tr>
+<tr>
+<td>IncludeRuns</td>
+<td><code>bool</code></td>
+<td><code>true</code></td>
+<td>Serves a run on each data job per stream, or per substream, with its current state. See <strong>Runs</strong>.</td>
+</tr>
+</tbody>
+</table>
+<p>Configuration binding adds to <code>ExcludedNamespaces</code>. <code>MapNamespace</code>, <code>DatasetResolver</code>, <code>AspectProvider</code> and <code>IncidentPriorityResolver</code> can only be set in code.</p>
+<p><code>DatasetResolver</code>, <code>AspectProvider</code> and <code>IncidentPriorityResolver</code> run when the entities are generated, on the first request after a stream registers. One generation runs at a time, on a request thread. An exception from any of them, or a priority outside <code>DataHubIncidentPriority</code>, fails the routes with 500 and is logged, until the next registration.</p>
+<p><code>MapNamespace(namespace, configure)</code> sets the following for one namespace. The namespace is matched in full first, then by the part before <code>://</code>, ignoring case:</p>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Platform</td>
+<td>DataHub platform id. Defaults to the namespace, with <code>postgresql</code> as <code>postgres</code> and <code>delta_table</code> as <code>delta-lake</code>.</td>
+</tr>
+<tr>
+<td>PlatformInstance</td>
+<td>Platform instance, prefixed to the dataset name like DataHub's own sources do.</td>
+</tr>
+<tr>
+<td>Env</td>
+<td>Environment of the namespace's datasets.</td>
+</tr>
+<tr>
+<td>Database</td>
+<td>Database for one and two part table names.</td>
+</tr>
+<tr>
+<td>DefaultSchema</td>
+<td>Schema for one part table names. <code>mssql</code> defaults to <code>dbo</code>.</td>
+</tr>
+<tr>
+<td>LowercaseNames</td>
+<td>Lowercases dataset names, platform instance prefix included, for recipes with <code>convert_urns_to_lowercase</code>.</td>
+</tr>
+<tr>
+<td>LowercaseColumns</td>
+<td>Lowercases column names, for recipes with <code>convert_column_urns_to_lowercase</code>.</td>
+</tr>
+<tr>
+<td>IncludeDatasetMetadata</td>
+<td>Overrides <code>IncludeDatasetMetadata</code> for the namespace.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="mapping-tables-to-datahub-datasets">Mapping Tables to DataHub Datasets</h2>
+<p>Lineage only connects to the tables DataHub already has when the dataset urns match the ones DataHub's own sources create.
+The name of a dataset is built from the connector's table name:</p>
+<ul>
+<li><p><code>elasticsearch</code> and <code>kafka</code> keep the table name as is, so topic <code>orders.v1</code> is dataset <code>orders.v1</code>.</p>
+</li>
+<li><p>Other namespaces split the name on <code>.</code>, with catalog prefixes already removed, and join database, schema and table:</p>
+<table>
+<thead>
+<tr>
+<th>Parts</th>
+<th>Database</th>
+<th>Schema</th>
+<th>Table</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>orders</code></td>
+<td><code>Database</code></td>
+<td><code>DefaultSchema</code>, or empty</td>
+<td><code>orders</code></td>
+</tr>
+<tr>
+<td><code>dbo.orders</code></td>
+<td><code>Database</code></td>
+<td><code>dbo</code></td>
+<td><code>orders</code></td>
+</tr>
+<tr>
+<td><code>shop.dbo.orders</code></td>
+<td><code>shop</code></td>
+<td><code>dbo</code></td>
+<td><code>orders</code></td>
+</tr>
+<tr>
+<td>more than 3 parts</td>
+<td>leading parts joined with <code>.</code></td>
+<td>second to last part</td>
+<td>last part</td>
+</tr>
+</tbody>
+</table>
+<p>Empty parts are left out, and <code>mssql</code> defaults <code>DefaultSchema</code> to <code>dbo</code>, so <code>mssql</code> table <code>orders</code> with <code>Database = &quot;shop&quot;</code> becomes <code>shop.dbo.orders</code>.</p>
+</li>
+<li><p>The platform instance, when set, is prefixed: <code>prod-sql.shop.dbo.orders</code>.</p>
+</li>
+<li><p><code>DatasetResolver</code> is called last, and a non-null result wins. Its result is used as is, so <code>LowercaseNames</code> does not apply to it, while the namespace's <code>IncludeDatasetMetadata</code> and <code>LowercaseColumns</code> still do.</p>
+</li>
+</ul>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideDataHubLineage(opt =&gt;
+{
+    opt.MapNamespace(&quot;mssql&quot;, m =&gt;
+    {
+        m.Database = &quot;shop&quot;;
+        m.PlatformInstance = &quot;prod-sql&quot;;
+        m.LowercaseNames = true;
+        m.LowercaseColumns = true;
+    });
+    opt.DatasetResolver = ctx =&gt; ctx.TableName.StartsWith(&quot;archive.&quot;)
+        ? new DataHubDataset(&quot;mssql&quot;, &quot;archive.dbo.&quot; + ctx.NameParts[^1].ToLowerInvariant(), &quot;archive-sql&quot;)
+        : null;
+});
+</code></pre>
+<ul>
+<li><strong>SQL Server databases.</strong> The SQL Server connector reports every table under the namespace <code>mssql</code>. Use three part names in the SQL, <code>Database</code>, or a resolver to tell databases apart.</li>
+<li><strong>Casing.</strong> Column names follow the connector schema when <code>IncludeConnectorSchema</code> is on. DataHub draws a column edge only when the field exists in the dataset schema with the same casing. Columns are matched ignoring case, so two columns of one table that differ only in casing become one field.</li>
+<li><strong>Length.</strong> DataHub drops urns longer than 512 characters once URL encoded, without an error. A data job whose urn would be longer gets a hashed id, while a dataset or flow urn that long is dropped by DataHub.</li>
+</ul>
+<h2 id="column-lineage">Column Lineage</h2>
+<p>Every column a data job writes is linked to the columns it is computed from, with the kind of transformation, such as <code>DIRECT:IDENTITY</code> or <code>DIRECT:AGGREGATION</code>.</p>
+<p>Join keys, filter columns and group by keys decide which rows are written, so they are linked to every column the job writes, as <code>INDIRECT:JOIN</code>, <code>INDIRECT:FILTER</code> or <code>INDIRECT:GROUP_BY</code>.
+Impact analysis on such a column, for example a join key that is never selected, then reaches the table the job writes.</p>
+<ul>
+<li>A column used in several ways is listed once, with the use closest to the written table. A group by key that is also a join key shows as <code>INDIRECT:GROUP_BY</code>.</li>
+<li>DataHub's OpenLineage integration ignores these columns, so a stream sent to DataHub through the <a href="openlineage.html">OpenLineage reporter</a> does not get them.</li>
+</ul>
+<h2 id="dataset-metadata">Dataset Metadata</h2>
+<p>With <code>IncludeDatasetMetadata</code> on, every dataset in the lineage gets a <code>status</code> aspect, a <code>schemaMetadata</code> aspect built from the connector or plan schema, and a <code>dataPlatformInstance</code> aspect when a platform instance is set.
+This makes datasets that no other DataHub source ingests, such as an Elasticsearch index, show up with their columns, and DataHub only draws column lineage between datasets that have a schema.</p>
+<p>Turn it off for namespaces that another DataHub source ingests, so the two sources do not replace each other's schema on every run:</p>
+<pre><code class="lang-csharp">opt.MapNamespace(&quot;mssql&quot;, m =&gt; m.IncludeDatasetMetadata = false);
+</code></pre>
+<p>The data jobs still link to those datasets, and <code>AspectProvider</code> can still add aspects to them.</p>
+<h2 id="data-quality-checks">Data Quality Checks</h2>
+<p>Checks made with <code>CHECK_VALUE</code> and <code>CHECK_TRUE</code> are served as DataHub assertions, listed in the <strong>Quality</strong> tab of a dataset.
+A check becomes one assertion for every table the rows it checks are written to. A check whose rows reach no served table has no assertion.</p>
+<p>Each assertion is a custom assertion of type <code>Flowtide Check</code> with the check message as its description.
+Its run event carries the status that Flowtide last committed:</p>
+<table>
+<thead>
+<tr>
+<th><code>CheckState</code></th>
+<th>DataHub result</th>
+<th><code>unexpectedCount</code></th>
+<th><code>nativeResults</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NotEvaluated</code></td>
+<td><code>SUCCESS</code></td>
+<td>0</td>
+<td><code>activeIssues</code>, <code>failingRows</code></td>
+</tr>
+<tr>
+<td><code>Passed</code></td>
+<td><code>SUCCESS</code></td>
+<td>0</td>
+<td><code>activeIssues</code>, <code>failingRows</code></td>
+</tr>
+<tr>
+<td><code>Failed</code></td>
+<td><code>FAILURE</code></td>
+<td>Failing rows</td>
+<td><code>activeIssues</code>, <code>failingRows</code></td>
+</tr>
+</tbody>
+</table>
+<p>A failing run event also carries a severity, which DataHub shows on the failure. It comes from <code>IncidentPriority</code> or <code>IncidentPriorityResolver</code>, whether or not incidents are raised. DataHub has three severities, so <code>Critical</code> and <code>High</code> both become high.</p>
+<ul>
+<li><strong>Checks need a running stream.</strong> The status comes from the stream that runs the check, so an assertion has no run event until the stream has started.</li>
+<li><strong>Only the latest status.</strong> Each run of the ingestion source writes the status at that moment. A check that fails and passes again between two runs shows only the pass. The run event keeps its time until the status changes, so runs without a change add no new event. After a stream or substream is rebuilt, its assertions keep their last result until the rebuilt checks are evaluated.</li>
+<li><strong>Not evaluated is a success.</strong> A new check is <code>NotEvaluated</code> until its first checkpoint. It is served as <code>SUCCESS</code> rather than DataHub's <code>INIT</code>, because DataHub counts <code>INIT</code> as failing in the dataset health, which would mark the dataset as failing during startup.</li>
+<li><strong>Identity.</strong> The assertion urn is a hash of the stream name, the dataset and the check message. Edits that keep the message keep the assertion. Changing the message, or writing to another table, creates a new assertion, and the old one stays in DataHub with its last status. Give every check on a table its own message, because checks with the same message on a table are told apart only by their order in the plan.</li>
+<li><strong>Distributed streams.</strong> The copies of a check in each substream report as one assertion. It fails when any copy fails, and adds up the failing rows of copies that check different partitions. Copies in other processes are not seen, as described under <strong>Limitations</strong>.</li>
+</ul>
+<p><code>flowtide.checkIds</code> in the assertion's custom properties lists the ids that check status listeners receive for the check.
+Set <code>IncludeChecks = false</code> to serve no assertions.</p>
+<h2 id="incidents">Incidents</h2>
+<p>Open source DataHub does not raise incidents from assertion results by itself, an assertion's <code>assertionActions</code> have no effect there.
+With <code>RaiseIncidents</code> on, Flowtide raises the incident itself: while a check fails, its dataset has an active incident, and when the check passes again the incident is resolved.</p>
+<pre><code class="lang-csharp">builder.Services.AddFlowtideDataHubLineage(opt =&gt;
+{
+    opt.RaiseIncidents = true;
+    opt.IncidentPriority = DataHubIncidentPriority.High;
+    opt.IncidentPriorityResolver = ctx =&gt; ctx.CheckMessage.StartsWith(&quot;Order&quot;)
+        ? DataHubIncidentPriority.Critical
+        : null;
+});
+</code></pre>
+<ul>
+<li><strong>One incident per assertion.</strong> It is titled with the check message, has the type <code>Flowtide Check</code>, and links to its assertion. A failure after a pass opens the same incident again with a new start time.</li>
+<li><strong>Datasets with failing checks.</strong> An active incident makes the dataset match the <strong>Has Active Incidents</strong> filter, so a view can list the datasets with failing checks. The <strong>Has Failing Assertions</strong> filter does not work in open source DataHub for any assertion.</li>
+<li><strong>Only checks that failed.</strong> A check that never failed in this process has no incident.</li>
+<li><strong>Removed checks.</strong> When a stream is rebuilt in the same process without a check that has an incident, the incident is resolved. After a restart or redeploy without the check, Flowtide no longer knows the incident, so it stays active in DataHub; resolve or delete it there.</li>
+<li><strong>Flowtide owns the incident.</strong> Every run of the ingestion source writes the incident again, so a change made in DataHub to its status, stage, priority, assignees, title or description is undone on the next run while Flowtide still serves it. Deleting it in DataHub does not last either. Notes added in DataHub are kept.</li>
+<li><strong>Restarts.</strong> Incidents are kept in memory. If a check passes and Flowtide restarts before the next ingestion run, its incident stays active in DataHub. Resolve it there; that lasts until the check fails again. A restart while a check fails raises its incident again with new times, which undoes changes made in DataHub once.</li>
+<li><strong>Only the latest status.</strong> A check that fails and passes again between two runs raises no incident. Every read of the endpoint counts, so another client reading it while the check fails makes the next run write a resolved incident.</li>
+</ul>
+<p>To leave Flowtide's incidents out on the DataHub side, add <code>urn:li:incident:.*</code> to the source's <code>urn_pattern.deny</code> list. The list replaces the source's default deny patterns, which match nothing Flowtide serves.</p>
+<h2 id="runs">Runs</h2>
+<p>Runs hang under the data jobs, so the shape in DataHub is data flow, data job, run. Each data job, that is each table a stream writes, has one run for the stream. In a distributed stream it has one run per substream that writes the table, named <code>stream/substream</code>. A stream or substream that writes no table itself, for example a substream that only feeds other substreams, gets its run on the data flow instead, with no output, so its failures still show in the flow's <strong>Runs</strong> tab.</p>
+<p>A run lists the tables that feed its job's table and the table itself. It shows in the job's <strong>Runs</strong> tab, in the <strong>Runs</strong> tab of the table it writes, and as <strong>Running</strong> or <strong>Last run</strong> on the job in search and in the lineage graph of a flow or job. All runs of one stream or substream follow its state:</p>
+<table>
+<thead>
+<tr>
+<th>Stream state</th>
+<th>Run status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Starting, Running</td>
+<td>Running</td>
+</tr>
+<tr>
+<td>Failure</td>
+<td>Failed, with its duration</td>
+</tr>
+<tr>
+<td>Restarted after a failure</td>
+<td>Running again</td>
+</tr>
+<tr>
+<td>Stopped, also while starting</td>
+<td>Succeeded</td>
+</tr>
+<tr>
+<td>Stopped, but the stop reported an error</td>
+<td>Failed</td>
+</tr>
+<tr>
+<td>Stopped or deleted after a failure</td>
+<td>Stays Failed</td>
+</tr>
+<tr>
+<td>Deleted while starting or running</td>
+<td>Cancelled</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>One run, not one per start.</strong> The run's urn is fixed per job and substream, so a restarted or redeployed process takes the same run over, and the Runs tab shows the current state rather than a history of starts. The run's time is its first start since the stream was last built, so a rebuild, such as a new Orleans activation, moves it.</li>
+<li><strong>The last state stays.</strong> A stop is only seen if an ingestion run happens before the process exits, and a crashed process reports nothing. The run then shows its last pulled state, usually Running, until a process serves it again.</li>
+<li><strong>Not started yet.</strong> A built stream that has not started has no run.</li>
+<li><strong>Several processes.</strong> When a substream moves to another process, the run with the newest state wins in DataHub, so the clocks of the processes should agree. The run's time can switch between the processes' start times.</li>
+<li>Runs are not drawn as nodes of their own in the lineage graph.</li>
+<li><strong>DataHub's cleanup.</strong> DataHub's optional cleanup of process instances, off by default, removes job runs older than its retention, including the run of a stream that has been running longer than that.</li>
+<li><strong>OpenLineage.</strong> Flowtide's OpenLineage reporter creates runs of its own, a new one per build. If it also sends to the same DataHub, DataHub shows both kinds of runs for the same stream, so turn one of them off.</li>
+</ul>
+<p>Set <code>IncludeRuns = false</code> to serve no runs.</p>
+<h2 id="flowtide-platform">Flowtide Platform</h2>
+<p>Flows and jobs belong to the data platform <code>flowtide</code>, which DataHub does not know.
+Flowtide serves <code>urn:li:dataPlatform:flowtide</code> with the same <code>dataPlatformInfo</code> that <code>datahub put platform</code> writes: display name <code>Flowtide</code>, type <code>OTHERS</code> and <code>PlatformLogoUrl</code> as the logo.
+The default logo is <code>https://raw.githubusercontent.com/koralium/flowtide/main/logo/flowtidelogo.svg</code>, so the browser that shows DataHub must reach GitHub. Point <code>PlatformLogoUrl</code> at a copy of the logo inside your network otherwise.</p>
+<p>Every run writes the platform again, so a platform set up with <code>datahub put platform --name flowtide</code> is overwritten. Set <code>IncludePlatformInfo = false</code> to keep your own.
+Only the <code>flowtide</code> platform is served. Dataset platforms such as <code>mssql</code> or <code>kafka</code> keep the logos and names DataHub ships with.</p>
+<h2 id="custom-aspects">Custom Aspects</h2>
+<p><code>AspectProvider</code> is called for every flow, job, dataset and assertion in the lineage, not for incidents, and can add any DataHub aspect.
+The value is the aspect in the JSON form the GMS API returns, and an aspect with the same name as a built-in one replaces it:</p>
+<pre><code class="lang-csharp">opt.AspectProvider = ctx =&gt; ctx.EntityType == DataHubEntityType.DataFlow
+    ? [
+        new DataHubAspect(&quot;ownership&quot;, JsonNode.Parse(&quot;&quot;&quot;
+            {&quot;owners&quot;:[{&quot;owner&quot;:&quot;urn:li:corpGroup:data-platform&quot;,&quot;type&quot;:&quot;TECHNICAL_OWNER&quot;}],&quot;ownerTypes&quot;:{},&quot;lastModified&quot;:{&quot;time&quot;:0,&quot;actor&quot;:&quot;urn:li:corpuser:flowtide&quot;}}
+            &quot;&quot;&quot;)!),
+        new DataHubAspect(&quot;globalTags&quot;, JsonNode.Parse(&quot;&quot;&quot;{&quot;tags&quot;:[{&quot;tag&quot;:&quot;urn:li:tag:streaming&quot;}]}&quot;&quot;&quot;)!)
+      ]
+    : null;
+</code></pre>
+<p>An aspect name the CLI does not know is dropped with a warning in the ingestion log, and an invalid value fails the run.</p>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li>Nothing is ever removed. A stream or table that disappears stays in DataHub until it is deleted there, for example with <code>datahub delete</code>.</li>
+<li>Every aspect is written in full on every run, so a dataset aspect such as <code>schemaMetadata</code> also written by another source flips between the two versions.</li>
+<li>Filters pushed into a read and filters inside views are not visible in the lineage.</li>
+<li>Each process serves only the substreams built in it. When substreams of one stream in different processes write the same table, their data jobs have the same urn and replace each other. The same goes for the assertions and incidents of a check whose copies run in different processes, and an incident then switches between active and resolved.</li>
+<li>Registrations last for the life of the process.</li>
+<li>A data job's id is built from its output dataset alone, as <code>platform.name</code>. Outputs in another environment than <code>Env</code>, platforms whose id contains a dot, and names containing <code>~</code> get <code>~env~</code> and a hash of the dataset urn appended. Renaming or remapping an output creates a new job and leaves the old one in DataHub.</li>
+</ul>
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/docs/docs/monitoring/datahub.md/#L1" class="edit-link">Edit this page</a>
+        </div>
+
+        <div class="next-article d-print-none border-top" id="nextArticle"></div>
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
