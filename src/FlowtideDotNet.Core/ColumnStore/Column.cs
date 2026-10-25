@@ -1092,6 +1092,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 _nullCounter += count;
                 return;
             }
+            // A union keeps its nulls inside the union column
+            if (_type == ArrowTypeId.Union)
+            {
+                _dataColumn!.InsertNullRange(index, count, _memoryAllocator!);
+                return;
+            }
             if (_nullCounter > 0)
             {
                 _validityList.InsertFalseInRange(index, count, _memoryAllocator!);

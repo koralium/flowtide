@@ -445,7 +445,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Utils
         {
             return _elementSize switch
             {
-                0 => CompareColumnStateBuilder.Create(ArrowTypeId.Int8),
+                0 => CompareColumnStateBuilder.Create(ArrowTypeId.Int8) | CompareColumnState.HasNoValues,
                 1 => CompareColumnStateBuilder.Create(ArrowTypeId.Int8),
                 2 => CompareColumnStateBuilder.Create(ArrowTypeId.Int16),
                 4 => CompareColumnStateBuilder.Create(ArrowTypeId.Int32),

@@ -553,6 +553,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     validityList = new BitmapList(validityMemory, nodeLength);
                 }
             }
+            else
+            {
+                // A union keeps its nulls inside the union column
+                nodeNullCount = 0;
+            }
 
             DataColumnResult dataColumnResult = default;
             try

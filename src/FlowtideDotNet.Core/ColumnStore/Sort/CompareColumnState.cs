@@ -32,7 +32,10 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
 
         // Sort request bits, keyed so a descending layout never reuses an ascending delegate.
         SortDescending = 1 << 11,
-        SortNullsSwapped = 1 << 12
+        SortNullsSwapped = 1 << 12,
+
+        // An integer column without values compiles to a constant compare
+        HasNoValues = 1 << 13
     }
 
     public static class CompareColumnStateBuilder
