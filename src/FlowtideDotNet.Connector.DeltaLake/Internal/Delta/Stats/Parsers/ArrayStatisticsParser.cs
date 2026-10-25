@@ -26,6 +26,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Parsers
             _inner = inner;
         }
 
+        public void Reset()
+        {
+            _inner.Reset();
+        }
+
         public IStatisticsComparer GetStatisticsComparer()
         {
             throw new NotImplementedException();

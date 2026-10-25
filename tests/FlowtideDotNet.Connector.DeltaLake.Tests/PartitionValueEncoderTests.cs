@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ArrowPartitionEncoders;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.ObjectConverter;
@@ -107,7 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             encoder.AddValue(0, ref func);
 
             var dt = func.BoxedValue!.AsTimestamp.ToDateTimeOffset();
-            Assert.Equal(DateTimeOffset.Parse(timestamp), dt);
+            Assert.Equal(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero), dt);
         }
 
         [Fact]
@@ -123,7 +124,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             encoder.AddValue(0, ref func);
 
             var dt = func.BoxedValue!.AsTimestamp.ToDateTimeOffset();
-            Assert.Equal(DateTimeOffset.Parse(timestamp), dt);
+            Assert.Equal(new DateTimeOffset(2021, 1, 1, 0, 0, 0, TimeSpan.Zero).AddTicks(1234560), dt);
         }
 
         [Fact]
@@ -180,6 +181,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             AddToColumnFunc func = new AddToColumnFunc();
             encoder.AddValue(0, ref func);
             Assert.Equal(new DecimalValue(123.45m), func.BoxedValue);
+        }
+
+        [Fact]
+        public void TestTimestampPartitionValueIsUtc()
+        {
+            var writer = new TimestampColumnPartitionWriter();
+            var value = new TimestampTzValue(new DateTimeOffset(2021, 1, 1, 12, 0, 0, TimeSpan.FromHours(2)));
+
+            Assert.Equal("2021-01-01T10:00:00.000000Z", writer.GetValue(value));
+        }
+
+        [Fact]
+        public void TestDatePartitionValueIsUtc()
+        {
+            var writer = new DateColumnPartitionWriter();
+            var value = new TimestampTzValue(new DateTimeOffset(2021, 1, 2, 1, 0, 0, TimeSpan.FromHours(2)));
+
+            Assert.Equal("2021-01-01", writer.GetValue(value));
         }
     }
 }

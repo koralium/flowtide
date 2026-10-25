@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "test", stream, 2);
 
-            await AssertResult(nameof(TestCreateTable), storage, "test", 3, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(TestCreateTable), storage, "test", stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
         }
 
 
@@ -88,6 +89,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 new Internal.Delta.Actions.DeltaAction()
                 {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
+                new Internal.Delta.Actions.DeltaAction()
+                {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
                     {
                         SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions)
@@ -105,7 +110,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(storage, "test2", stream, 1);
 
             // Wait 2 commits, first one is just the table creation
-            await AssertResult(nameof(TestInsertSelectionOfColumns), storage, "test2", 2, stream.Users.Select(x => new { UserKey = default(int?), Name = x.FirstName, LastName = default(string?), x.NullableString }));
+            await AssertResult(nameof(TestInsertSelectionOfColumns), storage, "test2", stream.Users.Select(x => new { UserKey = default(int?), Name = x.FirstName, LastName = default(string?), x.NullableString }));
         }
 
         [Fact]
@@ -138,7 +143,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "test3", stream, 2);
 
-            await AssertResult(nameof(WriteStruct), storage, "test3", 3, stream.Users.Select(x => new { x.UserKey, Struct = new { name = x.FirstName, lastName = x.LastName } }));
+            await AssertResult(nameof(WriteStruct), storage, "test3", stream.Users.Select(x => new { x.UserKey, Struct = new { name = x.FirstName, lastName = x.LastName } }));
         }
 
         [Fact]
@@ -166,7 +171,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "int8test", stream, 2);
 
-            await AssertResult(nameof(WriteInt8), storage, "int8test", 3, stream.Users.Select(x => new { userkey = x.UserKey % 100 }));
+            await AssertResult(nameof(WriteInt8), storage, "int8test", stream.Users.Select(x => new { userkey = x.UserKey % 100 }));
         }
 
         [Fact]
@@ -194,7 +199,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "int16test", stream, 2);
 
-            await AssertResult(nameof(WriteInt16), storage, "int16test", 3, stream.Users.Select(x => new { x.UserKey }));
+            await AssertResult(nameof(WriteInt16), storage, "int16test", stream.Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
@@ -222,7 +227,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "int32test", stream, 2);
 
-            await AssertResult(nameof(WriteInt32), storage, "int32test", 3, stream.Users.Select(x => new { x.UserKey }));
+            await AssertResult(nameof(WriteInt32), storage, "int32test", stream.Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
@@ -250,7 +255,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "int64test", stream, 2);
 
-            await AssertResult(nameof(WriteInt64), storage, "int64test", 3, stream.Users.Select(x => new { x.UserKey }));
+            await AssertResult(nameof(WriteInt64), storage, "int64test", stream.Users.Select(x => new { x.UserKey }));
         }
 
         [Fact]
@@ -278,7 +283,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "float32test", stream, 2);
 
-            await AssertResult(nameof(WriteFloat32), storage, "float32test", 3, stream.Users.Select(x => new { DoubleValue = (float)x.DoubleValue }));
+            await AssertResult(nameof(WriteFloat32), storage, "float32test", stream.Users.Select(x => new { DoubleValue = (float)x.DoubleValue }));
         }
 
         [Fact]
@@ -306,7 +311,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "float64test", stream, 2);
 
-            await AssertResult(nameof(WriteFloat64), storage, "float64test", 3, stream.Users.Select(x => new { DoubleValue = x.DoubleValue }));
+            await AssertResult(nameof(WriteFloat64), storage, "float64test", stream.Users.Select(x => new { DoubleValue = x.DoubleValue }));
         }
 
         [Fact]
@@ -334,7 +339,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "booltest", stream, 2);
 
-            await AssertResult(nameof(WriteBoolean), storage, "booltest", 3, stream.Users.Select(x => new { x.Active }));
+            await AssertResult(nameof(WriteBoolean), storage, "booltest", stream.Users.Select(x => new { x.Active }));
         }
 
         [Fact]
@@ -362,7 +367,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "datetest", stream, 2);
 
-            await AssertResult(nameof(WriteDate), storage, "datetest", 3, stream.Users.Select(x => new { x.BirthDate }));
+            await AssertResult(nameof(WriteDate), storage, "datetest", stream.Users.Select(x => new { x.BirthDate }));
         }
 
         [Fact]
@@ -390,7 +395,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "decimaltest", stream, 2);
 
-            await AssertResult(nameof(WriteDecimal), storage, "decimaltest", 3, stream.Orders.Select(x => new { Money = Math.Round(x.Money!.Value / 3, 2) }));
+            await AssertResult(nameof(WriteDecimal), storage, "decimaltest", stream.Orders.Select(x => new { Money = Math.Round(x.Money!.Value / 3, 2) }));
         }
 
         [Fact]
@@ -418,7 +423,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "stringtest", stream, 2);
 
-            await AssertResult(nameof(WriteString), storage, "stringtest", 3, stream.Users.Select(x => new { x.FirstName }));
+            await AssertResult(nameof(WriteString), storage, "stringtest", stream.Users.Select(x => new { x.FirstName }));
         }
 
         [Fact]
@@ -446,7 +451,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "timestamptest", stream, 2);
 
-            await AssertResult(nameof(WriteTimestamp), storage, "timestamptest", 3, stream.Users.Select(x => new { x.BirthDate }));
+            await AssertResult(nameof(WriteTimestamp), storage, "timestamptest", stream.Users.Select(x => new { x.BirthDate }));
         }
 
         [Fact]
@@ -476,7 +481,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var expected = stream.Users.GroupBy(x => x.UserKey % 2).Select(x => new { list = x.Select(y => y.FirstName).OrderBy(y => y).ToList() }).ToList();
 
-            await AssertResult(nameof(WriteList), storage, "listtest", 3, expected);
+            await AssertResult(nameof(WriteList), storage, "listtest", expected);
         }
 
         [Fact]
@@ -506,7 +511,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var expected = stream.Users.Select(x => new { map = new Dictionary<string, string>() { { "firstName", x.FirstName! } } });
 
-            await AssertResult(nameof(WriteMap), storage, "maptest", 3, expected);
+            await AssertResult(nameof(WriteMap), storage, "maptest", expected);
         }
 
         [Fact]
@@ -534,7 +539,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "binarytest", stream, 2);
 
-            await AssertResult(nameof(WriteBinary), storage, "binarytest", 3, stream.Users.Select(x => new { v = Encoding.UTF8.GetBytes(x.FirstName!) }));
+            await AssertResult(nameof(WriteBinary), storage, "binarytest", stream.Users.Select(x => new { v = Encoding.UTF8.GetBytes(x.FirstName!) }));
         }
 
         [Fact]
@@ -562,7 +567,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "subfolder/createstruct", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithStruct), storage, "subfolder.createstruct", 2, stream.Users.Select(x => new { x.UserKey, @struct = new { firstName = x.FirstName, lastName = x.LastName } }));
+            await AssertResult(nameof(TestCreateTableWithStruct), storage, "subfolder.createstruct", stream.Users.Select(x => new { x.UserKey, @struct = new { firstName = x.FirstName, lastName = x.LastName } }));
         }
 
         [Fact]
@@ -591,7 +596,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var expected = new[] { new { list = stream.Users.Select(x => x.FirstName).OrderBy(x => x).ToList() } };
 
-            await AssertResult(nameof(TestCreateTableWithList), storage, "createlist", 2, expected);
+            await AssertResult(nameof(TestCreateTableWithList), storage, "createlist", expected);
         }
 
         /// <summary>
@@ -622,7 +627,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createdecimal", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithDecimal), storage, "createdecimal", 2, stream.Orders.Select(x => new { val = x.Money }));
+            await AssertResult(nameof(TestCreateTableWithDecimal), storage, "createdecimal", stream.Orders.Select(x => new { val = x.Money }));
         }
 
         [Fact]
@@ -651,7 +656,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var expected = stream.Orders.Select(x => new { DateTime = DateTimeOffset.FromUnixTimeMilliseconds(new DateTimeOffset(x.Orderdate, TimeSpan.Zero).ToUnixTimeMilliseconds()) });
 
-            await AssertResult(nameof(TestCreateTableWithTimestamp), storage, "createtimestamp", 2, expected);
+            await AssertResult(nameof(TestCreateTableWithTimestamp), storage, "createtimestamp", expected);
         }
 
         [Fact]
@@ -678,7 +683,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createbinary", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithBinary), storage, "createbinary", 2, stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
+            await AssertResult(nameof(TestCreateTableWithBinary), storage, "createbinary", stream.Users.Select(x => new { val = Encoding.UTF8.GetBytes(x.FirstName!) }));
         }
 
         [Fact]
@@ -705,7 +710,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createboolean", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithBool), storage, "createboolean", 2, stream.Users.Select(x => new { val = x.Active }));
+            await AssertResult(nameof(TestCreateTableWithBool), storage, "createboolean", stream.Users.Select(x => new { val = x.Active }));
         }
 
         [Fact]
@@ -732,7 +737,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createdate", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithDate), storage, "createdate", 2, stream.Users.Select(x => new { val = x.BirthDate }));
+            await AssertResult(nameof(TestCreateTableWithDate), storage, "createdate", stream.Users.Select(x => new { val = x.BirthDate }));
         }
 
         [Fact]
@@ -759,7 +764,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createdouble", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithDouble), storage, "createdouble", 2, stream.Users.Select(x => new { val = x.DoubleValue }));
+            await AssertResult(nameof(TestCreateTableWithDouble), storage, "createdouble", stream.Users.Select(x => new { val = x.DoubleValue }));
         }
 
         [Fact]
@@ -787,7 +792,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createinteger", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithInteger), storage, "createinteger", 2, stream.Users.Select(x => new { val = x.UserKey, val2 = x.UserKey }));
+            await AssertResult(nameof(TestCreateTableWithInteger), storage, "createinteger", stream.Users.Select(x => new { val = x.UserKey, val2 = x.UserKey }));
         }
 
         [Fact]
@@ -814,7 +819,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "createmap", stream, 1);
 
-            await AssertResult(nameof(TestCreateTableWithMap), storage, "createmap", 2, stream.Users.Select(x => new { val = new Dictionary<string, string>() { { x.FirstName!, x.LastName! } } }));
+            await AssertResult(nameof(TestCreateTableWithMap), storage, "createmap", stream.Users.Select(x => new { val = new Dictionary<string, string>() { { x.FirstName!, x.LastName! } } }));
         }
 
         [Fact]
@@ -847,7 +852,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "largetest", stream, 1);
 
-            await AssertResult(nameof(TestLargeSelect), storage, "largetest", 2, stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
+            await AssertResult(nameof(TestLargeSelect), storage, "largetest", stream.Users.Select(x => new { x.CompanyId, x.UserKey, x.FirstName, x.LastName }));
         }
 
         [Fact]
@@ -872,7 +877,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "overwritetable", stream, 0);
 
-            await AssertResult(nameof(InsertOverwrite), storage, "overwritetable", 1, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(InsertOverwrite), storage, "overwritetable", stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
 
             await stream.DisposeAsync();
 
@@ -893,33 +898,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await WaitForVersion(storage, "overwritetable", newStream, 1);
 
-            await AssertResult(nameof(InsertOverwrite) + "_overwrite", storage, "overwritetable", 2, newStream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(InsertOverwrite) + "_overwrite", storage, "overwritetable", newStream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
 
         }
 
         /// <summary>
         /// Start a stream with the delta lake source and write to test sink and then compare the result
         /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="testName"></param>
-        /// <param name="storage"></param>
-        /// <param name="tableName"></param>
-        /// <param name="waitCount"></param>
-        /// <param name="result"></param>
-        /// <returns></returns>
-        private async Task AssertResult<T>(string testName, IFileStorage storage, string tableName, int waitCount, IEnumerable<T> result)
+        private static Task AssertResult<T>(string testName, IFileStorage storage, string tableName, IEnumerable<T> result)
         {
-            DeltaLakeTestStream stream = new DeltaLakeTestStream(testName + "_compare", storage);
-
-            await stream.StartStream($"INSERT INTO result SELECT * FROM {tableName}");
-
-            for (int i = 0; i < waitCount; i++)
-            {
-                await stream.WaitForUpdate();
-            }
-
-            stream.AssertCurrentDataEqual(result);
-            await stream.DisposeAsync();
+            return DeltaTestKit.AssertReaderResult(testName, storage, tableName, result);
         }
 
         private async Task CreateInitialCommitWithSchema(IFileStorage storage, string tableName, List<StructField> schemaFields)
@@ -931,6 +919,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             await DeltaTransactionWriter.WriteCommit(storage, tableName, 0, new List<Internal.Delta.Actions.DeltaAction>()
             {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
                 new Internal.Delta.Actions.DeltaAction()
                 {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
@@ -1096,6 +1088,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // The checkpoint is written after the commit is published
+            await DeltaTestKit.WaitForCheckpoint(storage, "test", stream, 2);
 
             // Verify that checkpoint file exists in storage!
             var checkpointExists = await storage.Exists("/test/_delta_log/00000000000000000002.checkpoint.parquet");
@@ -1112,13 +1106,58 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.NotNull(lastCheckpointInfo);
             Assert.Equal(2, lastCheckpointInfo.Version);
             Assert.True(lastCheckpointInfo.Size > 0);
+            // The full hint, and never a checkpoint schema
+            var checkpointBytes = await DeltaTestKit.ReadBytes(storage, "/test/_delta_log/00000000000000000002.checkpoint.parquet");
+            Assert.Equal(checkpointBytes.Length, lastCheckpointInfo.SizeInBytes);
+            // The builder's checkpoint carries a coverage marker
+            var local = Path.Combine(Path.GetTempPath(), $"sink-checkpoint-{Guid.NewGuid():N}.parquet");
+            try
+            {
+                await File.WriteAllBytesAsync(local, checkpointBytes);
+                using var file = new ParquetSharp.ParquetFileReader(local);
+                Assert.NotNull(CoverageMarker.Parse(file.FileMetaData.KeyValueMetadata[CheckpointSchema.CoverageMarkerKey]));
+            }
+            finally
+            {
+                File.Delete(local);
+            }
+            Assert.DoesNotContain("checkpointSchema", lastCheckpointContent);
 
             // Read the table using DeltaTransactionReader.ReadTable to verify it can read checkpointed table
             var table = await DeltaTransactionReader.ReadTable(storage, "test");
             Assert.NotNull(table);
             Assert.Equal(2, table.Version);
+            Assert.Equal(table.AddFiles.Count, lastCheckpointInfo.NumOfAddFiles);
 
             // Clean up stream
+            await stream.DisposeAsync();
+        }
+
+        [Fact]
+        public async Task LongStringStatisticsAreWrittenAsPrefixBounds()
+        {
+            var storage = Files.Of.InternalMemory("./test_long_stats");
+            DeltaLakeSinkStream stream = new DeltaLakeSinkStream(nameof(LongStringStatisticsAreWrittenAsPrefixBounds), storage);
+            await CreateInitialCommitWithSchema(storage, "longstats", new List<StructField>()
+            {
+                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>()),
+                new StructField("Name", new StringType(), true, new Dictionary<string, object>())
+            });
+            stream.Generate(10);
+            await stream.StartStream($@"
+                INSERT INTO longstats
+                SELECT userKey, concat(firstName, '{new string('x', 100)}') as Name FROM users
+            ");
+            await WaitForVersion(storage, "longstats", stream, 1);
+
+            // Stats keep a 32 code point prefix, the maximum closed by U+10FFFF, so an add line stays small whatever the values
+            var add = (await DeltaTestKit.ReadCommitActions(storage, "longstats", 1)).Single(x => x.Add != null).Add!;
+            using var stats = JsonDocument.Parse(add.Statistics!);
+            var min = stats.RootElement.GetProperty("minValues").GetProperty("Name").GetString()!;
+            var max = stats.RootElement.GetProperty("maxValues").GetProperty("Name").GetString()!;
+            Assert.Equal(32, min.Length);
+            Assert.EndsWith(char.ConvertFromUtf32(0x10FFFF), max);
+            Assert.Equal(34, max.Length);
             await stream.DisposeAsync();
         }
 
@@ -1167,6 +1206,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             firstUser = stream.Users.Last();
             stream.DeleteUser(firstUser);
             await WaitForVersion(storage, "test", stream, 2);
+            // Without the checkpoint DuckDB would only read the json log
+            await DeltaTestKit.WaitForCheckpoint(storage, "test", stream, 2);
 
             await stream.DisposeAsync();
 
@@ -1175,12 +1216,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var extensionsDir = Path.Join(Directory.GetCurrentDirectory(), "duckdb_extensions").Replace("\\", "/");
             Directory.CreateDirectory(extensionsDir);
-
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = $"SET extension_directory = '{extensionsDir}'; INSTALL delta; LOAD delta;";
-                cmd.ExecuteNonQuery();
-            }
+            DeltaTestKit.LoadDuckDbDelta(conn, extensionsDir);
 
             using (var cmd = conn.CreateCommand())
             {
@@ -1221,8 +1257,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
             });
 
-            var stagedFile = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
+            var staged = await DeltaTransactionWriter.StageCommit(storage, "staged", 0, new List<Internal.Delta.Actions.DeltaAction>()
             {
+                new Internal.Delta.Actions.DeltaAction()
+                {
+                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction() { MinReaderVersion = 1, MinWriterVersion = 2 }
+                },
                 new Internal.Delta.Actions.DeltaAction()
                 {
                     MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
@@ -1234,88 +1274,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             Assert.Null(await DeltaTransactionReader.ReadTable(storage, "staged"));
 
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            var pending = new Internal.DeltaLakePendingCommit() { Version = 0, StagedFile = staged.FileName, StageId = staged.StageId, Length = staged.Length };
+            await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true);
             // Second publish is a no-op, as after a restart.
-            await DeltaTransactionWriter.PublishCommit(storage, "staged", 0, stagedFile);
+            Assert.Equal(PublishOutcome.AlreadyPublished, (await DeltaTransactionWriter.PublishCommit(storage, "staged", pending, null, checkSuccessor: true)).Outcome);
 
-            Assert.False(await storage.Exists($"/staged/_delta_log/{stagedFile}"));
+            Assert.False(await storage.Exists($"/staged/_delta_log/{staged.FileName}"));
             var table = await DeltaTransactionReader.ReadTable(storage, "staged");
             Assert.NotNull(table);
             Assert.Equal(0, table.Version);
-        }
-
-        [Fact]
-        public async Task TestCheckpointKeepsAddFieldsAndLongCardinality()
-        {
-            var storage = Files.Of.InternalMemory("./test_checkpoint_fields");
-
-            JsonSerializerOptions jsonOptions = new JsonSerializerOptions();
-            jsonOptions.Converters.Add(new TypeConverter());
-            var schemaStruct = new StructType(new List<StructField>()
-            {
-                new StructField("userkey", new IntegerType(), true, new Dictionary<string, object>())
-            });
-
-            await DeltaTransactionWriter.WriteCommit(storage, "fields", 0, new List<Internal.Delta.Actions.DeltaAction>()
-            {
-                new Internal.Delta.Actions.DeltaAction()
-                {
-                    MetaData = new Internal.Delta.Actions.DeltaMetadataAction()
-                    {
-                        Id = Guid.NewGuid().ToString(),
-                        SchemaString = JsonSerializer.Serialize(schemaStruct as SchemaBaseType, jsonOptions),
-                        Format = new Internal.Delta.Actions.DeltaMetadataFormat() { Provider = "parquet", Options = new Dictionary<string, string>() },
-                        PartitionColumns = new List<string>(),
-                        Configuration = new Dictionary<string, string>(),
-                        CreatedTime = 1
-                    }
-                },
-                new Internal.Delta.Actions.DeltaAction()
-                {
-                    Protocol = new Internal.Delta.Actions.DeltaProtocolAction()
-                    {
-                        MinReaderVersion = 3,
-                        MinWriterVersion = 7,
-                        ReaderFeatures = new List<string>() { "deletionVectors" },
-                        WriterFeatures = new List<string>() { "deletionVectors" }
-                    }
-                },
-                new Internal.Delta.Actions.DeltaAction()
-                {
-                    Add = new Internal.Delta.Actions.DeltaAddAction()
-                    {
-                        Path = "a.parquet",
-                        PartitionValues = new Dictionary<string, string>(),
-                        Size = 1,
-                        ModificationTime = 1,
-                        DataChange = true,
-                        BaseRowId = 42,
-                        DefaultRowCommitVersion = 7,
-                        ClusteringProvider = "liquid",
-                        DeletionVector = new Internal.Delta.DeletionVectors.DeletionVector()
-                        {
-                            StorageType = "p",
-                            PathOrInlineDv = "dv.bin",
-                            Offset = 1,
-                            SizeInBytes = 10,
-                            Cardinality = 3_000_000_000
-                        }
-                    }
-                }
-            });
-
-            var table = await DeltaTransactionReader.ReadTable(storage, "fields");
-            Assert.NotNull(table);
-            await DeltaCheckpointWriter.WriteCheckpoint(storage, "fields", table);
-
-            var checkpointFile = (await DeltaTransactionReader.ReadTransactionLog(storage, "fields")).Single(x => x.IsCheckpoint);
-            var checkpointActions = await new Internal.Delta.ParquetFormat.CheckpointReading.ParquetCheckpointReader().ReadCheckpointFile(storage, checkpointFile.IOEntry);
-            var add = checkpointActions.Single(x => x.Add != null).Add!;
-
-            Assert.Equal(42, add.BaseRowId);
-            Assert.Equal(7, add.DefaultRowCommitVersion);
-            Assert.Equal("liquid", add.ClusteringProvider);
-            Assert.Equal(3_000_000_000, add.DeletionVector!.Cardinality);
         }
 
         [Fact]
@@ -1346,7 +1313,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(storage, "test", stream, 1);
             Assert.Equal(1, storage.Crashes);
 
-            await AssertResult(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage, "test", 2, stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
+            await AssertResult(nameof(TestCrashBeforeCommitVersionPublishesOnRestart), storage, "test", stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName, x.NullableString }));
         }
     }
 }

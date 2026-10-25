@@ -1367,7 +1367,7 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
                     }
                     if (dataValueContainer.Type == ArrowTypeId.Timestamp)
                     {
-                        return dataValueContainer.AsTimestamp.ToDateTimeOffset().DateTime;
+                        return new DateTime(dataValueContainer.AsTimestamp.ticks);
                     }
                     throw new NotSupportedException($"The data type {dataValueContainer.Type} cant be used as datetime");
                 };

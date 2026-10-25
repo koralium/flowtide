@@ -10,7 +10,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
@@ -50,9 +54,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         [JsonPropertyName("deletionVector")]
         public DeletionVector? DeletionVector { get; set; }
 
+        private static readonly JsonSerializerOptions s_statisticsOptions = new JsonSerializerOptions()
+        {
+            Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+        };
+
+        /// <summary>
+        /// The same physical file with a new deletion vector.
+        /// </summary>
+        public DeltaAddAction WithDeletionVector(DeletionVector deletionVector)
+        {
+            return new DeltaAddAction()
+            {
+                Path = Path,
+                PartitionValues = PartitionValues,
+                Size = Size,
+                ModificationTime = ModificationTime,
+                // Removing rows is a data change
+                DataChange = true,
+                Statistics = WithLooseBounds(Statistics),
+                Tags = Tags,
+                BaseRowId = BaseRowId,
+                DefaultRowCommitVersion = DefaultRowCommitVersion,
+                ClusteringProvider = ClusteringProvider,
+                DeletionVector = deletionVector
+            };
+        }
+
+        // Bounds may belong to deleted rows
+        private static string? WithLooseBounds(string? statistics)
+        {
+            if (statistics == null || JsonNode.Parse(statistics) is not JsonObject node)
+            {
+                return statistics;
+            }
+            node["tightBounds"] = false;
+            return node.ToJsonString(s_statisticsOptions);
+        }
+
         public DeltaFileKey GetKey()
         {
-            return new DeltaFileKey(Path!, DeletionVector?.UniqueId);
+            return DeltaReconcileRules.FileKey(Path!, DeletionVector);
         }
     }
 }

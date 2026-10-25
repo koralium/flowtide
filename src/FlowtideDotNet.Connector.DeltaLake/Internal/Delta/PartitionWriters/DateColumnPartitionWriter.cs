@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Globalization;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
 {
@@ -23,9 +24,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
                 return "";
             }
             var val = value.AsTimestamp;
-            var dt = val.ToDateTimeOffset();
+            var dt = new DateTime(val.ticks);
 
-            return dt.ToString("yyyy-MM-dd");
+            return dt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
         }
     }
 }

@@ -12,7 +12,9 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using System.Collections.Immutable;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 {
@@ -21,25 +23,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
         private DeltaMetadataAction _metadata;
         private DeltaProtocolAction _protocol;
         private List<DeltaAddAction> _addFiles;
-        private readonly List<DeltaFile> _files;
+        private List<DeltaFile>? _files;
         private long _version;
         private StructType _schema;
+        private readonly IReadOnlyCollection<DeltaRemoveFileAction> _tombstones;
+        private readonly IReadOnlyDictionary<string, DeltaTransactionAction> _transactions;
+        private readonly IReadOnlyDictionary<string, DeltaDomainMetadataAction> _domainMetadata;
+        private readonly long? _startCheckpointVersion;
 
-        internal DeltaTable(DeltaMetadataAction metadata, DeltaProtocolAction protocol, List<DeltaAddAction> addFiles, StructType schema, List<DeltaFile> files, long version)
+        internal DeltaTable(
+            DeltaMetadataAction metadata,
+            DeltaProtocolAction protocol,
+            List<DeltaAddAction> addFiles,
+            StructType schema,
+            long version,
+            IReadOnlyCollection<DeltaRemoveFileAction> tombstones,
+            IReadOnlyDictionary<string, DeltaTransactionAction> transactions,
+            IReadOnlyDictionary<string, DeltaDomainMetadataAction> domainMetadata,
+            long? startCheckpointVersion)
         {
             _metadata = metadata;
             _protocol = protocol;
             _addFiles = addFiles;
-            this._files = files;
             _version = version;
             _schema = schema;
-            // Read schema
-
+            _tombstones = tombstones;
+            _transactions = transactions;
+            _domainMetadata = domainMetadata;
+            _startCheckpointVersion = startCheckpointVersion;
         }
 
         public List<DeltaAddAction> AddFiles => _addFiles;
 
-        public List<DeltaFile> Files => _files;
+        /// <summary>
+        /// The add actions with parsed statistics, parsed from <see cref="AddFiles"/> on first access.
+        /// </summary>
+        public List<DeltaFile> Files => _files ??= ParseFiles();
 
         public StructType Schema => _schema;
 
@@ -53,6 +72,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         public long Version => _version;
 
+        /// <summary>
+        /// Remove actions that are still tombstones, empty when the table was read with <see cref="DeltaReadOptions.SkipTombstones"/>.
+        /// </summary>
+        public IReadOnlyCollection<DeltaRemoveFileAction> Tombstones => _tombstones;
+
+        /// <summary>
+        /// The latest txn action per application id.
+        /// </summary>
+        public IReadOnlyDictionary<string, DeltaTransactionAction> Transactions => _transactions;
+
+        /// <summary>
+        /// The latest domain metadata per domain, without removed domains.
+        /// </summary>
+        public IReadOnlyDictionary<string, DeltaDomainMetadataAction> DomainMetadata => _domainMetadata;
+
+        /// <summary>
+        /// The classic checkpoint the snapshot was read from, null when it was replayed from the first commit.
+        /// </summary>
+        public long? StartCheckpointVersion => _startCheckpointVersion;
+
+        /// <summary>
+        /// The first-line header of the head commit when the read replayed it, null otherwise.
+        /// </summary>
+        internal CommitHeader? HeadHeader { get; set; }
+
+        private List<DeltaFile> ParseFiles()
+        {
+            var statisticsJsonOptions = new JsonSerializerOptions();
+            statisticsJsonOptions.Converters.Add(new DeltaStatisticsConverter(_schema));
+
+            var files = new List<DeltaFile>(_addFiles.Count);
+            foreach (var addFile in _addFiles)
+            {
+                if (addFile.Statistics != null)
+                {
+                    var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Statistics, statisticsJsonOptions);
+                    files.Add(new DeltaFile(addFile, stats!));
+                }
+                else
+                {
+                    // Empty statistics is fine - just means no stats were collected
+                    files.Add(new DeltaFile(addFile, new DeltaStatistics()));
+                }
+            }
+            return files;
+        }
+
         public bool DeleteVectorEnabled
         {
             get
@@ -64,7 +130,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableDeletionVectors", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -84,7 +150,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
                 if (_metadata.Configuration?.TryGetValue("delta.enableChangeDataFeed", out var value) ?? false)
                 {
-                    if (value.Equals("true", StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
@@ -100,7 +166,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 if (_metadata.Configuration != null &&
                     _metadata.Configuration.TryGetValue("delta.columnMapping.mode", out var mode))
                 {
-                    return !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
+                    // A null mode is none
+                    return mode != null && !string.Equals(mode, "none", StringComparison.OrdinalIgnoreCase);
                 }
                 return false;
             }

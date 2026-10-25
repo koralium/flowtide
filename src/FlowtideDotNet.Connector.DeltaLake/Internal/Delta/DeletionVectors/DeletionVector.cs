@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
 using System.Text.Json.Serialization;
 
@@ -40,11 +41,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 
         private string GetUniqueId()
         {
-            if (Offset == null)
-            {
-                return $"{StorageType}{PathOrInlineDv}";
-            }
-            return $"{StorageType}{PathOrInlineDv}@{Offset}";
+            return DeltaFileKey.DvId(StorageType, PathOrInlineDv, Offset);
         }
 
         public string? GetAbsolutePath()
@@ -55,9 +52,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             }
             if (StorageType == "u")
             {
-                var guid = Z85.DecodeToGuid(PathOrInlineDv!);
-                var deletionVectorPath = "deletion_vector_" + guid.ToString() + ".bin";
-                return deletionVectorPath;
+                // An optional random prefix before the 20 character uuid is a directory
+                var encoded = PathOrInlineDv!;
+                var prefixLength = encoded.Length - 20;
+                var guid = Z85.DecodeToGuid(encoded.Substring(prefixLength));
+                var fileName = "deletion_vector_" + guid.ToString() + ".bin";
+                return prefixLength == 0 ? fileName : encoded.Substring(0, prefixLength) + "/" + fileName;
             }
             return null;
         }

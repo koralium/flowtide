@@ -26,16 +26,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils
 
         public IOEntry IOEntry { get; }
 
-        public bool IsCompacted { get; }
-
-        public LogTransactionFile(string fileName, bool isCheckpoint, bool isJson, long version, IOEntry ioEntry, bool isCompacted)
+        public LogTransactionFile(string fileName, bool isCheckpoint, bool isJson, long version, IOEntry ioEntry)
         {
             FileName = fileName;
             IsCheckpoint = isCheckpoint;
             IsJson = isJson;
             Version = version;
             IOEntry = ioEntry;
-            IsCompacted = isCompacted;
         }
 
     }

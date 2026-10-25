@@ -354,6 +354,48 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         internal long LookupTableHitsForTests => Volatile.Read(ref m_lookupTableHits);
 
+        internal List<long> ModifiedKeysForTests
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    return new List<long>(m_modified.Keys);
+                }
+            }
+        }
+
+        internal int ModifiedCountForTests
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    return m_modified.Count;
+                }
+            }
+        }
+
+        // EnsureCapacity(0) reports the capacity without growing it
+        internal int ModifiedCapacityForTests
+        {
+            get
+            {
+                lock (m_lock)
+                {
+                    return m_modified.EnsureCapacity(0);
+                }
+            }
+        }
+
+        internal List<long> SpillVersionKeysForTests => new List<long>(m_fileCacheVersion.Keys);
+
+        internal bool HasSpillVersionForTests(long key) => m_fileCacheVersion.ContainsKey(key);
+
+        internal FlowtideDotNet.Storage.FileCache.IFileCache FileCacheForTests => m_fileCache;
+
+        internal IStateSerializer<V>? ValueSerializerForTests => options.ValueSerializer;
+
         private bool OwesCheckpointWrite_NoLock(long key)
         {
             Debug.Assert(Monitor.IsEntered(m_lock));
@@ -885,6 +927,23 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     return;
                 }
                 Delete_NoLock(key);
+            }
+        }
+
+        /// <summary>
+        /// Forgets a page that was never persisted.
+        /// </summary>
+        private protected void ForgetPage(long key, Action<long>? beforeCacheDelete)
+        {
+            lock (m_lock)
+            {
+                Debug.Assert(m_generation == null);
+                m_modified.Remove(key);
+                ClearLookupSlot_NoLock(key);
+                beforeCacheDelete?.Invoke(key);
+                // Waits out an in-flight spill of the page
+                stateManager.DeleteFromCache(key);
+                FreeSpill(key);
             }
         }
 

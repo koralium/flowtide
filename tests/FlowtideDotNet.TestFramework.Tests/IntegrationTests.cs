@@ -14,6 +14,9 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using FlowtideDotNet.DependencyInjection;
 using Microsoft.AspNetCore.TestHost;
 using FlowtideDotNet.Core;
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 
 namespace FlowtideDotNet.TestFramework.Tests
 {
@@ -107,6 +110,48 @@ namespace FlowtideDotNet.TestFramework.Tests
                 new { val = 4 },
                 new { val = 5 }
             }));
+        }
+
+        [Fact]
+        public async Task DataHubEndpointServesStreamLineage()
+        {
+            // Own directory, the shared default path stays locked.
+            using var factory = _factory.WithWebHostBuilder(b =>
+            {
+                b.ConfigureTestServices(services =>
+                {
+                    services.AddFlowtideStream("stream")
+                    .AddStorage(storage =>
+                    {
+                        storage.AddTemporaryDevelopmentStorage(o => o.DirectoryPath = $"./data/tempFiles/datahub{Guid.NewGuid():N}");
+                    });
+                });
+            });
+            var client = factory.CreateClient();
+            await _inProcessMonitor.WaitForCheckpoint();
+
+            using var config = JsonDocument.Parse(await client.GetStringAsync("/datahub/config"));
+            Assert.Equal("true", config.RootElement.GetProperty("noCode").GetString());
+
+            var scroll = await client.PostAsync("/datahub/api/graphql", JsonContent.Create(new { query = "query { scrollAcrossEntities }", variables = new { batchSize = 100 } }));
+            Assert.Equal(HttpStatusCode.OK, scroll.StatusCode);
+            using var scrollJson = JsonDocument.Parse(await scroll.Content.ReadAsByteArrayAsync());
+            var urns = scrollJson.RootElement.GetProperty("data").GetProperty("scrollAcrossEntities").GetProperty("searchResults")
+                .EnumerateArray().Select(x => x.GetProperty("entity").GetProperty("urn").GetString()).ToList();
+            const string job = "urn:li:dataJob:(urn:li:dataFlow:(flowtide,stream,PROD),test.output)";
+            const string input = "urn:li:dataset:(urn:li:dataPlatform:test,testtable,PROD)";
+            var run = "urn:li:dataProcessInstance:" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes("flowtide\u001f" + job + "\u001f")), 0, 16).ToLowerInvariant();
+            Assert.Equal(["urn:li:dataFlow:(flowtide,stream,PROD)", job, "urn:li:dataPlatform:flowtide", run, "urn:li:dataset:(urn:li:dataPlatform:test,output,PROD)", input], urns);
+
+            // The hosted stream runs, so its run is served as started.
+            using var runEntity = JsonDocument.Parse(await client.GetStringAsync("/datahub/entitiesV2/" + Uri.EscapeDataString(run)));
+            Assert.Equal("STARTED", runEntity.RootElement.GetProperty("aspects").GetProperty("dataProcessInstanceRunEvent").GetProperty("value").GetProperty("status").GetString());
+
+            using var entity = JsonDocument.Parse(await client.GetStringAsync("/datahub/entitiesV2/" + Uri.EscapeDataString(job)));
+            var inputOutput = entity.RootElement.GetProperty("aspects").GetProperty("dataJobInputOutput").GetProperty("value");
+            Assert.Equal([input], inputOutput.GetProperty("inputDatasets").EnumerateArray().Select(x => x.GetString()));
+            var lineage = Assert.Single(inputOutput.GetProperty("fineGrainedLineages").EnumerateArray());
+            Assert.Equal($"urn:li:schemaField:({input},val)", Assert.Single(lineage.GetProperty("upstreams").EnumerateArray()).GetString());
         }
     }
 }

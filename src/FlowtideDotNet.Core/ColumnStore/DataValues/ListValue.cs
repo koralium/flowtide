@@ -17,6 +17,7 @@ using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Core.ColumnStore.DataValues
 {
@@ -69,6 +70,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public void AddToHash(NonCryptographicHashAlgorithm hashAlgorithm)
         {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteInt64LittleEndian(buffer, dataValues.Count);
+            // Add list length to differentiate between flat lists and nested lists.
+            hashAlgorithm.Append(buffer);
+
             for (int i = 0; i < dataValues.Count; i++)
             {
                 dataValues[i].AddToHash(hashAlgorithm);

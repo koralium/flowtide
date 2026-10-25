@@ -235,7 +235,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
-            Assert.Equal(testObject.NotNullDateTime, deserialized.NotNullDateTime);
+            Assert.Equal(testObject.NotNullDateTime.ToUniversalTime(), deserialized.NotNullDateTime);
         }
 
         [Fact]
@@ -253,7 +253,7 @@ namespace FlowtideDotNet.Core.Tests
 
             var deserialized = (TestClass)converter.ConvertToDotNetObject(arr, 0);
 
-            Assert.Equal(testObject.NullableDateTime, deserialized.NullableDateTime);
+            Assert.Equal(testObject.NullableDateTime?.ToUniversalTime(), deserialized.NullableDateTime);
         }
 
         [Fact]

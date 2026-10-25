@@ -262,6 +262,17 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
             _compressor = new FlowtideZstdCompressor(memoryAllocator, compressionLevel);
         }
 
+        internal int BufferCapacityForTests
+        {
+            get
+            {
+                lock (_writeLock)
+                {
+                    return _bufferWriter.Capacity;
+                }
+            }
+        }
+
         public Task CheckpointAsync<TMetadata>(IStateSerializerCheckpointWriter checkpointWriter, StateClientMetadata<TMetadata> metadata) where TMetadata : IStorageMetadata
         {
             // Runs before the pages are written, the state client clears once they are.

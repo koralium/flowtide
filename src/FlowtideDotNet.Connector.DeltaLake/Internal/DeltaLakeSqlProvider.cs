@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         private async Task<TableMetadata?> GetTableMetadata(string tableName)
         {
-            var table = await DeltaTransactionReader.ReadTable(deltaLakeOptions.StorageLocation, tableName);
+            var table = await DeltaTransactionReader.ReadTable(deltaLakeOptions.StorageLocation, tableName, options: new DeltaReadOptions() { SkipTombstones = true });
 
             if (table == null)
             {
@@ -51,6 +51,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             {
                 columnNames.Add(column.Name);
                 types.Add(DeltaToSubstraitTypeVisitor.Instance.Visit(column.Type));
+            }
+
+            // A clash keeps inserts working, the source rejects the read
+            if (deltaLakeOptions.IncludeChangeHistory && !columnNames.Any(DeltaHistoryColumns.IsHistoryColumn))
+            {
+                columnNames.Add(DeltaHistoryColumns.Weight);
+                types.Add(new Int64Type());
+                columnNames.Add(DeltaHistoryColumns.ModificationDate);
+                types.Add(new TimestampType());
+                columnNames.Add(DeltaHistoryColumns.Version);
+                types.Add(new Int64Type());
             }
 
             var schema = new NamedStruct()

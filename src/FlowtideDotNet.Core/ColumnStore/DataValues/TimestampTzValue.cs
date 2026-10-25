@@ -42,6 +42,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
         const long TicksPerDay = TicksPerHour * HoursPerDay;
         const long UnixEpochTicks = DaysTo1970 * TicksPerDay;
 
+        // Ticks are in UTC, the offset is in minutes
         public long ticks;
         public long offset;
 
@@ -53,12 +54,17 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public TimestampTzValue(DateTime dateTime)
         {
+            if (dateTime.Kind == DateTimeKind.Local)
+            {
+                this = new TimestampTzValue(new DateTimeOffset(dateTime));
+                return;
+            }
             this.ticks = dateTime.Ticks;
         }
 
         public TimestampTzValue(DateTimeOffset dateTimeOffset)
         {
-            this.ticks = dateTimeOffset.Ticks;
+            this.ticks = dateTimeOffset.UtcTicks;
             this.offset = (short)dateTimeOffset.Offset.TotalMinutes;
         }
 
@@ -97,7 +103,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
 
         public DateTimeOffset ToDateTimeOffset()
         {
-            return new DateTimeOffset(ticks, TimeSpan.FromMinutes(offset));
+            return new DateTimeOffset(ticks + offset * TicksPerMinute, TimeSpan.FromMinutes(offset));
         }
 
         public static TimestampTzValue FromUnixMicroseconds(long microseconds)

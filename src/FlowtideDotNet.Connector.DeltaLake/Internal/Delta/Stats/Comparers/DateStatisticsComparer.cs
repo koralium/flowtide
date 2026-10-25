@@ -11,11 +11,12 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using System.Globalization;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 {
-    internal class DateStatisticsComparer : IStatisticsComparer
+    internal class DateStatisticsComparer : IStatisticsComparer, IPruningBounds
     {
         private DateTime? _minValue;
         private DateTime? _maxValue;
@@ -23,8 +24,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
 
         public DateStatisticsComparer(DateTime? minValue, DateTime? maxValue, int? nullCount)
         {
-            _minValue = minValue;
-            _maxValue = maxValue;
+            // Bounds and probes compare on the stored date part
+            _minValue = minValue.HasValue ? StoredValue.Date(minValue.Value) : null;
+            _maxValue = maxValue.HasValue ? StoredValue.Date(maxValue.Value) : null;
             _nullCount = nullCount;
         }
 
@@ -38,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
                 }
                 return false;
             }
-            var dateValue = value.AsTimestamp.ToDateTimeOffset().DateTime;
+            var dateValue = StoredValue.Date(new DateTime(value.AsTimestamp.ticks));
 
             if (_minValue != null && _minValue > dateValue)
             {
@@ -51,11 +53,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
             return true;
         }
 
+        public void WriteBounds(PruningType type, Span<byte> cell)
+        {
+            if (type == PruningType.Date)
+            {
+                PruningCell.WriteInt64(cell, type, _minValue?.Ticks, _maxValue?.Ticks, _nullCount);
+            }
+            else
+            {
+                PruningCell.WriteUnknown(cell);
+            }
+        }
+
         public void WriteMinValue(Utf8JsonWriter writer, string propertyName)
         {
             if (_minValue != null)
             {
-                writer.WriteString(propertyName, _minValue.Value.ToString("yyyy-MM-dd"));
+                writer.WriteString(propertyName, _minValue.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             }
         }
 
@@ -63,7 +77,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers
         {
             if (_maxValue != null)
             {
-                writer.WriteString(propertyName, _maxValue.Value.ToString("yyyy-MM-dd"));
+                writer.WriteString(propertyName, _maxValue.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             }
         }
 

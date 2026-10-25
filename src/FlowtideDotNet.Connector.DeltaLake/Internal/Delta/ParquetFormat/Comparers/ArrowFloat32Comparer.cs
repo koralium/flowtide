@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
                 {
                     continue;
                 }
-                if (right.GetValue(i) == toSearchValue)
+                if (IsSame(right.GetValue(i), toSearchValue))
                 {
                     return i;
                 }
@@ -41,7 +41,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
             var left = (FloatArray)array;
             var right = (FloatArray)otherArray;
 
-            return left.GetValue(leftIndex) == right.GetValue(rightIndex);
+            return IsSame(left.GetValue(leftIndex), right.GetValue(rightIndex));
+        }
+
+        // Engine equality: NaN equals NaN and -0 equals +0, == gives false for NaN
+        private static bool IsSame(float? left, float? right)
+        {
+            if (!left.HasValue)
+            {
+                return !right.HasValue;
+            }
+            return right.HasValue && left.Value.Equals(right.Value);
         }
     }
 }

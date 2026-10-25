@@ -13,6 +13,7 @@
 using FlowtideDotNet.AspNetCore.TimeSeries;
 using Microsoft.AspNetCore.Http;
 using Superpower;
+using System.Globalization;
 using System.Text;
 
 namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
@@ -106,7 +107,7 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
             }
 
             long startTimestamp;
-            if (DateTimeOffset.TryParse(start, out var startDate))
+            if (DateTimeOffset.TryParse(start, null, DateTimeStyles.AssumeUniversal, out var startDate))
             {
                 startTimestamp = startDate.ToUnixTimeMilliseconds();
             }
@@ -116,7 +117,7 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
                 return;
             }
             long endTimestamp;
-            if (DateTimeOffset.TryParse(end, out var endDate))
+            if (DateTimeOffset.TryParse(end, null, DateTimeStyles.AssumeUniversal, out var endDate))
             {
                 endTimestamp = endDate.ToUnixTimeMilliseconds();
             }
@@ -165,7 +166,7 @@ namespace FlowtideDotNet.AspNetCore.Internal.TimeSeries.Middleware
             if (httpContext.Request.Query.TryGetValue("time", out var timeValue))
             {
                 var timeString = timeValue.FirstOrDefault();
-                if (DateTimeOffset.TryParse(timeString, out var startDate))
+                if (DateTimeOffset.TryParse(timeString, null, DateTimeStyles.AssumeUniversal, out var startDate))
                 {
                     timestamp = startDate.ToUnixTimeMilliseconds();
                 }

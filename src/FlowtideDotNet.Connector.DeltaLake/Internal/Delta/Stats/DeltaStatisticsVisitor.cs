@@ -40,7 +40,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
         public override IStatisticsParser? VisitFloatType(FloatType type)
         {
-            return new FloatStatisticsParser();
+            return new FloatStatisticsParser(isFloat32: true);
         }
 
         public override IStatisticsParser? VisitDoubleType(DoubleType type)

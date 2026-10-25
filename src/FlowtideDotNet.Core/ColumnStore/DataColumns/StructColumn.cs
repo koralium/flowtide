@@ -13,10 +13,12 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
 using FlowtideDotNet.Core.ColumnStore.Serialization;
 using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
 using FlowtideDotNet.Core.ColumnStore.Sort;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Substrait.Expressions;
@@ -585,11 +587,161 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        // Column index for a child, -1 if the field is missing
+        private int GetChildColumnIndex(ReferenceSegment child)
+        {
+            if (child is MapKeyReferenceSegment mapKeyReferenceSegment)
+            {
+                return _header.FindIndex(mapKeyReferenceSegment.Key);
+            }
+            else if (child is StructReferenceSegment structReferenceSegment)
+            {
+                if (structReferenceSegment.Field >= _columns.Length)
+                {
+                    return -1;
+                }
+                return structReferenceSegment.Field;
+            }
+            throw new NotImplementedException($"{child.GetType()} is not yet implemented as a reference segment in struct.");
+        }
+
         public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
         {
+            if (child != null)
+            {
+                var columnIndex = GetChildColumnIndex(child);
+                if (columnIndex < 0)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    hashAlgorithm.Append(ByteArrayUtils.nullBytes);
+                    return;
+                }
+                _columns[columnIndex].AddToHash(index, child.Child, hashAlgorithm);
+                return;
+            }
             for (int i = 0; i < _columns.Length; i++)
             {
-                _columns[i].AddToHash(index, child, hashAlgorithm);
+                _columns[i].AddToHash(index, default, hashAlgorithm);
+            }
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            if (child != null)
+            {
+                var columnIndex = GetChildColumnIndex(child);
+                if (columnIndex < 0)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        if (indices[i] == -1)
+                        {
+                            continue;
+                        }
+                        XxHash32Implementation.AppendByte(0, ref states[i]);
+                    }
+                    return;
+                }
+                var col = _columns[columnIndex];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    col.AppendXxHash32Single(index, child.Child, ref states[i]);
+                }
+            }
+            else
+            {
+                for (int c = 0; c < _columns.Length; c++)
+                {
+                    var col = _columns[c];
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        var index = indices[i];
+                        if (index == -1)
+                        {
+                            continue;
+                        }
+                        col.AppendXxHash32Single(index, default, ref states[i]);
+                    }
+                }
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            if (child != null)
+            {
+                var columnIndex = GetChildColumnIndex(child);
+                if (columnIndex < 0)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    XxHash32Implementation.AppendByte(0, ref state);
+                    return;
+                }
+                _columns[columnIndex].AppendXxHash32Single(index, child.Child, ref state);
+            }
+            else
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    _columns[i].AppendXxHash32Single(index, default, ref state);
+                }
+            }
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            Xxh32RowState state = new Xxh32RowState();
+            if (child != null)
+            {
+                var columnIndex = GetChildColumnIndex(child);
+                if (columnIndex < 0)
+                {
+                    // Missing field hashes as null, same as GetValueAt
+                    for (int i = 0; i < indices.Length; i++)
+                    {
+                        if (indices[i] == -1)
+                        {
+                            continue;
+                        }
+                        destination[i] = XxHash32Implementation.HashNullByte();
+                    }
+                    return;
+                }
+                var col = _columns[columnIndex];
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    state.Init();
+                    col.AppendXxHash32Single(index, child.Child, ref state);
+                    destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+                }
+            }
+            else
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    var index = indices[i];
+                    if (index == -1)
+                    {
+                        continue;
+                    }
+                    state.Init();
+                    for (int c = 0; c < _columns.Length; c++)
+                    {
+                        _columns[c].AppendXxHash32Single(index, default, ref state);
+                    }
+                    destination[i] = XxHash32Implementation.GetCurrentHashAsUInt32(ref state);
+                }
             }
         }
 

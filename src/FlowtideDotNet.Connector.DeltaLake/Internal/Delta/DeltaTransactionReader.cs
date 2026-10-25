@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.CheckpointReading;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
@@ -18,7 +19,10 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using Microsoft.Extensions.Logging;
 using Stowage;
+using System.Globalization;
+using System.Text;
 using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
@@ -26,178 +30,331 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
     internal static class DeltaTransactionReader
     {
         public const string DeltaLogDirName = "_delta_log/";
+        private const int VersionDigits = 20;
+        private const string CommitSuffix = ".json";
+        private const string ClassicCheckpointSuffix = ".checkpoint.parquet";
+        internal const string CleanupControlPrefix = ".flowtide-cleanup.";
 
-        public static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue)
+        /// <summary>
+        /// Reads the snapshot at maxVersion, where 0 is the oldest readable version, and returns null when the table has no log.
+        /// </summary>
+        public static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
         {
-            var logs = await ReadTransactionLog(storage, tableName);
+            return await ReadTable(storage, tableName, await ListLog(storage, tableName), maxVersion, options);
+        }
 
-            if (logs.Count == 0)
+        /// <summary>
+        /// Reads from a listing the caller already has, so it is not listed again.
+        /// </summary>
+        internal static async Task<DeltaTable?> ReadTable(IFileStorage storage, IOPath tableName, LogListing log, long maxVersion = long.MaxValue, DeltaReadOptions? options = null)
+        {
+            options ??= DeltaReadOptions.Default;
+
+            if (log.Head < 0)
             {
+                if (log.HasOtherVersionFiles)
+                {
+                    throw new DeltaVersionNotAvailableException($"Delta table {tableName} only has log files this reader does not support, such as UUID-named or multi-part checkpoints.");
+                }
                 return null;
             }
 
-            DeltaMetadataAction? metadata = null;
-            DeltaProtocolAction? protocol = null;
-            Dictionary<DeltaFileKey, DeltaAddAction> addFiles = new Dictionary<DeltaFileKey, DeltaAddAction>();
-
-            long startVersion = 0;
-
-            long currentVersion = startVersion;
-
             if (maxVersion == 0)
             {
-                maxVersion = logs.Where(x => x.IsJson || x.IsCheckpoint).Min(x => x.Version);
+                return await ReadOldestVersion(storage, tableName, log, options);
             }
 
-            var filteredLogs = logs
-                .Where(x => (x.Version >= startVersion && x.Version <= maxVersion) && (x.IsJson || x.IsCheckpoint))
-                .OrderBy(x => x.Version)
-                .ThenBy(x => x.IsCheckpoint ? 0 : 1)
-                .ToList();
+            var target = Math.Min(maxVersion, log.Head);
+            return await ReadVersion(storage, tableName, log, target, options);
+        }
 
-            // Check if the first log is a checkpoint, this happens if the table is purged and the first log entry is a checkpoint
-            if (filteredLogs.Count > 0 && filteredLogs[0].IsCheckpoint)
+        private static async Task<DeltaTable> ReadVersion(IFileStorage storage, IOPath tableName, LogListing log, long target, DeltaReadOptions options)
+        {
+            var segment = new DeltaLogSegment(storage, tableName, log);
+            var suffixStart = segment.SuffixStart(target);
+
+            Exception? lastFailure = null;
+            foreach (var checkpoint in segment.RootCandidates(target, target))
             {
-                var entry = filteredLogs[0];
-                var checkpointReader = new ParquetCheckpointReader();
-                var checkpointEntries = await checkpointReader.ReadCheckpointFile(storage, entry.IOEntry);
-
-                // Remove any logs that are part of the checkpoint
-                filteredLogs = filteredLogs.Where(x => !(x.Version == entry.Version && x.IsJson)).ToList();
-
-                foreach (var action in checkpointEntries)
+                var replay = new LogReplay(options.SkipTombstones);
+                var failure = await TryReplayCheckpoint(storage, checkpoint, replay, options);
+                if (failure == null)
                 {
-                    if (action.Add != null)
+                    var headHeader = await ReplayCommits(segment, checkpoint.Version + 1, target, replay);
+                    failure = replay.CheckpointSchemaFailure();
+                    if (failure == null)
                     {
-                        // Mark all these as data change true since they are part of the checkpoint
-                        // so the data must be read
+                        var table = replay.ToTable(target, checkpoint.Version);
+                        table.HeadHeader = headHeader;
+                        return table;
+                    }
+                    ReportCheckpointFailure(checkpoint, failure, options);
+                }
+                lastFailure = failure;
+            }
+
+            if (suffixStart > 0)
+            {
+                throw new DeltaVersionNotAvailableException($"Version {target} of delta table {tableName} cannot be reconstructed, commit {suffixStart - 1} is missing and no usable checkpoint at version {suffixStart - 1} or later exists.", lastFailure);
+            }
+            var fromStart = new LogReplay(options.SkipTombstones);
+            var header = await ReplayCommits(segment, 0, target, fromStart);
+            var replayed = fromStart.ToTable(target, null);
+            replayed.HeadHeader = header;
+            return replayed;
+        }
+
+        private static async Task<DeltaTable> ReadOldestVersion(IFileStorage storage, IOPath tableName, LogListing log, DeltaReadOptions options)
+        {
+            if (log.Commits.ContainsKey(0))
+            {
+                return await ReadVersion(storage, tableName, log, 0, options);
+            }
+
+            // After metadata cleanup the oldest version is the oldest usable checkpoint
+            Exception? lastFailure = null;
+            for (int i = log.Checkpoints.Count - 1; i >= 0; i--)
+            {
+                var checkpoint = log.Checkpoints[i];
+                var replay = new LogReplay(options.SkipTombstones);
+                var failure = await TryReplayCheckpoint(storage, checkpoint, replay, options);
+                if (failure == null)
+                {
+                    failure = replay.CheckpointSchemaFailure();
+                    if (failure == null)
+                    {
+                        return replay.ToTable(checkpoint.Version, checkpoint.Version);
+                    }
+                    ReportCheckpointFailure(checkpoint, failure, options);
+                }
+                lastFailure = failure;
+            }
+            throw new DeltaVersionNotAvailableException($"Delta table {tableName} has neither a first commit nor a usable classic checkpoint.", lastFailure);
+        }
+
+        // Null when the checkpoint is usable, otherwise the reason it is not
+        private static async Task<Exception?> TryReplayCheckpoint(IFileStorage storage, LogTransactionFile checkpoint, LogReplay replay, DeltaReadOptions options)
+        {
+            var entry = checkpoint.IOEntry;
+            Exception? failure = null;
+            try
+            {
+                var reader = new ParquetCheckpointReader();
+                await foreach (var action in reader.ReadCheckpointFile(storage, entry, includeRemoves: !options.SkipTombstones))
+                {
+                    replay.Apply(action, fromCheckpoint: true);
+                }
+                if (!replay.HasMetadataAndProtocol)
+                {
+                    throw new CheckpointUnusableException($"Checkpoint {entry.Path.Full} has no protocol or no metadata.");
+                }
+            }
+            // No cancellation token reaches this read, a storage timeout surfaces as a cancellation and must fall back too
+            catch (Exception e)
+            {
+                failure = e;
+            }
+
+            if (failure != null)
+            {
+                ReportCheckpointFailure(checkpoint, failure, options);
+            }
+            return failure;
+        }
+
+        // The checkpoint is tried again on every read, a failure can be transient
+        private static void ReportCheckpointFailure(LogTransactionFile checkpoint, Exception failure, DeltaReadOptions options)
+        {
+            if (options.Logger != null)
+            {
+                var path = checkpoint.IOEntry.Path.Full;
+                var firstReport = options.ReportedCheckpointFailures?.Add(path) ?? true;
+                options.Logger.Log(firstReport ? LogLevel.Warning : LogLevel.Debug, failure, "Delta checkpoint {checkpoint} could not be used, an older checkpoint or the commits are read instead", path);
+            }
+        }
+
+        // The head commit's first-line header, null when nothing was replayed
+        private static async Task<CommitHeader?> ReplayCommits(DeltaLogSegment segment, long from, long to, LogReplay replay)
+        {
+            CommitHeader? headHeader = null;
+            for (long version = from; version <= to; version++)
+            {
+                // No cap: the reader keeps reading what StreamReader read, only an own oversized header is streamed
+                using var lines = await segment.OpenCommitAsync(version, null, int.MaxValue, skipOversizedCommitInfo: false, streamOwnHeader: true);
+                if (lines == null)
+                {
+                    throw new DeltaVersionNotAvailableException($"Commit {segment.Listing.Commits[version].IOEntry.Path.Full} was removed while it was read.");
+                }
+
+                var first = true;
+                while (await lines.ReadLineAsync())
+                {
+                    var streamed = lines.StreamedHeader;
+                    if (first && version == to)
+                    {
+                        headHeader = streamed ?? CommitHeaderReader.Read(lines.Line.Span, terminated: true, HeaderMode.Lenient);
+                    }
+                    first = false;
+                    // Decoded as StreamReader did, so invalid UTF-8 still reads as replacement characters
+                    var line = Encoding.UTF8.GetString(streamed != null ? Residual(streamed) : lines.Line.Span);
+                    if (string.IsNullOrWhiteSpace(line))
+                    {
+                        continue;
+                    }
+                    var action = JsonSerializer.Deserialize<DeltaAction>(line);
+                    if (action == null)
+                    {
+                        throw new Exception("Failed to deserialize action");
+                    }
+                    replay.Apply(action, fromCheckpoint: false);
+                }
+            }
+            return headHeader;
+        }
+
+        // A streamed own line reads as its residual, the line without its created paths; a line that is not JSON fails as it did whole
+        private static ReadOnlySpan<byte> Residual(CommitHeader header)
+        {
+            if (header.Error != null)
+            {
+                throw new JsonException(header.Error);
+            }
+            return header.Residual.Span;
+        }
+
+        /// <summary>
+        /// Snapshot state built by replaying actions in log order, following the spec's action reconciliation.
+        /// </summary>
+        private sealed class LogReplay
+        {
+            private readonly Dictionary<DeltaFileKey, DeltaAddAction> _adds = new Dictionary<DeltaFileKey, DeltaAddAction>();
+            private readonly Dictionary<DeltaFileKey, DeltaRemoveFileAction>? _tombstones;
+            private readonly Dictionary<string, DeltaTransactionAction> _transactions = new Dictionary<string, DeltaTransactionAction>();
+            private readonly Dictionary<string, DeltaDomainMetadataAction> _domains = new Dictionary<string, DeltaDomainMetadataAction>();
+            private DeltaMetadataAction? _metadata;
+            private bool _metadataFromCheckpoint;
+            private DeltaProtocolAction? _protocol;
+            private DeltaMetadataAction? _parsedSchemaSource;
+            private StructType? _parsedSchema;
+
+            public LogReplay(bool skipTombstones)
+            {
+                _tombstones = skipTombstones ? null : new Dictionary<DeltaFileKey, DeltaRemoveFileAction>();
+            }
+
+            public bool HasMetadataAndProtocol => _metadata != null && _protocol != null;
+
+            // A checkpoint schema that cannot be parsed rules out the checkpoint, unless a later commit replaced the metadata
+            public Exception? CheckpointSchemaFailure()
+            {
+                if (!_metadataFromCheckpoint)
+                {
+                    return null;
+                }
+                try
+                {
+                    ParseSchema();
+                    return null;
+                }
+                catch (Exception e)
+                {
+                    return e;
+                }
+            }
+
+            // Parsed once per metadata action
+            public StructType ParseSchema()
+            {
+                if (_metadata == null)
+                {
+                    throw new Exception("No metadata found for the table");
+                }
+                if (_parsedSchema != null && ReferenceEquals(_parsedSchemaSource, _metadata))
+                {
+                    return _parsedSchema;
+                }
+
+                var schemaJsonOptions = new JsonSerializerOptions();
+                schemaJsonOptions.Converters.Add(new TypeConverter());
+                var schema = JsonSerializer.Deserialize<SchemaBaseType>(_metadata.SchemaString!, schemaJsonOptions);
+
+                if (schema!.Type != SchemaType.Struct)
+                {
+                    throw new Exception("Schema type must be struct");
+                }
+
+                _parsedSchemaSource = _metadata;
+                _parsedSchema = (schema as StructType)!;
+                return _parsedSchema;
+            }
+
+            public void Apply(DeltaAction action, bool fromCheckpoint)
+            {
+                if (action.Add != null)
+                {
+                    // Checkpoint adds are the table content, so they always count as data
+                    if (fromCheckpoint)
+                    {
                         action.Add.DataChange = true;
-                        addFiles.Add(action.Add.GetKey(), action.Add);
                     }
-                    if (action.MetaData != null)
+                    var key = action.Add.GetKey();
+                    _adds[key] = action.Add;
+                    _tombstones?.Remove(key);
+                }
+                if (action.Remove != null)
+                {
+                    var key = action.Remove.GetKey();
+                    _adds.Remove(key);
+                    if (_tombstones != null)
                     {
-                        metadata = action.MetaData;
+                        _tombstones[key] = action.Remove;
                     }
-                    if (action.Protocol != null)
+                }
+                if (action.MetaData != null)
+                {
+                    _metadata = action.MetaData;
+                    _metadataFromCheckpoint = fromCheckpoint;
+                }
+                if (action.Protocol != null)
+                {
+                    _protocol = action.Protocol;
+                }
+                // The latest txn per application wins, versions are not assumed to grow
+                if (action.Txn?.AppId != null)
+                {
+                    _transactions[action.Txn.AppId] = action.Txn;
+                }
+                if (action.DomainMetadata?.Domain != null)
+                {
+                    _domains[action.DomainMetadata.Domain] = action.DomainMetadata;
+                }
+            }
+
+            public DeltaTable ToTable(long version, long? startCheckpointVersion)
+            {
+                if (_metadata == null)
+                {
+                    throw new Exception("No metadata found for the table");
+                }
+                if (_protocol == null)
+                {
+                    throw new Exception("No protocol found for the table");
+                }
+
+                var schema = ParseSchema();
+
+                var domains = new Dictionary<string, DeltaDomainMetadataAction>();
+                foreach (var domain in _domains)
+                {
+                    if (DeltaReconcileRules.IsWritten(domain.Value))
                     {
-                        protocol = action.Protocol;
+                        domains.Add(domain.Key, domain.Value);
                     }
                 }
-                currentVersion = entry.Version;
+
+                var tombstones = _tombstones != null ? _tombstones.Values.ToList() : new List<DeltaRemoveFileAction>();
+                return new DeltaTable(_metadata, _protocol, _adds.Values.ToList(), schema, version, tombstones, _transactions, domains, startCheckpointVersion);
             }
-            
-            foreach (var log in filteredLogs)
-            {
-                if (log.Version < startVersion)
-                {
-                    continue;
-                }
-
-                if (log.Version > maxVersion)
-                {
-                    break;
-                }
-
-                if (log.Version > currentVersion)
-                {
-                    currentVersion = log.Version;
-                }
-
-                if (log.IsCheckpoint)
-                {
-                    continue;
-                }
-
-                if (log.IsCompacted)
-                {
-                    continue;
-                }
-
-                if (log.IsJson)
-                {
-                    // Read the json file
-                    using var logData = await storage.OpenRead(log.IOEntry.Path);
-
-                    if (logData == null)
-                    {
-                        throw new Exception("Failed to open log file");
-                    }
-
-                    using var textReader = new StreamReader(logData);
-
-                    var line = await textReader.ReadLineAsync();
-
-                    while (line != null)
-                    {
-                        var action = JsonSerializer.Deserialize<DeltaAction>(line);
-                        if (action == null)
-                        {
-                            throw new Exception("Failed to deserialize action");
-                        }
-
-                        if (action.Add != null)
-                        {
-                            addFiles.Add(action.Add.GetKey(), action.Add);
-                        }
-                        if (action.Remove != null)
-                        {
-                            addFiles.Remove(action.Remove.GetKey());
-                        }
-                        if (action.MetaData != null)
-                        {
-                            metadata = action.MetaData;
-                        }
-                        if (action.Protocol != null)
-                        {
-                            protocol = action.Protocol;
-                        }
-
-                        line = await textReader.ReadLineAsync();
-                        if (line == null)
-                        {
-                            break;
-                        }
-                    }
-                }
-            }
-
-            if (metadata == null)
-            {
-                throw new Exception("No metadata found for the table");
-
-            }
-
-            var schemaJsonOptions = new JsonSerializerOptions();
-            schemaJsonOptions.Converters.Add(new TypeConverter());
-            var schema = JsonSerializer.Deserialize<SchemaBaseType>(metadata.SchemaString!, schemaJsonOptions);
-
-            if (schema!.Type != SchemaType.Struct)
-            {
-                throw new Exception("Schema type must be struct");
-            }
-
-            var structSchema = (schema as StructType)!;
-
-            JsonSerializerOptions statisticsJsonOptions = new JsonSerializerOptions();
-            statisticsJsonOptions.Converters.Add(new DeltaStatisticsConverter(structSchema));
-
-            List<DeltaFile> deltaFiles = new List<DeltaFile>();
-            foreach (var addFile in addFiles)
-            {
-                if (addFile.Value.Statistics != null)
-                {
-                    var stats = JsonSerializer.Deserialize<DeltaStatistics>(addFile.Value.Statistics!, statisticsJsonOptions);
-                    deltaFiles.Add(new DeltaFile(addFile.Value, stats!));
-                }
-                else
-                {
-                    // Empty statistics is fine - just means no stats were collected
-                    deltaFiles.Add(new DeltaFile(addFile.Value, new DeltaStatistics()));
-                }
-            }
-
-
-            return new DeltaTable(metadata!, protocol!, addFiles.Values.ToList(), structSchema, deltaFiles, currentVersion);
         }
 
         public static async Task<DeltaCommit?> ReadVersionCommit(IFileStorage storage, IOPath table, long version)
@@ -211,20 +368,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
 
             using var commitData = await storage.OpenRead(new IOPath(deltaLogDir, fileName));
+            // Removed between the check and the read
+            if (commitData == null)
+            {
+                return null;
+            }
 
-            using var textReader = new StreamReader(commitData!);
-
-            var line = await textReader.ReadLineAsync();
+            // Lines split and decoded as StreamReader did, only an own oversized header is streamed
+            using var lines = new BoundedLineReader(commitData, null, int.MaxValue, skipOversizedCommitInfo: false, streamOwnHeader: true);
 
             List<DeltaAddAction> addedFiles = new List<DeltaAddAction>();
             List<DeltaRemoveFileAction> removedFiles = new List<DeltaRemoveFileAction>();
             List<DeltaCdcAction> cdcActions = new List<DeltaCdcAction>();
 
             DeltaMetadataAction? metadata = null;
+            DeltaCommitInfoAction? commitInfo = null;
 
-            while (line != null)
+            while (await lines.ReadLineAsync())
             {
-
+                var line = Encoding.UTF8.GetString(lines.StreamedHeader is { } header ? Residual(header) : lines.Line.Span);
                 var action = JsonSerializer.Deserialize<DeltaAction>(line);
                 if (action == null)
                 {
@@ -247,15 +409,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     cdcActions.Add(action.Cdc);
                 }
-
-                line = await textReader.ReadLineAsync();
-                if (line == null)
+                if (action.CommitInfo != null)
                 {
-                    break;
+                    commitInfo = action.CommitInfo;
                 }
             }
 
-            return new DeltaCommit(addedFiles, removedFiles, cdcActions, metadata);
+            return new DeltaCommit(addedFiles, removedFiles, cdcActions, metadata, commitInfo);
         }
 
         private static DeltaBaseAction? ToGenericAction(DeltaAction action)
@@ -280,36 +440,141 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return null;
         }
 
+        /// <summary>
+        /// Files in the log directory whose names start with a dot, such as staged commits.
+        /// </summary>
+        public static async Task<IReadOnlyList<IOEntry>> ListHiddenLogFiles(IFileStorage storage, IOPath tableName)
+        {
+            var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
+            return files.Where(x => !x.Path.IsFolder && x.Name.StartsWith('.')).ToList();
+        }
+
+        /// <summary>
+        /// The commits and classic checkpoints of the log, ordered by version.
+        /// </summary>
         public static async Task<IReadOnlyList<LogTransactionFile>> ReadTransactionLog(IFileStorage storage, IOPath tableName)
         {
-            // Read the transaction log
-            var files = await storage.Ls(tableName.Combine(DeltaLogDirName));
+            var log = await ListLog(storage, tableName);
+            return log.Commits.Values.Concat(log.Checkpoints).OrderBy(x => x.Version).ThenBy(x => x.IsCheckpoint ? 0 : 1).ToList();
+        }
 
-            List<LogTransactionFile> logs = new List<LogTransactionFile>();
+        // A log compaction {start}.{end}.compacted.json covers up to its second version
+        private static long CoveredVersion(string name, long version)
+        {
+            if (name.Length > 41 && name[20] == '.' && long.TryParse(name.AsSpan(21, 20), out var end))
+            {
+                return Math.Max(version, end);
+            }
+            return version;
+        }
+
+        internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName, CancellationToken cancellationToken = default)
+        {
+            return Classify(await storage.Ls(tableName.Combine(DeltaLogDirName), cancellationToken: cancellationToken));
+        }
+
+        /// <summary>
+        /// Sorts the entries of one log listing into commits, checkpoints and cleanup controls; a repeated version keeps its last entry.
+        /// </summary>
+        internal static LogListing Classify(IEnumerable<IOEntry> files)
+        {
+            var log = new LogListing();
             foreach (var file in files)
             {
-                // Staged commits and hidden files are not log entries.
-                if (file.Name.EndsWith(".crc") || file.Name.StartsWith('.'))
+                if (file.Path.IsFolder)
                 {
+                    // A folder under a control name is a record no version can read
+                    if (file.Name.StartsWith(CleanupControlPrefix, StringComparison.Ordinal))
+                    {
+                        log.AddControl(file);
+                    }
+                    continue;
+                }
+                if (!TryGetVersion(file.Name, out var version))
+                {
+                    if (file.Name.StartsWith(CleanupControlPrefix, StringComparison.Ordinal))
+                    {
+                        log.AddControl(file);
+                    }
                     continue;
                 }
 
-                var dotIndex = file.Name.IndexOf('.');
-
-                long version = 0;
-                if (dotIndex >= 0)
+                if (HasSuffix(file.Name, CommitSuffix))
                 {
-                    long.TryParse(file.Name.Substring(0, dotIndex), out version);
+                    log.Commits[version] = new LogTransactionFile(file.Name, false, true, version, file);
                 }
-
-                var isJson = file.Name.EndsWith(".json");
-                var isCheckpoint = file.Name.EndsWith(".checkpoint.parquet");
-                var isCompacted = file.Name.Contains(".compacted.");
-
-                logs.Add(new LogTransactionFile(file.Name, isCheckpoint, isJson, version, file, isCompacted));
+                else if (HasSuffix(file.Name, ClassicCheckpointSuffix))
+                {
+                    log.Checkpoints.Add(new LogTransactionFile(file.Name, true, false, version, file));
+                }
+                else
+                {
+                    // UUID-named or multi-part checkpoints, log compactions and checksums still prove the table exists
+                    log.HasOtherVersionFiles = true;
+                    log.MaxOtherVersion = Math.Max(log.MaxOtherVersion, CoveredVersion(file.Name, version));
+                    continue;
+                }
+                log.Head = Math.Max(log.Head, version);
             }
+            log.Checkpoints.Sort((left, right) => right.Version.CompareTo(left.Version));
+            return log;
+        }
 
-            return logs;
+        // A {version:D20}.json commit name
+        internal static bool TryGetCommitVersion(string name, out long version)
+        {
+            return TryGetVersion(name, out version) && HasSuffix(name, CommitSuffix);
+        }
+
+        // The suffix directly follows the version digits
+        private static bool HasSuffix(string name, string suffix)
+        {
+            return name.Length == VersionDigits + suffix.Length && name.EndsWith(suffix, StringComparison.Ordinal);
+        }
+
+        private static bool TryGetVersion(string name, out long version)
+        {
+            version = 0;
+            if (name.Length <= VersionDigits || name[VersionDigits] != '.')
+            {
+                return false;
+            }
+            for (int i = 0; i < VersionDigits; i++)
+            {
+                if (!char.IsAsciiDigit(name[i]))
+                {
+                    return false;
+                }
+            }
+            return long.TryParse(name.AsSpan(0, VersionDigits), NumberStyles.None, CultureInfo.InvariantCulture, out version);
+        }
+
+        /// <summary>
+        /// The commits and classic checkpoints of one listing of the log.
+        /// </summary>
+        internal sealed class LogListing
+        {
+            public Dictionary<long, LogTransactionFile> Commits { get; } = new Dictionary<long, LogTransactionFile>();
+
+            // Newest first
+            public List<LogTransactionFile> Checkpoints { get; } = new List<LogTransactionFile>();
+
+            public long Head { get; set; } = -1;
+
+            public bool HasOtherVersionFiles { get; set; }
+
+            // The highest version the other version files cover, -1 without any
+            public long MaxOtherVersion { get; set; } = -1;
+
+            private List<IOEntry>? _controls;
+
+            // Cleanup control records in listing order, folders under a control name included
+            public IReadOnlyList<IOEntry> Controls => (IReadOnlyList<IOEntry>?)_controls ?? Array.Empty<IOEntry>();
+
+            internal void AddControl(IOEntry entry)
+            {
+                (_controls ??= new List<IOEntry>()).Add(entry);
+            }
         }
     }
 }
