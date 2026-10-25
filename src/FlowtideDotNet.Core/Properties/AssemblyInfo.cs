@@ -13,6 +13,8 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Lineage.DataHub")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Lineage.DataHub.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]

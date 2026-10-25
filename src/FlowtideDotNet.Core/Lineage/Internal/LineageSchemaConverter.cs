@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Type;
 
 namespace FlowtideDotNet.Core.Lineage.Internal
@@ -29,8 +30,42 @@ namespace FlowtideDotNet.Core.Lineage.Internal
             return new LineageSchemaFacet(fields);
         }
 
+        public static LineageSchemaFacet ConvertToFacet(IReadOnlyList<LineageColumn> columns)
+        {
+            List<LineageSchemaField> fields = new List<LineageSchemaField>(columns.Count);
+            foreach (var column in columns)
+            {
+                fields.Add(ConvertToFacet(column.Name, column.Type));
+            }
+            return new LineageSchemaFacet(fields);
+        }
+
+        internal static string ToTypeName(SubstraitBaseType type)
+        {
+            return type switch
+            {
+                NamedStruct => "struct",
+                AnyType => "any",
+                BinaryType => "binary",
+                BoolType => "boolean",
+                DateType => "date",
+                DecimalType decimalType => $"decimal({decimalType.Precision}, {decimalType.Scale})",
+                Fp32Type => "float",
+                Fp64Type => "double",
+                Int32Type => "int",
+                Int64Type => "bigint",
+                ListType => "array",
+                MapType => "map",
+                NullType => "null",
+                StringType => "string",
+                TimestampType => "timestamp",
+                _ => "any"
+            };
+        }
+
         private static LineageSchemaField ConvertToFacet(string name, SubstraitBaseType type)
         {
+            var typeName = ToTypeName(type);
             if (type is NamedStruct namedStruct)
             {
                 List<LineageSchemaField> fields = new List<LineageSchemaField>();
@@ -40,71 +75,20 @@ namespace FlowtideDotNet.Core.Lineage.Internal
                     SubstraitBaseType fieldType = namedStruct.Struct?.Types[i] ?? AnyType.Instance;
                     fields.Add(ConvertToFacet(fieldName, fieldType));
                 }
-                return new LineageSchemaField(name, "struct", default, fields);
-            }
-            else if (type is AnyType)
-            {
-                return new LineageSchemaField(name, "any", default, null);
-            }
-            else if (type is BinaryType)
-            {
-                return new LineageSchemaField(name, "binary", default, null);
-            }
-            else if (type is BoolType)
-            {
-                return new LineageSchemaField(name, "boolean", default, null);
-            }
-            else if (type is DateType)
-            {
-                return new LineageSchemaField(name, "date", default, null);
-            }
-            else if (type is DecimalType decimalType)
-            {
-                return new LineageSchemaField(name, $"decimal({decimalType.Precision}, {decimalType.Scale})", default, null);
-            }
-            else if (type is Fp32Type)
-            {
-                return new LineageSchemaField(name, "float", default, null);
-            }
-            else if (type is Fp64Type)
-            {
-                return new LineageSchemaField(name, "double", default, null);
-            }
-            else if (type is Int32Type)
-            {
-                return new LineageSchemaField(name, "int", default, null);
-            }
-            else if (type is Int64Type)
-            {
-                return new LineageSchemaField(name, "bigint", default, null);
+                return new LineageSchemaField(name, typeName, default, fields);
             }
             else if (type is ListType listType)
             {
                 var elementFacet = ConvertToFacet("_element", listType.ValueType);
-                return new LineageSchemaField(name, "array", default, new List<LineageSchemaField> { elementFacet });
+                return new LineageSchemaField(name, typeName, default, new List<LineageSchemaField> { elementFacet });
             }
             else if (type is MapType mapType)
             {
                 var keyFacet = ConvertToFacet("key", mapType.KeyType);
                 var valueFacet = ConvertToFacet("value", mapType.ValueType);
-                return new LineageSchemaField(name, "map", default, new List<LineageSchemaField> { keyFacet, valueFacet });
+                return new LineageSchemaField(name, typeName, default, new List<LineageSchemaField> { keyFacet, valueFacet });
             }
-            else if (type is NullType)
-            {
-                return new LineageSchemaField(name, "null", default, null);
-            }
-            else if (type is StringType)
-            {
-                return new LineageSchemaField(name, "string", default, null);
-            }
-            else if (type is TimestampType)
-            {
-                return new LineageSchemaField(name, "timestamp", default, null);
-            }
-            else
-            {
-                return new LineageSchemaField(name, "any", default, null);
-            }
+            return new LineageSchemaField(name, typeName, default, null);
         }
     }
 }
