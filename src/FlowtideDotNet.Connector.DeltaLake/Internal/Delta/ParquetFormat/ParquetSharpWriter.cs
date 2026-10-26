@@ -51,11 +51,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 var field = schema.Fields[i];
                 var writer = visitor.Visit(field.Type);
                 writers.Add(writer);
-                if (columnNames.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
-                {
-                    toWrite.Add(writer);
-                }
-                else
+                if (!columnNames.Contains(field.Name, StringComparer.OrdinalIgnoreCase))
                 {
                     if (!field.Nullable)
                     {
@@ -65,6 +61,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 }
             }
 
+            // Input columns in query order, each to its field by name
+            var taken = new bool[schema.Fields.Count];
+            foreach (var columnName in columnNames)
+            {
+                var index = -1;
+                for (int i = 0; i < schema.Fields.Count; i++)
+                {
+                    if (string.Equals(schema.Fields[i].Name, columnName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index < 0)
+                {
+                    throw new InvalidOperationException($"Column {columnName} does not exist in the table.");
+                }
+                if (taken[index])
+                {
+                    throw new InvalidOperationException($"Column {columnName} is written more than once.");
+                }
+                taken[index] = true;
+                toWrite.Add(writers[index]);
+            }
 
 
             var schemaVisitor = new DeltaTypeArrowTypeVisitor();
