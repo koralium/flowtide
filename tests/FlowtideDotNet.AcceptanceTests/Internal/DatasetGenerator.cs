@@ -197,6 +197,38 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             mockTable.Delete(new List<User>() { user });
         }
 
+        // One pass for many users, unlike DeleteUser
+        public void DeleteUsers(IReadOnlyCollection<User> users)
+        {
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.Delete(users);
+
+            // One copy per given user, as DeleteUser removes
+            var counts = new Dictionary<int, int>();
+            foreach (var user in users)
+            {
+                counts[user.UserKey] = counts.GetValueOrDefault(user.UserKey) + 1;
+            }
+            Users.RemoveAll(x =>
+            {
+                if (counts.TryGetValue(x.UserKey, out var count) && count > 0)
+                {
+                    counts[x.UserKey] = count - 1;
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        // Adds users that are not in the list yet
+        public void AddUsers(IReadOnlyCollection<User> users)
+        {
+            var mockTable = mockDatabase.GetOrCreateTable<User>("users");
+            mockTable.AddOrUpdate(users);
+
+            Users.AddRange(users);
+        }
+
         public void DeleteOrder(Order order)
         {
             var index = Orders.FindIndex(x => x.OrderKey == order.OrderKey);
