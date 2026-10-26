@@ -88,13 +88,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 .Field(f => f.Name("d").DataType(wide).Nullable(false))
                 .Field(f => f.Name("n").DataType(narrow).Nullable(true))
                 .Build();
+            using var wideData = new ArrayData(wide, 3, 0, 0, new[] { ArrowBuffer.Empty, new ArrowBuffer(raw) });
             // A nullable narrower column with a null in the middle
-            var arrays = new IArrowArray[]
-            {
-                new Decimal128Array(new ArrayData(wide, 3, 0, 0, new[] { ArrowBuffer.Empty, new ArrowBuffer(raw) })),
-                new Decimal128Array(new ArrayData(narrow, 3, 1, 0, new[] { new ArrowBuffer(new byte[] { 0b101 }), new ArrowBuffer(raw) }))
-            };
-            var file = WriteArrow(new RecordBatch(schema, arrays, 3));
+            using var narrowData = new ArrayData(narrow, 3, 1, 0, new[] { new ArrowBuffer(new byte[] { 0b101 }), new ArrowBuffer(raw) });
+            using var wideArray = new Decimal128Array(wideData);
+            using var narrowArray = new Decimal128Array(narrowData);
+            using var written = new RecordBatch(schema, new IArrowArray[] { wideArray, narrowArray }, 3);
+            var file = WriteArrow(written);
 
             using var reader = new FileReader(new MemoryStream(file), null, s_properties);
             using var batches = reader.GetRecordBatchReader();
@@ -115,7 +115,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var types = new[] { new TimestampType(ArrowTimeUnit.Millisecond, "UTC"), new TimestampType(ArrowTimeUnit.Microsecond, "UTC") };
             var schema = new Schema.Builder().Field(f => f.Name("ms").DataType(types[0])).Field(f => f.Name("us").DataType(types[1])).Build();
             var arrays = types.Select(x => (IArrowArray)new TimestampArray.Builder(x).Append(s_instants[2]).Build()).ToArray();
-            var file = WriteArrow(new RecordBatch(schema, arrays, 1));
+            using var written = new RecordBatch(schema, arrays, 1);
+            var file = WriteArrow(written);
 
             using var reader = new ParquetFileReader(new MemoryStream(file), false);
             using var metadata = reader.FileMetaData;

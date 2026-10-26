@@ -379,7 +379,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 peak = sampler.Peak;
             }
             var sinkMs = Volatile.Read(ref _sinkMs);
-            if (sinkMs == 0)
+            if (sinkMs <= 0)
             {
                 throw new InvalidOperationException($"The sink's checkpoint hooks did not fire for {_name}");
             }
@@ -416,18 +416,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private long Head()
         {
             var log = Path.Combine(Root, _name, "_delta_log");
-            long head = -1;
-            if (Directory.Exists(log))
+            if (!Directory.Exists(log))
             {
-                foreach (var file in Directory.EnumerateFiles(log, "*.json"))
-                {
-                    if (long.TryParse(Path.GetFileNameWithoutExtension(file), out var version))
-                    {
-                        head = Math.Max(head, version);
-                    }
-                }
+                return -1;
             }
-            return head;
+            return Directory.EnumerateFiles(log, "*.json")
+                .Select(x => long.TryParse(Path.GetFileNameWithoutExtension(x), out var version) ? version : -1)
+                .DefaultIfEmpty(-1)
+                .Max();
         }
 
         // Data and deletion vector files, not the log
