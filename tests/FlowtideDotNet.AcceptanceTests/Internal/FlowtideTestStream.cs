@@ -249,6 +249,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.DeleteUser(user);
         }
 
+        public void DeleteUsers(IReadOnlyCollection<User> users)
+        {
+            generator.DeleteUsers(users);
+        }
+
+        public void AddUsers(IReadOnlyCollection<User> users)
+        {
+            generator.AddUsers(users);
+        }
+
         public void DeleteOrder(Order order)
         {
             generator.DeleteOrder(order);
