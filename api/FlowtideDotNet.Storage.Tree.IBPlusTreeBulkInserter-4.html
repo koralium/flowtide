@@ -8,6 +8,8 @@
       
       <meta name="description" content="Applies a whole batch of rows to a B+ tree in a single pass. The batch is sorted by key and grouped by the leaf each row lands in, so each affected leaf is loaded once and any required node splits and merges are handled together. This is more efficient than upserting rows one at a time when writing a large batch. Each row&#39;s effect (insert, update, delete or no change) is decided by an .">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

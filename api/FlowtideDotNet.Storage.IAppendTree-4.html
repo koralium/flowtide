@@ -8,6 +8,8 @@
       
       <meta name="description" content="A B+ tree that only supports appending entries in strictly increasing key order, which keeps all writes in the rightmost leaf and avoids the node splitting a general purpose tree needs. It is suited to time ordered data such as a time series, where new entries always have a larger key than everything already stored. Data is paged through a state client so the tree can grow beyond memory and be persisted across checkpoints.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

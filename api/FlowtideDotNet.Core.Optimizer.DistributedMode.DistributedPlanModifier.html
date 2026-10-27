@@ -8,6 +8,8 @@
       
       <meta name="description" content="Splits a not-yet-distributed plan into substreams. Sink roots are assigned round robin, and partitionable operators (merge joins, aggregates, window functions) are split into one copy per substream by . Existing exchange relations (e.g. from distributed views) are placed in one consumer&#39;s substream; consumers in other substreams get cross-substream targets and references. Requires an optimized plan (only merge joins can be partitioned) and runs as the last optimizer step when  is set. Deterministic, so each substream host can compute the plan independently.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

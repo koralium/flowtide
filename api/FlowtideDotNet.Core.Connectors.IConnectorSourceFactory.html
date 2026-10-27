@@ -8,6 +8,8 @@
       
       <meta name="description" content="Factory for creating source connectors. First CanHandle is called, if the factory responds true, then ModifyPlan is called. After that, CanHandle is called again, if it returns true, then CreateSource is called. This is done since the plan may be modified to include multiple read relations in case of partitions. So each new read relation will have to be called with CanHandle and CreateSource.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

@@ -1,0 +1,176 @@
+# Building and operating Flowtide streams
+
+Flowtide continuously maintains a relational query over changing data. Sources supply initial rows and later changes; operators maintain joins, aggregates, and windows; sinks materialize the result. Updates and deletes can retract previous results. Design output keys and sink behavior for those changes.
+
+This reference follows the repository's current APIs. Check package-version compatibility when adapting an example. [SQL](https://koralium.github.io/flowtide/llms/sql.txt), [expressions](https://koralium.github.io/flowtide/llms/expressions.txt), and [connectors](https://koralium.github.io/flowtide/llms/connectors.txt) have separate references.
+
+## A complete development application
+
+Create an ASP.NET Core minimal application targeting a supported framework (.NET 8 or .NET 10), then add FlowtideDotNet.AspNetCore. This package brings in the core engine and dependency injection integration. The example uses a constant SQL input and the built-in console sink, so it needs no external database.
+
+```sh
+dotnet new web -n FlowtideExample
+cd FlowtideExample
+dotnet add package FlowtideDotNet.AspNetCore
+```
+
+Replace Program.cs with:
+
+```csharp
+using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddFlowtideStream("hello")
+    .AddSqlTextAsPlan("""
+        INSERT INTO console
+        SELECT id, upper(name) AS name
+        FROM (VALUES (1, 'Ada'), (2, 'Linus')) AS people(id, name);
+        """)
+    .AddConnectors(connectors => connectors.AddConsoleSink("console"))
+    .AddStorage(storage => { storage.AddTemporaryStorage(); });
+
+var app = builder.Build();
+app.UseFlowtideUI("/stream");
+app.Run();
+```
+
+Run with `dotnet run`. The host runs the stream, the console receives the result, and /stream exposes the monitoring UI. Temporary storage is for development and is removed on disposal. For data that survives restarts, use AddFileStorage or a persistent cloud provider.
+
+## SQL Server to SQL Server
+
+Also install FlowtideDotNet.Connector.SqlServer. Configure connection strings named SourceDb and DestinationDb through normal .NET configuration. The SQL below assumes the source database is named appdb and the destination database reporting. Provision the physical tables separately, enable SQL Server Change Tracking on source tables for incremental updates, and include the destination primary key in the projection.
+
+```csharp
+using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+var source = builder.Configuration.GetConnectionString("SourceDb")
+    ?? throw new InvalidOperationException("SourceDb is required");
+var destination = builder.Configuration.GetConnectionString("DestinationDb")
+    ?? throw new InvalidOperationException("DestinationDb is required");
+
+builder.Services.AddFlowtideStream("orders")
+    .AddSqlTextAsPlan("""
+        INSERT INTO target.reporting.dbo.OrderSummary
+        SELECT o.orderkey, o.orderdate, u.firstname, u.lastname
+        FROM source.appdb.dbo.orders o
+        LEFT JOIN source.appdb.dbo.users u ON o.userkey = u.userkey;
+        """)
+    .AddVersioningFromPlanHash()
+    .AddConnectors(connectors =>
+    {
+        connectors.AddCatalog("source", catalog =>
+            catalog.AddSqlServerSource(() => source));
+        connectors.AddCatalog("target", catalog =>
+            catalog.AddSqlServerSink(() => destination));
+    })
+    .AddStorage(storage => { storage.AddFileStorage("./state/orders"); });
+
+var app = builder.Build();
+app.UseFlowtideUI("/stream");
+app.Run();
+```
+
+AddSqlTextAsPlan and AddSqlFileAsPlan obtain table providers from the registered connectors. Connectors with schema discovery can supply planner metadata automatically. Otherwise declare CREATE TABLE metadata or add an ITableProvider. A SQL file must exist at the configured path when the application starts; arrange for it to be copied to the output/publish directory.
+
+AddSqlPlan(sql => { ... }) gives access to SqlPlanBuilder for custom schemas, function mappings, or AddPlanAsView. AddPlan(plan) accepts an already constructed Substrait plan.
+
+## Building without dependency injection
+
+SqlPlanBuilder compiles SQL. FlowtideBuilder connects the plan to an engine. This standalone example uses local Reservoir persistence:
+
+```csharp
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Sql;
+
+var sql = new SqlPlanBuilder();
+sql.Sql("INSERT INTO console SELECT 1 AS id, 'hello' AS message;");
+
+var connectors = new ConnectorManager();
+connectors.AddConsoleSink("console");
+
+var reservoir = new ReservoirBuilder();
+reservoir.SetStorage(new LocalDiskProvider("./state/hello"));
+
+await using var stream = new FlowtideBuilder("hello")
+    .AddPlan(sql.GetPlan())
+    .AddConnectorManager(connectors)
+    .WithStateOptions(new StateManagerOptions
+    {
+        PersistentStorage = new ReservoirPersistentStorage(reservoir),
+        TemporaryStorageOptions = new FileCacheOptions
+        {
+            DirectoryPath = "./temp/hello"
+        }
+    })
+    .Build();
+
+var running = stream.RunAsync();
+Console.ReadLine();
+await stream.StopAsync();
+await running;
+```
+
+With the default scheduler, RunAsync calls StartAsync and drives recurring connector triggers until the stream stops. Keep its task while waiting for shutdown, then stop the stream and await that task. StartAsync alone is appropriate when a custom scheduler is driven externally. The dependency injection hosted service drives the normal run lifecycle. Build/optimization can modify plans, so create a fresh plan for each independent stream build.
+
+## State, checkpoints, and versions
+
+State storage is required for joins, aggregates, windows, source positions, and recovery. A checkpoint commits a consistent processing state; after failure the stream can restore that state and replay later input. A watermark tracks progress from contributing sources. Do not equate an arbitrary delay or an arriving row with a committed checkpoint or completed sink write.
+
+Reservoir is the storage system used by the current file, temporary, and Azure helpers:
+
+- AddFileStorage("./state/orders") persists to local disk; the directory must survive process/container replacement if recovery is required.
+- AddTemporaryStorage() uses temporary disk for development and tests, with cleanup on disposal.
+- AddAzureBlobStorage(connectionString, containerName, directoryPath: "orders", localCacheDirectory: "./cache/orders") persists to Azure Blob Storage. Install FlowtideDotNet.Storage.Azure; credential-based and options-delegate overloads are also available.
+- FasterKV helpers and AddTemporaryDevelopmentStorage are older APIs still found in samples. Prefer the Reservoir helpers for new applications.
+
+Storage paths must be isolated between independent streams. Distributed substreams need their own storage keyed by stream and substream. Reservoir builders expose SetCacheSize, SetMaxDataFileSize, SetSnapshotCheckpointInterval, and OldStreamVersionsRetention. Storage configuration also exposes MaxProcessMemory, MinPageCount, ZstdPageCompression, and NoCompression.
+
+AddVersioningFromPlanHash(), AddVersioningFromString("v1"), and AddVersioningFromAssembly() configure stream versioning. A changed version starts a separate state version; plan changes need an intentional rebuild and a sink strategy for replacing or reconciling old output. OldStreamVersionsRetention controls previous stored versions when versioning is enabled; deleting old state is separate from cleaning old destination data.
+
+[State persistence](https://koralium.github.io/flowtide/docs/statepersistence.md) documents provider options and retention.
+
+## Monitoring, checks, and control
+
+- app.UseFlowtideUI("/stream") exposes the built-in UI.
+- builder.Services.AddHealthChecks().AddFlowtideCheck() integrates with ASP.NET Core health checks; map an endpoint with app.MapHealthChecks("/health").
+- OpenTelemetry can subscribe to meters with AddMeter("flowtide.*"). See the [Prometheus](https://koralium.github.io/flowtide/docs/monitoring/prometheus.md) and [Azure Monitor](https://koralium.github.io/flowtide/docs/monitoring/azuremonitor.md) examples.
+- AddOpenLineageHttp(options => { options.Url = "https://lineage.example/api/v1/lineage"; }) enables lineage reporting; IncludeSchema and OnRequest customize schema reporting and authentication. [OpenLineage](https://koralium.github.io/flowtide/docs/monitoring/openlineage.md) has the full configuration.
+- WriteCheckFailuresToLogger() and WriteCheckFailuresAsActivity() report SQL data-quality checks. Direct builders expose WithCheckFailureListener and WithCheckStatusListener. Issues and statuses reflect committed checkpoints; null/non-boolean check conditions have specific semantics in the expression reference.
+- AddCustomOptions((services, streamBuilder) => { ... }) configures underlying engine options, such as SetMinimumTimeBetweenCheckpoint and SetGetTimestampUpdateInterval.
+- FlowtidePauseOptions through IOptionsMonitor, or app.UseFlowtidePauseResumeEndpoints("/control"), supports pausing/resuming. Pausing retains running state in memory. [Pause and resume](https://koralium.github.io/flowtide/docs/deployment/pauseresume.md) explains configuration binding and endpoints.
+
+## Parallel and distributed streams
+
+SetParallelism on FlowtideBuilder enables experimental in-process operator parallelism. Distributed mode is also experimental and splits a plan into substreams with coordinated checkpoints and recovery.
+
+DistributedStreamBuilder takes a plan factory, a state-options factory, and a connector-manager factory. DistributeAutomatically(substreamCount: 2) distributes eligible joins on equality keys, grouped aggregates on group keys, and analytic functions on partition keys. Recursive pipelines and joins without equality keys stay together. Each substream must receive a fresh plan and separate state. StartAsync on this host also drives recurring triggers; StopAsync coordinates drain across substreams.
+
+Orleans hosting is available through FlowtideDotNet.Cluster.Orleans and AddFlowtideOrleans. StartStreamRequest(sqlText, substreamCount: 4) starts a stream via IStreamGrain. Use durable metadata, reminders, and state for production recovery. Do not substitute the older FlowtideDotNet.Orleans integration without checking its APIs.
+
+- [Automatic distribution](https://koralium.github.io/flowtide/docs/distributed/automaticdistribution.md)
+- [In-process distributed hosting](https://koralium.github.io/flowtide/docs/distributed/inprocess.md)
+- [Orleans hosting](https://koralium.github.io/flowtide/docs/distributed/orleans.md)
+- [Orleans sample](https://github.com/koralium/flowtide/tree/main/samples/OrleansSample)
+
+## Testing a stream
+
+Install FlowtideDotNet.TestFramework. TestDataTable and AddTestDataTable provide controllable input; TestDataSink and AddTestDataSink capture materialized output. AddStreamTestMonitor registers StreamTestMonitor; await WaitForCheckpoint before asserting output. In ASP.NET Core integration tests, override the same named stream's connectors and storage with WebApplicationFactory.ConfigureTestServices.
+
+For Aspire/distributed-process tests, map MapFlowtideTestInformation only when test mode is enabled, and use StreamTestHttpMonitor to await checkpoints. Test inserts, updates, deletes, duplicate rows, empty input, and restart/recovery where relevant.
+
+- [Integration testing](https://koralium.github.io/flowtide/docs/testing/integrationtests.md)
+- [Aspire testing](https://koralium.github.io/flowtide/docs/testing/aspiretesting.md)
+- [Acceptance test harness](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/FlowtideAcceptanceBase.cs)

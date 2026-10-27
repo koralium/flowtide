@@ -8,6 +8,8 @@
       
       <meta name="description" content="Searches many keys against a B+ tree in a single pass. The keys are sorted and grouped by the leaf they fall in, so each leaf is loaded once and the results are produced one leaf at a time. After , call  in a loop and read  and  for each leaf until it returns false. A key whose match runs to the end of a leaf is carried over into the next leaf. Dispose the searcher to release the leaf page it holds.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

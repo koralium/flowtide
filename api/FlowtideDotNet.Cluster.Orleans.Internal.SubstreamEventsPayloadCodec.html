@@ -8,6 +8,8 @@
       
       <meta name="description" content="Serializes  only when a message actually crosses a silo boundary: Orleans invokes codecs at transport time, so grains on the same silo never pay for serialization. Writes the substream wire format (columnar, batch level) directly into the message and releases the events&#39; receiver claims on the sending side; reading captures the raw payload into pooled segments without materializing the events, the communication handler deserializes lazily with the consuming operator&#39;s allocator.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

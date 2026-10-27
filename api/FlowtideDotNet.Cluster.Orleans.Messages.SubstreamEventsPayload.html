@@ -8,6 +8,8 @@
       
       <meta name="description" content="Fetched substream events, serialized only when they actually cross a silo boundary. The serving grain hands the live events over by reference; between grains on the same silo the payload instance passes through Orleans uncopied (identity copier) and the receiver consumes the live events with zero copies, taking over the receiver claim exactly like a local fetch. Only when Orleans serializes the message does the codec write the events in the substream wire format, releasing the claims on the sending side; the receiving silo captures the raw payload without materializing it, and the communication handler deserializes lazily with the consuming operator&#39;s allocator. Ownership is one-shot: exactly one consumer takes the live events (the same-silo receiver or the serializing codec). A payload is bound to one response.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">

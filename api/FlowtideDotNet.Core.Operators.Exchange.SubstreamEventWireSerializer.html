@@ -8,6 +8,8 @@
       
       <meta name="description" content="Wire format for events fetched between substreams on different nodes. The payload is a single opaque byte stream, so any transport (Orleans grain calls, an actor framework) can move it, using the same columnar encoding the exchange queues spill with (no per-row work). Serialize writes into an  and Deserialize reads from a , so pooled segmented buffers (e.g. Orleans PooledBuffer) move events without intermediate byte arrays. Serialize never allocates batch memory; Deserialize allocates from the target&#39;s resolved allocator and references nothing in the payload, so the transport may release it once Deserialize returns. Rent ownership: the receiver claim from the dequeue is released by  on the sending side after serializing, and deserialized events carry a fresh claim, so the fetching side sees the same contract as a local fetch.">
       <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
       <link rel="stylesheet" href="../public/docfx.min.css">
       <link rel="stylesheet" href="../public/main.css">
       <meta name="docfx:navrel" content="../toc.html">
