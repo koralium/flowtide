@@ -1,0 +1,254 @@
+# Writing Flowtide SQL
+
+Flowtide SQL describes a continuously maintained query. SQL is parsed by SqlPlanBuilder into Substrait, optimized, and run by the .NET engine. It is not SQL sent verbatim to a source database. Sources, destinations, and metadata must match the configured [connectors](https://koralium.github.io/flowtide/llms/connectors.txt).
+
+Examples below use logical tables such as users, orders, and output. Supply table-provider metadata or CREATE TABLE declarations for their input columns and register a sink for output. [Expressions](https://koralium.github.io/flowtide/llms/expressions.txt) lists exact supported function signatures.
+
+## Metadata and naming
+
+CREATE TABLE declares a table's columns for SQL planning. It does not create a physical source, destination, or connector. Column types can be omitted or declared as any when data is dynamic.
+
+```sql
+CREATE TABLE users (userkey, firstname, lastname, managerkey);
+CREATE TABLE orders (orderkey, userkey, amount, order_time TIMESTAMP);
+
+INSERT INTO output
+SELECT userkey, firstname, lastname FROM users;
+```
+
+SqlPlanBuilder.AddTableProvider discovers schemas through ITableProvider; AddTableDefinition supplies a NamedStruct directly. Dependency injection's SQL plan helpers add the registered connectors' table providers automatically. SQL Server commonly uses database.schema.table; a catalog adds a leading catalog name. MongoDB uses database.collection by default.
+
+Use single quotes for string literals. Double quotes and square brackets quote identifiers, for example `u.[firstname]`. Qualify ambiguous columns with table aliases. Explicit column lists avoid pulling unnecessary columns into state and help control schema changes.
+
+## Outputs and primary keys
+
+INSERT INTO declares the sink that receives the changing result. A plan can contain several INSERT statements. Target names are resolved by connector registration; output columns must satisfy that sink's identity and schema requirements.
+
+```sql
+INSERT INTO output PRIMARY KEY (userkey)
+SELECT userkey, firstname, lastname FROM users;
+```
+
+An optional target column list renames the written columns:
+
+```sql
+INSERT INTO output (id, name) PRIMARY KEY (id)
+SELECT userkey, firstname FROM users;
+```
+
+Every declared primary key must be part of the written columns. PRIMARY KEY overrides the sink's usual key selection only for connectors that support declared keys; unsupported sinks reject the plan. This clause does not create a primary key in the external database.
+
+## Projection, filters, and joins
+
+```sql
+INSERT INTO output
+SELECT o.orderkey,
+       u.firstname || ' ' || u.lastname AS customer,
+       CASE WHEN o.amount >= 100 THEN 'large' ELSE 'small' END AS size
+FROM orders o
+LEFT JOIN users u ON o.userkey = u.userkey
+WHERE o.amount > 0 AND u.userkey IS NOT NULL;
+```
+
+SELECT supports expressions, aliases, wildcards, DISTINCT, derived tables, and VALUES inputs. SELECT without FROM is supported for constant data. WHERE keeps rows whose predicate is true; SQL null comparisons require IS NULL/IS NOT NULL or null-safe distinctness predicates.
+
+INNER, LEFT, RIGHT, FULL OUTER, and cross joins have acceptance coverage. Equality joins can use efficient merge processing; predicates without usable equality keys can require more expensive nested-loop processing. Outer joins null-pad the missing side, and later inserts, updates, or deletes can change which rows match. Table functions support INNER and LEFT joins; do not use a RIGHT join to a table function.
+
+EXISTS, NOT EXISTS, IN, and NOT IN subqueries in filters are supported, including tested correlated forms:
+
+```sql
+INSERT INTO output
+SELECT u.userkey
+FROM users u
+WHERE EXISTS (
+    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+);
+```
+
+Use the tested filter-subquery forms; do not infer arbitrary scalar-subquery support. See [Select](https://koralium.github.io/flowtide/docs/sql/select/index.md) and [join acceptance tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/JoinTests.cs).
+
+## Views and buffered views
+
+CREATE VIEW defines a reusable subplan inside the stream, including views used by multiple outputs or other views. It does not create a view in a connected database.
+
+```sql
+CREATE VIEW positive_orders AS
+SELECT orderkey, userkey, amount FROM orders WHERE amount > 0;
+
+INSERT INTO output
+SELECT userkey, sum(amount) AS total
+FROM positive_orders
+GROUP BY userkey;
+```
+
+`CREATE VIEW name WITH (BUFFERED = true) AS ...` buffers and consolidates changes until a watermark, reducing repeated output whose net value does not change. It can help with clock-dependent expressions using gettimestamp(). The buffer has a progress/latency tradeoff; it is not a time-window definition.
+
+## Grouping and aggregates
+
+```sql
+INSERT INTO output
+SELECT userkey,
+       count(*) AS order_count,
+       sum(amount) AS total,
+       max(amount) AS largest,
+       sum(amount) FILTER (WHERE amount >= 100) AS large_order_total
+FROM orders
+GROUP BY userkey
+HAVING sum(amount) > 500;
+```
+
+GROUP BY supports columns and tested computed expressions. GROUP BY without measures produces distinct groups. HAVING filters aggregated output. FILTER (WHERE predicate) limits the rows of a particular aggregate.
+
+Supported aggregates include count(*), count(DISTINCT expression), sum, sum0, avg, min, max, min_by, max_by, list_agg, list_union_distinct_agg, string_agg, and surrogate_key_int64. Plain count(column) is not implemented. sum/sum0/avg reject DISTINCT. list_agg, list_union_distinct_agg, and string_agg reject DISTINCT and aggregate ORDER BY/WITHIN GROUP ordering. They do not provide an input-arrival-order contract. Check the [expression catalog](https://koralium.github.io/flowtide/llms/expressions.txt) before choosing aggregate modifiers.
+
+## Sets and top N
+
+UNION ALL preserves multiplicity; UNION/UNION DISTINCT deduplicate. EXCEPT and INTERSECT support ALL and DISTINCT variants. Align the projected columns across branches. The engine maintains multiplicities as inputs change.
+
+```sql
+INSERT INTO output
+SELECT userkey FROM users
+UNION ALL
+SELECT userkey FROM orders;
+```
+
+TOP selects a maintained top N. Include ORDER BY and a stable tie-breaker for predictable membership:
+
+```sql
+INSERT INTO output
+SELECT TOP (10) orderkey, amount
+FROM orders
+ORDER BY amount DESC, orderkey ASC;
+```
+
+ASC/DESC and NULLS FIRST/NULLS LAST are supported in tested ordering contexts. Treat result rows as a relation: ORDER BY used to select top N or to evaluate a window does not promise an ordered sequence of sink writes. Prefer the documented TOP form when generating code; do not assume another database's LIMIT/FETCH syntax.
+
+## Analytic window functions
+
+Analytic functions keep the input rows and compute a value over a partition and optional row frame. The supported functions are sum, avg, row_number, lead, lag, last_value, min_by, max_by, surrogate_key_int64, and session_window. A grouped aggregate's existence does not imply the same function is registered for OVER.
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey,
+       sum(amount) OVER (
+           PARTITION BY userkey ORDER BY orderkey
+           ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+       ) AS rolling_total,
+       row_number() OVER (
+           PARTITION BY userkey ORDER BY amount DESC, orderkey
+       ) AS position
+FROM orders;
+```
+
+row_number() has no arguments and requires ORDER BY. lead/lag take a value, optional offset, and optional default; they also require ordering. last_value/min_by/max_by require ordering and support ROWS frames. sum/avg without ORDER BY cover the entire partition; with ordering and no explicit frame, they default to unbounded preceding through current row. Frame offsets are literal integers. Use explicit ROWS frames instead of assuming RANGE or GROUPS behavior.
+
+For the latest row per key, filter an analytic result through a derived table:
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey, amount
+FROM (
+    SELECT orderkey, userkey, amount,
+           row_number() OVER (
+               PARTITION BY userkey ORDER BY order_time DESC, orderkey DESC
+           ) AS rn
+    FROM orders
+) ranked
+WHERE rn = 1;
+```
+
+## Lists and table functions
+
+UNNEST expands a list to one row per element, or a map to key/value objects. An INNER JOIN drops inputs with no matching elements; a LEFT JOIN preserves them with a null element. The alias below names the returned element:
+
+```sql
+INSERT INTO output
+SELECT u.userkey, tag
+FROM users u
+LEFT JOIN UNNEST(list(u.firstname, u.lastname)) tag;
+```
+
+Constant table functions can be queried directly, for example `SELECT value FROM UNNEST(list(1, 2, 3)) value`.
+
+## Tumbling and hopping time windows
+
+These are table functions over typed timestamps. They add window_start (inclusive) and window_end (exclusive), and can be grouped afterward. They maintain changing results; assigning a row to a window does not by itself expire state or make the window immutable.
+
+```sql
+INSERT INTO output
+SELECT window_start, window_end, count(*) AS order_count, sum(o.amount) AS total
+FROM orders o
+INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')
+GROUP BY window_start, window_end;
+```
+
+Replace the table function with `hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')` for a 10-minute window every 5 minutes. A row may belong to multiple hopping windows. Amounts must be positive integer literals; units are WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, or MICROSECOND. MONTH/YEAR and fractional amounts are not supported. Starts align from year one; WEEK boundaries are Mondays. Null/non-timestamp inputs produce no windows; LEFT JOIN preserves such rows with null window columns. Hopping fanout above 100,000 windows per row is rejected.
+
+## Session windows
+
+Sessions depend on neighboring rows, so session_window is an analytic function, not a table function. A gap greater than the configured duration starts a new session; a gap equal to the duration stays in the same session. An inserted event can merge sessions; deletion can split them.
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey,
+       session_window(30, 'MINUTE') OVER (
+           PARTITION BY userkey ORDER BY order_time
+       ) AS session_start
+FROM orders;
+```
+
+Exactly one ascending timestamp ordering expression is required. Session windows have no explicit ROWS frame. Alternatively group directly by SESSION:
+
+```sql
+INSERT INTO output
+SELECT userkey, count(*) AS order_count,
+       session_start(order_time, 30, 'MINUTE') AS window_start,
+       session_end(order_time, 30, 'MINUTE') AS window_end
+FROM orders
+GROUP BY userkey, SESSION(order_time, 30, 'MINUTE');
+```
+
+Other group columns define the session partition. Only one SESSION expression is allowed per GROUP BY. window_start is available directly; session_start/session_end must match the grouping's timestamp and gap arguments. The end is the last event timestamp plus the gap. Units are the same fixed-duration units as tumbling/hopping windows.
+
+## Recursive queries
+
+A self-referencing WITH query expresses recursive iteration. Use an anchor plus a recursive branch, and ensure the data/query converges. This hierarchy example assumes an acyclic manager relationship:
+
+```sql
+WITH hierarchy AS (
+    SELECT userkey, managerkey, 1 AS depth
+    FROM users WHERE managerkey IS NULL
+    UNION ALL
+    SELECT u.userkey, u.managerkey, h.depth + 1 AS depth
+    FROM users u
+    INNER JOIN hierarchy h ON u.managerkey = h.userkey
+)
+INSERT INTO output
+SELECT userkey, managerkey, depth FROM hierarchy;
+```
+
+Changes are maintained through the iteration. Recursion cannot span distributed substreams. See [recursion](https://koralium.github.io/flowtide/docs/sql/recursion.md) and [iteration tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/IterationTests.cs).
+
+## Manual distributed SQL (experimental)
+
+Prefer automatic distribution for ordinary queries. SUBSTREAM statements manually assign following statements to a named substream:
+
+```sql
+SUBSTREAM first;
+CREATE VIEW shared WITH (
+    DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2
+) AS SELECT userkey FROM users;
+INSERT INTO output SELECT userkey FROM shared WITH (PARTITION_ID = 0);
+
+SUBSTREAM second;
+INSERT INTO output SELECT userkey FROM shared WITH (PARTITION_ID = 1);
+```
+
+Once SUBSTREAM is used, every INSERT must be inside a substream. A distributed view read across substreams must declare SCATTER_BY. PARTITION_ID selects a partition; without it the consumer receives all partitions. This SQL needs a distributed host, not an ordinary single-stream setup. See [substream statements](https://koralium.github.io/flowtide/docs/distributed/sqlsubstreams.md).
+
+## Source and behavior references
+
+- [SQL visitor](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/Internal/SqlSubstraitVisitor.cs)
+- [SQL expression visitor](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlExpressionVisitor.cs)
+- [SQL planner tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.Substrait.Tests)
+- [Acceptance tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.AcceptanceTests): AggregateTests, JoinTests, SelectTests, SetTests, TopNTests, TableFunctionTests, WindowFunctionTests, TumblingWindowTests, HoppingWindowTests, SessionWindowTests, and IterationTests.

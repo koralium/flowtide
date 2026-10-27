@@ -1,0 +1,204 @@
+# Flowtide expressions and functions
+
+This catalog describes SQL names implemented by the current repository. SQL names can differ from Substrait extension names. A Substrait specification defining a function does not imply Flowtide implements it. Functions available as aggregates are not automatically available with OVER, and table functions return rows rather than scalar values.
+
+`x`, `y`, and other identifiers below denote expressions. `...` denotes repeated arguments; `[argument]` denotes an optional argument in a signature, not literal SQL. Use the [SQL guide](https://koralium.github.io/flowtide/llms/sql.txt) for complete statements and the [stream guide](https://koralium.github.io/flowtide/llms/streams.txt) for C# integration.
+
+## Values, nulls, and types
+
+Runtime values include null, booleans, integers, doubles, decimals, strings, binary data, timestamps, lists, maps, and fixed-schema structs. The planner can also describe date and nested types. Metadata type support and CAST support are separate. Use explicit casts when a function expects a particular runtime type; string inputs are not automatically timestamps.
+
+Ordinary comparisons with null can evaluate to null. WHERE keeps only true. AND/OR/NOT use three-valued logic; `IS DISTINCT FROM` and `IS NOT DISTINCT FROM` provide null-safe comparison. Numeric functions generally return null for incompatible inputs, while string and boolean helpers have their own behavior. Do not assume a single null/coercion rule applies to all functions.
+
+## Operators and specialized expressions
+
+| SQL form | Purpose |
+| --- | --- |
+| x + y, x - y, x * y, x / y, x % y, -x | Numeric arithmetic and negation. Integer division returns a floating result. Decimal inputs use decimal arithmetic where supported. |
+| x = y, x <> y, x != y, x < y, x <= y, x > y, x >= y | Comparisons. |
+| x AND y, x OR y, x XOR y, NOT x | Boolean logic. |
+| x IS NULL, x IS NOT NULL | Null tests. |
+| x IS DISTINCT FROM y, x IS NOT DISTINCT FROM y | Null-safe inequality/equality. |
+| x BETWEEN lower AND upper | Inclusive range test. |
+| x IN (a, b, ...), x NOT IN (a, b, ...) | Membership using SQL null logic. |
+| EXISTS (query), NOT EXISTS (query), x IN (query), x NOT IN (query) | Supported filter-subquery predicates; see SQL guide. |
+| x LIKE pattern [ESCAPE character], x NOT LIKE pattern | SQL Server-style patterns: % is any sequence, _ is one character, [ab] is a character set. |
+| x \|\| y | String concatenation. Null propagates. |
+| CASE WHEN condition THEN value ... [ELSE value] END | Conditional expression; omitted ELSE yields null. Use the searched CASE form. |
+| CAST(x AS type) | Convert to STRING, BOOLEAN, INT/INTEGER/SMALLINT/TINYINT, DOUBLE/FLOAT, DECIMAL, or TIMESTAMP. Failed value conversions return null. |
+| object.field | Access a map or struct field, including nested fields. |
+| list(x, y, ...) | Construct a list. |
+| map(key, value, ...) | Construct a map from key/value pairs; keys are converted to strings. |
+| named_struct('field', value, ...) | Construct a fixed-schema struct; field names must be string literals. |
+| guid(string) | Parse/normalize a GUID; this is not random GUID generation. |
+
+Arithmetic can produce NaN or infinity for division by zero; decimal behavior must be checked separately. Use is_nan/is_finite/is_infinite when those values matter. Do not treat timestamp integer encodings as interchangeable: legacy strftime takes Unix microseconds, while integer-to-TIMESTAMP casting has its own tick conversion. Prefer typed TIMESTAMP values and timestamp_parse/timestamp_format.
+
+See [specialized expressions](https://koralium.github.io/flowtide/docs/expressions/specializedexpressions.md) and [cast tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/CastTests.cs).
+
+## Scalar numeric functions
+
+| Signature | Purpose |
+| --- | --- |
+| power(base, exponent) | Exponentiation. |
+| sqrt(x), exp(x) | Square root; e raised to x. |
+| abs(x), sign(x) | Absolute value; sign. |
+| cos(x), sin(x), tan(x) | Trigonometric functions, with angles in radians. |
+| cosh(x), sinh(x), tanh(x) | Hyperbolic functions. |
+| acos(x), asin(x), atan(x), atan2(y, x) | Inverse trigonometric functions. |
+| acosh(x), asinh(x), atanh(x) | Inverse hyperbolic functions. |
+| radians(x), degrees(x) | Convert degrees to radians or radians to degrees. |
+| log10(x) | Base-ten logarithm. |
+| ceil(x), ceiling(x), floor(x), round(x) | Round a value; these SQL forms take one argument. round uses ties to even. |
+
+Numeric result types depend on input types and the individual function. Integer/double combinations generally produce double; decimal arithmetic can preserve decimal. Do not invent a precision argument for round.
+
+- [Arithmetic](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.md)
+- [Rounding](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.md)
+- [Logarithmic](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.md)
+
+## Scalar comparison helpers
+
+| Signature | Purpose |
+| --- | --- |
+| coalesce(x, ...) | First non-null argument; at least one argument. |
+| nullif(x, y) | Null when values are equal; otherwise x. |
+| greatest(x, y, ...) | Greatest of at least two arguments; a null argument propagates null. |
+| is_infinite(x), is_finite(x), is_nan(x) | Tests for special numeric values. |
+
+[Comparison reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.md)
+
+## Scalar string, JSON, and list functions
+
+| Signature | Purpose and important details |
+| --- | --- |
+| concat(x, y, ...) | Concatenate arguments; null propagates. Also written with \|\|. |
+| lower(string), upper(string) | Change case; incompatible types yield null. |
+| trim(string), ltrim(string), rtrim(string) | Trim whitespace on both sides, left, or right. |
+| to_string(x) | Convert a scalar value to a string. |
+| starts_with(string, prefix) | Prefix test; incompatible input types return false. |
+| substring(string, start [, length]) | Extract substring; start is one-based. |
+| replace(string, old, replacement) | Replace occurrences. |
+| len(string) | Character count. The SQL name is len, not the Substrait name char_length. |
+| strpos(string, substring) | One-based position; zero when not found. |
+| string_base64_encode(string), string_base64_decode(string) | Encode/decode Base64 text. |
+| string_split(string, separator) | Split into a list using a literal separator. |
+| regexp_string_split(string, pattern) | Split into a list using a regular expression. |
+| string_join(separator, list) | Join non-null list elements; separator is the first argument. A null list returns null; an empty/all-null list returns an empty string. |
+| to_json(value) | Serialize a value to JSON text. |
+| from_json(json) | Parse JSON text or UTF-8 binary into Flowtide values. |
+| list_sort_asc_null_last(list) | Sort ascending with null elements last; non-list input yields null. |
+| list_first_difference(first, second) | First differing element of the first list when compared position by position; null if no difference is found. |
+
+Use list/map/named_struct constructors from the specialized-expression table to build nested values. Use UNNEST to expand them into rows. Dynamic properties belong in a map; named_struct has a fixed field layout and the union-column representation has a limit of 127 distinct types.
+
+- [String/JSON](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.md)
+- [Lists](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.md)
+
+## Scalar date and time functions
+
+| Signature | Purpose and important details |
+| --- | --- |
+| gettimestamp() | Stream clock source, periodically updated; not a separate wall-clock call for each row. Default update interval is one hour; configure SetGetTimestampUpdateInterval on the engine builder. |
+| timestamp_parse(string, format) | Parse a typed timestamp with a .NET date/time format, e.g. 'yyyy-MM-dd HH:mm:ss'. |
+| timestamp_format(timestamp, format) | Format a typed timestamp with a .NET date/time format. |
+| timestamp_extract(component, timestamp) | Extract a component; component is a string such as 'YEAR', 'MONTH', 'DAY', 'HOUR', or 'ISO_WEEK'. |
+| timestamp_add(component, amount, timestamp) | Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, or MICROSECOND. |
+| datediff(component, start, end) | Count crossed component boundaries between timestamps. |
+| floor_timestamp_day(timestamp) | Remove the time portion; incompatible input yields null. |
+| round_calendar(timestamp, operation, component, reference, step) | Calendar-aligned rounding; e.g. round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1). |
+| strftime(unix_microseconds, format) | Legacy formatting with strftime-style %Y/%m/%d patterns; prefer timestamp_format for typed timestamps. |
+
+gettimestamp is implemented using a timestamp source and joins introduced by optimization, so rows in an evaluation use a consistent clock value. Clock changes can update query results without changes in the original source. A buffered view can consolidate unchanged output. gettimestamp inside join conditions is not supported.
+
+timestamp_extract additionally supports ISO_YEAR, US_YEAR, QUARTER, DAY_OF_YEAR, MONDAY_DAY_OF_WEEK, SUNDAY_DAY_OF_WEEK, MONDAY_WEEK, SUNDAY_WEEK, ISO_WEEK, US_WEEK, MINUTE, SECOND, MILLISECOND, and MICROSECOND. Calendar rounding operations, references, and supported combinations are listed in the [datetime reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.md).
+
+## Hash functions
+
+- xxhash64(value, ...) returns a signed Int64 hash of one or more values.
+- xxhash128_guid_string(value, ...) returns a 128-bit hash formatted as a GUID string.
+
+These are useful for derived keys/partitioning; they are not cryptographic functions. [Hash reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.md)
+
+## Data-quality checks
+
+- check_value(value, condition, 'message' [, tags...]) returns value while tracking failures.
+- check_true(condition, 'message' [, tags...]) returns true only for a boolean true condition; false for false, null, or non-boolean conditions. In WHERE it filters all those false-returning cases.
+
+An issue is raised only when the condition is boolean false. A null/non-boolean condition does not raise an issue, even though check_true returns false. If null must count as a failure, state it explicitly, for example `check_true(amount IS NOT NULL, 'Missing amount', orderkey)`.
+
+The message must be a string literal and names the check. Put row values in tags, using unnamed columns or named tags such as `key => orderkey`; reference them as {key} in the message. A computed/concatenated message is rejected. Issues are identified by check and tag values, so equal tag values share an issue. Add a row key tag for one issue per failing row.
+
+Issues resolve when their last failing row disappears or changes to pass. Status listeners report NotEvaluated, Passed, or Failed plus active-issue and failing-row counts. Notifications reflect committed checkpoints and are restored/reannounced after restart. Register WriteCheckFailuresToLogger, WriteCheckFailuresAsActivity, or custom listeners to observe them.
+
+[Check reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.md)
+
+## Aggregate functions
+
+Aggregates collapse rows into groups. FILTER (WHERE predicate) can restrict an individual measure.
+
+| Signature | Purpose |
+| --- | --- |
+| count(*) | Count all rows. |
+| count(DISTINCT expression) | Count distinct non-null values of one expression. Plain count(expression) is not implemented. |
+| sum(x), sum0(x), avg(x) | Numeric total, total with zero fallback, and average. Non-numeric/null inputs are ignored. sum/avg yield null when no numeric values remain; sum0 yields zero. |
+| min(x), max(x) | Minimum/maximum non-null value; null when none remain. |
+| min_by(value, key), max_by(value, key) | Value associated with the minimum/maximum key; rows with null keys are ignored. |
+| list_agg(value) | Collect values into a list for each group. |
+| list_union_distinct_agg(list) | Combine lists and deduplicate their elements. |
+| string_agg(string, separator) | Concatenate string values per group. |
+| surrogate_key_int64() | Assign a unique Int64 to a group. |
+| session_start(timestamp, gap, unit), session_end(timestamp, gap, unit) | Accessors for a matching SESSION grouping; see SQL guide. |
+
+sum/sum0/avg reject DISTINCT. list_agg/list_union_distinct_agg/string_agg reject DISTINCT and aggregate ORDER BY, including WITHIN GROUP. Collection aggregates use value ordering rather than arrival ordering; do not infer arbitrary user-specified ordering. surrogate_key_int64 uses maintained state; generated keys must not be assumed identical after a complete fresh replay.
+
+- [Arithmetic aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.md)
+- [Counts and surrogate keys](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.md)
+- [List aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.md)
+- [String aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.md)
+
+## Analytic window functions
+
+Use these functions with OVER (...); they preserve input rows. PARTITION BY divides rows into independent groups. ORDER BY defines neighbors/rank and ROWS frames limit contributing rows. Frame offsets must be integer literals.
+
+| Signature before OVER | Requirements |
+| --- | --- |
+| sum(x), avg(x) | Optional ordering; ROWS frames supported. Without ordering, entire partition. With ordering and no explicit frame, unbounded preceding to current row. |
+| row_number() | Requires ORDER BY; starts at 1; no arguments or explicit ROWS frame. |
+| lead(value [, offset [, default]]), lag(value [, offset [, default]]) | Requires ORDER BY; no explicit ROWS frame. Default offset is 1, default missing value is null. Tested offsets include expressions. |
+| last_value(value) | Requires ORDER BY; ROWS frames supported; IGNORE NULLS can be written before OVER. |
+| min_by(value, key), max_by(value, key) | Requires ORDER BY; ROWS frames supported. |
+| surrogate_key_int64() | Assigns a maintained key per partition; experimental; no explicit ROWS frame. |
+| session_window(gap_amount, gap_unit) | Exactly one ascending timestamp ORDER BY expression; no explicit frame. Returns the session's first timestamp. |
+
+last_value's default ordered frame ends at the current row. To get the final value of the entire partition, specify `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`. Null/non-timestamp ordering values receive no session. Session gaps accept positive integer literals in fixed-duration units; inserts can merge sessions and deletes can split them.
+
+The registered analytic set does not include count, min, max, or sum0. Use the supported set or a grouped aggregate joined back to the original rows. Use explicit ROWS frames rather than relying on RANGE/GROUPS semantics.
+
+- [Arithmetic windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.md)
+- [Surrogate-key windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/generic.md)
+- [Session windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/datetime.md)
+
+## Table functions
+
+| Signature | Result |
+| --- | --- |
+| unnest(list_or_map) | One row per element. Map entries are objects with key and value fields. Alias the function to name its element column. |
+| tumbling_window(timestamp, size_amount, size_unit) | One row containing window_start and window_end for a valid timestamp. |
+| hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit) | One row per matching window, each with window_start and window_end. |
+
+Table functions can be used in FROM or correlated INNER/LEFT JOIN. UNNEST's LEFT JOIN retains a row for an empty collection. Time windows include start and exclude end. Window sizes/hops are positive integer literals, units are WEEK/DAY/HOUR/MINUTE/SECOND/MILLISECOND/MICROSECOND, and null/non-timestamp inputs emit no windows. MONTH/YEAR are not fixed-duration units. Hopping fanout is limited to 100,000 windows per input row. session_window is an analytic function, not a table function.
+
+- [UNNEST](https://koralium.github.io/flowtide/docs/expressions/tablefunctions/generic.md)
+- [Tumbling and hopping windows](https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.md)
+
+## Extending functions and checking behavior
+
+Custom SQL function names require mapping through SqlPlanBuilder.FunctionRegister. Execution also needs a matching function implementation in the engine's FunctionsRegister; a SQL mapping alone is insufficient. See [CustomScalarTests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/CustomScalarTests.cs) for both registrations.
+
+Authoritative implementations and examples:
+
+- [Built-in SQL registration](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/Internal/BuiltInSqlFunctions.cs)
+- [Expression syntax mapping](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlExpressionVisitor.cs)
+- [Columnar runtime functions](https://github.com/koralium/flowtide/tree/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions)
+- [Acceptance tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.AcceptanceTests): Arithmetic, comparison, strings, LIKE, casts, lists, hashes, dates, checks, aggregates, table functions, and analytic/time windows.

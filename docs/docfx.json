@@ -45,12 +45,28 @@
     "resource": [
       {
         "files": [
+          "llms.txt",
+          "llms/**/*.txt",
           "images/**",
           "docs/**/*.{png,jpg,jpeg,gif,svg}",
           "releasenotes/**/*.{png,jpg,jpeg,gif,svg}"
         ]
+      },
+      {
+        "files": [
+          "index.md",
+          "docs/**/*.md",
+          "releasenotes/**/*.md",
+          "api/**/*.md"
+        ],
+        "group": "markdown"
       }
     ],
+    "groups": {
+      "markdown": {
+        "dest": "."
+      }
+    },
     "output": "_site",
     "template": [
       "default",
