@@ -23,6 +23,7 @@
       {
         "files": [
           "index.md",
+          "llms-full.yml",
           "toc.yml"
         ]
       },

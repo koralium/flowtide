@@ -1,6 +1,6 @@
 # Getting started
 
-For AI assistants and coding agents, start with [llms.txt](llms.txt) for plain-text guides to building streams, writing SQL, expressions, and connectors.
+For AI assistants and coding agents, start with [llms.txt](llms.txt) for plain-text guides to building streams, writing SQL, expressions, and connectors, or use [llms-full.txt](https://koralium.github.io/flowtide/llms-full.txt) to read all four guides in one file.
 
 To get started with Flowtide, the easiest way is to create a new C# project. This guide will show an example with SQL Server, but you can change
 to another connector as well.
