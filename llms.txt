@@ -1,0 +1,14 @@
+# Flowtide.NET
+
+> Flowtide is a .NET streaming SQL engine. This repository contains the engine, connectors, acceptance tests, samples, and documentation.
+
+The documentation site maintains the canonical LLM index. This repository entry point links to that reference and the guides in this checkout.
+
+## Documentation
+
+- [Published LLM index](https://koralium.github.io/flowtide/llms.txt): Start here for building streams, Flowtide SQL, expressions, connector contracts, testing, and operations.
+- [Index in this checkout](docs/llms.txt): Repository copy of the published index.
+- [Stream guide in this checkout](docs/llms/streams.txt): C# application examples, state, hosting, and testing.
+- [SQL guide in this checkout](docs/llms/sql.txt): Supported SQL, analytic functions, recursion, and time windows.
+- [Expression catalog in this checkout](docs/llms/expressions.txt): Implemented operators, functions, signatures, and limitations.
+- [Connector guide in this checkout](docs/llms/connectors.txt): Source/sink registration and required data contracts.

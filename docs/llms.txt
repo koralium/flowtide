@@ -1,0 +1,40 @@
+# Flowtide.NET
+
+> Flowtide is a .NET streaming SQL engine that continuously maintains query results as source data is inserted, updated, or deleted, and writes those changes to sinks. SQL compiles to a Substrait plan executed with persistent state, checkpoints, and watermarks.
+
+Use these references to write Flowtide applications and Flowtide SQL. They describe this repository's implementation; check the installed NuGet version before using features from main. The repository targets .NET 8 and .NET 10. Use matching versions of the Flowtide packages.
+
+A stream needs a plan, source and sink connectors, and state storage. With dependency injection, AddFlowtideStream registers a hosted service that runs the stream. INSERT INTO names a continuously maintained destination. CREATE TABLE declares planner metadata; it does not create a table in an external database. Flowtide SQL has its own supported subset and extensions, so consult the SQL and expression references before borrowing syntax from another database.
+
+Start with the stream guide for C# setup, the SQL guide for complete query examples, and the expression catalog for exact function names and signatures. The linked .txt guides are UTF-8 Markdown served directly by the documentation site.
+
+## Core references
+
+- [Building and operating streams](https://koralium.github.io/flowtide/llms/streams.txt): Complete C# examples, dependency injection, direct builders, persistence, versioning, monitoring, distributed hosting, and testing.
+- [Writing Flowtide SQL](https://koralium.github.io/flowtide/llms/sql.txt): Metadata, catalogs, views, joins, subqueries, aggregates, set operations, top N, recursion, analytic windows, time windows, and distributed SQL.
+- [Expressions and functions](https://koralium.github.io/flowtide/llms/expressions.txt): SQL operators and signatures for scalar, aggregate, window, and table functions, including types, null behavior, checks, and restrictions.
+- [Connectors and data contracts](https://koralium.github.io/flowtide/llms/connectors.txt): Available sources and sinks, registration methods, table naming, required output columns, custom connectors, and connector-specific documentation.
+
+## Documentation
+
+- [Getting started](https://koralium.github.io/flowtide/index.md): Introductory application setup.
+- [State persistence](https://koralium.github.io/flowtide/docs/statepersistence.md): Reservoir file, temporary, and Azure Blob storage; cache and checkpoint tuning; legacy storage options.
+- [SQL reference](https://koralium.github.io/flowtide/docs/sql/index.md): SQL planning and statement documentation.
+- [.NET API reference](https://koralium.github.io/flowtide/api/index.md): Generated API documentation for the repository's public types.
+
+## Examples and executable specifications
+
+- [SQL Server to SQL Server](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToSqlServerStream): Two catalogs, joins, versioning, storage, metrics, health checks, and UI.
+- [SQL Server to Elasticsearch](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToElasticProductionSample): Destination identity, versioned indices, initial-load callbacks, and production hosting.
+- [Custom source and sink](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample): C# object ingestion, inserts, updates, deletes, recovery, and reconciliation with existing destination data.
+- [All samples](https://github.com/koralium/flowtide/tree/main/samples): MongoDB, Delta Lake, OpenFGA, Aspire, Orleans, and monitoring examples. Database bootstrap SQL configures the external database; it is not Flowtide SQL.
+- [Acceptance tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.AcceptanceTests): Executable examples of SQL behavior under inserts, updates, deletes, checkpoints, and crash recovery.
+- [SQL function registration](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/Internal/BuiltInSqlFunctions.cs): Authoritative built-in function names, argument validation, and SQL-to-Substrait mapping.
+
+## Optional
+
+- [Repository](https://github.com/koralium/flowtide): Source, package projects, issues, and contribution context.
+- [Release notes](https://koralium.github.io/flowtide/releasenotes/index.md): Changes between published releases.
+- [Project structure](https://koralium.github.io/flowtide/docs/internal/projectstructure.md): Engine, plan, storage, and connector internals.
+- [Consistency requirements](https://koralium.github.io/flowtide/docs/internal/dataconsistency.md): Source and sink requirements for consistent processing.
+- [Reservoir internals](https://koralium.github.io/flowtide/docs/internal/reservoir/index.md): Persistence architecture and implementation details.

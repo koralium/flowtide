@@ -15,6 +15,8 @@
 
 **Flowtide** is a high-performance streaming SQL query engine designed for real-time data processing. Flowtide enables operations on live data streams such as joins, aggregations, windowing, and recursive queries. Use cases include event-driven architectures, ETL pipelines, and modern data-intensive applications. 
 
+For AI assistants and coding agents, start with [llms.txt](llms.txt).
+
 ![Flowtide](./images/flowtide_streaming_integration.png)
 
 ## Key Features

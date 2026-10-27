@@ -1,0 +1,90 @@
+# Flowtide connectors and data contracts
+
+Connectors map SQL table names to sources and sinks. They are configured in C#, separately from SQL. A stream can join sources from different systems and write multiple destinations. For application setup see [building streams](https://koralium.github.io/flowtide/llms/streams.txt); for queries see [SQL](https://koralium.github.io/flowtide/llms/sql.txt).
+
+## Registration and table discovery
+
+With dependency injection, call AddConnectors on the named stream builder. The configured IDependencyInjectionConnectorManager also exposes ServiceProvider for resolving custom services. Without dependency injection, construct a ConnectorManager and pass it to FlowtideBuilder.AddConnectorManager.
+
+Connector packages commonly expose extension methods in FlowtideDotNet.Core; add the connector's options namespace where needed. Use the actual package/API names below. Older samples may use ReadWriteFactory or older option type names.
+
+```csharp
+builder.Services.AddFlowtideStream("orders")
+    .AddConnectors(connectors =>
+    {
+        connectors.AddCatalog("sales", catalog =>
+            catalog.AddSqlServerSource(() => sourceConnectionString));
+        connectors.AddCatalog("reporting", catalog =>
+            catalog.AddSqlServerSink(() => destinationConnectionString));
+    });
+```
+
+AddCatalog prefixes that connector group's SQL names. A SQL Server table then looks like sales.database.schema.table. AddSqlServerAsCatalog(name, connectionStringFactory) registers both the SQL Server source and sink under one catalog. Use separate source-only/sink-only catalogs when appropriate.
+
+Sources can expose ITableProvider implementations for discovery. AddSqlTextAsPlan, AddSqlFileAsPlan, and AddSqlPlan use the registered providers. CREATE TABLE supplies explicit planner metadata when discovery is unavailable or a narrower input schema is desired. It never creates or connects a physical table.
+
+Many connectors select names using regexPattern arguments. Use a pattern that matches the intended logical SQL table name and check the connector's matching rules. Source and sink schema/key requirements still apply after a name matches.
+
+## Available connectors
+
+The package column gives the FlowtideDotNet.Connector.* suffix unless a different package is stated. Source and sink support reflects this repository, not every historical release.
+
+| System | Package suffix | Direction and registration | Reference |
+| --- | --- | --- | --- |
+| SQL Server | SqlServer | Source and sink: AddSqlServerSource, AddSqlServerSink, AddSqlServerAsCatalog. | [SQL Server](https://koralium.github.io/flowtide/docs/connectors/sqlserver.md) |
+| MongoDB | MongoDB | Source and sink: AddMongoDbSource, AddMongoDbSink. | [MongoDB](https://koralium.github.io/flowtide/docs/connectors/mongodb.md) |
+| Delta Lake | DeltaLake | Source and sink: AddDeltaLakeSource, AddDeltaLakeSink, AddDeltaLakeCatalog. | [Delta Lake](https://koralium.github.io/flowtide/docs/connectors/deltalake.md) |
+| Kafka | Kafka | Source and sink: AddKafkaSource, AddKafkaSink. | [Kafka](https://koralium.github.io/flowtide/docs/connectors/kafka.md) |
+| Elasticsearch | ElasticSearch | Sink: AddElasticsearchSink. | [Elasticsearch](https://koralium.github.io/flowtide/docs/connectors/elasticsearch.md) |
+| Cosmos DB | CosmosDB | Sink: AddCosmosDbSink. | [Cosmos DB](https://koralium.github.io/flowtide/docs/connectors/cosmosdb.md) |
+| OpenFGA | OpenFGA | Source and sink: AddOpenFGASource, AddOpenFGASink. | [OpenFGA](https://koralium.github.io/flowtide/docs/connectors/openfga.md) |
+| SpiceDB/Authzed | SpiceDB | Source and sink: AddSpiceDbSource, AddSpiceDbSink. | [SpiceDB](https://koralium.github.io/flowtide/docs/connectors/spicedb.md) |
+| Permify | Permify | Relationship source and sink: AddPermifyRelationshipSource, AddPermifyRelationshipSink. | [Permify](https://koralium.github.io/flowtide/docs/connectors/permify.md) |
+| SharePoint | Sharepoint | List source and sink: AddSharepointSource, AddSharepointSink. | [SharePoint](https://koralium.github.io/flowtide/docs/connectors/sharepoint.md) |
+| Files | Files | Sources: AddCsvFileSource, AddXmlFileSource, AddTextLinesFileSource. Experimental. | [Files](https://koralium.github.io/flowtide/docs/connectors/files.md) |
+| Qdrant | Qdrant | Sink with embedding generation: AddQdrantSink. | [Qdrant](https://koralium.github.io/flowtide/docs/connectors/qdrant.md) |
+| StarRocks | StarRocks | Sink: AddStarRocksSink. | [StarRocks](https://koralium.github.io/flowtide/docs/connectors/starrocks.md) |
+| .NET options/configuration | Built into core/DI | Source: AddOptionsSource<TOptions>, backed by IOptionsMonitor<TOptions>. | [Configuration](https://koralium.github.io/flowtide/docs/connectors/configurationdata.md) |
+| Console / black hole | Built into core | Sinks: AddConsoleSink, AddBlackholeSink; namespace FlowtideDotNet.Core.Sinks. | [Samples](https://github.com/koralium/flowtide/tree/main/samples) |
+| Custom C# data | Built into core | AddCustomSource and AddCustomSink with generic object source/sink implementations. | [Custom data](https://koralium.github.io/flowtide/docs/connectors/customdata.md) |
+
+## Important source and sink contracts
+
+- SQL Server: incremental reading uses SQL Server Change Tracking. Enable it on the database and source tables. Sources without it, including views, require explicit full-reload options; views have no delta loading. SQL names normally include database.schema.table. Sinks need an existing destination table and compatible projected columns/keys. Use the source/sink options for connection factories and reload settings.
+- MongoDB: reading changes requires MongoDB change streams. Default source columns are _id and _doc; use `_doc.field` to access document properties. An explicit CREATE TABLE can expose a narrower field schema. AddMongoDbSink takes FlowtideMongoDBSinkOptions including connection/database/collection and PrimaryKeys.
+- Delta Lake: register StorageLocation and optionally a catalog. Names beneath that catalog identify table paths. Normal reads maintain the current table state; IncludeChangeHistory exposes historical changes as inserted rows with __weight, __modificationDate, and __version. StartFromFirstVersion and OneVersionPerCheckpoint change replay behavior. Check the Delta Lake reference before interpreting history as current state.
+- Kafka: the logical table name selects the topic. The _key column holds the message key. Upsert JSON deserialization treats a non-null value as an upsert and a null value as a deletion. Configure key/value serializers and consumer/producer settings explicitly. Optional comparison against existing topic data can reconcile old destination keys during an initial load.
+- Elasticsearch: project a column named _id to identify the document; it is not included as a regular source field. The logical destination normally selects the index. FlowtideElasticsearchOptions provides settings factories, concrete index naming, mapping hooks, and initial-load callbacks. For changing stream versions, plan how to switch indices/aliases and remove old data.
+- Cosmos DB: output must include id and the configured container partition-key column. Configure the target container and database using FlowtideCosmosOptions.
+- OpenFGA: project user_type, user_id, relation, object_type, and object_id; user_relation is optional for usersets. Source tuples expose these parts separately. FlowtideDotNet.Zanzibar can turn an authorization model into a plan added through SqlPlanBuilder.AddPlanAsView, allowing permissions to join with other data.
+- SpiceDB/Authzed: use its documented relationship columns and options, including subject/resource type/id and relation fields. Its schema is distinct from OpenFGA's schema.
+- Permify: relationship projections use subject_type, subject_id, subject_relation, relation, entity_type, and entity_id. Follow the connector's required/optional field rules.
+- SharePoint: configure list identity and primary-key column names for writes. Read projections can use the documented fields, including _fields for dynamic properties. Prefer explicit columns where the schema is known.
+- Files: specify storage, schema/column selection, and initial/delta file enumeration callbacks appropriate to the file type. Reading a file is not equivalent to having a database change feed.
+- Qdrant: defaults require id and vector_string. IdColumnName and VectorStringColumnName can rename them. Supply an IEmbeddingGenerator or supported embedding options and optionally an IStringChunker. The connector reference describes required payload indexes and collection setup.
+- StarRocks: provision the target table with a primary key, then configure StarRocksSinkOptions. Execution-mode options control watermark/checkpoint write behavior.
+
+INSERT INTO ... PRIMARY KEY (...) can supply written key columns for sinks that implement declared-key support. It does not remove connector-specific identity requirements or create external constraints. Sinks that cannot honor declared keys reject them.
+
+## Custom sources and sinks
+
+Start with the generic object APIs for custom HTTP services, business data, or in-memory sources:
+
+- GenericDataSourceAsync<T> streams objects with IAsyncEnumerable; GenericDataSource<T> is the synchronous variant.
+- Full loads return the current complete set; delta loads return changes with watermark/progress information. Include deletes when using delta ingestion, or use full reloads to discover removed rows.
+- Register with AddCustomSource("logical_table", factory). The generic source can provide object-schema metadata for planning.
+- GenericDataSink<T> and AddCustomSink support typed output; see the custom sink sample for keys, upserts, deletes, and reading existing destination data during initialization.
+- Yield rows and fetch remote data in batches instead of collecting the entire input in memory. Source positions and replay behavior must be consistent with checkpoint recovery.
+
+For low-level integrations, implement the source/sink operator and factory interfaces, including schema, state, watermarks, checkpoint locking, and serialization requirements. [Consistency requirements](https://koralium.github.io/flowtide/docs/internal/dataconsistency.md) explains why these matter.
+
+## End-to-end examples and implementation references
+
+- [CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample): Typed input/output and reconciliation with pre-existing rows.
+- [SqlServerToSqlServerStream](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToSqlServerStream): Catalogs, joins, persistent state, and hosting.
+- [MongoDbToConsoleSample](https://github.com/koralium/flowtide/tree/main/samples/MongoDbToConsoleSample): _doc field access and cross-collection joins.
+- [DeltaLakeSourceUsage](https://github.com/koralium/flowtide/tree/main/samples/DeltaLakeSourceUsage): Delta Lake source and console output.
+- [SqlServerToOpenFga](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToOpenFga): Relationship projections and external SQL Server bootstrap scripts.
+- [OpenFgaSqlServerToMongoDb](https://github.com/koralium/flowtide/tree/main/samples/OpenFgaSqlServerToMongoDb): Materialized permissions joined with application data.
+- [Connector source projects](https://github.com/koralium/flowtide/tree/main/src): Actual extension-method signatures, options, schemas, and factories.
+- [Connector tests](https://github.com/koralium/flowtide/tree/main/tests): Connector-specific integration tests alongside SQL acceptance tests.
