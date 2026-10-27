@@ -97,10 +97,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
         // Built out of line so no stack slot keeps the column alive during the collect
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void BuildAndDrop(IMemoryAllocator allocator, Action<Column> fill)
+        private static void BuildAndDrop(TrackingAllocator allocator, Action<Column> fill)
         {
             var column = new Column(allocator);
             fill(column);
+
+            Assert.True(allocator.Active > 0 || allocator.OutstandingBytes > 0, "The column never allocated, the test proves nothing");
+            // Parallel tests can trigger a GC, so keep the column alive through the allocation check.
+            GC.KeepAlive(column);
         }
 
         private static void AssertReleasedWithoutDispose(Action<Column> fill)
@@ -108,7 +112,6 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var allocator = new TrackingAllocator();
 
             BuildAndDrop(allocator, fill);
-            Assert.True(allocator.Active > 0 || allocator.OutstandingBytes > 0, "The column never allocated, the test proves nothing");
 
             for (int i = 0; i < 3; i++)
             {
