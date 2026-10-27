@@ -5,6 +5,9 @@
 and(true::bool, true::bool) = true::bool
 and(true::bool, false::bool) = false::bool
 and(false::bool, false::bool) = false::bool
+and() = true::bool
+and(true::bool) = true::bool
+and(false::bool) = false::bool
 
 # null_input: Examples with null as input
 and(true::bool, null::bool) = null::bool
