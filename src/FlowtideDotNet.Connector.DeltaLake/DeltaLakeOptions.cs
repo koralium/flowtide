@@ -150,5 +150,8 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         // Tests use their own reservation instead of the process wide one
         internal Internal.Catalog.PruningReservation? ReservationOverride { get; set; }
+
+        // Tests and probes change the delete and intake knobs
+        internal Internal.Deletes.DeleteLimits? DeleteLimitsOverride { get; set; }
     }
 }

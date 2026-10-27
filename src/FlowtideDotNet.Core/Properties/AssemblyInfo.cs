@@ -19,6 +19,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.SpiceDB")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.DeltaLake")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
 [assembly: InternalsVisibleTo("SqlSampleWithUI")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Cluster.Orleans")]

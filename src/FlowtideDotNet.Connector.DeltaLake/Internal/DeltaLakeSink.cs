@@ -23,6 +23,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
 using FlowtideDotNet.Core;
@@ -80,6 +81,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private readonly DeltaLakeOptions _options;
         private readonly WriteRelation _writeRelation;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _temporaryTree;
+        private TemporaryTreeIntake? _intake;
         private string _tableName;
         private IOPath _tablePath;
         // Validated once, so restores reuse it and a changed storage instance is detected
@@ -151,6 +153,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         // Properties or anchor commits that failed to stage and wait for the next checkpoint
         internal long MetadataCommitFailures => Volatile.Read(ref _metadataCommitFailures);
 
+        // The intake's path counters, read by tests and probes
+        internal TemporaryTreeIntake? Intake => Volatile.Read(ref _intake);
+
         public DeltaLakeSink(DeltaLakeOptions options, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._options = options;
@@ -198,6 +203,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 MemoryAllocator = MemoryAllocator,
                 UseByteBasedPageSizes = true,
             });
+            _intake = new TemporaryTreeIntake(_temporaryTree, _writeRelation.OutputLength, _options.DeleteLimitsOverride ?? DeleteLimits.Default);
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
             _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
             _bufferDurable = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("bufferDurable");
@@ -1509,27 +1515,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
         }
 
-        protected override async Task OnRecieve(StreamEventBatch msg, long time)
+        protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
-            Debug.Assert(_temporaryTree != null);
-
-            for (int i = 0; i < msg.Data.Weights.Count; i++)
-            {
-                var rowRef = new ColumnRowReference() { referenceBatch = msg.Data.EventBatchData, RowIndex = i };
-                await _temporaryTree.RMWNoResult(in rowRef, msg.Data.Weights[i], (input, current, exists) =>
-                {
-                    if (exists)
-                    {
-                        var newWeight = current + input;
-                        if (newWeight == 0)
-                        {
-                            return (0, GenericWriteOperation.Delete);
-                        }
-                        return (newWeight, GenericWriteOperation.Upsert);
-                    }
-                    return (input, GenericWriteOperation.Upsert);
-                });
-            }
+            Debug.Assert(_intake != null);
+            return _intake.Apply(msg.Data.EventBatchData, msg.Data.Weights);
         }
     }
 }

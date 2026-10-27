@@ -17,8 +17,8 @@ jobs:
 
     runs-on: ubuntu-latest
     # GitHub defaults to 6 hours, fail a wedged run faster
-    # Covers build, the acceptance step's 25 and the Delta Lake step's 10
-    timeout-minutes: 50
+    # Build, then acceptance 25, Delta Lake 10 and Core 10 minutes
+    timeout-minutes: 60
 
     steps:
     - uses: actions/checkout@v3
@@ -76,6 +76,20 @@ jobs:
         --blame-hang-timeout 5min
         --blame-hang-dump-type mini
         --results-directory ./CrashDiagnostics/DeltaLake
+
+    # Core's column store and bulk insert tests
+    - name: Test Core
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      timeout-minutes: 10
+      run: >
+        dotnet test ./tests/FlowtideDotNet.Core.Tests/FlowtideDotNet.Core.Tests.csproj
+        --no-build
+        --verbosity normal
+        --framework net10.0
+        --blame-hang
+        --blame-hang-timeout 5min
+        --blame-hang-dump-type mini
+        --results-directory ./CrashDiagnostics/Core
 
     # A wedged stream can write hundreds of megabytes per test
     - name: Trim debug logs
