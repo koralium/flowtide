@@ -11,6 +11,7 @@ This site is built with [DocFX](https://dotnet.github.io/docfx/).
 * `images/` — shared image/logo assets.
 * `llms.txt` — entry point for AI assistants, published at `/flowtide/llms.txt`.
 * `llms/*.txt` — focused UTF-8 Markdown references for streams, SQL, expressions, and connectors, copied unchanged into the site as DocFX resources.
+* `llms-full.yml` — ordered list of the four guides; DocFX renders it directly to `_site/llms-full.txt`, published at `/flowtide/llms-full.txt`.
 * `templates/flowtide/` — site styling and build-time templates for static LLM discovery links.
 * `docfx.json` — build configuration; `filterConfig.yml` — API reference filter.
 
@@ -27,11 +28,14 @@ dotnet tool update -g docfx
 From the `docs/` directory:
 
 ```bash
-# Build the site (generates API metadata + static site into _site/)
+# Generate API metadata, llms-full.txt, and the static site into _site/
 docfx docfx.json
 
 # Build and serve at http://localhost:8080
 docfx docfx.json --serve
+
+# Rebuild the site using existing API metadata
+docfx build docfx.json
 ```
 
 To regenerate only the API metadata:
@@ -57,10 +61,24 @@ Distinguish current repository features from availability in released packages.
 
 Use absolute documentation URLs including the `/flowtide/` project prefix.
 Link to `.md` for Markdown-authored pages and `.txt` for the LLM guides.
-After `docfx build docfx.json`, verify
-that `_site/llms.txt` and all four `_site/llms/*.txt` files match their source
-files, and that local documentation links resolve in `_site`. No separate
+After `docfx build docfx.json`, verify that `_site/llms.txt` and all four
+`_site/llms/*.txt` files match their sources, that `_site/llms-full.txt` contains
+the complete guides in order, and that local documentation links resolve. No separate
 deployment step is needed for these resources.
+
+DocFX generates `llms-full.txt` in a fixed order: streams, SQL, expressions, then
+connectors. `llms-full.yml` declares the input files. The custom document schema
+`templates/flowtide/schemas/FlowtideLlmBundle.schema.json` uses `reference: file`
+to read each guide's contents without converting Markdown to HTML.
+`FlowtideLlmBundle.txt.primary.tmpl` combines those contents with source links
+and section separators. Its triple-brace content field preserves Markdown,
+code examples, and special characters without HTML escaping.
+
+The bundle is produced directly in the site output during the normal DocFX
+build, including `docfx docfx.json --serve`. A missing input guide fails the
+build. Edit the four guides and rebuild; do not edit or commit the generated
+bundle. There is no wrapper project, compiled plugin, or separate generation
+step, and no additional Python, Node.js, or NuGet dependency.
 
 DocFX also copies the original Markdown pages as resources in the `markdown`
 group, with that group's destination set to `.`. The separate group lets a

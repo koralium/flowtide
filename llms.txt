@@ -7,6 +7,7 @@ The documentation site maintains the canonical LLM index. This repository entry 
 ## Documentation
 
 - [Published LLM index](https://koralium.github.io/flowtide/llms.txt): Start here for building streams, Flowtide SQL, expressions, connector contracts, testing, and operations.
+- [Complete application reference](https://koralium.github.io/flowtide/llms-full.txt): All four application guides combined into one generated file.
 - [Index in this checkout](docs/llms.txt): Repository copy of the published index.
 - [Stream guide in this checkout](docs/llms/streams.txt): C# application examples, state, hosting, and testing.
 - [SQL guide in this checkout](docs/llms/sql.txt): Supported SQL, analytic functions, recursion, and time windows.

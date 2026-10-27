@@ -1,0 +1,10 @@
+### YamlMime:FlowtideLlmBundle
+guides:
+  - name: streams.txt
+    content: llms/streams.txt
+  - name: sql.txt
+    content: llms/sql.txt
+  - name: expressions.txt
+    content: llms/expressions.txt
+  - name: connectors.txt
+    content: llms/connectors.txt
