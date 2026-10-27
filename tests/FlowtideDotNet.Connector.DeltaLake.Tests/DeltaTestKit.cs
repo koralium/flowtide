@@ -14,6 +14,7 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Logging;
@@ -239,6 +240,41 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(line => JsonSerializer.Deserialize<DeltaAction>(line)!)
                 .ToList();
+        }
+
+        // Each version's files by content and deleted rows, not by name
+        public static async Task<List<string>> TableHistory(IFileStorage storage, string table, long lastVersion)
+        {
+            var hashes = new Dictionary<string, string>();
+            var history = new List<string>();
+            for (long version = 0; version <= lastVersion; version++)
+            {
+                var entries = new List<string>();
+                foreach (var action in await ReadCommitActions(storage, table, version))
+                {
+                    if (action.Add != null)
+                    {
+                        hashes.TryAdd(action.Add.Path!, Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(await ReadBytes(storage, $"/{table}/{action.Add.Path}"))));
+                        entries.Add($"add {hashes[action.Add.Path!]} dv {await Deleted(storage, table, action.Add.DeletionVector)} {action.Add.Statistics}");
+                    }
+                    if (action.Remove != null)
+                    {
+                        entries.Add($"remove {hashes[action.Remove.Path!]} dv {await Deleted(storage, table, action.Remove.DeletionVector)}");
+                    }
+                    if (action.Cdc != null)
+                    {
+                        entries.Add($"cdc {Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}")))}");
+                    }
+                }
+                entries.Sort(StringComparer.Ordinal);
+                history.Add($"v{version}: {string.Join(" | ", entries)}");
+            }
+            return history;
+        }
+
+        private static async Task<string> Deleted(IFileStorage storage, string table, DeletionVector? vector)
+        {
+            return vector == null ? "" : string.Join(",", await DeletionVectorReader.ReadDeletionVector(storage, new IOPath(table), vector));
         }
 
         public static Task WriteCommit(IFileStorage storage, string table, long version, params DeltaAction[] actions)
