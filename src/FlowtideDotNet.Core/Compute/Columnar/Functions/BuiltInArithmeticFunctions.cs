@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -26,6 +26,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
         public static void AddBuiltInArithmeticFunctions(FunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Add, typeof(BuiltInArithmeticFunctions), nameof(AddImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Subtract, typeof(BuiltInArithmeticFunctions), nameof(SubtractImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, typeof(BuiltInArithmeticFunctions), nameof(NegateImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, typeof(BuiltInArithmeticFunctions), nameof(MultiplyImplementation));
@@ -101,6 +103,106 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     result._decimalValue = new DecimalValue(x.AsDecimal + y.AsDecimal);
                     return result;
                 }
+            }
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        private static IDataValue SubtractImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (x.Type == ArrowTypeId.Double)
+            {
+                // Float subtract float always return a float
+                if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsDouble - y.AsDouble);
+                    return result;
+                }
+                // Float subtract int, will always return a float
+                else if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsDouble - y.AsLong);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue((decimal)x.AsDouble - y.AsDecimal);
+                    return result;
+                }
+            }
+            else if (x.Type == ArrowTypeId.Int64)
+            {
+                // Int subtract int, will always return an int
+                if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Int64;
+                    result._int64Value = new Int64Value(x.AsLong - y.AsLong);
+                    return result;
+                }
+                // Int subtract float, will always return a float
+                else if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Double;
+                    result._doubleValue = new DoubleValue(x.AsLong - y.AsDouble);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsLong - y.AsDecimal);
+                    return result;
+                }
+            }
+            else if (x.Type == ArrowTypeId.Decimal128)
+            {
+                if (y.Type == ArrowTypeId.Int64)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal - y.AsLong);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Double)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal - (decimal)y.AsDouble);
+                    return result;
+                }
+                else if (y.Type == ArrowTypeId.Decimal128)
+                {
+                    result._type = ArrowTypeId.Decimal128;
+                    result._decimalValue = new DecimalValue(x.AsDecimal - y.AsDecimal);
+                    return result;
+                }
+            }
+            result._type = ArrowTypeId.Null;
+            return result;
+        }
+
+        private static IDataValue NegateImplementation<T>(T x, DataValueContainer result)
+            where T : IDataValue
+        {
+            if (x.Type == ArrowTypeId.Int64)
+            {
+                result._type = ArrowTypeId.Int64;
+                result._int64Value = new Int64Value(-x.AsLong);
+                return result;
+            }
+            if (x.Type == ArrowTypeId.Double)
+            {
+                result._type = ArrowTypeId.Double;
+                result._doubleValue = new DoubleValue(-x.AsDouble);
+                return result;
+            }
+            if (x.Type == ArrowTypeId.Decimal128)
+            {
+                result._type = ArrowTypeId.Decimal128;
+                result._decimalValue = new DecimalValue(-x.AsDecimal);
+                return result;
             }
             result._type = ArrowTypeId.Null;
             return result;

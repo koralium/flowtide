@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -198,6 +198,20 @@ namespace FlowtideDotNet.AcceptanceTests
             await StartStream($"INSERT INTO output SELECT strpos(firstName, '{start}') as Name FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { val = x.FirstName!.IndexOf(start) + 1 }));
+        }
+
+        [Fact]
+        public async Task SelectWithStrPosAndSubtract()
+        {
+            GenerateData();
+            await StartStream("INSERT INTO output SELECT CASE WHEN strpos(firstName, 'a') > 0 THEN substring(firstName, 1, strpos(firstName, 'a') - 1) ELSE firstName END as val FROM users");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Select(x =>
+            {
+                var pos = x.FirstName!.IndexOf('a') + 1;
+                var val = pos > 0 ? x.FirstName.Substring(0, pos - 1) : x.FirstName;
+                return new { val };
+            }));
         }
 
         [Fact]
