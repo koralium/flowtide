@@ -36,7 +36,7 @@ testGroup
     ;
 
 arguments
-    : argument (Comma argument)*
+    : (argument (Comma argument)*)?
     ;
 
 result

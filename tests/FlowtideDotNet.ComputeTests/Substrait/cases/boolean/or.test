@@ -5,6 +5,9 @@
 or(true::bool, true::bool) = true::bool
 or(true::bool, false::bool) = true::bool
 or(false::bool, false::bool) = false::bool
+or() = false::bool
+or(true::bool) = true::bool
+or(false::bool) = false::bool
 
 # null_input: Examples with null as input
 or(true::bool, null::bool) = true::bool

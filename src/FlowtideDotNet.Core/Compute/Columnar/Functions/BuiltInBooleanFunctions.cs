@@ -90,6 +90,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Or,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
+                    if (scalarFunction.Arguments.Count == 0)
+                    {
+                        return System.Linq.Expressions.Expression.Constant(FalseVal, typeof(IDataValue));
+                    }
+
                     return BuildExpression(visitor, parametersInfo, scalarFunction, orExpr);
                 });
             functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Xor,
