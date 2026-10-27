@@ -1,0 +1,753 @@
+# Flowtide.NET complete application reference
+
+> The four Flowtide application guides in one file: streams, SQL, expressions, and connectors.
+
+Generated from the maintained guides; edit those files instead of this bundle. The generated .NET API reference and release history are linked separately from [llms.txt](https://koralium.github.io/flowtide/llms.txt).
+
+---
+
+Source: [streams.txt](https://koralium.github.io/flowtide/llms/streams.txt)
+
+# Building and operating Flowtide streams
+
+Flowtide continuously maintains a relational query over changing data. Sources supply initial rows and later changes; operators maintain joins, aggregates, and windows; sinks materialize the result. Updates and deletes can retract previous results. Design output keys and sink behavior for those changes.
+
+This reference follows the repository's current APIs. Check package-version compatibility when adapting an example. [SQL](https://koralium.github.io/flowtide/llms/sql.txt), [expressions](https://koralium.github.io/flowtide/llms/expressions.txt), and [connectors](https://koralium.github.io/flowtide/llms/connectors.txt) have separate references.
+
+## A complete development application
+
+Create an ASP.NET Core minimal application targeting a supported framework (.NET 8 or .NET 10), then add FlowtideDotNet.AspNetCore. This package brings in the core engine and dependency injection integration. The example uses a constant SQL input and the built-in console sink, so it needs no external database.
+
+```sh
+dotnet new web -n FlowtideExample
+cd FlowtideExample
+dotnet add package FlowtideDotNet.AspNetCore
+```
+
+Replace Program.cs with:
+
+```csharp
+using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddFlowtideStream("hello")
+    .AddSqlTextAsPlan("""
+        INSERT INTO console
+        SELECT id, upper(name) AS name
+        FROM (VALUES (1, 'Ada'), (2, 'Linus')) AS people(id, name);
+        """)
+    .AddConnectors(connectors => connectors.AddConsoleSink("console"))
+    .AddStorage(storage => { storage.AddTemporaryStorage(); });
+
+var app = builder.Build();
+app.UseFlowtideUI("/stream");
+app.Run();
+```
+
+Run with `dotnet run`. The host runs the stream, the console receives the result, and /stream exposes the monitoring UI. Temporary storage is for development and is removed on disposal. For data that survives restarts, use AddFileStorage or a persistent cloud provider.
+
+## SQL Server to SQL Server
+
+Also install FlowtideDotNet.Connector.SqlServer. Configure connection strings named SourceDb and DestinationDb through normal .NET configuration. The SQL below assumes the source database is named appdb and the destination database reporting. Provision the physical tables separately, enable SQL Server Change Tracking on source tables for incremental updates, and include the destination primary key in the projection.
+
+```csharp
+using FlowtideDotNet.AspNetCore.Extensions;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.DependencyInjection;
+
+var builder = WebApplication.CreateBuilder(args);
+var source = builder.Configuration.GetConnectionString("SourceDb")
+    ?? throw new InvalidOperationException("SourceDb is required");
+var destination = builder.Configuration.GetConnectionString("DestinationDb")
+    ?? throw new InvalidOperationException("DestinationDb is required");
+
+builder.Services.AddFlowtideStream("orders")
+    .AddSqlTextAsPlan("""
+        INSERT INTO target.reporting.dbo.OrderSummary
+        SELECT o.orderkey, o.orderdate, u.firstname, u.lastname
+        FROM source.appdb.dbo.orders o
+        LEFT JOIN source.appdb.dbo.users u ON o.userkey = u.userkey;
+        """)
+    .AddVersioningFromPlanHash()
+    .AddConnectors(connectors =>
+    {
+        connectors.AddCatalog("source", catalog =>
+            catalog.AddSqlServerSource(() => source));
+        connectors.AddCatalog("target", catalog =>
+            catalog.AddSqlServerSink(() => destination));
+    })
+    .AddStorage(storage => { storage.AddFileStorage("./state/orders"); });
+
+var app = builder.Build();
+app.UseFlowtideUI("/stream");
+app.Run();
+```
+
+AddSqlTextAsPlan and AddSqlFileAsPlan obtain table providers from the registered connectors. Connectors with schema discovery can supply planner metadata automatically. Otherwise declare CREATE TABLE metadata or add an ITableProvider. A SQL file must exist at the configured path when the application starts; arrange for it to be copied to the output/publish directory.
+
+AddSqlPlan(sql => { ... }) gives access to SqlPlanBuilder for custom schemas, function mappings, or AddPlanAsView. AddPlan(plan) accepts an already constructed Substrait plan.
+
+## Building without dependency injection
+
+SqlPlanBuilder compiles SQL. FlowtideBuilder connects the plan to an engine. This standalone example uses local Reservoir persistence:
+
+```csharp
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Engine;
+using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence.Reservoir;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Sql;
+
+var sql = new SqlPlanBuilder();
+sql.Sql("INSERT INTO console SELECT 1 AS id, 'hello' AS message;");
+
+var connectors = new ConnectorManager();
+connectors.AddConsoleSink("console");
+
+var reservoir = new ReservoirBuilder();
+reservoir.SetStorage(new LocalDiskProvider("./state/hello"));
+
+await using var stream = new FlowtideBuilder("hello")
+    .AddPlan(sql.GetPlan())
+    .AddConnectorManager(connectors)
+    .WithStateOptions(new StateManagerOptions
+    {
+        PersistentStorage = new ReservoirPersistentStorage(reservoir),
+        TemporaryStorageOptions = new FileCacheOptions
+        {
+            DirectoryPath = "./temp/hello"
+        }
+    })
+    .Build();
+
+var running = stream.RunAsync();
+Console.ReadLine();
+await stream.StopAsync();
+await running;
+```
+
+With the default scheduler, RunAsync calls StartAsync and drives recurring connector triggers until the stream stops. Keep its task while waiting for shutdown, then stop the stream and await that task. StartAsync alone is appropriate when a custom scheduler is driven externally. The dependency injection hosted service drives the normal run lifecycle. Build/optimization can modify plans, so create a fresh plan for each independent stream build.
+
+## State, checkpoints, and versions
+
+State storage is required for joins, aggregates, windows, source positions, and recovery. A checkpoint commits a consistent processing state; after failure the stream can restore that state and replay later input. A watermark tracks progress from contributing sources. Do not equate an arbitrary delay or an arriving row with a committed checkpoint or completed sink write.
+
+Reservoir is the storage system used by the current file, temporary, and Azure helpers:
+
+- AddFileStorage("./state/orders") persists to local disk; the directory must survive process/container replacement if recovery is required.
+- AddTemporaryStorage() uses temporary disk for development and tests, with cleanup on disposal.
+- AddAzureBlobStorage(connectionString, containerName, directoryPath: "orders", localCacheDirectory: "./cache/orders") persists to Azure Blob Storage. Install FlowtideDotNet.Storage.Azure; credential-based and options-delegate overloads are also available.
+- FasterKV helpers and AddTemporaryDevelopmentStorage are older APIs still found in samples. Prefer the Reservoir helpers for new applications.
+
+Storage paths must be isolated between independent streams. Distributed substreams need their own storage keyed by stream and substream. Reservoir builders expose SetCacheSize, SetMaxDataFileSize, SetSnapshotCheckpointInterval, and OldStreamVersionsRetention. Storage configuration also exposes MaxProcessMemory, MinPageCount, ZstdPageCompression, and NoCompression.
+
+AddVersioningFromPlanHash(), AddVersioningFromString("v1"), and AddVersioningFromAssembly() configure stream versioning. A changed version starts a separate state version; plan changes need an intentional rebuild and a sink strategy for replacing or reconciling old output. OldStreamVersionsRetention controls previous stored versions when versioning is enabled; deleting old state is separate from cleaning old destination data.
+
+[State persistence](https://koralium.github.io/flowtide/docs/statepersistence.md) documents provider options and retention.
+
+## Monitoring, checks, and control
+
+- app.UseFlowtideUI("/stream") exposes the built-in UI.
+- builder.Services.AddHealthChecks().AddFlowtideCheck() integrates with ASP.NET Core health checks; map an endpoint with app.MapHealthChecks("/health").
+- OpenTelemetry can subscribe to meters with AddMeter("flowtide.*"). See the [Prometheus](https://koralium.github.io/flowtide/docs/monitoring/prometheus.md) and [Azure Monitor](https://koralium.github.io/flowtide/docs/monitoring/azuremonitor.md) examples.
+- AddOpenLineageHttp(options => { options.Url = "https://lineage.example/api/v1/lineage"; }) enables lineage reporting; IncludeSchema and OnRequest customize schema reporting and authentication. [OpenLineage](https://koralium.github.io/flowtide/docs/monitoring/openlineage.md) has the full configuration.
+- WriteCheckFailuresToLogger() and WriteCheckFailuresAsActivity() report SQL data-quality checks. Direct builders expose WithCheckFailureListener and WithCheckStatusListener. Issues and statuses reflect committed checkpoints; null/non-boolean check conditions have specific semantics in the expression reference.
+- AddCustomOptions((services, streamBuilder) => { ... }) configures underlying engine options, such as SetMinimumTimeBetweenCheckpoint and SetGetTimestampUpdateInterval.
+- FlowtidePauseOptions through IOptionsMonitor, or app.UseFlowtidePauseResumeEndpoints("/control"), supports pausing/resuming. Pausing retains running state in memory. [Pause and resume](https://koralium.github.io/flowtide/docs/deployment/pauseresume.md) explains configuration binding and endpoints.
+
+## Parallel and distributed streams
+
+SetParallelism on FlowtideBuilder enables experimental in-process operator parallelism. Distributed mode is also experimental and splits a plan into substreams with coordinated checkpoints and recovery.
+
+DistributedStreamBuilder takes a plan factory, a state-options factory, and a connector-manager factory. DistributeAutomatically(substreamCount: 2) distributes eligible joins on equality keys, grouped aggregates on group keys, and analytic functions on partition keys. Recursive pipelines and joins without equality keys stay together. Each substream must receive a fresh plan and separate state. StartAsync on this host also drives recurring triggers; StopAsync coordinates drain across substreams.
+
+Orleans hosting is available through FlowtideDotNet.Cluster.Orleans and AddFlowtideOrleans. StartStreamRequest(sqlText, substreamCount: 4) starts a stream via IStreamGrain. Use durable metadata, reminders, and state for production recovery. Do not substitute the older FlowtideDotNet.Orleans integration without checking its APIs.
+
+- [Automatic distribution](https://koralium.github.io/flowtide/docs/distributed/automaticdistribution.md)
+- [In-process distributed hosting](https://koralium.github.io/flowtide/docs/distributed/inprocess.md)
+- [Orleans hosting](https://koralium.github.io/flowtide/docs/distributed/orleans.md)
+- [Orleans sample](https://github.com/koralium/flowtide/tree/main/samples/OrleansSample)
+
+## Testing a stream
+
+Install FlowtideDotNet.TestFramework. TestDataTable and AddTestDataTable provide controllable input; TestDataSink and AddTestDataSink capture materialized output. AddStreamTestMonitor registers StreamTestMonitor; await WaitForCheckpoint before asserting output. In ASP.NET Core integration tests, override the same named stream's connectors and storage with WebApplicationFactory.ConfigureTestServices.
+
+For Aspire/distributed-process tests, map MapFlowtideTestInformation only when test mode is enabled, and use StreamTestHttpMonitor to await checkpoints. Test inserts, updates, deletes, duplicate rows, empty input, and restart/recovery where relevant.
+
+- [Integration testing](https://koralium.github.io/flowtide/docs/testing/integrationtests.md)
+- [Aspire testing](https://koralium.github.io/flowtide/docs/testing/aspiretesting.md)
+- [Acceptance test harness](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/FlowtideAcceptanceBase.cs)
+
+
+---
+
+Source: [sql.txt](https://koralium.github.io/flowtide/llms/sql.txt)
+
+# Writing Flowtide SQL
+
+Flowtide SQL describes a continuously maintained query. SQL is parsed by SqlPlanBuilder into Substrait, optimized, and run by the .NET engine. It is not SQL sent verbatim to a source database. Sources, destinations, and metadata must match the configured [connectors](https://koralium.github.io/flowtide/llms/connectors.txt).
+
+Examples below use logical tables such as users, orders, and output. Supply table-provider metadata or CREATE TABLE declarations for their input columns and register a sink for output. [Expressions](https://koralium.github.io/flowtide/llms/expressions.txt) lists exact supported function signatures.
+
+## Metadata and naming
+
+CREATE TABLE declares a table's columns for SQL planning. It does not create a physical source, destination, or connector. Column types can be omitted or declared as any when data is dynamic.
+
+```sql
+CREATE TABLE users (userkey, firstname, lastname, managerkey);
+CREATE TABLE orders (orderkey, userkey, amount, order_time TIMESTAMP);
+
+INSERT INTO output
+SELECT userkey, firstname, lastname FROM users;
+```
+
+SqlPlanBuilder.AddTableProvider discovers schemas through ITableProvider; AddTableDefinition supplies a NamedStruct directly. Dependency injection's SQL plan helpers add the registered connectors' table providers automatically. SQL Server commonly uses database.schema.table; a catalog adds a leading catalog name. MongoDB uses database.collection by default.
+
+Use single quotes for string literals. Double quotes and square brackets quote identifiers, for example `u.[firstname]`. Qualify ambiguous columns with table aliases. Explicit column lists avoid pulling unnecessary columns into state and help control schema changes.
+
+## Outputs and primary keys
+
+INSERT INTO declares the sink that receives the changing result. A plan can contain several INSERT statements. Target names are resolved by connector registration; output columns must satisfy that sink's identity and schema requirements.
+
+```sql
+INSERT INTO output PRIMARY KEY (userkey)
+SELECT userkey, firstname, lastname FROM users;
+```
+
+An optional target column list renames the written columns:
+
+```sql
+INSERT INTO output (id, name) PRIMARY KEY (id)
+SELECT userkey, firstname FROM users;
+```
+
+Every declared primary key must be part of the written columns. PRIMARY KEY overrides the sink's usual key selection only for connectors that support declared keys; unsupported sinks reject the plan. This clause does not create a primary key in the external database.
+
+## Projection, filters, and joins
+
+```sql
+INSERT INTO output
+SELECT o.orderkey,
+       u.firstname || ' ' || u.lastname AS customer,
+       CASE WHEN o.amount >= 100 THEN 'large' ELSE 'small' END AS size
+FROM orders o
+LEFT JOIN users u ON o.userkey = u.userkey
+WHERE o.amount > 0 AND u.userkey IS NOT NULL;
+```
+
+SELECT supports expressions, aliases, wildcards, DISTINCT, derived tables, and VALUES inputs. SELECT without FROM is supported for constant data. WHERE keeps rows whose predicate is true; SQL null comparisons require IS NULL/IS NOT NULL or null-safe distinctness predicates.
+
+INNER, LEFT, RIGHT, FULL OUTER, and cross joins have acceptance coverage. Equality joins can use efficient merge processing; predicates without usable equality keys can require more expensive nested-loop processing. Outer joins null-pad the missing side, and later inserts, updates, or deletes can change which rows match. Table functions support INNER and LEFT joins; do not use a RIGHT join to a table function.
+
+EXISTS, NOT EXISTS, IN, and NOT IN subqueries in filters are supported, including tested correlated forms:
+
+```sql
+INSERT INTO output
+SELECT u.userkey
+FROM users u
+WHERE EXISTS (
+    SELECT 1 FROM orders o WHERE o.userkey = u.userkey
+);
+```
+
+Use the tested filter-subquery forms; do not infer arbitrary scalar-subquery support. See [Select](https://koralium.github.io/flowtide/docs/sql/select/index.md) and [join acceptance tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/JoinTests.cs).
+
+## Views and buffered views
+
+CREATE VIEW defines a reusable subplan inside the stream, including views used by multiple outputs or other views. It does not create a view in a connected database.
+
+```sql
+CREATE VIEW positive_orders AS
+SELECT orderkey, userkey, amount FROM orders WHERE amount > 0;
+
+INSERT INTO output
+SELECT userkey, sum(amount) AS total
+FROM positive_orders
+GROUP BY userkey;
+```
+
+`CREATE VIEW name WITH (BUFFERED = true) AS ...` buffers and consolidates changes until a watermark, reducing repeated output whose net value does not change. It can help with clock-dependent expressions using gettimestamp(). The buffer has a progress/latency tradeoff; it is not a time-window definition.
+
+## Grouping and aggregates
+
+```sql
+INSERT INTO output
+SELECT userkey,
+       count(*) AS order_count,
+       sum(amount) AS total,
+       max(amount) AS largest,
+       sum(amount) FILTER (WHERE amount >= 100) AS large_order_total
+FROM orders
+GROUP BY userkey
+HAVING sum(amount) > 500;
+```
+
+GROUP BY supports columns and tested computed expressions. GROUP BY without measures produces distinct groups. HAVING filters aggregated output. FILTER (WHERE predicate) limits the rows of a particular aggregate.
+
+Supported aggregates include count(*), count(DISTINCT expression), sum, sum0, avg, min, max, min_by, max_by, list_agg, list_union_distinct_agg, string_agg, and surrogate_key_int64. Plain count(column) is not implemented. sum/sum0/avg reject DISTINCT. list_agg, list_union_distinct_agg, and string_agg reject DISTINCT and aggregate ORDER BY/WITHIN GROUP ordering. They do not provide an input-arrival-order contract. Check the [expression catalog](https://koralium.github.io/flowtide/llms/expressions.txt) before choosing aggregate modifiers.
+
+## Sets and top N
+
+UNION ALL preserves multiplicity; UNION/UNION DISTINCT deduplicate. EXCEPT and INTERSECT support ALL and DISTINCT variants. Align the projected columns across branches. The engine maintains multiplicities as inputs change.
+
+```sql
+INSERT INTO output
+SELECT userkey FROM users
+UNION ALL
+SELECT userkey FROM orders;
+```
+
+TOP selects a maintained top N. Include ORDER BY and a stable tie-breaker for predictable membership:
+
+```sql
+INSERT INTO output
+SELECT TOP (10) orderkey, amount
+FROM orders
+ORDER BY amount DESC, orderkey ASC;
+```
+
+ASC/DESC and NULLS FIRST/NULLS LAST are supported in tested ordering contexts. Treat result rows as a relation: ORDER BY used to select top N or to evaluate a window does not promise an ordered sequence of sink writes. Prefer the documented TOP form when generating code; do not assume another database's LIMIT/FETCH syntax.
+
+## Analytic window functions
+
+Analytic functions keep the input rows and compute a value over a partition and optional row frame. The supported functions are sum, avg, row_number, lead, lag, last_value, min_by, max_by, surrogate_key_int64, and session_window. A grouped aggregate's existence does not imply the same function is registered for OVER.
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey,
+       sum(amount) OVER (
+           PARTITION BY userkey ORDER BY orderkey
+           ROWS BETWEEN 4 PRECEDING AND CURRENT ROW
+       ) AS rolling_total,
+       row_number() OVER (
+           PARTITION BY userkey ORDER BY amount DESC, orderkey
+       ) AS position
+FROM orders;
+```
+
+row_number() has no arguments and requires ORDER BY. lead/lag take a value, optional offset, and optional default; they also require ordering. last_value/min_by/max_by require ordering and support ROWS frames. sum/avg without ORDER BY cover the entire partition; with ordering and no explicit frame, they default to unbounded preceding through current row. Frame offsets are literal integers. Use explicit ROWS frames instead of assuming RANGE or GROUPS behavior.
+
+For the latest row per key, filter an analytic result through a derived table:
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey, amount
+FROM (
+    SELECT orderkey, userkey, amount,
+           row_number() OVER (
+               PARTITION BY userkey ORDER BY order_time DESC, orderkey DESC
+           ) AS rn
+    FROM orders
+) ranked
+WHERE rn = 1;
+```
+
+## Lists and table functions
+
+UNNEST expands a list to one row per element, or a map to key/value objects. An INNER JOIN drops inputs with no matching elements; a LEFT JOIN preserves them with a null element. The alias below names the returned element:
+
+```sql
+INSERT INTO output
+SELECT u.userkey, tag
+FROM users u
+LEFT JOIN UNNEST(list(u.firstname, u.lastname)) tag;
+```
+
+Constant table functions can be queried directly, for example `SELECT value FROM UNNEST(list(1, 2, 3)) value`.
+
+## Tumbling and hopping time windows
+
+These are table functions over typed timestamps. They add window_start (inclusive) and window_end (exclusive), and can be grouped afterward. They maintain changing results; assigning a row to a window does not by itself expire state or make the window immutable.
+
+```sql
+INSERT INTO output
+SELECT window_start, window_end, count(*) AS order_count, sum(o.amount) AS total
+FROM orders o
+INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')
+GROUP BY window_start, window_end;
+```
+
+Replace the table function with `hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')` for a 10-minute window every 5 minutes. A row may belong to multiple hopping windows. Amounts must be positive integer literals; units are WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, or MICROSECOND. MONTH/YEAR and fractional amounts are not supported. Starts align from year one; WEEK boundaries are Mondays. Null/non-timestamp inputs produce no windows; LEFT JOIN preserves such rows with null window columns. Hopping fanout above 100,000 windows per row is rejected.
+
+## Session windows
+
+Sessions depend on neighboring rows, so session_window is an analytic function, not a table function. A gap greater than the configured duration starts a new session; a gap equal to the duration stays in the same session. An inserted event can merge sessions; deletion can split them.
+
+```sql
+INSERT INTO output
+SELECT orderkey, userkey,
+       session_window(30, 'MINUTE') OVER (
+           PARTITION BY userkey ORDER BY order_time
+       ) AS session_start
+FROM orders;
+```
+
+Exactly one ascending timestamp ordering expression is required. Session windows have no explicit ROWS frame. Alternatively group directly by SESSION:
+
+```sql
+INSERT INTO output
+SELECT userkey, count(*) AS order_count,
+       session_start(order_time, 30, 'MINUTE') AS window_start,
+       session_end(order_time, 30, 'MINUTE') AS window_end
+FROM orders
+GROUP BY userkey, SESSION(order_time, 30, 'MINUTE');
+```
+
+Other group columns define the session partition. Only one SESSION expression is allowed per GROUP BY. window_start is available directly; session_start/session_end must match the grouping's timestamp and gap arguments. The end is the last event timestamp plus the gap. Units are the same fixed-duration units as tumbling/hopping windows.
+
+## Recursive queries
+
+A self-referencing WITH query expresses recursive iteration. Use an anchor plus a recursive branch, and ensure the data/query converges. This hierarchy example assumes an acyclic manager relationship:
+
+```sql
+WITH hierarchy AS (
+    SELECT userkey, managerkey, 1 AS depth
+    FROM users WHERE managerkey IS NULL
+    UNION ALL
+    SELECT u.userkey, u.managerkey, h.depth + 1 AS depth
+    FROM users u
+    INNER JOIN hierarchy h ON u.managerkey = h.userkey
+)
+INSERT INTO output
+SELECT userkey, managerkey, depth FROM hierarchy;
+```
+
+Changes are maintained through the iteration. Recursion cannot span distributed substreams. See [recursion](https://koralium.github.io/flowtide/docs/sql/recursion.md) and [iteration tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/IterationTests.cs).
+
+## Manual distributed SQL (experimental)
+
+Prefer automatic distribution for ordinary queries. SUBSTREAM statements manually assign following statements to a named substream:
+
+```sql
+SUBSTREAM first;
+CREATE VIEW shared WITH (
+    DISTRIBUTED = true, SCATTER_BY = userkey, PARTITION_COUNT = 2
+) AS SELECT userkey FROM users;
+INSERT INTO output SELECT userkey FROM shared WITH (PARTITION_ID = 0);
+
+SUBSTREAM second;
+INSERT INTO output SELECT userkey FROM shared WITH (PARTITION_ID = 1);
+```
+
+Once SUBSTREAM is used, every INSERT must be inside a substream. A distributed view read across substreams must declare SCATTER_BY. PARTITION_ID selects a partition; without it the consumer receives all partitions. This SQL needs a distributed host, not an ordinary single-stream setup. See [substream statements](https://koralium.github.io/flowtide/docs/distributed/sqlsubstreams.md).
+
+## Source and behavior references
+
+- [SQL visitor](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/Internal/SqlSubstraitVisitor.cs)
+- [SQL expression visitor](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlExpressionVisitor.cs)
+- [SQL planner tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.Substrait.Tests)
+- [Acceptance tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.AcceptanceTests): AggregateTests, JoinTests, SelectTests, SetTests, TopNTests, TableFunctionTests, WindowFunctionTests, TumblingWindowTests, HoppingWindowTests, SessionWindowTests, and IterationTests.
+
+
+---
+
+Source: [expressions.txt](https://koralium.github.io/flowtide/llms/expressions.txt)
+
+# Flowtide expressions and functions
+
+This catalog describes SQL names implemented by the current repository. SQL names can differ from Substrait extension names. A Substrait specification defining a function does not imply Flowtide implements it. Functions available as aggregates are not automatically available with OVER, and table functions return rows rather than scalar values.
+
+`x`, `y`, and other identifiers below denote expressions. `...` denotes repeated arguments; `[argument]` denotes an optional argument in a signature, not literal SQL. Use the [SQL guide](https://koralium.github.io/flowtide/llms/sql.txt) for complete statements and the [stream guide](https://koralium.github.io/flowtide/llms/streams.txt) for C# integration.
+
+## Values, nulls, and types
+
+Runtime values include null, booleans, integers, doubles, decimals, strings, binary data, timestamps, lists, maps, and fixed-schema structs. The planner can also describe date and nested types. Metadata type support and CAST support are separate. Use explicit casts when a function expects a particular runtime type; string inputs are not automatically timestamps.
+
+Ordinary comparisons with null can evaluate to null. WHERE keeps only true. AND/OR/NOT use three-valued logic; `IS DISTINCT FROM` and `IS NOT DISTINCT FROM` provide null-safe comparison. Numeric functions generally return null for incompatible inputs, while string and boolean helpers have their own behavior. Do not assume a single null/coercion rule applies to all functions.
+
+## Operators and specialized expressions
+
+| SQL form | Purpose |
+| --- | --- |
+| x + y, x - y, x * y, x / y, x % y, -x | Numeric arithmetic and negation. Integer division returns a floating result. Decimal inputs use decimal arithmetic where supported. |
+| x = y, x <> y, x != y, x < y, x <= y, x > y, x >= y | Comparisons. |
+| x AND y, x OR y, x XOR y, NOT x | Boolean logic. |
+| x IS NULL, x IS NOT NULL | Null tests. |
+| x IS DISTINCT FROM y, x IS NOT DISTINCT FROM y | Null-safe inequality/equality. |
+| x BETWEEN lower AND upper | Inclusive range test. |
+| x IN (a, b, ...), x NOT IN (a, b, ...) | Membership using SQL null logic. |
+| EXISTS (query), NOT EXISTS (query), x IN (query), x NOT IN (query) | Supported filter-subquery predicates; see SQL guide. |
+| x LIKE pattern [ESCAPE character], x NOT LIKE pattern | SQL Server-style patterns: % is any sequence, _ is one character, [ab] is a character set. |
+| x \|\| y | String concatenation. Null propagates. |
+| CASE WHEN condition THEN value ... [ELSE value] END | Conditional expression; omitted ELSE yields null. Use the searched CASE form. |
+| CAST(x AS type) | Convert to STRING, BOOLEAN, INT/INTEGER/SMALLINT/TINYINT, DOUBLE/FLOAT, DECIMAL, or TIMESTAMP. Failed value conversions return null. |
+| object.field | Access a map or struct field, including nested fields. |
+| list(x, y, ...) | Construct a list. |
+| map(key, value, ...) | Construct a map from key/value pairs; keys are converted to strings. |
+| named_struct('field', value, ...) | Construct a fixed-schema struct; field names must be string literals. |
+| guid(string) | Parse/normalize a GUID; this is not random GUID generation. |
+
+Arithmetic can produce NaN or infinity for division by zero; decimal behavior must be checked separately. Use is_nan/is_finite/is_infinite when those values matter. Do not treat timestamp integer encodings as interchangeable: legacy strftime takes Unix microseconds, while integer-to-TIMESTAMP casting has its own tick conversion. Prefer typed TIMESTAMP values and timestamp_parse/timestamp_format.
+
+See [specialized expressions](https://koralium.github.io/flowtide/docs/expressions/specializedexpressions.md) and [cast tests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/CastTests.cs).
+
+## Scalar numeric functions
+
+| Signature | Purpose |
+| --- | --- |
+| power(base, exponent) | Exponentiation. |
+| sqrt(x), exp(x) | Square root; e raised to x. |
+| abs(x), sign(x) | Absolute value; sign. |
+| cos(x), sin(x), tan(x) | Trigonometric functions, with angles in radians. |
+| cosh(x), sinh(x), tanh(x) | Hyperbolic functions. |
+| acos(x), asin(x), atan(x), atan2(y, x) | Inverse trigonometric functions. |
+| acosh(x), asinh(x), atanh(x) | Inverse hyperbolic functions. |
+| radians(x), degrees(x) | Convert degrees to radians or radians to degrees. |
+| log10(x) | Base-ten logarithm. |
+| ceil(x), ceiling(x), floor(x), round(x) | Round a value; these SQL forms take one argument. round uses ties to even. |
+
+Numeric result types depend on input types and the individual function. Integer/double combinations generally produce double; decimal arithmetic can preserve decimal. Do not invent a precision argument for round.
+
+- [Arithmetic](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.md)
+- [Rounding](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.md)
+- [Logarithmic](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.md)
+
+## Scalar comparison helpers
+
+| Signature | Purpose |
+| --- | --- |
+| coalesce(x, ...) | First non-null argument; at least one argument. |
+| nullif(x, y) | Null when values are equal; otherwise x. |
+| greatest(x, y, ...) | Greatest of at least two arguments; a null argument propagates null. |
+| is_infinite(x), is_finite(x), is_nan(x) | Tests for special numeric values. |
+
+[Comparison reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.md)
+
+## Scalar string, JSON, and list functions
+
+| Signature | Purpose and important details |
+| --- | --- |
+| concat(x, y, ...) | Concatenate arguments; null propagates. Also written with \|\|. |
+| lower(string), upper(string) | Change case; incompatible types yield null. |
+| trim(string), ltrim(string), rtrim(string) | Trim whitespace on both sides, left, or right. |
+| to_string(x) | Convert a scalar value to a string. |
+| starts_with(string, prefix) | Prefix test; incompatible input types return false. |
+| substring(string, start [, length]) | Extract substring; start is one-based. |
+| replace(string, old, replacement) | Replace occurrences. |
+| len(string) | Character count. The SQL name is len, not the Substrait name char_length. |
+| strpos(string, substring) | One-based position; zero when not found. |
+| string_base64_encode(string), string_base64_decode(string) | Encode/decode Base64 text. |
+| string_split(string, separator) | Split into a list using a literal separator. |
+| regexp_string_split(string, pattern) | Split into a list using a regular expression. |
+| string_join(separator, list) | Join non-null list elements; separator is the first argument. A null list returns null; an empty/all-null list returns an empty string. |
+| to_json(value) | Serialize a value to JSON text. |
+| from_json(json) | Parse JSON text or UTF-8 binary into Flowtide values. |
+| list_sort_asc_null_last(list) | Sort ascending with null elements last; non-list input yields null. |
+| list_first_difference(first, second) | First differing element of the first list when compared position by position; null if no difference is found. |
+
+Use list/map/named_struct constructors from the specialized-expression table to build nested values. Use UNNEST to expand them into rows. Dynamic properties belong in a map; named_struct has a fixed field layout and the union-column representation has a limit of 127 distinct types.
+
+- [String/JSON](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.md)
+- [Lists](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.md)
+
+## Scalar date and time functions
+
+| Signature | Purpose and important details |
+| --- | --- |
+| gettimestamp() | Stream clock source, periodically updated; not a separate wall-clock call for each row. Default update interval is one hour; configure SetGetTimestampUpdateInterval on the engine builder. |
+| timestamp_parse(string, format) | Parse a typed timestamp with a .NET date/time format, e.g. 'yyyy-MM-dd HH:mm:ss'. |
+| timestamp_format(timestamp, format) | Format a typed timestamp with a .NET date/time format. |
+| timestamp_extract(component, timestamp) | Extract a component; component is a string such as 'YEAR', 'MONTH', 'DAY', 'HOUR', or 'ISO_WEEK'. |
+| timestamp_add(component, amount, timestamp) | Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, or MICROSECOND. |
+| datediff(component, start, end) | Count crossed component boundaries between timestamps. |
+| floor_timestamp_day(timestamp) | Remove the time portion; incompatible input yields null. |
+| round_calendar(timestamp, operation, component, reference, step) | Calendar-aligned rounding; e.g. round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1). |
+| strftime(unix_microseconds, format) | Legacy formatting with strftime-style %Y/%m/%d patterns; prefer timestamp_format for typed timestamps. |
+
+gettimestamp is implemented using a timestamp source and joins introduced by optimization, so rows in an evaluation use a consistent clock value. Clock changes can update query results without changes in the original source. A buffered view can consolidate unchanged output. gettimestamp inside join conditions is not supported.
+
+timestamp_extract additionally supports ISO_YEAR, US_YEAR, QUARTER, DAY_OF_YEAR, MONDAY_DAY_OF_WEEK, SUNDAY_DAY_OF_WEEK, MONDAY_WEEK, SUNDAY_WEEK, ISO_WEEK, US_WEEK, MINUTE, SECOND, MILLISECOND, and MICROSECOND. Calendar rounding operations, references, and supported combinations are listed in the [datetime reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.md).
+
+## Hash functions
+
+- xxhash64(value, ...) returns a signed Int64 hash of one or more values.
+- xxhash128_guid_string(value, ...) returns a 128-bit hash formatted as a GUID string.
+
+These are useful for derived keys/partitioning; they are not cryptographic functions. [Hash reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.md)
+
+## Data-quality checks
+
+- check_value(value, condition, 'message' [, tags...]) returns value while tracking failures.
+- check_true(condition, 'message' [, tags...]) returns true only for a boolean true condition; false for false, null, or non-boolean conditions. In WHERE it filters all those false-returning cases.
+
+An issue is raised only when the condition is boolean false. A null/non-boolean condition does not raise an issue, even though check_true returns false. If null must count as a failure, state it explicitly, for example `check_true(amount IS NOT NULL, 'Missing amount', orderkey)`.
+
+The message must be a string literal and names the check. Put row values in tags, using unnamed columns or named tags such as `key => orderkey`; reference them as {key} in the message. A computed/concatenated message is rejected. Issues are identified by check and tag values, so equal tag values share an issue. Add a row key tag for one issue per failing row.
+
+Issues resolve when their last failing row disappears or changes to pass. Status listeners report NotEvaluated, Passed, or Failed plus active-issue and failing-row counts. Notifications reflect committed checkpoints and are restored/reannounced after restart. Register WriteCheckFailuresToLogger, WriteCheckFailuresAsActivity, or custom listeners to observe them.
+
+[Check reference](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.md)
+
+## Aggregate functions
+
+Aggregates collapse rows into groups. FILTER (WHERE predicate) can restrict an individual measure.
+
+| Signature | Purpose |
+| --- | --- |
+| count(*) | Count all rows. |
+| count(DISTINCT expression) | Count distinct non-null values of one expression. Plain count(expression) is not implemented. |
+| sum(x), sum0(x), avg(x) | Numeric total, total with zero fallback, and average. Non-numeric/null inputs are ignored. sum/avg yield null when no numeric values remain; sum0 yields zero. |
+| min(x), max(x) | Minimum/maximum non-null value; null when none remain. |
+| min_by(value, key), max_by(value, key) | Value associated with the minimum/maximum key; rows with null keys are ignored. |
+| list_agg(value) | Collect values into a list for each group. |
+| list_union_distinct_agg(list) | Combine lists and deduplicate their elements. |
+| string_agg(string, separator) | Concatenate string values per group. |
+| surrogate_key_int64() | Assign a unique Int64 to a group. |
+| session_start(timestamp, gap, unit), session_end(timestamp, gap, unit) | Accessors for a matching SESSION grouping; see SQL guide. |
+
+sum/sum0/avg reject DISTINCT. list_agg/list_union_distinct_agg/string_agg reject DISTINCT and aggregate ORDER BY, including WITHIN GROUP. Collection aggregates use value ordering rather than arrival ordering; do not infer arbitrary user-specified ordering. surrogate_key_int64 uses maintained state; generated keys must not be assumed identical after a complete fresh replay.
+
+- [Arithmetic aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.md)
+- [Counts and surrogate keys](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.md)
+- [List aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.md)
+- [String aggregates](https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.md)
+
+## Analytic window functions
+
+Use these functions with OVER (...); they preserve input rows. PARTITION BY divides rows into independent groups. ORDER BY defines neighbors/rank and ROWS frames limit contributing rows. Frame offsets must be integer literals.
+
+| Signature before OVER | Requirements |
+| --- | --- |
+| sum(x), avg(x) | Optional ordering; ROWS frames supported. Without ordering, entire partition. With ordering and no explicit frame, unbounded preceding to current row. |
+| row_number() | Requires ORDER BY; starts at 1; no arguments or explicit ROWS frame. |
+| lead(value [, offset [, default]]), lag(value [, offset [, default]]) | Requires ORDER BY; no explicit ROWS frame. Default offset is 1, default missing value is null. Tested offsets include expressions. |
+| last_value(value) | Requires ORDER BY; ROWS frames supported; IGNORE NULLS can be written before OVER. |
+| min_by(value, key), max_by(value, key) | Requires ORDER BY; ROWS frames supported. |
+| surrogate_key_int64() | Assigns a maintained key per partition; experimental; no explicit ROWS frame. |
+| session_window(gap_amount, gap_unit) | Exactly one ascending timestamp ORDER BY expression; no explicit frame. Returns the session's first timestamp. |
+
+last_value's default ordered frame ends at the current row. To get the final value of the entire partition, specify `ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING`. Null/non-timestamp ordering values receive no session. Session gaps accept positive integer literals in fixed-duration units; inserts can merge sessions and deletes can split them.
+
+The registered analytic set does not include count, min, max, or sum0. Use the supported set or a grouped aggregate joined back to the original rows. Use explicit ROWS frames rather than relying on RANGE/GROUPS semantics.
+
+- [Arithmetic windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.md)
+- [Surrogate-key windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/generic.md)
+- [Session windows](https://koralium.github.io/flowtide/docs/expressions/windowfunctions/datetime.md)
+
+## Table functions
+
+| Signature | Result |
+| --- | --- |
+| unnest(list_or_map) | One row per element. Map entries are objects with key and value fields. Alias the function to name its element column. |
+| tumbling_window(timestamp, size_amount, size_unit) | One row containing window_start and window_end for a valid timestamp. |
+| hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit) | One row per matching window, each with window_start and window_end. |
+
+Table functions can be used in FROM or correlated INNER/LEFT JOIN. UNNEST's LEFT JOIN retains a row for an empty collection. Time windows include start and exclude end. Window sizes/hops are positive integer literals, units are WEEK/DAY/HOUR/MINUTE/SECOND/MILLISECOND/MICROSECOND, and null/non-timestamp inputs emit no windows. MONTH/YEAR are not fixed-duration units. Hopping fanout is limited to 100,000 windows per input row. session_window is an analytic function, not a table function.
+
+- [UNNEST](https://koralium.github.io/flowtide/docs/expressions/tablefunctions/generic.md)
+- [Tumbling and hopping windows](https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.md)
+
+## Extending functions and checking behavior
+
+Custom SQL function names require mapping through SqlPlanBuilder.FunctionRegister. Execution also needs a matching function implementation in the engine's FunctionsRegister; a SQL mapping alone is insufficient. See [CustomScalarTests](https://github.com/koralium/flowtide/blob/main/tests/FlowtideDotNet.AcceptanceTests/CustomScalarTests.cs) for both registrations.
+
+Authoritative implementations and examples:
+
+- [Built-in SQL registration](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/Internal/BuiltInSqlFunctions.cs)
+- [Expression syntax mapping](https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlExpressionVisitor.cs)
+- [Columnar runtime functions](https://github.com/koralium/flowtide/tree/main/src/FlowtideDotNet.Core/Compute/Columnar/Functions)
+- [Acceptance tests](https://github.com/koralium/flowtide/tree/main/tests/FlowtideDotNet.AcceptanceTests): Arithmetic, comparison, strings, LIKE, casts, lists, hashes, dates, checks, aggregates, table functions, and analytic/time windows.
+
+
+---
+
+Source: [connectors.txt](https://koralium.github.io/flowtide/llms/connectors.txt)
+
+# Flowtide connectors and data contracts
+
+Connectors map SQL table names to sources and sinks. They are configured in C#, separately from SQL. A stream can join sources from different systems and write multiple destinations. For application setup see [building streams](https://koralium.github.io/flowtide/llms/streams.txt); for queries see [SQL](https://koralium.github.io/flowtide/llms/sql.txt).
+
+## Registration and table discovery
+
+With dependency injection, call AddConnectors on the named stream builder. The configured IDependencyInjectionConnectorManager also exposes ServiceProvider for resolving custom services. Without dependency injection, construct a ConnectorManager and pass it to FlowtideBuilder.AddConnectorManager.
+
+Connector packages commonly expose extension methods in FlowtideDotNet.Core; add the connector's options namespace where needed. Use the actual package/API names below. Older samples may use ReadWriteFactory or older option type names.
+
+```csharp
+builder.Services.AddFlowtideStream("orders")
+    .AddConnectors(connectors =>
+    {
+        connectors.AddCatalog("sales", catalog =>
+            catalog.AddSqlServerSource(() => sourceConnectionString));
+        connectors.AddCatalog("reporting", catalog =>
+            catalog.AddSqlServerSink(() => destinationConnectionString));
+    });
+```
+
+AddCatalog prefixes that connector group's SQL names. A SQL Server table then looks like sales.database.schema.table. AddSqlServerAsCatalog(name, connectionStringFactory) registers both the SQL Server source and sink under one catalog. Use separate source-only/sink-only catalogs when appropriate.
+
+Sources can expose ITableProvider implementations for discovery. AddSqlTextAsPlan, AddSqlFileAsPlan, and AddSqlPlan use the registered providers. CREATE TABLE supplies explicit planner metadata when discovery is unavailable or a narrower input schema is desired. It never creates or connects a physical table.
+
+Many connectors select names using regexPattern arguments. Use a pattern that matches the intended logical SQL table name and check the connector's matching rules. Source and sink schema/key requirements still apply after a name matches.
+
+## Available connectors
+
+The package column gives the FlowtideDotNet.Connector.* suffix unless a different package is stated. Source and sink support reflects this repository, not every historical release.
+
+| System | Package suffix | Direction and registration | Reference |
+| --- | --- | --- | --- |
+| SQL Server | SqlServer | Source and sink: AddSqlServerSource, AddSqlServerSink, AddSqlServerAsCatalog. | [SQL Server](https://koralium.github.io/flowtide/docs/connectors/sqlserver.md) |
+| MongoDB | MongoDB | Source and sink: AddMongoDbSource, AddMongoDbSink. | [MongoDB](https://koralium.github.io/flowtide/docs/connectors/mongodb.md) |
+| Delta Lake | DeltaLake | Source and sink: AddDeltaLakeSource, AddDeltaLakeSink, AddDeltaLakeCatalog. | [Delta Lake](https://koralium.github.io/flowtide/docs/connectors/deltalake.md) |
+| Kafka | Kafka | Source and sink: AddKafkaSource, AddKafkaSink. | [Kafka](https://koralium.github.io/flowtide/docs/connectors/kafka.md) |
+| Elasticsearch | ElasticSearch | Sink: AddElasticsearchSink. | [Elasticsearch](https://koralium.github.io/flowtide/docs/connectors/elasticsearch.md) |
+| Cosmos DB | CosmosDB | Sink: AddCosmosDbSink. | [Cosmos DB](https://koralium.github.io/flowtide/docs/connectors/cosmosdb.md) |
+| OpenFGA | OpenFGA | Source and sink: AddOpenFGASource, AddOpenFGASink. | [OpenFGA](https://koralium.github.io/flowtide/docs/connectors/openfga.md) |
+| SpiceDB/Authzed | SpiceDB | Source and sink: AddSpiceDbSource, AddSpiceDbSink. | [SpiceDB](https://koralium.github.io/flowtide/docs/connectors/spicedb.md) |
+| Permify | Permify | Relationship source and sink: AddPermifyRelationshipSource, AddPermifyRelationshipSink. | [Permify](https://koralium.github.io/flowtide/docs/connectors/permify.md) |
+| SharePoint | Sharepoint | List source and sink: AddSharepointSource, AddSharepointSink. | [SharePoint](https://koralium.github.io/flowtide/docs/connectors/sharepoint.md) |
+| Files | Files | Sources: AddCsvFileSource, AddXmlFileSource, AddTextLinesFileSource. Experimental. | [Files](https://koralium.github.io/flowtide/docs/connectors/files.md) |
+| Qdrant | Qdrant | Sink with embedding generation: AddQdrantSink. | [Qdrant](https://koralium.github.io/flowtide/docs/connectors/qdrant.md) |
+| StarRocks | StarRocks | Sink: AddStarRocksSink. | [StarRocks](https://koralium.github.io/flowtide/docs/connectors/starrocks.md) |
+| .NET options/configuration | Built into core/DI | Source: AddOptionsSource<TOptions>, backed by IOptionsMonitor<TOptions>. | [Configuration](https://koralium.github.io/flowtide/docs/connectors/configurationdata.md) |
+| Console / black hole | Built into core | Sinks: AddConsoleSink, AddBlackholeSink; namespace FlowtideDotNet.Core.Sinks. | [Samples](https://github.com/koralium/flowtide/tree/main/samples) |
+| Custom C# data | Built into core | AddCustomSource and AddCustomSink with generic object source/sink implementations. | [Custom data](https://koralium.github.io/flowtide/docs/connectors/customdata.md) |
+
+## Important source and sink contracts
+
+- SQL Server: incremental reading uses SQL Server Change Tracking. Enable it on the database and source tables. Sources without it, including views, require explicit full-reload options; views have no delta loading. SQL names normally include database.schema.table. Sinks need an existing destination table and compatible projected columns/keys. Use the source/sink options for connection factories and reload settings.
+- MongoDB: reading changes requires MongoDB change streams. Default source columns are _id and _doc; use `_doc.field` to access document properties. An explicit CREATE TABLE can expose a narrower field schema. AddMongoDbSink takes FlowtideMongoDBSinkOptions including connection/database/collection and PrimaryKeys.
+- Delta Lake: register StorageLocation and optionally a catalog. Names beneath that catalog identify table paths. Normal reads maintain the current table state; IncludeChangeHistory exposes historical changes as inserted rows with __weight, __modificationDate, and __version. StartFromFirstVersion and OneVersionPerCheckpoint change replay behavior. Check the Delta Lake reference before interpreting history as current state.
+- Kafka: the logical table name selects the topic. The _key column holds the message key. Upsert JSON deserialization treats a non-null value as an upsert and a null value as a deletion. Configure key/value serializers and consumer/producer settings explicitly. Optional comparison against existing topic data can reconcile old destination keys during an initial load.
+- Elasticsearch: project a column named _id to identify the document; it is not included as a regular source field. The logical destination normally selects the index. FlowtideElasticsearchOptions provides settings factories, concrete index naming, mapping hooks, and initial-load callbacks. For changing stream versions, plan how to switch indices/aliases and remove old data.
+- Cosmos DB: output must include id and the configured container partition-key column. Configure the target container and database using FlowtideCosmosOptions.
+- OpenFGA: project user_type, user_id, relation, object_type, and object_id; user_relation is optional for usersets. Source tuples expose these parts separately. FlowtideDotNet.Zanzibar can turn an authorization model into a plan added through SqlPlanBuilder.AddPlanAsView, allowing permissions to join with other data.
+- SpiceDB/Authzed: use its documented relationship columns and options, including subject/resource type/id and relation fields. Its schema is distinct from OpenFGA's schema.
+- Permify: relationship projections use subject_type, subject_id, subject_relation, relation, entity_type, and entity_id. Follow the connector's required/optional field rules.
+- SharePoint: configure list identity and primary-key column names for writes. Read projections can use the documented fields, including _fields for dynamic properties. Prefer explicit columns where the schema is known.
+- Files: specify storage, schema/column selection, and initial/delta file enumeration callbacks appropriate to the file type. Reading a file is not equivalent to having a database change feed.
+- Qdrant: defaults require id and vector_string. IdColumnName and VectorStringColumnName can rename them. Supply an IEmbeddingGenerator or supported embedding options and optionally an IStringChunker. The connector reference describes required payload indexes and collection setup.
+- StarRocks: provision the target table with a primary key, then configure StarRocksSinkOptions. Execution-mode options control watermark/checkpoint write behavior.
+
+INSERT INTO ... PRIMARY KEY (...) can supply written key columns for sinks that implement declared-key support. It does not remove connector-specific identity requirements or create external constraints. Sinks that cannot honor declared keys reject them.
+
+## Custom sources and sinks
+
+Start with the generic object APIs for custom HTTP services, business data, or in-memory sources:
+
+- GenericDataSourceAsync<T> streams objects with IAsyncEnumerable; GenericDataSource<T> is the synchronous variant.
+- Full loads return the current complete set; delta loads return changes with watermark/progress information. Include deletes when using delta ingestion, or use full reloads to discover removed rows.
+- Register with AddCustomSource("logical_table", factory). The generic source can provide object-schema metadata for planning.
+- GenericDataSink<T> and AddCustomSink support typed output; see the custom sink sample for keys, upserts, deletes, and reading existing destination data during initialization.
+- Yield rows and fetch remote data in batches instead of collecting the entire input in memory. Source positions and replay behavior must be consistent with checkpoint recovery.
+
+For low-level integrations, implement the source/sink operator and factory interfaces, including schema, state, watermarks, checkpoint locking, and serialization requirements. [Consistency requirements](https://koralium.github.io/flowtide/docs/internal/dataconsistency.md) explains why these matter.
+
+## End-to-end examples and implementation references
+
+- [CustomSinkSample](https://github.com/koralium/flowtide/tree/main/samples/CustomSinkSample): Typed input/output and reconciliation with pre-existing rows.
+- [SqlServerToSqlServerStream](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToSqlServerStream): Catalogs, joins, persistent state, and hosting.
+- [MongoDbToConsoleSample](https://github.com/koralium/flowtide/tree/main/samples/MongoDbToConsoleSample): _doc field access and cross-collection joins.
+- [DeltaLakeSourceUsage](https://github.com/koralium/flowtide/tree/main/samples/DeltaLakeSourceUsage): Delta Lake source and console output.
+- [SqlServerToOpenFga](https://github.com/koralium/flowtide/tree/main/samples/SqlServerToOpenFga): Relationship projections and external SQL Server bootstrap scripts.
+- [OpenFgaSqlServerToMongoDb](https://github.com/koralium/flowtide/tree/main/samples/OpenFgaSqlServerToMongoDb): Materialized permissions joined with application data.
+- [Connector source projects](https://github.com/koralium/flowtide/tree/main/src): Actual extension-method signatures, options, schemas, and factories.
+- [Connector tests](https://github.com/koralium/flowtide/tree/main/tests): Connector-specific integration tests alongside SQL acceptance tests.
+
