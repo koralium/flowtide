@@ -10,12 +10,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using System.Text.Json;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
     public class SchemaEqualityTests
     {
+        [Fact]
+        public void AListOfStructsReadsBack()
+        {
+            var options = new JsonSerializerOptions();
+            options.Converters.Add(new TypeConverter());
+            var type = new ArrayType() { ElementType = new StructType(new List<StructField>() { new StructField("c", new StringType(), true, new Dictionary<string, object>()) }), ContainsNull = true };
+
+            var json = JsonSerializer.Serialize<SchemaBaseType>(type, options);
+
+            Assert.Equal(type.ElementType, Assert.IsType<ArrayType>(JsonSerializer.Deserialize<SchemaBaseType>(json, options)).ElementType);
+        }
+
         [Fact]
         public void TestBinaryTypeEquality()
         {

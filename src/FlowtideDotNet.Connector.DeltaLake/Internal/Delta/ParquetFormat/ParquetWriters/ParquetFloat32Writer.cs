@@ -126,7 +126,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 return 4;
             }
 
-            var val = value.AsDouble;
+            // An integer query value arrives as Int64
+            var val = value.Type == ArrowTypeId.Int64 ? Convert.ToDouble(value.AsLong) : value.AsDouble;
             WriteValue(val);
             return 4;
         }

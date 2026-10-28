@@ -19,5 +19,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
         // Input batches go through the bulk inserter
         public bool BulkIntake { get; set; } = true;
+
+        // Delete rows matched per pass
+        public int RowCap { get; set; } = 100_000;
+
+        // Stored bytes and the counted table per pass
+        public long ByteCap { get; set; } = 128L * 1024 * 1024;
+
+        // Counts the builders, up to twice the bytes, and their copy
+        public int WrittenSlack { get; set; } = 3;
+
+        // Cold file records fetched per lookup
+        public int RecordGroup { get; set; } = 1024;
+
+        // Every row hashes the same, for tests
+        public bool CollideHashes { get; set; }
+
+        // Test the first pruning column before the whole row
+        public bool Prefilter { get; set; } = true;
     }
 }

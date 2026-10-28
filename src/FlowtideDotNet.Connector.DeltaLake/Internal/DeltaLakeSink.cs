@@ -15,7 +15,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema;
@@ -100,6 +99,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private CatalogOverlay? _stagedOverlay;
         private DeltaSinkCatalog? _catalog;
         private ProbeBatch? _probes;
+        private DeleteLimits? _limits;
+        // The last commit's matching, read by the passes gauge
+        private DeleteStatistics? _deleteStatistics;
         private bool _halted;
         private string? _haltReason;
         private bool _gaugesCreated;
@@ -203,7 +205,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 MemoryAllocator = MemoryAllocator,
                 UseByteBasedPageSizes = true,
             });
-            _intake = new TemporaryTreeIntake(_temporaryTree, _writeRelation.OutputLength, _options.DeleteLimitsOverride ?? DeleteLimits.Default);
+            _limits = _options.DeleteLimitsOverride ?? DeleteLimits.Default;
+            _intake = new TemporaryTreeIntake(_temporaryTree, _writeRelation.OutputLength, _limits);
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
             _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
             _bufferDurable = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("bufferDurable");
@@ -226,6 +229,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_catalog_pruning_columns", () => _catalog?.ScanLayout.Columns.Count ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_pruning_bytes", () => _catalog?.PruningBytes ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
+                Metrics.CreateObservableGauge("delta_delete_passes", () => _deleteStatistics?.Passes ?? 0);
             }
 
             _validatedHead = -1;
@@ -616,6 +620,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
         }
 
+        internal DeleteStatistics? DeleteStatisticsForTests => _deleteStatistics;
+
         /// <summary>
         /// The version CommitVersion hands off, -1 for none: the validated head when nothing is pending, the commit once it is published.
         /// </summary>
@@ -753,6 +759,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private async Task WriteCommit(DeltaReadOptions readOptions, bool validated, bool overwrite, bool metadataOnly, DeltaMaintenanceWorker? anchorWorker, long anchor)
         {
             Debug.Assert(_temporaryTree != null);
+            Debug.Assert(_limits != null);
             Debug.Assert(_firstInsertDone != null);
             Debug.Assert(_pendingCommit != null);
             Debug.Assert(_catalog != null);
@@ -960,7 +967,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     _fileExtension = codec.FileExtension;
                     var writer = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, writerProperties: codec.WriterProperties);
                     // Only used to compare deleted rows, never written
-                    var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names);
+                    var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, countNulls: true);
 
                     ParquetSharpWriter? cdcWriter = default;
                     if (changeDataEnabled)
@@ -975,15 +982,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
                     bool deleteWritten = false;
 
-                    // Deleted rows of the current batch and their probes, matched against the catalog per batch
-                    var pendingDeletes = new List<RowToDelete>();
+                    // Copies of each deleted row and their probes
+                    var demand = new List<long>();
                     _probes ??= new ProbeBatch(_catalog.ScanLayout);
                     _probes.Clear();
                     _probes.SetLayout(_catalog.ScanLayout);
-                    var fileDeleteVectors = new Dictionary<int, ModifiableDeleteVector>();
-                    // Rows in each scanned file's footer
-                    var footerRows = new Dictionary<int, long>();
-                    var touchedFiles = new Dictionary<int, DeltaFileRecord>();
+                    var deletes = new DeleteRun(_options.StorageLocation, _tablePath);
+                    // The counted table, probe views and unwritten nulls per row
+                    var rowBytes = 32 + 4 * _catalog.ScanLayout.Columns.Count + (cdcWriter != null ? 8 : 0) + deleteWriter.NullBytesPerRow * _limits.WrittenSlack;
                     await foreach (var page in iterator)
                     {
                         for (int i = 0; i < page.Values.Data.Count; i++)
@@ -992,7 +998,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             if (weight < 0)
                             {
                                 deleteWritten = true;
-                                int deleteIndex = deleteWriter.WrittenCount;
                                 var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                                 deleteWriter.AddRow(rowRef);
                                 if (cdcWriter != null)
@@ -1008,12 +1013,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                     }
                                 }
 
-                                pendingDeletes.Add(new RowToDelete()
-                                {
-                                    DeleteIndex = deleteIndex,
-                                    Weight = weight
-                                });
+                                demand.Add(-(long)weight);
                                 _probes.Add(rowRef);
+                                if (deleteWriter.WrittenCount >= _limits.RowCap || deleteWriter.WrittenBytes * _limits.WrittenSlack + (long)deleteWriter.WrittenCount * rowBytes >= _limits.ByteCap)
+                                {
+                                    await ResolveBatch(overwrite, cdcWriter != null, table, deleteWriter, demand, deletes);
+                                }
                             }
                             else
                             {
@@ -1037,33 +1042,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 }
                             }
                         }
-
-                        // If we found more than 100k deletes, handle them and and scan files and update deletion vectors
-                        if (deleteWriter.WrittenCount >= 100_000)
-                        {
-                            if (table == null)
-                            {
-                                throw new InvalidOperationException("Table should not be null when delete is found");
-                            }
-                            using (var deleteBatch = deleteWriter.GetRecordBatch())
-                            {
-                                await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, footerRows, deleteBatch);
-                            }
-                            deleteWriter.NewBatch();
-                        }
                     }
 
                     if (deleteWriter.WrittenCount > 0)
                     {
-                        if (table == null)
-                        {
-                            throw new InvalidOperationException("Table should not be null when delete is found");
-                        }
-                        using (var deleteBatch = deleteWriter.GetRecordBatch())
-                        {
-                            await HandleDeletedRows(pendingDeletes, overwrite, table, fileDeleteVectors, touchedFiles, footerRows, deleteBatch);
-                        }
+                        await ResolveBatch(overwrite, cdcWriter != null, table, deleteWriter, demand, deletes);
                     }
+                    _deleteStatistics = deletes.Statistics;
 
                     // Inserts first, so their files stay in key order
                     if (writer.WrittenCount > 0)
@@ -1071,14 +1056,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         await WriteNewFile(writer, actions, currentTime, overlay, created);
                     }
 
-                    if (fileDeleteVectors.Count > 0)
+                    if (deletes.Claims.Count > 0)
                     {
                         if (table == null)
                         {
                             throw new InvalidOperationException("Table should not be null when delete is found");
                         }
                         var output = new DeleteOutput(_options.StorageLocation, _tablePath, _tableName, schema, table.ColumnMappingById, table.DeleteVectorEnabled, codec.WriterProperties, IsFull, rewriter => WriteNewFile(rewriter, actions, currentTime, overlay, created));
-                        await output.WriteAsync(fileDeleteVectors, touchedFiles, footerRows, actions, currentTime, overlay, created);
+                        await output.WriteAsync(deletes.Claims, deletes.Records, deletes.FooterRows, actions, currentTime, overlay, created);
                     }
                     if (cdcWriter != null)
                     {
@@ -1257,58 +1242,97 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             return $"{{{string.Join(",", values)}}}";
         }
 
-        // One pass over the catalog for the batch, then a scan of every candidate file
-        private async Task HandleDeletedRows(
-            List<RowToDelete> rows,
-            bool overwrite,
-            DeltaTable? table,
-            Dictionary<int, ModifiableDeleteVector> fileDeleteVectors,
-            Dictionary<int, DeltaFileRecord> touchedFiles,
-            Dictionary<int, long> footerRows,
-            RecordBatch deleteBatch)
+        // Match the batch against the candidates in id order
+        private async Task ResolveBatch(bool overwrite, bool changeData, DeltaTable? table, ParquetSharpWriter deleteWriter, List<long> demand, DeleteRun deletes)
         {
             Debug.Assert(_catalog != null);
             Debug.Assert(_probes != null);
+            Debug.Assert(_limits != null);
 
             if (table == null)
             {
                 throw new InvalidOperationException("Table should not be null when delete is found");
             }
-            // An overwrite removes every file, a delete in the same commit finds none
-            var candidates = overwrite ? new Dictionary<int, List<int>>() : await _catalog.FindCandidates(_probes);
-            var matched = new bool[rows.Count];
-            foreach (var probes in candidates.Values)
+            using (var deleteBatch = deleteWriter.GetRecordBatch())
             {
-                foreach (var probe in probes)
+                // The batch holds its own copy, so the builders can go now
+                deleteWriter.NewBatch();
+                deletes.Statistics.Passes++;
+                // An overwrite removes every file, a delete in the same commit finds none
+                var candidates = overwrite ? new Dictionary<int, List<int>>() : await _catalog.FindCandidates(_probes);
+                var matched = new bool[deleteBatch.Length];
+                foreach (var probes in candidates.Values)
                 {
-                    matched[probe] = true;
+                    foreach (var probe in probes)
+                    {
+                        matched[probe] = true;
+                    }
                 }
-            }
-            for (int i = 0; i < matched.Length; i++)
-            {
-                if (!matched[i])
+                for (int i = 0; i < matched.Length; i++)
                 {
-                    throw new InvalidOperationException($"Could not find any data file that contains the row {DescribeRow(deleteBatch, rows[i].DeleteIndex)}");
+                    if (!matched[i])
+                    {
+                        throw new InvalidOperationException($"Could not find any data file that contains the row {DescribeRow(deleteBatch, i)}");
+                    }
                 }
-            }
 
-            var missing = candidates.Keys.Where(x => !touchedFiles.ContainsKey(x)).ToList();
-            foreach (var (id, record) in await _catalog.GetFiles(missing))
-            {
-                touchedFiles[id] = record;
-            }
-            var comparer = RecordBatchComparer.Create(table.Schema);
-            foreach (var (id, probes) in candidates)
-            {
-                var toFind = new List<RowToDelete>(probes.Count);
-                foreach (var probe in probes)
+                var comparers = new IArrowComparer[table.Schema.Fields.Count];
+                var visitor = new ArrowComparerVisitor();
+                for (int i = 0; i < comparers.Length; i++)
                 {
-                    toFind.Add(rows[probe]);
+                    comparers[i] = table.Schema.Fields[i].Type.Accept(visitor);
                 }
-                await ScanDataFileForRows(toFind, id, touchedFiles[id], fileDeleteVectors, footerRows, deleteBatch, comparer);
+                var prefilter = _limits.Prefilter ? PrefilterColumn(table.Schema) : -1;
+                var batch = new DeleteBatch(deleteBatch, demand, comparers, changeData, _limits.CollideHashes, prefilter);
+                var matcher = new FileMatcher(_options.StorageLocation, _tablePath, _tableName, table.Schema, table.ColumnMappingById);
+                var ids = candidates.Keys.ToArray();
+                System.Array.Sort(ids);
+                var missing = new List<int>();
+                for (int start = 0; start < ids.Length && batch.Unresolved > 0; start += _limits.RecordGroup)
+                {
+                    var group = new ArraySegment<int>(ids, start, Math.Min(_limits.RecordGroup, ids.Length - start));
+                    missing.Clear();
+                    foreach (var id in group)
+                    {
+                        if (!deletes.Records.ContainsKey(id))
+                        {
+                            missing.Add(id);
+                        }
+                    }
+                    foreach (var (id, record) in await _catalog.GetFiles(missing))
+                    {
+                        deletes.Records[id] = record;
+                    }
+                    foreach (var id in group)
+                    {
+                        if (batch.Unresolved == 0)
+                        {
+                            break;
+                        }
+                        await matcher.Scan(id, batch, deletes);
+                    }
+                }
             }
-            rows.Clear();
+            demand.Clear();
             _probes.Clear();
+        }
+
+        // The first pruning column as a table column, -1 for none
+        private int PrefilterColumn(StructType schema)
+        {
+            var columns = _catalog!.ScanLayout.Columns;
+            if (columns.Count == 0)
+            {
+                return -1;
+            }
+            for (int i = 0; i < schema.Fields.Count; i++)
+            {
+                if (string.Equals(schema.Fields[i].Name, columns[0].Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
 
         private async Task WriteNewCdcFile(ParquetSharpWriter cdcWriter, List<DeltaAction> actions, List<string> created)
@@ -1361,104 +1385,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             });
             overlay.Add(_catalog!.AllocateId(), add);
             writer.NewBatch();
-        }
-
-        private async Task ScanDataFileForRows(
-            List<RowToDelete> toFind,
-            int fileId,
-            DeltaFileRecord file,
-            Dictionary<int, ModifiableDeleteVector> deleteVectors,
-            Dictionary<int, long> footerRows,
-            RecordBatch deleteBatch,
-            RecordBatchComparer comparer)
-        {
-            IDeleteVector? deleteVector;
-            if (file.DeletionVector != null)
-            {
-                deleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tablePath, file.DeletionVector);
-            }
-            else
-            {
-                deleteVector = EmptyDeleteVector.Instance;
-            }
-
-            // If a modified delete vector already exist, use it instead
-            if (deleteVectors.TryGetValue(fileId, out var claimed))
-            {
-                deleteVector = claimed;
-            }
-
-            // Open file without deletion vector, it will be used when finding rows
-            using var dataFile = await ParquetSharpReader.OpenDataFile(_options.StorageLocation, _tablePath, file.Path, forDeletes: true);
-            footerRows[fileId] = dataFile.NumRows;
-
-            int globalOffset = 0;
-            await foreach (var batch in dataFile.ReadBatches(null))
-            {
-                using (batch)
-                {
-                    for (int i = 0; i < toFind.Count; i++)
-                    {
-                        var row = toFind[i];
-                        bool resolved = false;
-                        int searchFrom = 0;
-                        // A weight of -k needs k matches, copies can share a batch
-                        while (!resolved)
-                        {
-                            // Another file may have found the row already
-                            lock (row.Lock)
-                            {
-                                if (row.Weight == 0)
-                                {
-                                    resolved = true;
-                                    break;
-                                }
-                            }
-                            int index = comparer.FindOccurance(row.DeleteIndex, deleteBatch, batch, globalOffset, deleteVector, searchFrom);
-                            if (index < 0)
-                            {
-                                break;
-                            }
-                            searchFrom = index + 1;
-                            // Positions claimed in this scan are checked per match, not per scanned row
-                            if (claimed != null && claimed.Contains(index + globalOffset))
-                            {
-                                continue;
-                            }
-                            lock (row.Lock)
-                            {
-                                if (row.Weight == 0)
-                                {
-                                    resolved = true;
-                                    break;
-                                }
-                                row.Weight++;
-                                resolved = row.Weight == 0;
-                            }
-                            lock (deleteVectors)
-                            {
-                                if (claimed == null)
-                                {
-                                    claimed = new ModifiableDeleteVector(deleteVector);
-                                    deleteVectors.Add(fileId, claimed);
-                                }
-                                claimed.Add(index + globalOffset);
-                            }
-                        }
-                        if (resolved)
-                        {
-                            toFind.RemoveAt(i);
-                            i--;
-                        }
-                    }
-                    globalOffset += batch.Length;
-                }
-                // Nothing left to find in this file
-                if (toFind.Count == 0)
-                {
-                    break;
-                }
-            }
         }
 
         protected override Task OnRecieve(StreamEventBatch msg, long time)

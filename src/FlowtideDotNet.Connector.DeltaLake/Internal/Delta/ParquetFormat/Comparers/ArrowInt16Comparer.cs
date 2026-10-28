@@ -11,37 +11,33 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
     internal class ArrowInt16Comparer : IArrowComparer
     {
-        public int FindOccurance(int toFindIndex, IArrowArray toFindFrom, int searchIndex, int searchLength, IArrowArray toFindIn, int globalOffset, IDeleteVector deleteVector)
-        {
-            var left = (Int16Array)toFindFrom;
-            var right = (Int16Array)toFindIn;
-            var toSearchValue = left.GetValue(toFindIndex);
-            for (int i = searchIndex; i < searchLength; i++)
-            {
-                if (deleteVector.Contains(globalOffset + i))
-                {
-                    continue;
-                }
-                if (right.GetValue(i) == toSearchValue)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         public bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray)
         {
             var left = (Int16Array)array;
             var right = (Int16Array)otherArray;
 
             return left.GetValue(leftIndex) == right.GetValue(rightIndex);
+        }
+
+        public bool TryHash(IArrowArray? array, int index, ref ulong state)
+        {
+            ArrowHash.Add(ref state, ArrowHash.IsNull(array, index) ? ArrowHash.Null : (ulong)(long)((Int16Array)array!).Values[index]);
+            return true;
+        }
+
+        public void HashColumn(IArrowArray? array, Span<ulong> states, Span<bool> rejected)
+        {
+            ArrowHash.AddColumn<short, WideBits>(array, states);
+        }
+
+        public int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex)
+        {
+            return ArrowHash.CompareNulls(left, leftIndex, right, rightIndex) ?? ((Int16Array)left!).Values[leftIndex].CompareTo(((Int16Array)right!).Values[rightIndex]);
         }
     }
 }

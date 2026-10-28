@@ -627,20 +627,197 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.True(stats.ValueComparers!["v"].IsInBetween(NullValue.Instance));
         }
 
+        [Fact]
+        public async Task AnOverwriteRetractionThrowsAndOpensNoOldFile()
+        {
+            var testName = nameof(AnOverwriteRetractionThrowsAndOpensNoOldFile);
+            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{testName}"));
+            FlowtideDotNet.AcceptanceTests.Entities.User ghost;
+            await using (var earlier = new DeltaLakeSinkStream(testName + "_earlier", storage))
+            {
+                earlier.WaitForUpdateDoesNotRequireDataChange();
+                earlier.Generate(20);
+                // An old row the new input lacks
+                ghost = earlier.Users[15];
+                await earlier.StartStream(@"
+                    CREATE TABLE test (
+                        userkey INT,
+                        name STRING
+                    );
+
+                    INSERT INTO test
+                    SELECT userkey, firstName as name FROM users
+                ");
+                await DeltaTestKit.WaitForVersion(storage, "test", earlier, 0);
+                await DeltaTestKit.SettlePublications(earlier);
+            }
+            var old = (await DeltaTransactionReader.ReadTable(storage, "test"))!.AddFiles.Select(x => x.Path!).ToList();
+
+            await using var stream = new DeltaLakeSinkStream(testName, storage);
+            // Without normalization a retraction no insert preceded reaches the sink
+            stream.SourceImmutable();
+            stream.Generate(10);
+            Assert.DoesNotContain(stream.Users, x => x.UserKey == ghost.UserKey);
+            stream.MockDatabaseForTests.GetOrCreateTable<FlowtideDotNet.AcceptanceTests.Entities.User>("users").Delete(new[] { ghost });
+            storage.ClearRequests();
+            await stream.StartStream(@"
+                INSERT OVERWRITE test
+                SELECT userkey, firstName as name FROM users
+            ");
+            var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await DeltaTestKit.WaitForVersion(storage, "test", stream, 1, TimeSpan.FromSeconds(30)));
+
+            Assert.Contains($"Could not find any data file that contains the row {{{ghost.UserKey},", failure.ToString());
+            Assert.DoesNotContain(storage.Requests, x => old.Any(path => x.EndsWith(path)));
+        }
+
+        [Theory]
+        [InlineData(100_000, 128L * 1024 * 1024, 1024, false, 1, 3)]
+        [InlineData(3, 128L * 1024 * 1024, 1024, false, 4, 3)]
+        [InlineData(100_000, 1L, 1, false, 10, 3)]
+        [InlineData(100_000, 128L * 1024 * 1024, 1, false, 1, 3)]
+        [InlineData(3, 128L * 1024 * 1024, 2, true, 4, 3)]
+        // The slack alone puts each row over the cap
+        [InlineData(100_000, 128L * 1024 * 1024, 1024, false, 10, 20_000_000)]
+        public async Task SmallCapsDeleteInSeveralPasses(int rowCap, long byteCap, int recordGroup, bool collide, int passes, int slack)
+        {
+            var testName = nameof(SmallCapsDeleteInSeveralPasses) + passes + "_" + recordGroup + (collide ? "_collide" : "");
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.MaxFileSizeBytes = 512;
+                options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { RowCap = rowCap, ByteCap = byteCap, RecordGroup = recordGroup, CollideHashes = collide, WrittenSlack = slack };
+            });
+            stream.Generate(60);
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    name STRING
+                );
+
+                INSERT INTO test
+                SELECT userkey, firstName as name FROM users
+            ");
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 0);
+            Assert.True((await DeltaTransactionReader.ReadTable(storage, "test"))!.AddFiles.Count > 1);
+
+            foreach (var user in stream.Users.Where((_, i) => i % 6 == 0).ToList())
+            {
+                stream.DeleteUser(user);
+            }
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 1);
+
+            Assert.Equal(passes, stream.Sinks[0].DeleteStatisticsForTests!.Passes);
+            Assert.Equal(stream.Users.Select(x => x.UserKey).Order(), (await ForeignRewrite.LiveRows(storage, "test")).Select(x => int.Parse(x.Row.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)).Order());
+        }
+
+        [Fact]
+        public async Task UnwrittenColumnsCountAgainstTheByteCap()
+        {
+            var testName = nameof(UnwrittenColumnsCountAgainstTheByteCap);
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            // A wider table, the query writes two of its columns
+            var fields = new List<StructField>()
+            {
+                new StructField("userkey", new LongType(), true, new Dictionary<string, object>()),
+                new StructField("name", new StringType(), true, new Dictionary<string, object>())
+            };
+            fields.AddRange(Enumerable.Range(0, 100).Select(i => new StructField($"e{i}", new LongType(), true, new Dictionary<string, object>())));
+            await WriteTable(storage, "test", new StructType(fields), new List<string>());
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.MaxFileSizeBytes = 512;
+                options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { ByteCap = 4000 };
+            });
+            stream.Generate(60);
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    name STRING
+                );
+
+                INSERT INTO test
+                SELECT userkey, firstName as name FROM users
+            ");
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 1);
+
+            foreach (var user in stream.Users.Where((_, i) => i % 6 == 0).ToList())
+            {
+                stream.DeleteUser(user);
+            }
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 2);
+
+            // 800 null bytes a row, counted three times, so two rows fill a pass
+            Assert.Equal(5, stream.Sinks[0].DeleteStatisticsForTests!.Passes);
+            Assert.Equal(stream.Users.Select(x => x.UserKey).Order(), (await ForeignRewrite.LiveRows(storage, "test")).Select(x => int.Parse(x.Row.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)).Order());
+        }
+
+        [Fact]
+        public async Task NullStructFieldsCountAgainstTheByteCap()
+        {
+            var testName = nameof(NullStructFieldsCountAgainstTheByteCap);
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            // A written struct of 100 longs, null in every row
+            var inner = Enumerable.Range(0, 100).Select(i => new StructField($"e{i}", new LongType(), true, new Dictionary<string, object>())).ToList();
+            var fields = new List<StructField>()
+            {
+                new StructField("userkey", new LongType(), true, new Dictionary<string, object>()),
+                new StructField("name", new StringType(), true, new Dictionary<string, object>()),
+                new StructField("s", new StructType(inner), true, new Dictionary<string, object>())
+            };
+            await WriteTable(storage, "test", new StructType(fields), new List<string>());
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.MaxFileSizeBytes = 512;
+                options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { ByteCap = 4000 };
+            });
+            stream.Generate(60);
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    userkey INT,
+                    name STRING,
+                    s STRUCT<e0 INT>
+                );
+
+                INSERT INTO test
+                SELECT userkey, firstName as name, CASE WHEN userkey < 0 THEN named_struct('e0', userkey) END as s FROM users
+            ");
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 1);
+
+            foreach (var user in stream.Users.Where((_, i) => i % 6 == 0).ToList())
+            {
+                stream.DeleteUser(user);
+            }
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 2);
+
+            // The same 800 null bytes a row as unwritten columns
+            Assert.Equal(5, stream.Sinks[0].DeleteStatisticsForTests!.Passes);
+            Assert.Equal(stream.Users.Select(x => x.UserKey).Order(), (await ForeignRewrite.LiveRows(storage, "test")).Select(x => int.Parse(x.Row.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)).Order());
+        }
+
         [Theory]
         [InlineData(false)]
         [InlineData(true)]
         public void DeleteMatchingUsesEngineFloatEquality(bool isFloat32)
         {
             SchemaBaseType type = isFloat32 ? new FloatType() : new DoubleType();
-            var comparer = RecordBatchComparer.Create(SingleColumnSchema(type));
+            var comparer = type.Accept(new ArrowComparerVisitor());
 
             using var toFind = FloatBatch(isFloat32, double.NaN, -0.0);
             using var searchIn = FloatBatch(isFloat32, 1.0, 0.0, double.NaN);
 
             // The engine merges NaN with NaN and -0 with +0, deletes must match them
-            Assert.Equal(2, comparer.FindOccurance(0, toFind, searchIn, 0, EmptyDeleteVector.Instance));
-            Assert.Equal(1, comparer.FindOccurance(1, toFind, searchIn, 0, EmptyDeleteVector.Instance));
+            Assert.True(comparer.IsEqual(0, toFind.Column(0), 2, searchIn.Column(0)));
+            Assert.True(comparer.IsEqual(1, toFind.Column(0), 1, searchIn.Column(0)));
+            Assert.False(comparer.IsEqual(1, toFind.Column(0), 0, searchIn.Column(0)));
+            Assert.Equal(Hash(comparer, searchIn.Column(0), 2), Hash(comparer, toFind.Column(0), 0));
+            Assert.Equal(Hash(comparer, searchIn.Column(0), 1), Hash(comparer, toFind.Column(0), 1));
+        }
+
+        private static ulong Hash(IArrowComparer comparer, IArrowArray array, int index)
+        {
+            ulong state = 0;
+            Assert.True(comparer.TryHash(array, index, ref state));
+            return state;
         }
 
         [Fact]

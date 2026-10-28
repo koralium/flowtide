@@ -33,17 +33,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private List<IParquetWriter> nullWriters;
         private int rowCount;
         private long _writtenBytes;
+        // Null slots of the unwritten columns, when counting them
+        private readonly int _nullBytesPerRow;
         private Apache.Arrow.Schema _schema;
         private readonly bool _isCdcWriter;
         private readonly IParquetWriter? _cdcWriter;
         private readonly ParquetSharp.WriterProperties? _writerProperties;
 
-        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null, IReadOnlyList<TimeUnit>? units = null)
+        // countNulls counts null slots, for the delete batch's cap
+        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null, IReadOnlyList<TimeUnit>? units = null, bool countNulls = false)
         {
             _isCdcWriter = isCdcWriter;
             _writerProperties = writerProperties;
             this.schema = schema;
-            var visitor = new ParquetSharpWriteVisitor(units);
+            var visitor = new ParquetSharpWriteVisitor(units, countNulls);
 
             toWrite = new List<IParquetWriter>();
             writers = new List<IParquetWriter>();
@@ -115,6 +118,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 fields.Add(structField);
             }
 
+            // Unwritten columns still take their null slots
+            for (int i = 0; i < schema.Fields.Count; i++)
+            {
+                if (countNulls && !taken[i])
+                {
+                    _nullBytesPerRow += NullWidth(fields[i].DataType);
+                }
+            }
+
             if (units != null && (visitor.UnitsRead != units.Count || schemaVisitor.UnitsRead != units.Count))
             {
                 throw new InvalidOperationException($"The table has other timestamp columns than the {units.Count} units given");
@@ -181,6 +193,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public int WrittenCount => rowCount;
 
         public long WrittenBytes => _writtenBytes;
+
+        // Null bytes per row of the unwritten columns, when counting them
+        public int NullBytesPerRow => _nullBytesPerRow;
+
+        // A null's bytes in its builder, the validity bit aside
+        internal static int NullWidth(Apache.Arrow.Types.IArrowType type)
+        {
+            return type switch
+            {
+                Apache.Arrow.Types.StructType structType => structType.Fields.Sum(x => NullWidth(x.DataType)),
+                // Booleans round up to a byte
+                Apache.Arrow.Types.FixedWidthType fixedWidth => (fixedWidth.BitWidth + 7) / 8,
+                // Strings, binaries, lists and maps store an offset
+                _ => 4
+            };
+        }
 
         public void AddRow(ColumnRowReference row, bool isDelete = false)
         {

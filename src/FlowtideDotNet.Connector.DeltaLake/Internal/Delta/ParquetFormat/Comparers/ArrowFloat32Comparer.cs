@@ -11,31 +11,11 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
     internal class ArrowFloat32Comparer : IArrowComparer
     {
-        public int FindOccurance(int toFindIndex, IArrowArray toFindFrom, int searchIndex, int searchLength, IArrowArray toFindIn, int globalOffset, IDeleteVector deleteVector)
-        {
-            var left = (FloatArray)toFindFrom;
-            var right = (FloatArray)toFindIn;
-            var toSearchValue = left.GetValue(toFindIndex);
-            for (int i = searchIndex; i < searchLength; i++)
-            {
-                if (deleteVector.Contains(globalOffset + i))
-                {
-                    continue;
-                }
-                if (IsSame(right.GetValue(i), toSearchValue))
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         public bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray)
         {
             var left = (FloatArray)array;
@@ -52,6 +32,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
                 return !right.HasValue;
             }
             return right.HasValue && left.Value.Equals(right.Value);
+        }
+
+        // -0 hashes as +0, every NaN as one NaN
+        public bool TryHash(IArrowArray? array, int index, ref ulong state)
+        {
+            if (ArrowHash.IsNull(array, index))
+            {
+                ArrowHash.Add(ref state, ArrowHash.Null);
+                return true;
+            }
+            ArrowHash.Add(ref state, Bits.Of(((FloatArray)array!).Values[index]));
+            return true;
+        }
+
+        public void HashColumn(IArrowArray? array, Span<ulong> states, Span<bool> rejected)
+        {
+            ArrowHash.AddColumn<float, Bits>(array, states);
+        }
+
+        // One NaN, and -0 as +0
+        private readonly struct Bits : IValueBits<float>
+        {
+            public static ulong Of(float value) => float.IsNaN(value) ? 0x7FC00000UL : value == 0 ? 0UL : BitConverter.SingleToUInt32Bits(value);
+        }
+
+        // -0 equals +0, every NaN is equal and last
+        public int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex)
+        {
+            return ArrowHash.CompareNulls(left, leftIndex, right, rightIndex) ?? ArrowFloat64Comparer.Compare(((FloatArray)left!).Values[leftIndex], ((FloatArray)right!).Values[rightIndex]);
         }
     }
 }

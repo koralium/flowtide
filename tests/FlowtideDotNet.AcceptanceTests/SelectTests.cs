@@ -311,6 +311,34 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         [Fact]
+        public async Task SelectWithNestedNamedStruct()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    named_struct('first', firstName, 'inner', named_struct('last', lastName)) AS name
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { Name = new { first = x.FirstName, inner = new { last = x.LastName } } }));
+        }
+
+        [Fact]
+        public async Task SelectMapWithStructKeysAndValues()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output 
+                SELECT 
+                    map(named_struct('k', firstName), named_struct('v', lastName)) AS m
+                FROM users");
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(Users.Select(x => new { M = new Dictionary<object, object>() { [new { k = x.FirstName }] = new { v = x.LastName } } }));
+        }
+
+        [Fact]
         public async Task SelectSubPropertyFromNamedStruct()
         {
             GenerateData();
