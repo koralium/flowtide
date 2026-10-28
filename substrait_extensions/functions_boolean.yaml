@@ -1,0 +1,90 @@
+%YAML 1.2
+---
+urn: extension:io.substrait:functions_boolean
+description: >
+  Boolean logic functions.
+scalar_functions:
+  -
+    name: or
+    description: >
+      The boolean `or` using Kleene logic.
+
+      This function behaves as follows with nulls:
+
+          true or null = true
+
+          null or true = true
+
+          false or null = null
+
+          null or false = null
+
+          null or null = null
+
+      In other words, in this context a null value really means "unknown", and
+      an unknown value `or` true is always true.
+
+      Behavior for 0 or 1 inputs is as follows:
+        or() -> false
+        or(x) -> x
+    impls:
+      - args:
+          - value: boolean
+            name: a
+        variadic:
+          min: 0
+        return: boolean
+  -
+    name: and
+    description: >
+      The boolean `and` using Kleene logic.
+
+      This function behaves as follows with nulls:
+
+          true and null = null
+
+          null and true = null
+
+          false and null = false
+
+          null and false = false
+
+          null and null = null
+
+      In other words, in this context a null value really means "unknown", and
+      an unknown value `and` false is always false.
+
+      Behavior for 0 or 1 inputs is as follows:
+        and() -> true
+        and(x) -> x
+    impls:
+      - args:
+          - value: boolean
+            name: a
+        variadic:
+          min: 0
+        return: boolean
+  -
+    name: xor
+    description: >
+      The boolean `xor` of two values using Kleene logic.
+
+      When a null is encountered in either input, a null is output.
+    impls:
+      - args:
+          - value: boolean
+            name: a
+          - value: boolean
+            name: b
+        return: boolean
+  -
+    name: not
+    description: >
+      The `not` of a boolean value.
+
+      When a null is input, a null is output.
+    impls:
+      - args:
+          - value: boolean
+            name: a
+        return: boolean
