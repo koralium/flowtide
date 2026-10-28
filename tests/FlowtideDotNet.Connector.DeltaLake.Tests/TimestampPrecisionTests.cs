@@ -542,7 +542,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static byte[] Write<T>(GroupNode schema, IEnumerable<T> groups, Action<ColumnWriter, T> write, Compression compression = Compression.Uncompressed)
         {
             using var stream = new MemoryStream();
-            using var properties = new WriterPropertiesBuilder().Compression(compression).Build();
+            using var properties = DeltaTestKit.Properties(x => x.Compression(compression));
             using (var writer = new ParquetFileWriter(stream, schema, properties, leaveOpen: true))
             {
                 foreach (var group in groups)

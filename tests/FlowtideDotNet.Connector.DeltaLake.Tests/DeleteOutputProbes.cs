@@ -261,7 +261,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             using var schema = new GroupNode("schema", Repetition.Required, nodes.ToArray());
             using var stream = new MemoryStream();
-            using var properties = new WriterPropertiesBuilder().Compression(Compression.Snappy).Build();
+            using var properties = DeltaTestKit.Properties(x => x.Compression(Compression.Snappy));
             using (var writer = new ParquetFileWriter(stream, schema, properties, leaveOpen: true))
             {
                 using (var rowGroup = writer.AppendRowGroup())

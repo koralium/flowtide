@@ -70,8 +70,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 .Field(new Field("id", Int64Type.Default, true))
                 .Field(new Field("ts", new TimestampType(TimeUnit.Microsecond, "UTC"), true))
                 .Build();
-            var times = new TimestampArray(new TimestampType(TimeUnit.Microsecond, "UTC"), new ArrowBuffer.Builder<long>().AppendRange(micros).Build(), ArrowBuffer.Empty, micros.Length, 0, 0);
-            var source = RewriteCopyTests.Write(schema, new Int64Array.Builder().AppendRange(new long[] { 0, 1, 2, 3 }).Build(), times);
+            // The batch the file is written from disposes both arrays
+            var source = RewriteCopyTests.Write(schema, new Int64Array.Builder().AppendRange(new long[] { 0, 1, 2, 3 }).Build(),
+                new TimestampArray(new TimestampType(TimeUnit.Microsecond, "UTC"), new ArrowBuffer.Builder<long>().AppendRange(micros).Build(), ArrowBuffer.Empty, micros.Length, 0, 0));
             var table = new Delta.StructType(new[]
             {
                 new Delta.StructField("id", new Delta.LongType(), true, new Dictionary<string, object>()),

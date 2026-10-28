@@ -332,7 +332,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var damaged = bytes.ToArray();
             // One outer entry and a bitmap container, its bits start at byte 28
             damaged[28 + 42 / 8] &= unchecked((byte)~(1 << (42 % 8)));
-            var existing = RoaringBitmapArray.Deserialize(new BinaryReader(new MemoryStream(damaged)));
+            using var damagedStream = new MemoryStream(damaged);
+            using var damagedReader = new BinaryReader(damagedStream);
+            var existing = RoaringBitmapArray.Deserialize(damagedReader);
             Assert.Equal((4_999, 4_998), (existing.Cardinality, existing.LongCount()));
 
             var error = await Assert.ThrowsAsync<InvalidDataException>(() => Delete(InexactFile("nanos", rows: 5_000, whole: true), Timestamps, deletionVectors: false, deleted: new long[] { 4_999 }, existingVector: existing));
@@ -484,7 +486,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static byte[] WriteColumn(GroupNode schema, Action<ColumnWriter> write)
         {
             using var stream = new MemoryStream();
-            using var properties = new WriterPropertiesBuilder().Build();
+            using var properties = DeltaTestKit.Properties(x => x);
             using (var writer = new ParquetFileWriter(stream, schema, properties, leaveOpen: true))
             {
                 using (var rowGroup = writer.AppendRowGroup())

@@ -67,12 +67,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
             // The batch holds the read columns in file order
             var positions = bound.Select((index, position) => (index, position)).ToDictionary(x => x.index, x => x.position);
-            foreach (var column in columns)
+            foreach (var column in columns.Where(x => x.Source >= 0))
             {
-                if (column.Source >= 0)
-                {
-                    column.Source = positions[column.Source];
-                }
+                column.Source = positions[column.Source];
             }
             var leaves = new List<int>();
             foreach (var index in bound)

@@ -71,7 +71,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var schema = new Schema.Builder().Field(new Field("a", Int32Type.Default, true)).Build();
             using var batch = new RecordBatch(schema, new[] { new Int32Array.Builder().AppendRange(new int[rows]).Build() }, rows);
             using var stream = new MemoryStream();
-            using var properties = new WriterPropertiesBuilder().MaxRowGroupLength(maxRowGroupLength).Build();
+            using var properties = DeltaTestKit.Properties(x => x.MaxRowGroupLength(maxRowGroupLength));
             using (var writer = new ParquetSharp.Arrow.FileWriter(stream, schema, properties, leaveOpen: true))
             {
                 writer.WriteRecordBatch(batch);
