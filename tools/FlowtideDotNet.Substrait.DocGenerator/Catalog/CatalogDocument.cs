@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using System.Text.Json.Nodes;
+using YamlDotNet.Core;
 
 namespace FlowtideDotNet.Substrait.Documentation.Catalog;
 
@@ -21,7 +22,10 @@ internal sealed record CatalogDocument(string Path, JsonObject Data)
     {
         var displayPath = System.IO.Path.GetRelativePath(root, path).Replace('\\', '/');
         try { return new(displayPath, YamlJson.Load(File.ReadAllText(path))); }
-        catch (Exception error) { throw new InvalidDataException($"{displayPath}: {error.Message}", error); }
+        catch (InvalidDataException error) { throw new InvalidDataException($"{displayPath}: {error.Message}", error); }
+        catch (IOException error) { throw new InvalidDataException($"{displayPath}: {error.Message}", error); }
+        catch (UnauthorizedAccessException error) { throw new InvalidDataException($"{displayPath}: {error.Message}", error); }
+        catch (YamlException error) { throw new InvalidDataException($"{displayPath}: {error.Message}", error); }
     }
 }
 

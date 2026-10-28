@@ -104,7 +104,7 @@ internal static class ReferenceGenerator
         {
             ["docs/docs/expressions/functions-reference.md"] = markdown.ToString(),
             ["docs/llms/expressions.txt"] = markdown.ToString(),
-            ["docs/reference/sql-functions.xml"] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + xml.ToString() + "\n"
+            ["docs/reference/sql-functions.xml"] = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n" + xml + "\n"
         };
     }
 
@@ -124,18 +124,16 @@ internal static class ReferenceGenerator
                 yield return (Label(fact.Key), Format(fact.Value));
         // Table output shape and literal arguments belong to the source definition's custom metadata.
         if (entry.Category == "table")
-            foreach (var definition in implementations.Select(impl => impl.Definition).Distinct())
-            {
-                if (definition["metadata"] is JsonObject details)
-                    foreach (var fact in details.Where(pair => pair.Key != "legacy_extension_uri").OrderBy(pair => pair.Key, StringComparer.Ordinal))
-                        yield return (Label(fact.Key), Format(fact.Value));
-            }
+            foreach (var details in implementations.Select(impl => impl.Definition).Distinct()
+                .Select(definition => definition["metadata"]).OfType<JsonObject>())
+                foreach (var fact in details.Where(pair => pair.Key != "legacy_extension_uri").OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                    yield return (Label(fact.Key), Format(fact.Value));
     }
 
     private static string Contract(ResolvedImplementation implementation)
     {
         var impl = implementation.Data;
-        var args = impl["args"].Objects().Select(arg => arg.ContainsKey("options") ? "enum(" + string.Join(", ", arg["options"].Strings()) + ")"
+        var args = impl["args"].Objects().Select(arg => arg.TryGetPropertyValue("options", out var options) ? "enum(" + string.Join(", ", options.Strings()) + ")"
             : Format(arg["value"] ?? arg["type"]) + (arg["constant"]?.GetValue<bool>() == true ? " (constant)" : ""));
         var result = "(" + string.Join(", ", args) + ") -> ";
         result += impl["output_columns"] is JsonArray columns

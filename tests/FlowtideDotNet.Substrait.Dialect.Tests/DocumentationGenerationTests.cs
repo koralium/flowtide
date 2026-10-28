@@ -35,9 +35,9 @@ public class DocumentationGenerationTests
         var generated = Generate();
         var markdown = generated["docs/llms/expressions.txt"];
         var xml = XDocument.Parse(generated["docs/reference/sql-functions.xml"]);
-        foreach (var entry in CatalogValidationTests.Catalog.Functions())
+        foreach (var entry in CatalogValidationTests.Catalog.Functions()
+            .Where(entry => entry.Data["metadata"]?["sql_exposed"]?.GetValue<bool>() != false))
         {
-            if (entry.Data["metadata"]?["sql_exposed"]?.GetValue<bool>() == false) continue;
             var topic = Assert.Single(xml.Root!.Elements("topic").Where(topic => topic.Attribute("id")!.Value == "functions-" + entry.Category));
             Assert.Contains(entry.Data["metadata"]!["sql_signature"].Text()!, topic.Value);
             Assert.Contains(entry.Data["metadata"]!["sql_signature"].Text()!, markdown);

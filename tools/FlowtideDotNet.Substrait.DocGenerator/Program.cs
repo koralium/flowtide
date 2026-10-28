@@ -12,6 +12,7 @@
 
 using System.Text;
 using FlowtideDotNet.Substrait.Documentation.Catalog;
+using YamlDotNet.Core;
 
 namespace FlowtideDotNet.Substrait.Documentation;
 
@@ -45,11 +46,32 @@ internal static class Program
             var introduction = File.ReadAllText(Path.Combine(root, "docs", "reference", "expressions.md"));
             return WriteFiles(root, ReferenceGenerator.Generate(catalog, introduction), check, Console.Out);
         }
-        catch (Exception error)
+        catch (ArgumentException error)
         {
-            Console.Error.WriteLine(error.Message);
-            return 1;
+            return ReportError(error);
         }
+        catch (InvalidDataException error)
+        {
+            return ReportError(error);
+        }
+        catch (IOException error)
+        {
+            return ReportError(error);
+        }
+        catch (UnauthorizedAccessException error)
+        {
+            return ReportError(error);
+        }
+        catch (YamlException error)
+        {
+            return ReportError(error);
+        }
+    }
+
+    private static int ReportError(Exception error)
+    {
+        Console.Error.WriteLine(error.Message);
+        return 1;
     }
 
     private static string FindRoot()
