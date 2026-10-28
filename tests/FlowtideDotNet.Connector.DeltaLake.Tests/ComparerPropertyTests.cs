@@ -341,16 +341,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var header = StructHeader.Create("ts", "l");
             IDataValue At(long milliseconds) => new TimestampTzValue(DateTime.UnixEpoch.Ticks + milliseconds * TimeSpan.TicksPerMillisecond, 0);
-            var types = new (SchemaBaseType Type, Func<int, IDataValue> Value)[]
+            var types = new (string Name, SchemaBaseType Type, Func<int, IDataValue> Value)[]
             {
-                (new Delta.StructType(new[] { Field("ts", new Delta.TimestampType()), Field("l", new Delta.ArrayType() { ElementType = new Delta.TimestampType(), ContainsNull = true }) }),
+                ("struct of a timestamp and a list", new Delta.StructType(new[] { Field("ts", new Delta.TimestampType()), Field("l", new Delta.ArrayType() { ElementType = new Delta.TimestampType(), ContainsNull = true }) }),
                     i => new StructValue(header, At(i * 7 - 20), new ListValue(At(i), At(-i * 1_000)))),
-                (new Delta.MapType(new Delta.StringType(), new Delta.TimestampType(), true),
+                ("map to timestamps", new Delta.MapType(new Delta.StringType(), new Delta.TimestampType(), true),
                     i => new MapValue(new KeyValuePair<IDataValue, IDataValue>(new StringValue("a"), At(i)), new KeyValuePair<IDataValue, IDataValue>(new StringValue("b"), At(i * 3 - 40)))),
-                (new Delta.MapType(new Delta.TimestampType(), new Delta.LongType(), true),
+                ("map from timestamps", new Delta.MapType(new Delta.TimestampType(), new Delta.LongType(), true),
                     i => new MapValue(new KeyValuePair<IDataValue, IDataValue>(At(i * 5), new Int64Value(i))))
             };
-            foreach (var (type, value) in types)
+            foreach (var (name, type, value) in types)
             {
                 var values = Enumerable.Range(0, 12).Select(value).ToList();
                 using var stored = Store(type, values);
@@ -364,7 +364,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     AssertColumnHash(comparer, inexact);
                     for (int i = 0; i < values.Count; i++)
                     {
-                        Assert.True(comparer.IsEqual(i, column, i, foreign), $"{type} row {i} in {unit}");
+                        Assert.True(comparer.IsEqual(i, column, i, foreign), $"{name} row {i} in {unit}");
                         Assert.Equal(HashOf(comparer, column, i), HashOf(comparer, foreign, i));
                         Assert.Null(Hash(comparer, inexact, i));
                         Assert.False(comparer.IsEqual(i, column, i, inexact));
@@ -501,7 +501,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var hash = Hash(comparer, array, index);
             Assert.True(hash.HasValue, $"row {index} has no hash");
-            return hash.Value;
+            return hash.GetValueOrDefault();
         }
 
         private static (SchemaBaseType, List<IDataValue>) Generate(string type, Random random)
