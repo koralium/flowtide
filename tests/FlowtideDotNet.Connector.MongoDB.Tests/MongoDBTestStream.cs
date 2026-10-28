@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Connector.MongoDB.Extensions;
 using FlowtideDotNet.Core;
 using MongoDB.Bson;
 using MongoDB.Driver;

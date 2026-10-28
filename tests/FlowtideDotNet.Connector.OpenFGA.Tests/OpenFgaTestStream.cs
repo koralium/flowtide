@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.AcceptanceTests.Internal;
-using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.Core;
 using OpenFga.Sdk.Client;
 using OpenFga.Sdk.Model;
