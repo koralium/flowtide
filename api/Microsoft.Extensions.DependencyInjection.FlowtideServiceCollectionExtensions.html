@@ -91,7 +91,7 @@
 
 
   <h1 id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions" data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions" class="text-break">
-Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L18"><i class="bi bi-code-slash"></i></a>
+Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L19"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -158,10 +158,12 @@ Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondar
 
   <h3 id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String_" data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
   AddFlowtideStream(IServiceCollection, string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L20"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L104"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Registers a named stream that continuously maintains query results as source data changes.
+Use the returned builder to configure its plan, source and sink connectors, and state storage.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -171,15 +173,18 @@ Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondar
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
-    <dd></dd>
+    <dd><p>The application service collection.</p>
+</dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
-    <dd></dd>
+    <dd><p>A stable stream name used to identify its services and persisted state.</p>
+</dd>
   </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>A builder for configuring the plan, connectors and state storage.</p>
+</dd>
   </dl>
 
 
@@ -187,16 +192,82 @@ Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondar
 
 
 
+  <h4 class="section" id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String__examples">Examples</h4>
+  <p>
+A complete console application using the .NET Generic Host. Install the
+FlowtideDotNet.DependencyInjection and Microsoft.Extensions.Hosting NuGet packages.
+This example uses a built-in VALUES source and the console sink, so no external database is needed.
+</p>
+<pre><code class="lang-csharp">using System.IO;
+using FlowtideDotNet.Core.Sinks;
+using FlowtideDotNet.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddFlowtideStream("hello")
+    .AddSqlTextAsPlan("""
+        INSERT INTO console
+        SELECT id, upper(name) AS name
+        FROM (VALUES (1, 'Ada'), (2, 'Linus')) AS people(id, name);
+        """)
+    .AddConnectors(connectors =&gt; connectors.AddConsoleSink("console"))
+    .AddStorage(storage =&gt;
+    {
+        storage.AddTemporaryStorage(Path.Combine(Path.GetTempPath(), "flowtide-hello"));
+    });
+
+using var host = builder.Build();
+await host.RunAsync();</code></pre>
+<p>
+Run the application to start the stream and print its results. The host handles startup and shutdown;
+press Ctrl+C to stop. Temporary storage is cleaned up on disposal. For state that survives restarts,
+replace the storage call with <code>storage.AddFileStorage("./state/hello")</code> and keep that directory.
+</p>
 
 
+  <h4 class="section" id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>
+A stream needs a plan, source and sink connectors, and state storage.
+Configure these on the returned builder before starting the application host:
+</p>
+<ol><li><span class="term">Plan</span>
+Use <a class="xref" href="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlTextAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String_">AddSqlTextAsPlan(IFlowtideDIBuilder, string)</a> for inline SQL,
+<a class="xref" href="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlFileAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String_">AddSqlFileAsPlan(IFlowtideDIBuilder, string)</a> for a SQL file, or
+<a class="xref" href="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_Action_FlowtideDotNet_Substrait_Sql_SqlPlanBuilder__">AddSqlPlan(IFlowtideDIBuilder, Action&lt;SqlPlanBuilder&gt;)</a> to configure a SQL plan builder.
+The query describes the result to maintain; <code>INSERT INTO</code> names its destination.
+</li><li><span class="term">Source and sink connectors</span>
+Use <a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_AddConnectors_System_Action_FlowtideDotNet_DependencyInjection_IDependencyInjectionConnectorManager__">AddConnectors(Action&lt;IDependencyInjectionConnectorManager&gt;)</a> to register sources for the input tables
+and sinks for the destinations named in the plan. Install the connector packages for your data systems
+and make sure their table names match the SQL. Built-in inputs such as <code>VALUES</code> need no source connector.
+</li><li><span class="term">State storage</span>
+Use <a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html#FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_AddStorage_System_Action_FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder__">AddStorage(Action&lt;IFlowtideStorageBuilder&gt;)</a> to store operator state, source positions and checkpoints.
+Choose <a class="xref" href="FlowtideDotNet.DependencyInjection.FlowtideStorageExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideStorageExtensions_AddTemporaryStorage_FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_System_String_">AddTemporaryStorage(IFlowtideStorageBuilder, string?)</a> for development and tests, or
+<a class="xref" href="FlowtideDotNet.DependencyInjection.FlowtideStorageExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideStorageExtensions_AddFileStorage_FlowtideDotNet_DependencyInjection_IFlowtideStorageBuilder_System_String_">AddFileStorage(IFlowtideStorageBuilder, string)</a> for local state that survives application restarts.
+</li></ol>
+<p>
+The application host starts and stops the stream. Calling this method registers its services;
+run the host after completing the configuration, as shown in the example.
+Give independent streams their own names and storage directories. Calling this method again
+with the same name on the same service collection returns the existing builder.
+</p>
+</div>
 
+
+  <dl class="typelist seealso">
+    <dt>See Also</dt>
+    <dd>
+    <div><a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.html">SqlFunctionReference</a></div>
+    </dd>
+  </dl>
 
 
 
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L18" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L19" class="edit-link">Edit this page</a>
         </div>
 
 

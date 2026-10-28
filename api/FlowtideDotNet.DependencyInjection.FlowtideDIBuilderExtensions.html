@@ -158,7 +158,7 @@ Class FlowtideDIBuilderExtensions  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddOpenLineageHttp_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_Action_FlowtideDotNet_Core_Lineage_OpenLineageHttpOptions__" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddOpenLineageHttp(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,System.Action{FlowtideDotNet.Core.Lineage.OpenLineageHttpOptions})">
   AddOpenLineageHttp(IFlowtideDIBuilder, Action&lt;OpenLineageHttpOptions&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L108"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L129"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Adds OpenLineage HTTP reporting to the Flowtide stream, enabling lineage events
@@ -214,7 +214,7 @@ Example usage:
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_FlowtideDotNet_Substrait_Plan_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddPlan(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,FlowtideDotNet.Substrait.Plan)">
   AddPlan(IFlowtideDIBuilder, Plan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L57"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -252,10 +252,11 @@ Example usage:
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlFileAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddSqlFileAsPlan(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,System.String)">
   AddSqlFileAsPlan(IFlowtideDIBuilder, string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Uses the contents of a SQL file as the continuously maintained stream plan.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -265,15 +266,18 @@ Example usage:
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>builder</code> <a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
     <dt><code>filePath</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
-    <dd></dd>
+    <dd><p>The SQL file to read.</p>
+</dd>
   </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
   </dl>
 
 
@@ -282,18 +286,32 @@ Example usage:
 
 
 
+  <h4 class="section" id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlFileAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</p><ul><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar.html">SqlFunctionReference.Scalar</a>: -x; NOT x; abs(x); acos(x); acosh(x); asin(x); asinh(x); atan(x); atan2(y, x); atanh(x); ceil(x) (aliases: ceiling); check_true(condition, 'message' [, tags...]); check_value(value, condition, 'message' [, tags...]); coalesce(x, ...); concat(x, y, ...); cos(x); cosh(x); datediff(component, start, end); degrees(x); exp(x); floor(x); floor_timestamp_day(timestamp); from_json(json); gettimestamp(); greatest(x, y, ...); guid(string); is_finite(x); is_infinite(x); is_nan(x); len(string); list_first_difference(first, second); list_sort_asc_null_last(list); log10(x); lower(string); ltrim(string); named_struct('field', value, ...); nullif(x, y); power(x, y); radians(x); regexp_string_split(string, pattern); replace(string, old, replacement); round(x); round_calendar(timestamp, operation, component, reference, step); rtrim(string); sign(x); sin(x); sinh(x); sqrt(x); starts_with(string, prefix); strftime(unix_microseconds, format); string LIKE pattern [ESCAPE character]; string_base64_decode(string); string_base64_encode(string); string_join(separator, list); string_split(string, separator); strpos(string, substring); substring(string, start [, length]); tan(x); tanh(x); timestamp_add(component, amount, timestamp); timestamp_extract(component, timestamp); timestamp_format(timestamp, format); timestamp_parse(string, format); to_json(value); to_string(value); trim(string); upper(string); x % y; x * y; x + y; x - y; x / y; x &lt; y; x &lt;= y; x &lt;&gt; y; x = y; x &gt; y; x &gt;= y; x AND y; x BETWEEN lower AND upper; x IS DISTINCT FROM y; x IS NOT DISTINCT FROM y; x IS NOT NULL; x IS NULL; x OR y; x XOR y; xxhash128_guid_string(value, ...); xxhash64(value, ...)</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate.html">SqlFunctionReference.Aggregate</a>: COUNT(*); COUNT(DISTINCT x); avg(x); list_agg(x); list_union_distinct_agg(x); max(x); max_by(x, y); min(x); min_by(x, y); string_agg(x, separator); sum(x); sum0(x); surrogate_key_int64()</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window.html">SqlFunctionReference.Window</a>: avg(x) OVER (...); lag(x [, offset [, default]]) OVER (...); lag(x, offset [, default]) OVER (...); last_value(x) IGNORE NULLS OVER (...); last_value(x) OVER (...); lead(x [, offset [, default]]) OVER (...); lead(x, offset [, default]) OVER (...); max_by(x, y) OVER (...); min_by(x, y) OVER (...); row_number() OVER (...); session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC); sum(x) OVER (...); surrogate_key_int64() OVER (...)</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table.html">SqlFunctionReference.Table</a>: hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit); tumbling_window(timestamp, size_amount, size_unit); unnest(collection)</li></ul>
+</div>
 
 
+  <dl class="typelist seealso">
+    <dt>See Also</dt>
+    <dd>
+    <div><a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.html">SqlFunctionReference</a></div>
+    </dd>
+  </dl>
 
 
   <a id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlPlan_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddSqlPlan*"></a>
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_Action_FlowtideDotNet_Substrait_Sql_SqlPlanBuilder__" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddSqlPlan(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,System.Action{FlowtideDotNet.Substrait.Sql.SqlPlanBuilder})">
   AddSqlPlan(IFlowtideDIBuilder, Action&lt;SqlPlanBuilder&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L50"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L71"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Builds the stream's SQL plan using the registered connectors' table providers.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -303,15 +321,18 @@ Example usage:
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>builder</code> <a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
     <dt><code>configure</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlPlanBuilder.html">SqlPlanBuilder</a>&gt;</dt>
-    <dd></dd>
+    <dd><p>Configures metadata and adds SQL statements to the plan.</p>
+</dd>
   </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
   </dl>
 
 
@@ -322,16 +343,23 @@ Example usage:
 
 
 
+  <dl class="typelist seealso">
+    <dt>See Also</dt>
+    <dd>
+    <div><a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.html">SqlFunctionReference</a></div>
+    </dd>
+  </dl>
 
 
   <a id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlTextAsPlan_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddSqlTextAsPlan*"></a>
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlTextAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.AddSqlTextAsPlan(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,System.String)">
   AddSqlTextAsPlan(IFlowtideDIBuilder, string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>Uses Flowtide SQL as the continuously maintained stream plan.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
@@ -341,15 +369,18 @@ Example usage:
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>builder</code> <a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
     <dt><code>sqlText</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
-    <dd></dd>
+    <dd><p>SQL using tables supplied by the configured connectors.</p>
+</dd>
   </dl>
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
     <dt><a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
-    <dd></dd>
+    <dd><p>The stream builder.</p>
+</dd>
   </dl>
 
 
@@ -358,15 +389,28 @@ Example usage:
 
 
 
+  <h4 class="section" id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_AddSqlTextAsPlan_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_System_String__remarks">Remarks</h4>
+  <div class="markdown level1 remarks"><p>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</p><ul><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar.html">SqlFunctionReference.Scalar</a>: -x; NOT x; abs(x); acos(x); acosh(x); asin(x); asinh(x); atan(x); atan2(y, x); atanh(x); ceil(x) (aliases: ceiling); check_true(condition, 'message' [, tags...]); check_value(value, condition, 'message' [, tags...]); coalesce(x, ...); concat(x, y, ...); cos(x); cosh(x); datediff(component, start, end); degrees(x); exp(x); floor(x); floor_timestamp_day(timestamp); from_json(json); gettimestamp(); greatest(x, y, ...); guid(string); is_finite(x); is_infinite(x); is_nan(x); len(string); list_first_difference(first, second); list_sort_asc_null_last(list); log10(x); lower(string); ltrim(string); named_struct('field', value, ...); nullif(x, y); power(x, y); radians(x); regexp_string_split(string, pattern); replace(string, old, replacement); round(x); round_calendar(timestamp, operation, component, reference, step); rtrim(string); sign(x); sin(x); sinh(x); sqrt(x); starts_with(string, prefix); strftime(unix_microseconds, format); string LIKE pattern [ESCAPE character]; string_base64_decode(string); string_base64_encode(string); string_join(separator, list); string_split(string, separator); strpos(string, substring); substring(string, start [, length]); tan(x); tanh(x); timestamp_add(component, amount, timestamp); timestamp_extract(component, timestamp); timestamp_format(timestamp, format); timestamp_parse(string, format); to_json(value); to_string(value); trim(string); upper(string); x % y; x * y; x + y; x - y; x / y; x &lt; y; x &lt;= y; x &lt;&gt; y; x = y; x &gt; y; x &gt;= y; x AND y; x BETWEEN lower AND upper; x IS DISTINCT FROM y; x IS NOT DISTINCT FROM y; x IS NOT NULL; x IS NULL; x OR y; x XOR y; xxhash128_guid_string(value, ...); xxhash64(value, ...)</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate.html">SqlFunctionReference.Aggregate</a>: COUNT(*); COUNT(DISTINCT x); avg(x); list_agg(x); list_union_distinct_agg(x); max(x); max_by(x, y); min(x); min_by(x, y); string_agg(x, separator); sum(x); sum0(x); surrogate_key_int64()</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window.html">SqlFunctionReference.Window</a>: avg(x) OVER (...); lag(x [, offset [, default]]) OVER (...); lag(x, offset [, default]) OVER (...); last_value(x) IGNORE NULLS OVER (...); last_value(x) OVER (...); lead(x [, offset [, default]]) OVER (...); lead(x, offset [, default]) OVER (...); max_by(x, y) OVER (...); min_by(x, y) OVER (...); row_number() OVER (...); session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC); sum(x) OVER (...); surrogate_key_int64() OVER (...)</li><li>
+      <a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table.html">SqlFunctionReference.Table</a>: hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit); tumbling_window(timestamp, size_amount, size_unit); unnest(collection)</li></ul>
+</div>
 
 
+  <dl class="typelist seealso">
+    <dt>See Also</dt>
+    <dd>
+    <div><a class="xref" href="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.html">SqlFunctionReference</a></div>
+    </dd>
+  </dl>
 
 
   <a id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_WriteCheckFailuresAsActivity_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.WriteCheckFailuresAsActivity*"></a>
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_WriteCheckFailuresAsActivity_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.WriteCheckFailuresAsActivity(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder)">
   WriteCheckFailuresAsActivity(IFlowtideDIBuilder)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L99"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Reports check failures and resolutions as CheckFailure and CheckResolved activities on the FlowtideDotNet.CheckFailures source.</p>
@@ -403,7 +447,7 @@ Example usage:
 
   <h3 id="FlowtideDotNet_DependencyInjection_FlowtideDIBuilderExtensions_WriteCheckFailuresToLogger_FlowtideDotNet_DependencyInjection_IFlowtideDIBuilder_Microsoft_Extensions_Logging_LogLevel_" data-uid="FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.WriteCheckFailuresToLogger(FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder,Microsoft.Extensions.Logging.LogLevel)">
   WriteCheckFailuresToLogger(IFlowtideDIBuilder, LogLevel)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L66"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideDIBuilderExtensions.cs/#L87"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>

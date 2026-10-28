@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class SqlFunctionReference.Scalar | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class SqlFunctionReference.Scalar | Flowtide.NET ">
+      
+      <meta name="description" content="Supported scalar functions and SQL operators, including overloads and restrictions.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Scalar.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar">
+
+
+
+  <h1 id="FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Scalar" data-uid="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar" class="text-break">
+Class SqlFunctionReference.Scalar  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlFunctionReference.cs/#L25"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Substrait.html">Substrait</a>.<a class="xref" href="FlowtideDotNet.Substrait.Sql.html">Sql</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Substrait.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Supported scalar functions and SQL operators, including overloads and restrictions.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class SqlFunctionReference.Scalar</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">SqlFunctionReference.Scalar</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Scalar_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</p><p>
+  <b>-x</b>
+</p><p>
+  <b>Profile: i64</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>negate:i64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64</code></li><li>Required Substrait option overflow: <code>SILENT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: fp64</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>negate:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>NOT x</b>
+</p><p>SQL three-valued boolean negation.</p><ul><li>Extension signatures: <code>not:bool</code></li><li>Extension source: <code>extension:io.substrait:functions_boolean</code></li><li>Extension type declaration: <code>(boolean) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</a>
+</p><p>
+  <b>abs(x)</b>
+</p><p>
+  <b>Profile: i64</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>abs:i64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64</code></li><li>Required Substrait option overflow: <code>ERROR</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: fp64</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>abs:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>acos(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>acos:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>acosh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>acosh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>asin(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>asin:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>asinh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>asinh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>atan(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>atan:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>atan2(y, x)</b>
+</p><p>Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results can differ.</p><ul><li>Extension signatures: <code>atan2:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>atanh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>atanh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>ceil(x)</b>
+</p><p>The native double implementation converts the rounded value through Int64. Restrict inputs to finite values whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.</p><ul><li>Extension signatures: <code>ceil:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_rounding</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Sql aliases: <code>[ceiling]</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</a>
+</p><p>
+  <b>check_true(condition, 'message' [, tags...])</b>
+</p><p>Planner intrinsic extracted into check relations. Returns true only for boolean true; only boolean false raises an issue. Message must be a string literal. Include a row key in tags for one issue per failing row.</p><ul><li>Extension signatures: <code>check_true:bool_str, check_true:bool_str_any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:check</code></li><li>Extension type declaration: <code>(boolean, string) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(boolean, string, any) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li><li>Variadic arguments: <code>min=2</code></li><li>Literal arguments: <code>[1]</code></li><li>Requires optimizer pass: <code>CheckExtractor</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html">Detailed documentation</a>
+</p><p>
+  <b>check_value(value, condition, 'message' [, tags...])</b>
+</p><p>Planner intrinsic extracted into check relations. Returns value while recording boolean-false failures; null/non-boolean conditions do not raise an issue. Message must be a string literal. Named tags use key =&gt; expression.</p><ul><li>Extension signatures: <code>check_value:any_bool_str, check_value:any_bool_str_any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:check</code></li><li>Extension type declaration: <code>(any1, boolean, string) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(any1, boolean, string, any) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Variadic arguments: <code>min=3</code></li><li>Literal arguments: <code>[2]</code></li><li>Requires optimizer pass: <code>CheckExtractor</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html">Detailed documentation</a>
+</p><p>
+  <b>coalesce(x, ...)</b>
+</p><p>First non-null argument.</p><ul><li>Extension signatures: <code>coalesce:any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1) -&gt; any1</code></li><li>Variadic arguments: <code>min=2</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>concat(x, y, ...)</b>
+</p><p>
+  <b>Profile: str</b>
+</p><p>Null propagates. Also exposed as the SQL || operator.</p><ul><li>Extension signatures: <code>concat:str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string</code></li><li>Required Substrait option null_handling: <code>ACCEPT_NULLS</code></li><li>Variadic arguments: <code>min=1</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str</b>
+</p><p>Null propagates. Also exposed as the SQL || operator.</p><ul><li>Extension signatures: <code>concat:str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string</code></li><li>Required Substrait option null_handling: <code>IGNORE_NULLS</code></li><li>Variadic arguments: <code>min=1</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>cos(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>cos:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>cosh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>cosh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>datediff(component, start, end)</b>
+</p><p>Count crossed component boundaries.</p><ul><li>Extension signatures: <code>datediff:str_ptstz_ptstz</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(string, precision_timestamp_tz&lt;7&gt;, precision_timestamp_tz&lt;7&gt;) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>degrees(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>degrees:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>exp(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>exp:i64, exp:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>floor(x)</b>
+</p><p>The native double implementation converts the rounded value through Int64. Restrict inputs to finite values whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.</p><ul><li>Extension signatures: <code>floor:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_rounding</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</a>
+</p><p>
+  <b>floor_timestamp_day(timestamp)</b>
+</p><p>Remove the time-of-day component; incompatible values return null.</p><ul><li>Extension signatures: <code>floor_timestamp_day:ptstz</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(precision_timestamp_tz&lt;7&gt;) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>from_json(json)</b>
+</p><p>
+  <b>Profile: str, vbin</b>
+</p><p>Parse JSON text or UTF-8 binary into dynamic Flowtide values.</p><ul><li>Extension signatures: <code>from_json:str, from_json:vbin</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(binary) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str, vbin</b>
+</p><p>Parse JSON text or UTF-8 binary into dynamic Flowtide values.</p><ul><li>Extension signatures: <code>from_json:str, from_json:vbin</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(binary) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option error_handling: <code>ERROR</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>gettimestamp()</b>
+</p><p>Planner intrinsic: optimizer replaces the call with a periodically updated timestamp source and joins. Default update interval is one hour; configure SetGetTimestampUpdateInterval. Not supported inside join conditions.</p><ul><li>Extension signatures: <code>gettimestamp:</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>() -&gt; precision_timestamp_tz&lt;7&gt;; nullability=DECLARED_OUTPUT</code></li><li>Requires optimizer pass: <code>TimestampToJoin</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>greatest(x, y, ...)</b>
+</p><p>Greatest value; a null argument propagates null. Requires at least two arguments.</p><ul><li>Extension signatures: <code>greatest:any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1) -&gt; any1; nullability=MIRROR</code></li><li>Variadic arguments: <code>min=2</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>guid(string)</b>
+</p><p>Parse a GUID string into its 16-byte .NET GUID representation. Invalid input returns null; this does not generate random GUIDs.</p><ul><li>Extension signatures: <code>parse_guid:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_guid</code></li><li>Extension type declaration: <code>(string) -&gt; binary?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <b>is_finite(x)</b>
+</p><p>Test for a special numeric value.</p><ul><li>Extension signatures: <code>is_finite:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(fp64) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>is_infinite(x)</b>
+</p><p>Test for a special numeric value.</p><ul><li>Extension signatures: <code>is_infinite:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(fp64) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>is_nan(x)</b>
+</p><p>Test for a special numeric value.</p><ul><li>Extension signatures: <code>is_nan:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(fp64) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>len(string)</b>
+</p><p>Counts Unicode text elements (grapheme clusters) using .NET StringInfo. The SQL spelling is len.</p><ul><li>Extension signatures: <code>char_length:str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; i64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>list_first_difference(first, second)</b>
+</p><p>First differing element of the first list, or null if none differs.</p><ul><li>Extension signatures: <code>list_first_difference:list_list</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_list</code></li><li>Extension type declaration: <code>(list&lt;any&gt;, list&lt;any&gt;) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html">Detailed documentation</a>
+</p><p>
+  <b>list_sort_asc_null_last(list)</b>
+</p><p>Sort ascending with nulls last. Non-list input returns null.</p><ul><li>Extension signatures: <code>list_sort_asc_null_last:list</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_list</code></li><li>Extension type declaration: <code>(list&lt;any&gt;) -&gt; list?&lt;any&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html">Detailed documentation</a>
+</p><p>
+  <b>log10(x)</b>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option on_log_zero: <code>NAN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option on_log_zero: <code>ERROR</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option on_log_zero: <code>MINUS_INFINITY</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>ERROR</code></li><li>Required Substrait option on_log_zero: <code>NAN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>ERROR</code></li><li>Required Substrait option on_log_zero: <code>ERROR</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</p><ul><li>Extension signatures: <code>log10:i64, log10:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_logarithmic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>ERROR</code></li><li>Required Substrait option on_log_zero: <code>MINUS_INFINITY</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</a>
+</p><p>
+  <b>lower(string)</b>
+</p><p>String operation; incompatible input kinds generally yield null.</p><ul><li>Extension signatures: <code>lower:str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>ltrim(string)</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</p><ul><li>Extension signatures: <code>ltrim:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str</b>
+</p><p>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</p><ul><li>Extension signatures: <code>ltrim:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>named_struct('field', value, ...)</b>
+</p><p>named_struct alternates string-literal field names and values, with an even argument count. The schema cannot express repeating heterogeneous pairs; any plus this argument-pattern restriction describes the native variadic binding.</p><ul><li>Extension signatures: <code>create:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:struct</code></li><li>Extension type declaration: <code>(any) -&gt; flowtide_types.u!dynamic; nullability=DECLARED_OUTPUT</code></li><li>Variadic arguments: <code>min=2</code></li></ul><p>
+  <b>nullif(x, y)</b>
+</p><p>Return null when equal; otherwise return x.</p><ul><li>Extension signatures: <code>nullif:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>power(x, y)</b>
+</p><p>Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results can differ.</p><ul><li>Extension signatures: <code>power:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>radians(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>radians:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>regexp_string_split(string, pattern)</b>
+</p><p>Case-sensitive .NET regular expression splitting with explicit capture. Multiline and dotall modes are disabled; other mode options are not declared.</p><ul><li>Extension signatures: <code>regexp_string_split:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; List&lt;string&gt;</code></li><li>Required Substrait option case_sensitivity: <code>CASE_SENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>replace(string, old, replacement)</b>
+</p><p>String operation; incompatible input kinds generally yield null.</p><ul><li>Extension signatures: <code>replace:str_str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string, string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>round(x)</b>
+</p><p>One-argument rounding with ties to even, unlike upstream round(value, scale). Double results pass through Int64: use finite inputs with an Int64-representable rounded value. Decimal arithmetic uses System.Decimal (conservatively at most 28 digits).</p><ul><li>Extension signatures: <code>round:i64, round:fp64, round:dec</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_rounding</code></li><li>Extension type declaration: <code>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(decimal&lt;P,S&gt;) -&gt; decimal?&lt;P,S&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</a>
+</p><p>
+  <b>round_calendar(timestamp, operation, component, reference, step)</b>
+</p><p>Flowtide uses positional string-valued components/operations rather than upstream required enum arguments. Calendar-aligned rounding, for example round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1).</p><ul><li>Extension signatures: <code>round_calendar:ptstz_str_str_str_i64</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(precision_timestamp_tz&lt;7&gt;, string, string, string, i64) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>rtrim(string)</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</p><ul><li>Extension signatures: <code>rtrim:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str</b>
+</p><p>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</p><ul><li>Extension signatures: <code>rtrim:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>sign(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>sign:i64, sign:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>sin(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>sin:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>sinh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>sinh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>sqrt(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>sqrt:i64, sqrt:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option on_domain_error: <code>NAN</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>starts_with(string, prefix)</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>Prefix test; incompatible runtime input kinds return false.</p><ul><li>Extension signatures: <code>starts_with:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; boolean</code></li><li>Required Substrait option case_sensitivity: <code>CASE_SENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>Prefix test; incompatible runtime input kinds return false.</p><ul><li>Extension signatures: <code>starts_with:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; boolean</code></li><li>Required Substrait option case_sensitivity: <code>CASE_INSENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>strftime(unix_microseconds, format)</b>
+</p><p>Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format for typed timestamps.</p><ul><li>Extension signatures: <code>strftime:i64_str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(i64, string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>string LIKE pattern [ESCAPE character]</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>Case-sensitive LIKE. The native runtime also accepts an explicit escape argument and SQL Server-style bracket patterns; the three-argument form is declared in the Flowtide scalar extension.</p><ul><li>Extension signatures: <code>like:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; boolean</code></li><li>Required Substrait option case_sensitivity: <code>CASE_SENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str_str_str</b>
+</p><p>Three-argument LIKE with an explicit escape character. SQL Server-style %/_/bracket patterns are supported. Matching is case-sensitive.</p><ul><li>Extension signatures: <code>like:str_str_str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string, string, string) -&gt; boolean?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>string_base64_decode(string)</b>
+</p><p>Base64 conversion of UTF-8 text. Invalid Base64 input returns null.</p><ul><li>Extension signatures: <code>string_base64_decode:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>string_base64_encode(string)</b>
+</p><p>Base64 conversion of UTF-8 text. Invalid Base64 input returns null.</p><ul><li>Extension signatures: <code>string_base64_encode:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>string_join(separator, list)</b>
+</p><p>Separator is the first argument. Null list returns null; empty/all-null list returns an empty string; null elements are skipped.</p><ul><li>Extension signatures: <code>string_join:str_list</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string, list&lt;any&gt;) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>string_split(string, separator)</b>
+</p><p>String operation; incompatible input kinds generally yield null.</p><ul><li>Extension signatures: <code>string_split:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; List&lt;string&gt;</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>strpos(string, substring)</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>One-based position, or zero if the substring is absent.</p><ul><li>Extension signatures: <code>strpos:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; i64</code></li><li>Required Substrait option case_sensitivity: <code>CASE_SENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>One-based position, or zero if the substring is absent.</p><ul><li>Extension signatures: <code>strpos:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; i64</code></li><li>Required Substrait option case_sensitivity: <code>CASE_INSENSITIVE</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>substring(string, start [, length])</b>
+</p><p>
+  <b>Profile: str_i32, str_i32_i32</b>
+</p><p>Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument overload fails for that mode.</p><ul><li>Extension signatures: <code>substring:str_i32, substring:str_i32_i32</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, i32, i32) -&gt; string</code></li><li>Extension type declaration: <code>(string, i32) -&gt; string</code></li><li>Required Substrait option negative_start: <code>WRAP_FROM_END</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str_i32_i32</b>
+</p><p>Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument overload fails for that mode.</p><ul><li>Extension signatures: <code>substring:str_i32_i32</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, i32, i32) -&gt; string</code></li><li>Required Substrait option negative_start: <code>LEFT_OF_BEGINNING</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>tan(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>tan:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>tanh(x)</b>
+</p><p>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</p><ul><li>Extension signatures: <code>tanh:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>timestamp_add(component, amount, timestamp)</b>
+</p><p>Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.</p><ul><li>Extension signatures: <code>timestamp_add:str_i64_ptstz</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(string, i64, precision_timestamp_tz&lt;7&gt;) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>timestamp_extract(component, timestamp)</b>
+</p><p>Flowtide uses positional string-valued components/operations rather than upstream required enum arguments. Component is a string such as YEAR, MONTH, DAY, HOUR, MINUTE, SECOND or ISO_WEEK; SQL names differ from runtime names.</p><ul><li>Extension signatures: <code>extract:str_ptstz</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(string, precision_timestamp_tz&lt;7&gt;) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>timestamp_format(timestamp, format)</b>
+</p><p>Format typed timestamps with .NET date/time format strings.</p><ul><li>Extension signatures: <code>format:ptstz_str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(precision_timestamp_tz&lt;7&gt;, string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>timestamp_parse(string, format)</b>
+</p><p>Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.</p><ul><li>Extension signatures: <code>parse_timestamp:str_str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_datetime</code></li><li>Extension type declaration: <code>(string, string) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</a>
+</p><p>
+  <b>to_json(value)</b>
+</p><p>Serialize a Flowtide value to JSON text.</p><ul><li>Extension signatures: <code>to_json:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(any) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>to_string(value)</b>
+</p><p>String operation; incompatible input kinds generally yield null.</p><ul><li>Extension signatures: <code>to_string:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(any) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>trim(string)</b>
+</p><p>
+  <b>Profile: str_str</b>
+</p><p>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</p><ul><li>Extension signatures: <code>trim:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: str</b>
+</p><p>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</p><ul><li>Extension signatures: <code>trim:str</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>upper(string)</b>
+</p><p>String operation; incompatible input kinds generally yield null.</p><ul><li>Extension signatures: <code>upper:str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string) -&gt; string</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>x % y</b>
+</p><p>Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric inputs are also accepted natively.</p><ul><li>Extension signatures: <code>modulo:i64_i64, modulo:fp64_fp64</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64, i64) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>x * y</b>
+</p><p>
+  <b>Profile: i64_i64</b>
+</p><p>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</p><ul><li>Extension signatures: <code>multiply:i64_i64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64, i64) -&gt; i64</code></li><li>Required Substrait option overflow: <code>SILENT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: fp64_fp64</b>
+</p><p>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</p><ul><li>Extension signatures: <code>multiply:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>x + y</b>
+</p><p>
+  <b>Profile: i64_i64</b>
+</p><p>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</p><ul><li>Extension signatures: <code>add:i64_i64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64, i64) -&gt; i64</code></li><li>Required Substrait option overflow: <code>SILENT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: fp64_fp64</b>
+</p><p>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</p><ul><li>Extension signatures: <code>add:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>x - y</b>
+</p><p>
+  <b>Profile: i64_i64</b>
+</p><p>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</p><ul><li>Extension signatures: <code>subtract:i64_i64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64, i64) -&gt; i64</code></li><li>Required Substrait option overflow: <code>SILENT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: fp64_fp64</b>
+</p><p>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</p><ul><li>Extension signatures: <code>subtract:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>x / y</b>
+</p><p>Floating division. Integer inputs also produce a floating result in Flowtide, so the upstream integer-returning divide overload is not declared here. Division by zero follows runtime floating-point behavior.</p><ul><li>Extension signatures: <code>divide:fp64_fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64, fp64) -&gt; fp64</code></li><li>Required Substrait option rounding: <code>TIE_TO_EVEN</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>x &lt; y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>lt:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x &lt;= y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>lte:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x &lt;&gt; y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>not_equal:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x = y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>equal:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x &gt; y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>gt:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x &gt;= y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>gte:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x AND y</b>
+</p><p>Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation permits an empty argument list.</p><ul><li>Extension signatures: <code>and:bool</code></li><li>Extension source: <code>extension:io.substrait:functions_boolean</code></li><li>Extension type declaration: <code>(boolean) -&gt; boolean</code></li><li>Variadic arguments: <code></code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</a>
+</p><p>
+  <b>x BETWEEN lower AND upper</b>
+</p><p>Inclusive range test using SQL null semantics.</p><ul><li>Extension signatures: <code>between:any_any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1, any1) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x IS DISTINCT FROM y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>is_distinct_from:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x IS NOT DISTINCT FROM y</b>
+</p><p>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</p><ul><li>Extension signatures: <code>is_not_distinct_from:any_any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1, any1) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x IS NOT NULL</b>
+</p><p>Null test returning a boolean.</p><ul><li>Extension signatures: <code>is_not_null:any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x IS NULL</b>
+</p><p>Null test returning a boolean.</p><ul><li>Extension signatures: <code>is_null:any</code></li><li>Extension source: <code>extension:io.substrait:functions_comparison</code></li><li>Extension type declaration: <code>(any1) -&gt; boolean; nullability=DECLARED_OUTPUT</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</a>
+</p><p>
+  <b>x OR y</b>
+</p><p>Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation permits an empty argument list.</p><ul><li>Extension signatures: <code>or:bool</code></li><li>Extension source: <code>extension:io.substrait:functions_boolean</code></li><li>Extension type declaration: <code>(boolean) -&gt; boolean</code></li><li>Variadic arguments: <code></code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</a>
+</p><p>
+  <b>x XOR y</b>
+</p><p>Boolean exclusive OR.</p><ul><li>Extension signatures: <code>xor:bool_bool</code></li><li>Extension source: <code>extension:io.substrait:functions_boolean</code></li><li>Extension type declaration: <code>(boolean, boolean) -&gt; boolean</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</a>
+</p><p>
+  <b>xxhash128_guid_string(value, ...)</b>
+</p><p>Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns a GUID-formatted string.</p><ul><li>Extension signatures: <code>xxhash128_guid_string:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_hash</code></li><li>Extension type declaration: <code>(any) -&gt; string; nullability=DECLARED_OUTPUT</code></li><li>Variadic arguments: <code>min=1</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html">Detailed documentation</a>
+</p><p>
+  <b>xxhash64(value, ...)</b>
+</p><p>Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns a GUID-formatted string.</p><ul><li>Extension signatures: <code>xxhash64:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_hash</code></li><li>Extension type declaration: <code>(any) -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Variadic arguments: <code>min=1</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html">Detailed documentation</a>
+</p>
+</div>
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlFunctionReference.cs/#L25" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

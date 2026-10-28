@@ -70815,6 +70815,36 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Sql.SqlExpressionVisitor.VisitUnaryOperation
   nameWithType: SqlExpressionVisitor.VisitUnaryOperation
+- uid: FlowtideDotNet.Substrait.Sql.SqlFunctionReference
+  name: SqlFunctionReference
+  href: api/FlowtideDotNet.Substrait.Sql.SqlFunctionReference.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.SqlFunctionReference
+  fullName: FlowtideDotNet.Substrait.Sql.SqlFunctionReference
+  nameWithType: SqlFunctionReference
+- uid: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate
+  name: SqlFunctionReference.Aggregate
+  href: api/FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate
+  fullName: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate
+  nameWithType: SqlFunctionReference.Aggregate
+- uid: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar
+  name: SqlFunctionReference.Scalar
+  href: api/FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar
+  fullName: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar
+  nameWithType: SqlFunctionReference.Scalar
+- uid: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table
+  name: SqlFunctionReference.Table
+  href: api/FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table
+  fullName: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table
+  nameWithType: SqlFunctionReference.Table
+- uid: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window
+  name: SqlFunctionReference.Window
+  href: api/FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window.html
+  commentId: T:FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window
+  fullName: FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window
+  nameWithType: SqlFunctionReference.Window
 - uid: FlowtideDotNet.Substrait.Sql.SqlPlanBuilder
   name: SqlPlanBuilder
   href: api/FlowtideDotNet.Substrait.Sql.SqlPlanBuilder.html

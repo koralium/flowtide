@@ -14,6 +14,7 @@ Start with the stream guide for C# setup, the SQL guide for complete query examp
 - [Building and operating streams](https://koralium.github.io/flowtide/llms/streams.txt): Complete C# examples, dependency injection, direct builders, persistence, versioning, monitoring, distributed hosting, and testing.
 - [Writing Flowtide SQL](https://koralium.github.io/flowtide/llms/sql.txt): Metadata, catalogs, views, joins, subqueries, aggregates, set operations, top N, recursion, analytic windows, time windows, and distributed SQL.
 - [Expressions and functions](https://koralium.github.io/flowtide/llms/expressions.txt): SQL operators and signatures for scalar, aggregate, window, and table functions, including types, null behavior, checks, and restrictions.
+- [SQL function reference](https://koralium.github.io/flowtide/docs/expressions/functions-reference.md): The same generated catalog as a documentation page, sourced from the validated Substrait dialect.
 - [Connectors and data contracts](https://koralium.github.io/flowtide/llms/connectors.txt): Available sources and sinks, registration methods, table naming, required output columns, custom connectors, and connector-specific documentation.
 
 ## Documentation

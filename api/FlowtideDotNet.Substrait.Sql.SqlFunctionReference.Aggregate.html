@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+      <title>Class SqlFunctionReference.Aggregate | Flowtide.NET </title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <meta name="title" content="Class SqlFunctionReference.Aggregate | Flowtide.NET ">
+      
+      <meta name="description" content="Supported aggregate functions, including empty-group, DISTINCT and FILTER behavior.">
+      <link rel="icon" href="../images/favicon.ico">
+      <link rel="describedby" href="../llms.txt">
+      
+      <link rel="stylesheet" href="../public/docfx.min.css">
+      <link rel="stylesheet" href="../public/main.css">
+      <meta name="docfx:navrel" content="../toc.html">
+      <meta name="docfx:tocrel" content="toc.html">
+      
+      <meta name="docfx:rel" content="../">
+      
+      
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Aggregate.md&amp;value=---%0Auid%3A%20FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="loc:inThisArticle" content="In this article">
+      <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
+      <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
+      <meta name="loc:tocFilter" content="Filter by title">
+      <meta name="loc:nextArticle" content="Next">
+      <meta name="loc:prevArticle" content="Previous">
+      <meta name="loc:themeLight" content="Light">
+      <meta name="loc:themeDark" content="Dark">
+      <meta name="loc:themeAuto" content="Auto">
+      <meta name="loc:changeTheme" content="Change theme">
+      <meta name="loc:copy" content="Copy">
+      <meta name="loc:downloadPdf" content="Download PDF">
+
+      <script type="module" src="./../public/docfx.min.js"></script>
+
+      <script>
+        const theme = localStorage.getItem('theme') || 'auto'
+        document.documentElement.setAttribute('data-bs-theme', theme === 'auto' ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : theme)
+      </script>
+
+  </head>
+
+  <body class="tex2jax_ignore" data-layout="" data-yaml-mime="ManagedReference">
+    <header class="bg-body border-bottom">
+      <nav id="autocollapse" class="navbar navbar-expand-md" role="navigation">
+        <div class="container-xxl flex-nowrap">
+          <a class="navbar-brand" href="../index.html">
+            <img id="logo" class="svg" src="../images/flowtidelogo.svg" alt="Flowtide">
+            Flowtide
+          </a>
+          <button class="btn btn-lg d-md-none border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navpanel" aria-controls="navpanel" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="bi bi-three-dots"></i>
+          </button>
+          <div class="collapse navbar-collapse" id="navpanel">
+            <div id="navbar">
+              <form class="search" role="search" id="search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" id="search-query" type="search" disabled placeholder="Search" autocomplete="off" aria-label="Search">
+              </form>
+            </div>
+          </div>
+        </div>
+      </nav>
+    </header>
+
+    <main class="container-xxl">
+      <div class="toc-offcanvas">
+        <div class="offcanvas-md offcanvas-start" tabindex="-1" id="tocOffcanvas" aria-labelledby="tocOffcanvasLabel">
+          <div class="offcanvas-header">
+            <h5 class="offcanvas-title" id="tocOffcanvasLabel">Table of Contents</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#tocOffcanvas" aria-label="Close"></button>
+          </div>
+          <div class="offcanvas-body">
+            <nav class="toc" id="toc"></nav>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="actionbar">
+          <button class="btn btn-lg border-0 d-md-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#tocOffcanvas" aria-controls="tocOffcanvas" aria-expanded="false" aria-label="Show table of contents">
+            <i class="bi bi-list"></i>
+          </button>
+
+          <nav id="breadcrumb"></nav>
+        </div>
+
+        <article data-uid="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate">
+
+
+
+  <h1 id="FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Aggregate" data-uid="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate" class="text-break">
+Class SqlFunctionReference.Aggregate  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlFunctionReference.cs/#L31"><i class="bi bi-code-slash"></i></a>
+  </h1>
+
+  <div class="facts text-secondary">
+    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.Substrait.html">Substrait</a>.<a class="xref" href="FlowtideDotNet.Substrait.Sql.html">Sql</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.Substrait.dll</dd></dl>
+  </div>
+
+  <div class="markdown summary"><p>Supported aggregate functions, including empty-group, DISTINCT and FILTER behavior.</p>
+</div>
+  <div class="markdown conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public static class SqlFunctionReference.Aggregate</code></pre>
+  </div>
+
+
+
+
+  <dl class="typelist inheritance">
+    <dt>Inheritance</dt>
+    <dd>
+      <div><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object">object</a></div>
+      <div><span class="xref">SqlFunctionReference.Aggregate</span></div>
+    </dd>
+  </dl>
+
+
+
+  <dl class="typelist inheritedMembers">
+    <dt>Inherited Members</dt>
+    <dd>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object)">object.Equals(object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.equals#system-object-equals(system-object-system-object)">object.Equals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gethashcode">object.GetHashCode()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.gettype">object.GetType()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.memberwiseclone">object.MemberwiseClone()</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.referenceequals">object.ReferenceEquals(object, object)</a>
+    </div>
+    <div>
+      <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.object.tostring">object.ToString()</a>
+    </div>
+  </dd></dl>
+
+
+
+
+  <h2 id="FlowtideDotNet_Substrait_Sql_SqlFunctionReference_Aggregate_remarks">Remarks</h2>
+  <div class="markdown level0 remarks"><p>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</p><p>
+  <b>COUNT(*)</b>
+</p><p>The zero-argument binding counts rows. The one-argument native binding counts non-null values, but ordinary SQL COUNT(x) is currently rejected by the SQL planner; SQL accepts COUNT(*) and COUNT(DISTINCT x). Empty input returns Int64 zero. The DISTINCT form uses the separate count_distinct binding.</p><ul><li>Extension signatures: <code>count:any, count:</code></li><li>Extension source: <code>extension:io.substrait:functions_aggregate_generic</code></li><li>Extension type declaration: <code>(any) -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>() -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>SILENT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql count expression: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</a>
+</p><p>
+  <b>COUNT(DISTINCT x)</b>
+</p><p>Counts distinct non-null values; empty/all-null groups return Int64 zero. This is an exact stateful aggregate with one expression argument, not an approximate distinct count.</p><ul><li>Extension signatures: <code>count_distinct:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_aggregate_generic</code></li><li>Extension type declaration: <code>(any) -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</a>
+</p><p>
+  <b>avg(x)</b>
+</p><p>
+  <b>Profile: fp64</b>
+</p><p>FP64 average ignores null values and returns null for empty/all-null groups. Integer and decimal results differ from their upstream overloads and are declared separately. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>avg:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>SILENT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: i64</b>
+</p><p>Integer average returns a fractional Double; the average of values 1 and 2 is 1.5, instead of truncating to an integer as upstream does. The Int64 sum wraps on overflow before division. Nulls are ignored; empty/all-null groups return null. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>avg:i64</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>SILENT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: dec</b>
+</p><p>Returns System.Decimal with runtime-computed scale, not the upstream fixed-scale Decimal&lt;38,S&gt;. The opaque result describes the dynamic scale; the actual non-null result kind is decimal. Decimal overflow throws. Use precision at most 28. Nulls are ignored; empty/all-null groups return null. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>avg:dec</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(decimal&lt;P,S&gt;) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>ERROR</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Decimal precision max: <code>28</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>list_agg(x)</b>
+</p><p>Collects non-null values with weighted duplicates, in ascending Flowtide value order. Empty/all-null groups return an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected.</p><ul><li>Extension signatures: <code>list_agg:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_list</code></li><li>Extension type declaration: <code>(any1) -&gt; list&lt;any1&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li><li>Supports order by: <code>false</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html">Detailed documentation</a>
+</p><p>
+  <b>list_union_distinct_agg(x)</b>
+</p><p>Flattens lists and returns distinct elements in ascending Flowtide value order. Null lists are ignored; null elements inside lists are retained once. Empty input returns an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected; deduplication is intrinsic to this function.</p><ul><li>Extension signatures: <code>list_union_distinct_agg:list</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_list</code></li><li>Extension type declaration: <code>(list&lt;any1&gt;) -&gt; list&lt;any1&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li><li>Supports order by: <code>false</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html">Detailed documentation</a>
+</p><p>
+  <b>max(x)</b>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</p><ul><li>Extension signatures: <code>max:i64, max:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: dec</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</p><ul><li>Extension signatures: <code>max:dec</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic_decimal</code></li><li>Extension type declaration: <code>(DECIMAL&lt;P,S&gt;) -&gt; DECIMAL?&lt;P, S&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Decimal precision max: <code>28</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: ptstz</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</p><ul><li>Extension signatures: <code>max:ptstz</code></li><li>Extension source: <code>extension:io.substrait:functions_datetime</code></li><li>Extension type declaration: <code>(precision_timestamp_tz&lt;P&gt;) -&gt; precision_timestamp_tz?&lt;P&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li><li>Timestamp precision: <code>7</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: any</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.</p><ul><li>Extension signatures: <code>max:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>max_by(x, y)</b>
+</p><p>Returns x at the maximum y; rows with null y are ignored, while the selected x may be null. Empty groups, or groups containing only null y, return null. Do not depend on which row wins tied y.</p><ul><li>Extension signatures: <code>max_by:any_any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>min(x)</b>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</p><ul><li>Extension signatures: <code>min:i64, min:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: dec</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</p><ul><li>Extension signatures: <code>min:dec</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic_decimal</code></li><li>Extension type declaration: <code>(DECIMAL&lt;P, S&gt;) -&gt; DECIMAL?&lt;P, S&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Decimal precision max: <code>28</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: ptstz</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</p><ul><li>Extension signatures: <code>min:ptstz</code></li><li>Extension source: <code>extension:io.substrait:functions_datetime</code></li><li>Extension type declaration: <code>(precision_timestamp_tz&lt;P&gt;) -&gt; precision_timestamp_tz?&lt;P&gt;; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li><li>Timestamp precision: <code>7</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: any</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.</p><ul><li>Extension signatures: <code>min:any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>true</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>min_by(x, y)</b>
+</p><p>Returns x at the minimum y; rows with null y are ignored, while the selected x may be null. Empty groups, or groups containing only null y, return null. Do not depend on which row wins tied y.</p><ul><li>Extension signatures: <code>min_by:any_any</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>string_agg(x, separator)</b>
+</p><p>The separator must be a string literal. Null input values are ignored; values are concatenated in ascending Flowtide string order, retaining duplicates. No contributing values yield null. The current implementation also yields null if all strings and the separator are empty. User-supplied aggregate ORDER BY and SQL DISTINCT are rejected.</p><ul><li>Extension signatures: <code>string_agg:str_str</code></li><li>Extension source: <code>extension:io.substrait:functions_string</code></li><li>Extension type declaration: <code>(string, string (constant)) -&gt; string</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Literal arguments: <code>[1]</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li><li>Supports order by: <code>false</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.html">Detailed documentation</a>
+</p><p>
+  <b>sum(x)</b>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>Ignores null values and returns null for empty/all-null groups. Int64 accumulation wraps on overflow; FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are widened internally; the declarations here use native I64/FP64 value kinds. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>sum:i64, sum:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>SILENT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: dec</b>
+</p><p>Uses System.Decimal rather than the upstream Decimal&lt;38,S&gt; accumulator. Use precision at most 28 and require every intermediate and final sum to fit Decimal&lt;28,S&gt;; CLR decimal overflow throws. Null input values are ignored. Empty/all-null groups return null. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>sum:dec</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(decimal&lt;P,S&gt;) -&gt; decimal?&lt;28,S&gt;; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>ERROR</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Decimal precision max: <code>28</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>sum0(x)</b>
+</p><p>
+  <b>Profile: i64, fp64</b>
+</p><p>Ignores null values and returns a zero matching the declared output type for empty/all-null groups. Int64 accumulation wraps on overflow; FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are widened internally; the declarations here use native I64/FP64 value kinds. Set AggregateFunction.output_type for a correctly typed empty-group zero. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>sum0:i64, sum0:fp64</code></li><li>Extension source: <code>extension:io.substrait:functions_arithmetic</code></li><li>Extension type declaration: <code>(i64) -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Extension type declaration: <code>(fp64) -&gt; fp64; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>SILENT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>Profile: dec</b>
+</p><p>Uses System.Decimal rather than the upstream Decimal&lt;38,S&gt; accumulator. Use precision at most 28 and require every intermediate and final sum to fit Decimal&lt;28,S&gt;; CLR decimal overflow throws. Null input values are ignored. Empty/all-null groups return a zero matching the declared output type. Set AggregateFunction.output_type to the decimal result type. SQL DISTINCT is rejected.</p><ul><li>Extension signatures: <code>sum0:dec</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_arithmetic</code></li><li>Extension type declaration: <code>(decimal&lt;P,S&gt;) -&gt; decimal&lt;28,S&gt;; nullability=DECLARED_OUTPUT</code></li><li>Required Substrait option overflow: <code>ERROR</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Decimal precision max: <code>28</code></li><li>Sql distinct: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</a>
+</p><p>
+  <b>surrogate_key_int64()</b>
+</p><p>Assigns a stateful counter key per group, stable while the group exists and across checkpoint restore. Keys are operator-scoped; deleting and recreating a group can assign a new key. Empty global input also receives a key.</p><ul><li>Extension signatures: <code>surrogate_key_int64:</code></li><li>Extension source: <code>extension:io.github.koralium.flowtide:functions_aggregate_generic</code></li><li>Extension type declaration: <code>() -&gt; i64; nullability=DECLARED_OUTPUT</code></li><li>Aggregation phase: <code>INITIAL_TO_RESULT</code></li><li>Deterministic: <code>false</code></li><li>Supports filter: <code>true</code></li></ul><p>
+  <a href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</a>
+</p>
+</div>
+
+
+
+</article>
+
+        <div class="contribution d-print-none">
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Sql/SqlFunctionReference.cs/#L31" class="edit-link">Edit this page</a>
+        </div>
+
+
+      </div>
+
+      <div class="affix">
+        <nav id="affix"></nav>
+      </div>
+    </main>
+
+    <div class="container-xxl search-results" id="search-results"></div>
+
+    <footer class="border-top text-secondary">
+      <div class="container-xxl">
+        <div class="flex-fill">
+          Supported by the <a href="https://dotnetfoundation.org">.NET Foundation</a>. Copyright © .NET Foundation. Made with <a href="https://dotnet.github.io/docfx">docfx</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
