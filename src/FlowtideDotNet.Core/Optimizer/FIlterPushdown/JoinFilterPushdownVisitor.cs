@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                                 }
                             }
                         },
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.IsNotNull
                         });
                     }
@@ -68,7 +68,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                                 }
                             }
                         },
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.IsNotNull
                         });
                     }
@@ -90,7 +90,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 TestPushdownNotNull(joinRelation, joinRelation.Expression, leftPushdowns, rightPushdowns);
 
                 if (joinRelation.Expression is ScalarFunction scalarFunc &&
-                    scalarFunc.ExtensionUri == FunctionsBoolean.Uri && scalarFunc.ExtensionName == FunctionsBoolean.And)
+                    scalarFunc.ExtensionUrn == FunctionsBoolean.Urn && scalarFunc.ExtensionName == FunctionsBoolean.And)
                 {
                     for (int i = 0; i < scalarFunc.Arguments.Count; i++)
                     {
@@ -114,7 +114,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             }
 
             if (joinRelation.Expression is ScalarFunction andFunctionScalar &&
-                andFunctionScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                andFunctionScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                 andFunctionScalar.ExtensionName == FunctionsBoolean.And)
             {
                 for (int i = 0; i < andFunctionScalar.Arguments.Count; i++)
@@ -161,7 +161,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 {
                     joinRelation.Left = new FilterRelation()
                     {
-                        Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = leftPushdowns },
+                        Condition = new ScalarFunction() { ExtensionUrn = FunctionsBoolean.Urn, ExtensionName = FunctionsBoolean.And, Arguments = leftPushdowns },
                         Input = joinRelation.Left
                     };
                 }
@@ -200,7 +200,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 {
                     joinRelation.Right = new FilterRelation()
                     {
-                        Condition = new ScalarFunction() { ExtensionUri = FunctionsBoolean.Uri, ExtensionName = FunctionsBoolean.And, Arguments = rightPushdowns },
+                        Condition = new ScalarFunction() { ExtensionUrn = FunctionsBoolean.Urn, ExtensionName = FunctionsBoolean.And, Arguments = rightPushdowns },
                         Input = joinRelation.Right
                     };
                 }
@@ -231,12 +231,12 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
         {
             // Check if the input relation has an and condition
             if (inputRelation.Condition is ScalarFunction innerAndScalar &&
-                innerAndScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                innerAndScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                 innerAndScalar.ExtensionName == FunctionsBoolean.And)
             {
                 // If the filter is also an and condition
                 if (filter.Condition is ScalarFunction andScalar &&
-                    andScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                    andScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                     andScalar.ExtensionName == FunctionsBoolean.And)
                 {
                     // Merge them together
@@ -258,7 +258,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             else
             {
                 if (filter.Condition is ScalarFunction andScalar &&
-                    andScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                    andScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                     andScalar.ExtensionName == FunctionsBoolean.And)
                 {
                     RemapCondition(andScalar, inputRelation, inputRelation.Input.OutputLength);
@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 {
                     var newAndScalar = new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsBoolean.Uri,
+                        ExtensionUrn = FunctionsBoolean.Urn,
                         ExtensionName = FunctionsBoolean.And,
                         Arguments = new List<Expression>()
                         {
@@ -339,7 +339,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
                 joinRelation.Expression = condition;
             }
             else if (joinRelation.Expression is ScalarFunction existingAnd &&
-                     existingAnd.ExtensionUri == FunctionsBoolean.Uri &&
+                     existingAnd.ExtensionUrn == FunctionsBoolean.Urn &&
                      existingAnd.ExtensionName == FunctionsBoolean.And)
             {
                 existingAnd.Arguments.Add(condition);
@@ -348,7 +348,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
             {
                 joinRelation.Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression> { joinRelation.Expression, condition }
                 };
@@ -378,7 +378,7 @@ namespace FlowtideDotNet.Core.Optimizer.FilterPushdown
         {
             // Check if it is an AND condition and if it can be split up
             if (filterRelation.Condition is ScalarFunction scalarFunction &&
-                scalarFunction.ExtensionUri == FunctionsBoolean.Uri &&
+                scalarFunction.ExtensionUrn == FunctionsBoolean.Urn &&
                 scalarFunction.ExtensionName == FunctionsBoolean.And)
             {
                 for (int i = 0; i < scalarFunction.Arguments.Count; i++)

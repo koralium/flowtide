@@ -109,17 +109,12 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
                 });
             }
 
-            var extensionUri = ctxt.Test.TestCase.TestClass.IncludeList![0];
-            if (extensionUri.StartsWith("/extensions"))
-            {
-                //Remove extensions
-                extensionUri = extensionUri.Substring(11);
-            }
+            var extensionUrn = ctxt.Test.TestCase.TestClass.IncludeList![0];
 
             var compiledMethod = ColumnProjectCompiler.Compile(new ScalarFunction()
             {
                 Arguments = expressionList,
-                ExtensionUri = extensionUri,
+                ExtensionUrn = extensionUrn,
                 ExtensionName = parsedTest.FunctionName,
                 Options = parsedTest.Options
             }, register);
@@ -168,12 +163,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
             FunctionsRegister register = new FunctionsRegister();
             BuiltinFunctions.RegisterFunctions(register);
 
-            var extensionUri = ctxt.Test.TestCase.TestClass.IncludeList![0];
-            if (extensionUri.StartsWith("/extensions"))
-            {
-                //Remove extensions
-                extensionUri = extensionUri.Substring(11);
-            }
+            var extensionUrn = ctxt.Test.TestCase.TestClass.IncludeList![0];
 
             var expressionList = new List<Expression>();
             for (int argIndex = 0; argIndex < parsedTest.InputData.Columns.Count; argIndex++)
@@ -191,7 +181,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
             {
                 Arguments = expressionList,
                 ExtensionName = parsedTest.FunctionName,
-                ExtensionUri = extensionUri,
+                ExtensionUrn = extensionUrn,
                 Options = parsedTest.Options
             };
 
@@ -199,7 +189,7 @@ namespace FlowtideDotNet.ComputeTests.Internal.Framework
             await stateManager.InitializeAsync();
             var stateClient = stateManager.GetOrCreateClient("a");
 
-            if (register.TryGetBulkAggregationFunction(extensionUri, parsedTest.FunctionName, out var bulkFunc))
+            if (register.TryGetBulkAggregationFunction(extensionUrn, parsedTest.FunctionName, out var bulkFunc))
             {
                 var measure = bulkFunc.Create(aggregateFunction, register);
 

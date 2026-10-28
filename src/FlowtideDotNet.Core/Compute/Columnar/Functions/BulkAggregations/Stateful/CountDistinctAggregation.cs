@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.CountDistinct, new CountDistinctAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsAggregateGeneric.FlowtideUrn, FunctionsAggregateGeneric.CountDistinct, new CountDistinctAggregationDefinition());
         }
     }
 }

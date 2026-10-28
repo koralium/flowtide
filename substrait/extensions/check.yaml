@@ -4,15 +4,14 @@ urn: extension:io.github.koralium.flowtide:check
 description: Flowtide data-quality check functions.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
 scalar_functions:
   - name: check_true
     description: >-
       Planner intrinsic extracted into check relations. Returns true only for boolean true; only boolean false
       raises an issue. Message must be a string literal. Include a row key in tags for one issue per failing row.
     metadata:
-      legacy_extension_uri: /check.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:check
       requires_optimizer_pass: CheckExtractor
       literal_arguments:
         - 1
@@ -40,7 +39,7 @@ scalar_functions:
       null/non-boolean conditions do not raise an issue. Message must be a string literal. Named tags use key
       => expression.
     metadata:
-      legacy_extension_uri: /check.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:check
       requires_optimizer_pass: CheckExtractor
       literal_arguments:
         - 2

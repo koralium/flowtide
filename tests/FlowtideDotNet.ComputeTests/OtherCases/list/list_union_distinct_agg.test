@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_AGGREGATE_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_list.yaml'
+### SUBSTRAIT_AGGREGATE_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_list'
 
 # basic: Basic examples without any special cases
 list_union_distinct_agg((['hello', 'world'], ['world'])::LIST<str>) = ['hello', 'world']::LIST<str>

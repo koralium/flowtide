@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_string.yaml'
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_string'
 
 # basic: Basic examples without any special cases
 to_json('abcdef'::str) = '"abcdef"'::str

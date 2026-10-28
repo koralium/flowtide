@@ -32,6 +32,12 @@ jobs:
         --configuration Release
         --framework net10.0
         --verbosity normal
+    - name: Test Substrait planning and serialization
+      run: >
+        dotnet test ./tests/FlowtideDotNet.Substrait.Tests/FlowtideDotNet.Substrait.Tests.csproj
+        --configuration Release
+        --framework net10.0
+        --verbosity normal
 
   build:
 

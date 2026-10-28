@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -26,8 +26,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     {
         public static void AddBuiltInListFunctions(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, typeof(BuiltInListFunctions), nameof(ListSortAscendingNullLast));
-            functionsRegister.RegisterScalarMethod(FunctionsList.Uri, FunctionsList.ListFirstDifference, typeof(BuiltInListFunctions), nameof(ListFirstDifference));
+            functionsRegister.RegisterScalarMethod(FunctionsList.Urn, FunctionsList.ListSortAscendingNullLast, typeof(BuiltInListFunctions), nameof(ListSortAscendingNullLast));
+            functionsRegister.RegisterScalarMethod(FunctionsList.Urn, FunctionsList.ListFirstDifference, typeof(BuiltInListFunctions), nameof(ListFirstDifference));
         }
 
         private static IDataValue ListSortAscendingNullLast<T>(T value)

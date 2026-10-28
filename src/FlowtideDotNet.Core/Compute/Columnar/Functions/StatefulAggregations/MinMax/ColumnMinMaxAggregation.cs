@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
         public static void RegisterMin(IFunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterStatefulColumnAggregateFunction<MinMaxColumnAggregationSingleton>(
-                FunctionsArithmetic.Uri,
+                FunctionsArithmetic.FlowtideUrn,
                 FunctionsArithmetic.Min,
                 InitializeMin,
                 (singleton) => { },
@@ -63,7 +63,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Mi
         public static void RegisterMax(IFunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterStatefulColumnAggregateFunction<MinMaxColumnAggregationSingleton>(
-                FunctionsArithmetic.Uri,
+                FunctionsArithmetic.FlowtideUrn,
                 FunctionsArithmetic.Max,
                 InitializeMax,
                 (singleton) => { },

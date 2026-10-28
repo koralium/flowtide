@@ -39,7 +39,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
             CountAggregationDefinition.Register(functionsRegister);
             AvgAggregationDefinition.Register(functionsRegister);
 
-            functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
+            functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)
@@ -58,7 +58,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
                     return e;
                 }, GetSumValue);
 
-            functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum0,
+            functionsRegister.RegisterStreamingColumnAggregateFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum0,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)

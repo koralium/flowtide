@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     }
                     var func = new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionUrn = FunctionsComparison.Urn,
                         ExtensionName = FunctionsComparison.Equal,
                         Arguments = new List<Expressions.Expression>()
                         {
@@ -162,7 +162,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.GreaterThan,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.GreaterThanOrEqual,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -188,7 +188,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.LessThan,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -201,7 +201,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.LessThanOrEqual,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -214,7 +214,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.NotEqual,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -227,7 +227,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     // Merge and functions together into one big list
                     List<Expressions.Expression> expressions = new List<Expressions.Expression>();
                     if (left.Expr is ScalarFunction leftScalar &&
-                        leftScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                        leftScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                         leftScalar.ExtensionName == FunctionsBoolean.And)
                     {
                         expressions.AddRange(leftScalar.Arguments);
@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         expressions.Add(left.Expr);
                     }
                     if (right.Expr is ScalarFunction rightScalar &&
-                        rightScalar.ExtensionUri == FunctionsBoolean.Uri &&
+                        rightScalar.ExtensionUrn == FunctionsBoolean.Urn &&
                         rightScalar.ExtensionName == FunctionsBoolean.And)
                     {
                         expressions.AddRange(rightScalar.Arguments);
@@ -252,14 +252,14 @@ namespace FlowtideDotNet.Substrait.Sql
                         {
                             Arguments = expressions,
                             ExtensionName = FunctionsBoolean.And,
-                            ExtensionUri = FunctionsBoolean.Uri
+                            ExtensionUrn = FunctionsBoolean.Urn
                         }, $"{left.Name}_{right.Name}", returnType
                         );
                 case BinaryOperator.Or:
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionUrn = FunctionsBoolean.Urn,
                             ExtensionName = FunctionsBoolean.Or,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     returnType = new StringType() { Nullable = true };
                     List<Expressions.Expression> concatExpressions = new List<Expressions.Expression>();
                     if (left.Expr is ScalarFunction leftConcat &&
-                        leftConcat.ExtensionUri == FunctionsString.Uri &&
+                        leftConcat.ExtensionUrn == FunctionsString.Urn &&
                         leftConcat.ExtensionName == FunctionsString.Concat)
                     {
                         concatExpressions.AddRange(leftConcat.Arguments);
@@ -282,7 +282,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         concatExpressions.Add(left.Expr);
                     }
                     if (right.Expr is ScalarFunction rightConcat &&
-                        rightConcat.ExtensionUri == FunctionsString.Uri &&
+                        rightConcat.ExtensionUrn == FunctionsString.Urn &&
                         rightConcat.ExtensionName == FunctionsString.Concat)
                     {
                         concatExpressions.AddRange(rightConcat.Arguments);
@@ -294,7 +294,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.Urn,
                             ExtensionName = FunctionsString.Concat,
                             Arguments = concatExpressions
                         }, $"$concat", returnType);
@@ -303,7 +303,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.Urn,
                             ExtensionName = FunctionsArithmetic.Add,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.Urn,
                             ExtensionName = FunctionsArithmetic.Subtract,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -335,7 +335,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.Urn,
                             ExtensionName = FunctionsArithmetic.Multiply,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -348,7 +348,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.Urn,
                             ExtensionName = FunctionsArithmetic.Divide,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -361,7 +361,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.FlowtideUrn,
                             ExtensionName = FunctionsArithmetic.Modulo,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -374,7 +374,7 @@ namespace FlowtideDotNet.Substrait.Sql
                     return new ExpressionData(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsBoolean.Uri,
+                            ExtensionUrn = FunctionsBoolean.Urn,
                             ExtensionName = FunctionsBoolean.Xor,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -439,7 +439,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 return new ExpressionData(
                     new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionUrn = FunctionsString.FlowtideUrn,
                         ExtensionName = FunctionsString.Trim,
                         Arguments = new List<Expressions.Expression>() { expr.Expr }
                     },
@@ -452,7 +452,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 return new ExpressionData(
                     new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionUrn = FunctionsString.FlowtideUrn,
                         ExtensionName = FunctionsString.RTrim,
                         Arguments = new List<Expressions.Expression>() { expr.Expr }
                     },
@@ -465,7 +465,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 return new ExpressionData(
                     new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsString.Uri,
+                        ExtensionUrn = FunctionsString.FlowtideUrn,
                         ExtensionName = FunctionsString.LTrim,
                         Arguments = new List<Expressions.Expression>() { expr.Expr }
                     },
@@ -646,7 +646,7 @@ namespace FlowtideDotNet.Substrait.Sql
             var expr = Visit(isNotNull.Expression, state);
             return new ExpressionData(new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.IsNotNull,
                 Arguments = new List<Expressions.Expression>()
                 {
@@ -661,7 +661,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsRounding.Uri,
+                    ExtensionUrn = FunctionsRounding.Urn,
                     ExtensionName = FunctionsRounding.Floor,
                     Arguments = new List<Expressions.Expression>() { expr.Expr }
                 }, "$floor", expr.Type);
@@ -673,7 +673,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsRounding.Uri,
+                    ExtensionUrn = FunctionsRounding.Urn,
                     ExtensionName = FunctionsRounding.Ceil,
                     Arguments = new List<Expressions.Expression>() { expr.Expr }
                 }, "ceil", expr.Type);
@@ -697,7 +697,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.Not,
                     Arguments = new List<Expressions.Expression>() { expressionData.Expr }
                 }, expressionData.Name,
@@ -717,7 +717,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsArithmetic.Uri,
+                    ExtensionUrn = FunctionsArithmetic.Urn,
                     ExtensionName = FunctionsArithmetic.Negate,
                     Arguments = new List<Expressions.Expression>() { expressionData.Expr }
                 }, "$negate",
@@ -734,13 +734,13 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expressions.Expression>()
                     {
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.GreaterThanOrEqual,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -750,7 +750,7 @@ namespace FlowtideDotNet.Substrait.Sql
                         },
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.LessThanOrEqual,
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -770,7 +770,7 @@ namespace FlowtideDotNet.Substrait.Sql
             return new ExpressionData(
                 new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionUrn = FunctionsComparison.Urn,
                     ExtensionName = FunctionsComparison.IsNull,
                     Arguments = new List<Expressions.Expression>()
                     {
@@ -869,7 +869,7 @@ namespace FlowtideDotNet.Substrait.Sql
             {
                 var substringFunction = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsString.Uri,
+                    ExtensionUrn = FunctionsString.Urn,
                     ExtensionName = FunctionsString.Substring,
                     Arguments = new List<Expressions.Expression>()
                     {
@@ -884,7 +884,7 @@ namespace FlowtideDotNet.Substrait.Sql
                 var length = Visit(substring.SubstringFor, state);
                 var substringFunction = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsString.Uri,
+                    ExtensionUrn = FunctionsString.Urn,
                     ExtensionName = FunctionsString.Substring,
                     Arguments = new List<Expressions.Expression>()
                     {
@@ -904,7 +904,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
             return new ExpressionData(new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.IsDistinctFrom,
                 Arguments = new List<Expressions.Expression>()
                 {
@@ -921,7 +921,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
             return new ExpressionData(new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.IsNotDistinctFrom,
                 Arguments = new List<Expressions.Expression>()
                 {
@@ -940,23 +940,17 @@ namespace FlowtideDotNet.Substrait.Sql
             var expr = Visit(like.Expression, state);
             var pattern = Visit(like.Pattern, state);
 
-            Expressions.Expression escapeChar = new NullLiteral();
-            if (like.EscapeChar != null)
-            {
-                escapeChar = new StringLiteral() { Value = like.EscapeChar };
-            }
-
             var likeFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsString.Uri,
+                ExtensionUrn = like.EscapeChar == null ? FunctionsString.Urn : FunctionsString.FlowtideUrn,
                 ExtensionName = FunctionsString.Like,
                 Arguments = new List<Expressions.Expression>()
                 {
                     expr.Expr,
-                    pattern.Expr,
-                    escapeChar
+                    pattern.Expr
                 }
             };
+            if (like.EscapeChar != null) likeFunction.Arguments.Add(new StringLiteral { Value = like.EscapeChar });
 
             var result = new ExpressionData(likeFunction, expr.Name, new BoolType() { Nullable = true });
 
@@ -1030,7 +1024,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
                 var eqFunc = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionUrn = FunctionsComparison.Urn,
                     ExtensionName = FunctionsComparison.Equal,
                     Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
                 };
@@ -1053,7 +1047,7 @@ namespace FlowtideDotNet.Substrait.Sql
 
                 var eqFunc = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionUrn = FunctionsComparison.Urn,
                     ExtensionName = FunctionsComparison.Equal,
                     Arguments = new List<Expressions.Expression>() { subqueryColRef, leftExpr }
                 };

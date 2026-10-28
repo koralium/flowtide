@@ -283,7 +283,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Min, new MinAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Min, new MinAggregationDefinition());
         }
     }
 }

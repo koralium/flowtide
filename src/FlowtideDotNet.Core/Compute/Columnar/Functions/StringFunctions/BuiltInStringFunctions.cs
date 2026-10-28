@@ -48,7 +48,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
             ColumnStringAggAggregation.Register(functionsRegister);
             Columnar.Functions.BulkAggregations.Stateful.StringAggAggregationDefinition.Register(functionsRegister);
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Urn, FunctionsString.Substring,
                 (scalarFunction, parameters, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count < 2)
@@ -94,7 +94,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                     return Expression.Call(genericMethod, expr, start, length, resultContainer);
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Urn, FunctionsString.Concat,
                 (func, parameters, visitor, functionServices) =>
                 {
                     bool ignoreNulls = false;
@@ -171,25 +171,25 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                     return blockExpression;
                 });
 
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Upper, typeof(BuiltInStringFunctions), nameof(UpperImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Lower, typeof(BuiltInStringFunctions), nameof(LowerImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Trim, typeof(BuiltInStringFunctions), nameof(TrimImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.LTrim, typeof(BuiltInStringFunctions), nameof(LTrimImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RTrim, typeof(BuiltInStringFunctions), nameof(RTrimImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.To_String, typeof(BuiltInStringFunctions), nameof(ToStringImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StartsWith, typeof(BuiltInStringFunctions), nameof(StartsWithImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Like, typeof(BuiltInStringFunctions), nameof(LikeImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.Replace, typeof(BuiltInStringFunctions), nameof(ReplaceImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.Upper, typeof(BuiltInStringFunctions), nameof(UpperImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.Lower, typeof(BuiltInStringFunctions), nameof(LowerImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.Trim, typeof(BuiltInStringFunctions), nameof(TrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.LTrim, typeof(BuiltInStringFunctions), nameof(LTrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.RTrim, typeof(BuiltInStringFunctions), nameof(RTrimImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.To_String, typeof(BuiltInStringFunctions), nameof(ToStringImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.StartsWith, typeof(BuiltInStringFunctions), nameof(StartsWithImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.Like, typeof(BuiltInStringFunctions), nameof(LikeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.Replace, typeof(BuiltInStringFunctions), nameof(ReplaceImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.StringBase64Encode, typeof(BuiltInStringFunctions), nameof(StringBase64EncodeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.StringBase64Decode, typeof(BuiltInStringFunctions), nameof(StringBase64DecodeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.CharLength, typeof(BuiltInStringFunctions), nameof(CharLengthImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.StrPos, typeof(BuiltInStringFunctions), nameof(StrPosImplementation));
 
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.StringSplit, typeof(BuiltInStringFunctions), nameof(StringSplitImplementation));
 
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.Urn, FunctionsString.RegexStringSplit, typeof(BuiltInStringFunctions), nameof(RegexStringSplitImplementation));
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsString.Uri, FunctionsString.ToJson, (func, parameters, visitor, functionServices) =>
+            functionsRegister.RegisterColumnScalarFunction(FunctionsString.FlowtideUrn, FunctionsString.ToJson, (func, parameters, visitor, functionServices) =>
             {
                 if (func.Arguments.Count != 1)
                 {
@@ -205,8 +205,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StringFunctions
                 return Expression.Call(genericMethod, expr, resultContainer, jsonWriterConstant);
             });
 
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsString.Uri, FunctionsString.StringJoin, typeof(BuiltInStringFunctions), nameof(StringJoinImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.FromJson, typeof(BuiltInStringFunctions), nameof(FromJsonImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsString.FlowtideUrn, FunctionsString.StringJoin, typeof(BuiltInStringFunctions), nameof(StringJoinImplementation));
         }
 
         private static bool SubstringTryGetParameters<T1, T2, T3>(

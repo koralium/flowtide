@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -15,7 +15,7 @@ namespace FlowtideDotNet.Substrait.Expressions
 {
     public sealed class ScalarFunction : Expression, IEquatable<ScalarFunction>
     {
-        public required string ExtensionUri { get; set; }
+        public required string ExtensionUrn { get; set; }
         public required string ExtensionName { get; set; }
 
         public required List<Expression> Arguments { get; set; }
@@ -31,7 +31,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         {
             return new ScalarFunction
             {
-                ExtensionUri = ExtensionUri,
+                ExtensionUrn = ExtensionUrn,
                 ExtensionName = ExtensionName,
                 Arguments = Arguments.Select(arg => arg.Clone()).ToList(),
                 Options = Options != null ? new SortedList<string, string>(Options) : null
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public bool Equals(ScalarFunction? other)
         {
             return other != null &&
-                   ExtensionUri == other.ExtensionUri &&
+                   ExtensionUrn == other.ExtensionUrn &&
                    ExtensionName == other.ExtensionName &&
                    Arguments.SequenceEqual(other.Arguments) &&
                    FunctionOptions.AreEqual(Options, other.Options);
@@ -56,7 +56,7 @@ namespace FlowtideDotNet.Substrait.Expressions
         public override int GetHashCode()
         {
             var code = new HashCode();
-            code.Add(ExtensionUri);
+            code.Add(ExtensionUrn);
             code.Add(ExtensionName);
             foreach (var argument in Arguments)
             {

@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Core.Optimizer
         private static void FlattenConjuncts(Expression expr, List<Expression> conjuncts)
         {
             if (expr is ScalarFunction func &&
-                func.ExtensionUri == FunctionsBoolean.Uri &&
+                func.ExtensionUrn == FunctionsBoolean.Urn &&
                 func.ExtensionName == FunctionsBoolean.And)
             {
                 foreach (var arg in func.Arguments)
@@ -142,7 +142,7 @@ namespace FlowtideDotNet.Core.Optimizer
             {
                 current = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>() { current, conjuncts[i] }
                 };

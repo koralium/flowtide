@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -10,11 +10,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Type;
+
 namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
     public static class FunctionsArithmetic
     {
-        public const string Uri = "/functions_arithmetic.yaml";
+        public const string Urn = "extension:io.substrait:functions_arithmetic";
+        public const string FlowtideUrn = "extension:io.github.koralium.flowtide:functions_arithmetic";
+        public const string DecimalUrn = "extension:io.substrait:functions_arithmetic_decimal";
         public const string Add = "add";
         public const string Subtract = "subtract";
         public const string Multiply = "multiply";
@@ -56,5 +60,23 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
         public const string Lag = "lag";
         public const string LastValue = "last_value";
         public const string Average = "avg";
+
+        /// <summary>Selects the extension whose aggregate contract matches the declared input type.</summary>
+        public static string GetAggregateUrn(string name, SubstraitBaseType inputType)
+        {
+            return name switch
+            {
+                Min or Max => inputType.Type switch
+                {
+                    SubstraitType.Int32 or SubstraitType.Int64 or SubstraitType.Fp32 or SubstraitType.Fp64 => Urn,
+                    SubstraitType.Decimal => DecimalUrn,
+                    SubstraitType.TimestampTz => FunctionsDatetime.StandardUrn,
+                    _ => FlowtideUrn
+                },
+                Average => inputType.Type is SubstraitType.Fp32 or SubstraitType.Fp64 ? Urn : FlowtideUrn,
+                Sum or Sum0 => inputType.Type is SubstraitType.Int32 or SubstraitType.Int64 or SubstraitType.Fp32 or SubstraitType.Fp64 ? Urn : FlowtideUrn,
+                _ => Urn
+            };
+        }
     }
 }

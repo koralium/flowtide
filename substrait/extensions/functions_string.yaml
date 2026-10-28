@@ -6,15 +6,14 @@ dependencies:
   flowtide_types: extension:io.github.koralium.flowtide:types
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
 scalar_functions:
   - name: trim
     description: >-
       One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
       argument.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -25,7 +24,7 @@ scalar_functions:
       One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
       argument.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -36,7 +35,7 @@ scalar_functions:
       One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
       argument.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -47,7 +46,7 @@ scalar_functions:
       Three-argument LIKE with an explicit escape character. SQL Server-style %/_/bracket patterns are supported.
       Matching is case-sensitive.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -59,7 +58,7 @@ scalar_functions:
     description: >-
       Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -69,7 +68,7 @@ scalar_functions:
     description: >-
       Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -79,7 +78,7 @@ scalar_functions:
     description: >-
       String operation; incompatible input kinds generally yield null.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: any
@@ -89,7 +88,7 @@ scalar_functions:
     description: >-
       Serialize a Flowtide value to JSON text.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: any
@@ -99,7 +98,7 @@ scalar_functions:
     description: >-
       Parse JSON text or UTF-8 binary into dynamic Flowtide values.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string
@@ -122,7 +121,7 @@ scalar_functions:
       Separator is the first argument. Null list returns null; empty/all-null list returns an empty string; null
       elements are skipped.
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
     impls:
       - args:
           - value: string

@@ -1065,7 +1065,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     new Expressions.WindowFunction()
                     {
-                        ExtensionUri = FunctionExtensions.FunctionsDatetime.Uri,
+                        ExtensionUrn = FunctionExtensions.FunctionsDatetime.Urn,
                         ExtensionName = FunctionExtensions.FunctionsDatetime.SessionWindow,
                         Arguments = new List<Expressions.Expression>() { gapAmount, gapUnit }
                     }

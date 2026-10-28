@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -17,16 +17,16 @@ namespace FlowtideDotNet.Core.Compute.Internal
     public class TableFunctionDefinition
     {
         public TableFunctionDefinition(
-            string uri,
+            string urn,
             string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
-            Uri = uri;
+            Urn = urn;
             Name = name;
             MapFunc = mapFunc;
         }
 
-        public string Uri { get; }
+        public string Urn { get; }
 
         public string Name { get; }
 

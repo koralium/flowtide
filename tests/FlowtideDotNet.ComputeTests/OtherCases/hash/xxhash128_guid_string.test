@@ -1,5 +1,5 @@
 ### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_hash.yaml'
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_hash'
 
 # Basic tests
 xxhash128_guid_string('2016-12-31T13:30:15'::ts) = '81ad73b8-5fcb-f3b7-385a-2ae0afec3379'::str

@@ -8,7 +8,7 @@ sidebar_position: 3
 
 *This function has no substrait equivalent*
 
-* **Extension URI:** /functions_datetime.yaml
+* **Extension URN:** `extension:io.github.koralium.flowtide:functions_datetime`
 * **Extension Name:** session_window
 
 Session window assigns each row the start of the session it belongs to.

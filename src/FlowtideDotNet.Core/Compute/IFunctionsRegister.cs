@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,33 +28,33 @@ namespace FlowtideDotNet.Core.Compute
     public interface IFunctionsRegister
     {
         void RegisterColumnScalarFunction(
-            string uri,
+            string urn,
             string name,
             Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc);
 
         /// <summary>
         /// Register a scalar function, this is the low level call where the user has to visit the arguments with the visitor.
         /// </summary>
-        /// <param name="uri">file uri of the scalar function</param>
+        /// <param name="urn">Extension URN identifying the scalar function.</param>
         /// <param name="name">name of the scalar function</param>
         /// <param name="mapFunc">Mapping function to return a C# expression</param>
         void RegisterScalarFunction(
-            string uri,
+            string urn,
             string name,
             Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
 
         void RegisterScalarFunctionWithExpression(
-            string uri,
+            string urn,
             string name,
             System.Linq.Expressions.Expression<Func<FlxValue, FlxValue>> expression);
 
         /// <summary>
         /// Register an aggregate function, this is the low level call which requires the user to visit the expressions with the visitor.
         /// </summary>
-        /// <param name="uri"></param>
+        /// <param name="urn"></param>
         /// <param name="name"></param>
         void RegisterStreamingAggregateFunction(
-            string uri,
+            string urn,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc);
@@ -90,14 +90,14 @@ namespace FlowtideDotNet.Core.Compute
         /// This is useful in functions such as MIN/MAX or MEDIAN, where all values must be known.
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="uri"></param>
+        /// <param name="urn"></param>
         /// <param name="name"></param>
         /// <param name="stateFunction">State creation function</param>
         /// <param name="disposeFunction">Disposing function of the state, if required</param>
         /// <param name="mapFunc"></param>
         /// <param name="stateToValueFunc"></param>
         void RegisterStatefulAggregateFunction<T>(
-            string uri,
+            string urn,
             string name,
             AggregateInitializeFunction<T> initializeFunction,
             Action<T> disposeFunction,
@@ -106,7 +106,7 @@ namespace FlowtideDotNet.Core.Compute
             AggregateStateToValueFunction<T> stateToValueFunc);
 
         void RegisterStatefulColumnAggregateFunction<T>(
-            string uri,
+            string urn,
             string name,
             AggregateInitializeFunction<T> initializeFunction,
             Action<T> disposeFunction,
@@ -114,34 +114,34 @@ namespace FlowtideDotNet.Core.Compute
             ColumnAggregateMapFunction mapFunc,
             ColumnAggregateStateToValueFunction<T> stateToValueFunc);
 
-        bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
+        bool TryGetScalarFunction(string urn, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition);
 
-        bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
+        bool TryGetAggregateFunction(string urn, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition);
 
-        bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition);
+        bool TryGetColumnScalarFunction(string urn, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition);
 
         /// <summary>
         /// Register a table function, this is the low level call which requires the user to visit the expressions with the visitor.
         /// The expression result should be of type IEnumerable<RowEvent>.
         /// </summary>
-        /// <param name="uri"></param>
+        /// <param name="urn"></param>
         /// <param name="name"></param>
         /// <param name="mapFunc"></param>
         void RegisterTableFunction(
-            string uri,
+            string urn,
             string name,
             Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc);
 
-        bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
+        bool TryGetTableFunction(string urn, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition);
 
-        bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
+        bool TryGetColumnTableFunction(string urn, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition);
 
         internal bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc);
 
         IFunctionServices FunctionServices { get; }
 
-        void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition);
+        void RegisterBulkAggregationFunction(string urn, string name, IBulkAggregationDefinition bulkAggregationDefinition);
 
-        bool TryGetBulkAggregationFunction(string uri, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition);
+        bool TryGetBulkAggregationFunction(string urn, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition);
     }
 }

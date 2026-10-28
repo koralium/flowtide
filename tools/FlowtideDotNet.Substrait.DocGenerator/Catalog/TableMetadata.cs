@@ -42,7 +42,7 @@ internal sealed partial class DialectCatalog
             foreach (var key in new[] { "source", "name" }) Text(binding[key], Dialect, $"{pointer}/{key}");
             Require(binding["supported_impls"] is JsonArray { Count: > 0 } sigs && sigs.All(sig => sig.Text() != null),
                 Dialect, pointer + "/supported_impls", "Expected a non-empty array of signature strings.");
-            Text(binding["metadata"]?["legacy_extension_uri"], Dialect, pointer + "/metadata/legacy_extension_uri");
+            Text(binding["metadata"]?["runtime_extension_urn"], Dialect, pointer + "/metadata/runtime_extension_urn");
         }
         foreach (var doc in LocalExtensions)
         {
@@ -53,7 +53,7 @@ internal sealed partial class DialectCatalog
                 var function = functions[f];
                 var pointer = $"/metadata/table_functions/{f}";
                 Text(function["name"], doc, pointer + "/name");
-                Text(function["metadata"]?["legacy_extension_uri"], doc, pointer + "/metadata/legacy_extension_uri");
+                Text(function["metadata"]?["runtime_extension_urn"], doc, pointer + "/metadata/runtime_extension_urn");
                 var countNode = function["metadata"]?["output_column_count"];
                 var hasCount = countNode is JsonValue value && value.TryGetValue<int>(out var count) && count > 0;
                 Require(hasCount, doc, pointer + "/metadata/output_column_count", "Expected a positive output column count.");

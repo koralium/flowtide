@@ -424,7 +424,7 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         private static bool IsAnd(Expression expression)
         {
             return expression is ScalarFunction scalarFunction &&
-                CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsBoolean.Uri, FunctionsBoolean.And);
+                CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsBoolean.Urn, FunctionsBoolean.And);
         }
 
         private static void FlattenAnd(Expression expression, List<Expression> conjuncts)
@@ -444,7 +444,7 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         {
             return new ScalarFunction()
             {
-                ExtensionUri = FunctionsBoolean.Uri,
+                ExtensionUrn = FunctionsBoolean.Urn,
                 ExtensionName = FunctionsBoolean.And,
                 Arguments = conjuncts
             };
@@ -453,7 +453,7 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         private static bool IsLeadOrLag(WindowFunction windowFunction)
         {
             // Case insensitive like the function lookup
-            return string.Equals(windowFunction.ExtensionUri, FunctionsArithmetic.Uri, StringComparison.OrdinalIgnoreCase) &&
+            return string.Equals(windowFunction.ExtensionUrn, FunctionsArithmetic.Urn, StringComparison.OrdinalIgnoreCase) &&
                 (string.Equals(windowFunction.ExtensionName, FunctionsArithmetic.Lead, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(windowFunction.ExtensionName, FunctionsArithmetic.Lag, StringComparison.OrdinalIgnoreCase));
         }

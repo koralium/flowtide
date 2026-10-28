@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Core.Optimizer.GetTimestamp
         }
         public override Expression? VisitScalarFunction(ScalarFunction scalarFunction, object state)
         {
-            if (scalarFunction.ExtensionUri == FunctionsDatetime.Uri &&
+            if (scalarFunction.ExtensionUrn == FunctionsDatetime.Urn &&
                 scalarFunction.ExtensionName == FunctionsDatetime.GetTimestamp)
             {
                 ContainsGetTimestamp = true;

@@ -118,7 +118,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 .Where(f => f.ExtensionName == FunctionsDatetime.TumblingWindowStart)
                 .ToList();
             var bucket = Assert.Single(bucketProjects);
-            Assert.Equal(FunctionsDatetime.Uri, bucket.ExtensionUri);
+            Assert.Equal(FunctionsDatetime.Urn, bucket.ExtensionUrn);
 
             // 10 seconds resolved to ticks at rewrite time
             var sizeLiteral = Assert.IsType<Substrait.Expressions.Literals.NumericLiteral>(bucket.Arguments[1]);

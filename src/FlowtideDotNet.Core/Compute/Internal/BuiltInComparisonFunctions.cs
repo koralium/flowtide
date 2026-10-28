@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -33,16 +33,16 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddComparisonFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Equal, (x, y) => EqualImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.NotEqual, (x, y) => NotEqualImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.GreaterThan, (x, y) => GreaterThanImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.GreaterThanOrEqual, (x, y) => GreaterThanOrEqualImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.LessThan, (x, y) => LessThanImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.LessThanOrEqual, (x, y) => LessThanOrEqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.Equal, (x, y) => EqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.NotEqual, (x, y) => NotEqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.GreaterThan, (x, y) => GreaterThanImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.GreaterThanOrEqual, (x, y) => GreaterThanOrEqualImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.LessThan, (x, y) => LessThanImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.LessThanOrEqual, (x, y) => LessThanOrEqualImplementation(x, y));
 
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNotNull, (x) => x.IsNull ? FalseVal : TrueVal);
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.IsNotNull, (x) => x.IsNull ? FalseVal : TrueVal);
 
-            functionsRegister.RegisterScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+            functionsRegister.RegisterScalarFunction(FunctionsComparison.Urn, FunctionsComparison.Coalesce,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     // Start from bottom and build up
@@ -68,12 +68,12 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return expr;
                 });
 
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsFinite, (x) => IsFiniteImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.Between, (x, y, z) => BetweenImplementation(x, y, z));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNull, (x) => x.IsNull ? TrueVal : FalseVal);
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.IsNan, (x) => IsNanImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Uri, FunctionsComparison.NullIf, (x, y) => NullIfImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.isInfinite, (x) => IsInfiniteImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.IsFinite, (x) => IsFiniteImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.Between, (x, y, z) => BetweenImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.IsNull, (x) => x.IsNull ? TrueVal : FalseVal);
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.IsNan, (x) => IsNanImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsComparison.Urn, FunctionsComparison.NullIf, (x, y) => NullIfImplementation(x, y));
         }
 
         /// <summary>

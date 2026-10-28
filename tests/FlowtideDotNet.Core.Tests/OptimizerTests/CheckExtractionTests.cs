@@ -50,37 +50,37 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
         private static ScalarFunction Function(string uri, string name, params Expression[] arguments)
         {
-            return new ScalarFunction() { ExtensionUri = uri, ExtensionName = name, Arguments = arguments.ToList() };
+            return new ScalarFunction() { ExtensionUrn = uri, ExtensionName = name, Arguments = arguments.ToList() };
         }
 
         private static ScalarFunction Lt(Expression left, Expression right)
         {
-            return Function(FunctionsComparison.Uri, FunctionsComparison.LessThan, left, right);
+            return Function(FunctionsComparison.Urn, FunctionsComparison.LessThan, left, right);
         }
 
         private static ScalarFunction Gt(Expression left, Expression right)
         {
-            return Function(FunctionsComparison.Uri, FunctionsComparison.GreaterThan, left, right);
+            return Function(FunctionsComparison.Urn, FunctionsComparison.GreaterThan, left, right);
         }
 
         private static ScalarFunction Eq(Expression left, Expression right)
         {
-            return Function(FunctionsComparison.Uri, FunctionsComparison.Equal, left, right);
+            return Function(FunctionsComparison.Urn, FunctionsComparison.Equal, left, right);
         }
 
         private static ScalarFunction And(params Expression[] arguments)
         {
-            return Function(FunctionsBoolean.Uri, FunctionsBoolean.And, arguments);
+            return Function(FunctionsBoolean.Urn, FunctionsBoolean.And, arguments);
         }
 
         private static ScalarFunction IsTrue(Expression expression)
         {
-            return Function(FunctionsComparison.Uri, FunctionsComparison.IsNotDistinctFrom, expression, new BoolLiteral() { Value = true });
+            return Function(FunctionsComparison.Urn, FunctionsComparison.IsNotDistinctFrom, expression, new BoolLiteral() { Value = true });
         }
 
         private static ScalarFunction IsNotNull(Expression expression)
         {
-            return Function(FunctionsComparison.Uri, FunctionsComparison.IsNotNull, expression);
+            return Function(FunctionsComparison.Urn, FunctionsComparison.IsNotNull, expression);
         }
 
         private static ScalarFunction CheckValue(Expression value, Expression condition, string message, params (string Key, Expression Value)[] tags)
@@ -91,7 +91,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 arguments.Add(Str(tag.Key));
                 arguments.Add(tag.Value);
             }
-            return new ScalarFunction() { ExtensionUri = FunctionsCheck.Uri, ExtensionName = FunctionsCheck.CheckValue, Arguments = arguments };
+            return new ScalarFunction() { ExtensionUrn = FunctionsCheck.Urn, ExtensionName = FunctionsCheck.CheckValue, Arguments = arguments };
         }
 
         private static ScalarFunction CheckTrue(Expression condition, string message, params (string Key, Expression Value)[] tags)
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 arguments.Add(Str(tag.Key));
                 arguments.Add(tag.Value);
             }
-            return new ScalarFunction() { ExtensionUri = FunctionsCheck.Uri, ExtensionName = FunctionsCheck.CheckTrue, Arguments = arguments };
+            return new ScalarFunction() { ExtensionUrn = FunctionsCheck.Urn, ExtensionName = FunctionsCheck.CheckTrue, Arguments = arguments };
         }
 
         private static CheckDefinition Check(Expression condition, string message, params CheckGuard[] guards)
@@ -347,7 +347,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                     {
                         Measure = new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.Urn,
                             ExtensionName = FunctionsArithmetic.Sum,
                             Arguments = new List<Expression>() { CheckValue(Field(1), Lt(Field(1), Num(2)), "argument") }
                         },
@@ -384,13 +384,13 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 {
                     new WindowFunction()
                     {
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                         ExtensionName = FunctionsArithmetic.Sum,
                         Arguments = new List<Expression>() { CheckValue(Field(2), Lt(Field(2), Num(3)), "argument") }
                     },
                     new WindowFunction()
                     {
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                         ExtensionName = FunctionsArithmetic.Lead,
                         Arguments = new List<Expression>() { CheckValue(Field(0), Lt(Field(0), Num(1)), "value"), Num(1), Num(0) }
                     }
@@ -440,7 +440,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             {
                 TableFunction = new TableFunction()
                 {
-                    ExtensionUri = FunctionsTableGeneric.Uri,
+                    ExtensionUrn = FunctionsTableGeneric.Urn,
                     ExtensionName = FunctionsTableGeneric.Unnest,
                     Arguments = new List<Expression>() { argument },
                     TableSchema = new NamedStruct() { Names = new List<string>() { "value" }, Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType() } } }
@@ -587,7 +587,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 OrderBy = new List<SortField>(),
                 WindowFunctions = new List<WindowFunction>()
                 {
-                    new WindowFunction() { ExtensionUri = FunctionsArithmetic.Uri, ExtensionName = functionName, Arguments = arguments.ToList(), LowerBound = lowerBound }
+                    new WindowFunction() { ExtensionUrn = FunctionsArithmetic.Urn, ExtensionName = functionName, Arguments = arguments.ToList(), LowerBound = lowerBound }
                 },
                 Input = Read(1)
             });
@@ -628,9 +628,9 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 }), typeof(NotSupportedException), "VALUES" },
                 { "iteration skip condition", () => PlanOf(new IterationRelation() { IterationName = "loop", LoopPlan = Read(1), SkipIterateCondition = CheckTrue(Lt(Field(0), Num(1)), "skip") }), typeof(NotSupportedException), "iteration skip condition" },
                 { "check in tag", () => ProjectPlan(CheckTrue(Lt(Field(0), Num(1)), "outer", ("key", CheckValue(Field(0), Lt(Field(0), Num(2)), "inner")))), typeof(NotSupportedException), "tag arguments" },
-                { "too few arguments", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)))), typeof(InvalidOperationException), "requires at least 3 arguments" },
-                { "tag key without value", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Str("key"))), typeof(InvalidOperationException), "invalid tag arguments" },
-                { "non literal tag key", () => ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Field(0), Field(0))), typeof(InvalidOperationException), "requires string literal tag keys" }
+                { "too few arguments", () => ProjectPlan(Function(FunctionsCheck.Urn, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)))), typeof(InvalidOperationException), "requires at least 3 arguments" },
+                { "tag key without value", () => ProjectPlan(Function(FunctionsCheck.Urn, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Str("key"))), typeof(InvalidOperationException), "invalid tag arguments" },
+                { "non literal tag key", () => ProjectPlan(Function(FunctionsCheck.Urn, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), Str("m"), Field(0), Field(0))), typeof(InvalidOperationException), "requires string literal tag keys" }
             };
         }
 
@@ -659,7 +659,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         {
             return kind switch
             {
-                "concat" => Function(FunctionsString.Uri, FunctionsString.Concat, Str("Userkey: "), Field(0)),
+                "concat" => Function(FunctionsString.Urn, FunctionsString.Concat, Str("Userkey: "), Field(0)),
                 "column" => Field(0),
                 "null" => new NullLiteral(),
                 "cast" => new CastExpression() { Expression = Str("m"), Type = new StringType() },
@@ -673,8 +673,8 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
         public void NonLiteralMessageIsRejected(string function, string kind)
         {
             var plan = function == FunctionsCheck.CheckValue
-                ? ProjectPlan(Function(FunctionsCheck.Uri, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), NonLiteralMessage(kind), Str("key"), Field(0)))
-                : PlanOf(new FilterRelation() { Condition = Function(FunctionsCheck.Uri, FunctionsCheck.CheckTrue, Lt(Field(0), Num(1)), NonLiteralMessage(kind)), Input = Read(1) });
+                ? ProjectPlan(Function(FunctionsCheck.Urn, FunctionsCheck.CheckValue, Field(0), Lt(Field(0), Num(1)), NonLiteralMessage(kind), Str("key"), Field(0)))
+                : PlanOf(new FilterRelation() { Condition = Function(FunctionsCheck.Urn, FunctionsCheck.CheckTrue, Lt(Field(0), Num(1)), NonLiteralMessage(kind)), Input = Read(1) });
             var exception = Assert.Throws<NotSupportedException>(() => CheckExtractor.Extract(plan));
             Assert.Contains("must be a string literal", exception.Message);
             Assert.Contains("{tag}", exception.Message);
@@ -730,7 +730,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             {
                 Expressions = new List<Expression>()
                 {
-                    Function(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+                    Function(FunctionsComparison.Urn, FunctionsComparison.Coalesce,
                         Field(0),
                         CheckValue(Field(1), Lt(Field(1), Num(1)), "second"),
                         new IfThenExpression()
@@ -741,7 +741,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 Input = Read(3)
             }));
 
-            Assert.Equal(Function(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+            Assert.Equal(Function(FunctionsComparison.Urn, FunctionsComparison.Coalesce,
                 Field(0),
                 Field(1),
                 new IfThenExpression() { Ifs = new List<IfClause>() { new IfClause() { If = Eq(Field(0), Num(0)), Then = Field(2) } } }), project.Expressions[0]);
@@ -762,7 +762,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             {
                 Expressions = new List<Expression>()
                 {
-                    Function(FunctionsComparison.Uri, FunctionsComparison.Greatest,
+                    Function(FunctionsComparison.Urn, FunctionsComparison.Greatest,
                         Field(0),
                         CheckValue(Field(1), Lt(Field(1), Num(1)), "g1"),
                         CheckValue(Field(2), Lt(Field(2), Num(2)), "g2"))
@@ -778,7 +778,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
             var concat = Assert.IsType<ProjectRelation>(ExtractSingle(new ProjectRelation()
             {
-                Expressions = new List<Expression>() { Function(FunctionsString.Uri, FunctionsString.Concat, Field(0), CheckValue(Field(1), Lt(Field(1), Num(1)), "c1")) },
+                Expressions = new List<Expression>() { Function(FunctionsString.Urn, FunctionsString.Concat, Field(0), CheckValue(Field(1), Lt(Field(1), Num(1)), "c1")) },
                 Input = Read(2)
             }));
             Assert.Equal(new List<CheckDefinition>()
@@ -786,7 +786,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                 Check(Lt(Field(1), Num(1)), "c1", Guard(IsNotNull(Field(0)), CheckGuardKind.IsTrue))
             }, Assert.IsType<CheckRelation>(concat.Input).Checks);
 
-            var ignoreNulls = Function(FunctionsString.Uri, FunctionsString.Concat, Field(0), CheckValue(Field(1), Lt(Field(1), Num(1)), "c2"));
+            var ignoreNulls = Function(FunctionsString.Urn, FunctionsString.Concat, Field(0), CheckValue(Field(1), Lt(Field(1), Num(1)), "c2"));
             ignoreNulls.Options = new SortedList<string, string>() { { "null_handling", "IGNORE_NULLS" } };
             var concatIgnoreNulls = Assert.IsType<ProjectRelation>(ExtractSingle(new ProjectRelation()
             {
@@ -803,7 +803,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             {
                 Expressions = new List<Expression>()
                 {
-                    Function(FunctionsBoolean.Uri, FunctionsBoolean.Or, Eq(Field(0), Num(1)), CheckTrue(Lt(Field(1), Num(1)), "or")),
+                    Function(FunctionsBoolean.Urn, FunctionsBoolean.Or, Eq(Field(0), Num(1)), CheckTrue(Lt(Field(1), Num(1)), "or")),
                     new SingularOrListExpression() { Value = CheckValue(Field(0), Lt(Field(0), Num(2)), "in"), Options = new List<Expression>() { Num(1), Num(2) } }
                 },
                 Input = Read(2)
@@ -871,7 +871,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
             {
                 Expressions = new List<Expression>()
                 {
-                    Function(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+                    Function(FunctionsComparison.Urn, FunctionsComparison.Coalesce,
                         Field(0),
                         new IfThenExpression()
                         {
@@ -1025,7 +1025,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
         private static ScalarFunction GetTimestamp()
         {
-            return Function(FunctionsDatetime.Uri, FunctionsDatetime.GetTimestamp);
+            return Function(FunctionsDatetime.Urn, FunctionsDatetime.GetTimestamp);
         }
 
         private sealed class ExpressionFinder(Func<Expression, bool> predicate) : BaseRelationExpressionVisitor<object?>
@@ -1066,7 +1066,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
 
         private static void AssertNoGetTimestampFunction(Plan plan)
         {
-            AssertNoExpression(plan, x => x is ScalarFunction f && f.ExtensionUri == FunctionsDatetime.Uri && f.ExtensionName == FunctionsDatetime.GetTimestamp);
+            AssertNoExpression(plan, x => x is ScalarFunction f && f.ExtensionUrn == FunctionsDatetime.Urn && f.ExtensionName == FunctionsDatetime.GetTimestamp);
         }
 
         private static int TimestampRelationId(Plan plan)

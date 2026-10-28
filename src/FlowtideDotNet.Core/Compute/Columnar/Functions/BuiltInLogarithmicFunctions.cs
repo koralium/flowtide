@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
         public static void AddBuiltInLogarithmicFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnScalarFunction(FunctionsLogarithmic.Uri, FunctionsLogarithmic.Log10, (func, paramInfo, visitor, functionServices) =>
+            functionsRegister.RegisterColumnScalarFunction(FunctionsLogarithmic.Urn, FunctionsLogarithmic.Log10, (func, paramInfo, visitor, functionServices) =>
             {
                 if (func.Arguments.Count != 1)
                 {

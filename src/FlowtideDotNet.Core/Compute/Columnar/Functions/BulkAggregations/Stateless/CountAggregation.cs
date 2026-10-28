@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.Count, new CountAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsAggregateGeneric.Urn, FunctionsAggregateGeneric.Count, new CountAggregationDefinition());
         }
     }
 

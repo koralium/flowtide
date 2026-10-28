@@ -4,8 +4,7 @@ urn: extension:io.github.koralium.flowtide:functions_rounding
 description: Additional Flowtide rounding overloads.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
   decimal_precision: System.Decimal; at most 28 digits are conservatively advertised.
 scalar_functions:
   - name: round
@@ -14,7 +13,7 @@ scalar_functions:
       Int64: use finite inputs with an Int64-representable rounded value. Decimal arithmetic uses System.Decimal
       (conservatively at most 28 digits).
     metadata:
-      legacy_extension_uri: /functions_rounding.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_rounding
     impls:
       - args:
           - value: i64

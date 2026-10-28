@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -61,7 +61,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                     var tableFunction = new TableFunction()
                     {
                         ExtensionName = FunctionsTableGeneric.Unnest,
-                        ExtensionUri = FunctionsTableGeneric.Uri,
+                        ExtensionUrn = FunctionsTableGeneric.Urn,
                         Arguments = new List<Expressions.Expression>() { result.Expr },
                         TableSchema = outputSchema
                     };

@@ -30,7 +30,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 
         public static void AddBuiltInTumblingWindowFunction(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnTableFunction(FunctionsDatetime.Uri, FunctionsDatetime.TumblingWindow,
+            functionsRegister.RegisterColumnTableFunction(FunctionsDatetime.Urn, FunctionsDatetime.TumblingWindow,
                 (tableFunc, parameterInfo, visitor, memoryAllocator, outputParam) =>
                 {
                     if (tableFunc.Arguments.Count != 3)

@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Average, new AvgAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Average, new AvgAggregationDefinition());
         }
     }
 

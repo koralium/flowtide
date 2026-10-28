@@ -146,7 +146,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
             {
                 for (int i = 0; i < aggregateRelation.Measures.Count; i++)
                 {
-                    if (_functionsRegister.TryGetBulkAggregationFunction(aggregateRelation.Measures[i].Measure.ExtensionUri, aggregateRelation.Measures[i].Measure.ExtensionName, out var func))
+                    if (_functionsRegister.TryGetBulkAggregationFunction(aggregateRelation.Measures[i].Measure.ExtensionUrn, aggregateRelation.Measures[i].Measure.ExtensionName, out var func))
                     {
                         var measure = func.Create(aggregateRelation.Measures[i].Measure, functionsRegister);
                         _measures[i] = measure;
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate.Bulk
                     }
                     else
                     {
-                        throw new NotSupportedException($"Bulk aggregate operator only works with bulk ready aggregations. Not found: {aggregateRelation.Measures[i].Measure.ExtensionUri}:{aggregateRelation.Measures[i].Measure.ExtensionName}");
+                        throw new NotSupportedException($"Bulk aggregate operator only works with bulk ready aggregations. Not found: {aggregateRelation.Measures[i].Measure.ExtensionUrn}:{aggregateRelation.Measures[i].Measure.ExtensionName}");
                     }
                 }
             }

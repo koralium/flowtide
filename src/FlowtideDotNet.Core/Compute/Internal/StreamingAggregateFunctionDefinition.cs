@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -52,18 +52,18 @@ namespace FlowtideDotNet.Core.Compute.Internal
     internal class StreamingAggregateFunctionDefinition : AggregateFunctionDefinition
     {
         public StreamingAggregateFunctionDefinition(
-            string uri,
+            string urn,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> updateStateFunc,
             Func<byte[]?, FlxValue> stateToValueFunc)
         {
-            Uri = uri;
+            Urn = urn;
             Name = name;
             UpdateStateFunc = updateStateFunc;
             StateToValueFunc = stateToValueFunc;
         }
 
-        public string Uri { get; }
+        public string Urn { get; }
 
         public string Name { get; }
 

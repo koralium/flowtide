@@ -28,8 +28,9 @@ message Plan {
   // versions.
   Version version = 6;
 
-  // a list of yaml specifications this plan may depend on
-  repeated substrait.extensions.SimpleExtensionURI extension_uris = 1;
+  // A list of extension URNs this plan depends on.
+  reserved 1;
+  repeated substrait.extensions.SimpleExtensionURN extension_urns = 8;
 
   // a list of extensions this plan may depend on
   repeated substrait.extensions.SimpleExtensionDeclaration extensions = 2;

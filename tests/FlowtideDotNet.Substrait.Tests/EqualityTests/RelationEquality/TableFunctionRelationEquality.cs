@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                         new BoolLiteral() { Value = true }
                     },
                     ExtensionName = "name1",
-                    ExtensionUri = "uri1",
+                    ExtensionUrn = "uri1",
                     TableSchema = new Type.NamedStruct()
                     {
                         Names = new List<string>() { "c1" }
@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                         new BoolLiteral() { Value = true }
                     },
                     ExtensionName = "name1",
-                    ExtensionUri = "uri1",
+                    ExtensionUrn = "uri1",
                     TableSchema = new Type.NamedStruct()
                     {
                         Names = new List<string>() { "c1" }
@@ -105,7 +105,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                         new BoolLiteral() { Value = false }
                     },
                     ExtensionName = "name2",
-                    ExtensionUri = "uri2",
+                    ExtensionUrn = "uri2",
                     TableSchema = new Type.NamedStruct()
                     {
                         Names = new List<string>() { "c2" }

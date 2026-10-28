@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -36,13 +36,13 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public override System.Linq.Expressions.Expression? VisitScalarFunction(ScalarFunction scalarFunction, ParametersInfo state)
         {
-            if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var def))
+            if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUrn, scalarFunction.ExtensionName, out var def))
             {
                 return def.MapFunc(scalarFunction, state, this);
             }
             else
             {
-                throw new InvalidOperationException($"The scalar function {scalarFunction.ExtensionUri}:{scalarFunction.ExtensionName} is not implemented.");
+                throw new InvalidOperationException($"The scalar function {scalarFunction.ExtensionUrn}:{scalarFunction.ExtensionName} is not implemented.");
             }
         }
 
@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             // For now we convert the singular or list to a series of equals statements with OR between them.
             ScalarFunction scalarFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsBoolean.Uri,
+                ExtensionUrn = FunctionsBoolean.Urn,
                 ExtensionName = FunctionsBoolean.Or,
                 Arguments = new List<Substrait.Expressions.Expression>()
             };
@@ -199,7 +199,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             {
                 scalarFunction.Arguments.Add(new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionUrn = FunctionsComparison.Urn,
                     ExtensionName = FunctionsComparison.Equal,
                     Arguments = new List<Substrait.Expressions.Expression>()
                     {

@@ -4,8 +4,7 @@ urn: extension:io.github.koralium.flowtide:functions_table_generic
 description: Flowtide generic table functions, described as custom metadata.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
   table_functions:
     - name: unnest
       description: Emit one column and one row per list element or map entry. List elements retain their original
@@ -14,7 +13,7 @@ metadata:
         inputs emit no rows. SQL uses the table alias as the single output column name, or generates a name when
         no alias is supplied. No ordinality column is added.
       metadata:
-        legacy_extension_uri: /functions_table_generic.yaml
+        runtime_extension_urn: extension:io.github.koralium.flowtide:functions_table_generic
         output_column_count: 1
       impls:
         - args:

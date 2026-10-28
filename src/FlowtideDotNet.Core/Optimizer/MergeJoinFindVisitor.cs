@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Core.Optimizer
             out JoinComparisonType comparisonType)
         {
             if (expression is ScalarFunction booleanComparison &&
-                booleanComparison.ExtensionUri == FunctionsComparison.Uri)
+                booleanComparison.ExtensionUrn == FunctionsComparison.Urn)
             {
                 var op = booleanComparison.ExtensionName;
                 bool isSupported = false;
@@ -130,7 +130,7 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             if (joinRelation.Expression is ScalarFunction andFunction &&
-                andFunction.ExtensionUri == FunctionsBoolean.Uri &&
+                andFunction.ExtensionUrn == FunctionsBoolean.Urn &&
                 andFunction.ExtensionName == FunctionsBoolean.And)
             {
                 List<FieldReference> leftKeys = new List<FieldReference>();

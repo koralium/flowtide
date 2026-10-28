@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_datetime'
 
 # basic: Basic examples without any special cases
 floor_timestamp_day('2016-12-31T13:30:15'::ts) = '2016-12-31T00:00:00'::ts

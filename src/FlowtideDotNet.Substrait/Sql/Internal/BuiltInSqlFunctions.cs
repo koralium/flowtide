@@ -83,7 +83,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsRounding.Uri,
+                            ExtensionUrn = FunctionsRounding.Urn,
                             ExtensionName = FunctionsRounding.Ceil,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -108,7 +108,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsRounding.Uri,
+                            ExtensionUrn = FunctionsRounding.FlowtideUrn,
                             ExtensionName = FunctionsRounding.Round,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -151,7 +151,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.isInfinite,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -177,7 +177,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.IsFinite,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -203,7 +203,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.IsNan,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(
                     new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsComparison.Uri,
+                        ExtensionUrn = FunctionsComparison.Urn,
                         ExtensionName = FunctionsComparison.NullIf,
                         Arguments = arguments
                     },
@@ -271,7 +271,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.Urn,
                             ExtensionName = FunctionsString.Lower,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -298,7 +298,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.Urn,
                             ExtensionName = FunctionsString.Upper,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -324,7 +324,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.FlowtideUrn,
                             ExtensionName = FunctionsString.LTrim,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -351,7 +351,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.FlowtideUrn,
                             ExtensionName = FunctionsString.RTrim,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -378,7 +378,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.FlowtideUrn,
                             ExtensionName = FunctionsString.To_String,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -405,7 +405,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsGuid.Uri,
+                            ExtensionUrn = FunctionsGuid.Urn,
                             ExtensionName = FunctionsGuid.ParseGuid,
                             Arguments = new List<Expressions.Expression>() { expr.Expr }
                         },
@@ -434,7 +434,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsDatetime.Uri,
+                            ExtensionUrn = FunctionsDatetime.Urn,
                             ExtensionName = FunctionsDatetime.Strftime,
                             Arguments = new List<Expressions.Expression>() { expr1.Expr, expr2.Expr }
                         },
@@ -452,7 +452,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(
                     new ScalarFunction()
                     {
-                        ExtensionUri = FunctionsDatetime.Uri,
+                        ExtensionUrn = FunctionsDatetime.Urn,
                         ExtensionName = FunctionsDatetime.GetTimestamp,
                         Arguments = new List<Expressions.Expression>()
                     },
@@ -512,7 +512,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(new ScalarFunction()
                     {
                         Arguments = new List<Expressions.Expression>(),
-                        ExtensionUri = FunctionsStruct.Uri,
+                        ExtensionUrn = FunctionsStruct.Urn,
                         ExtensionName = FunctionsStruct.Create
                     }, new NamedStruct()
                     {
@@ -578,7 +578,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new ScalarResponse(new ScalarFunction()
                 {
                     Arguments = arguments,
-                    ExtensionUri = FunctionsStruct.Uri,
+                    ExtensionUrn = FunctionsStruct.Urn,
                     ExtensionName = FunctionsStruct.Create
                 }, new NamedStruct()
                 {
@@ -651,7 +651,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         return new AggregateResponse(
                             new AggregateFunction()
                             {
-                                ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                ExtensionUrn = FunctionsAggregateGeneric.FlowtideUrn,
                                 ExtensionName = FunctionsAggregateGeneric.CountDistinct,
                                 Arguments = new List<Expressions.Expression>() { columnExpr.Expr }
                             },
@@ -666,7 +666,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new AggregateResponse(
                     new AggregateFunction()
                     {
-                        ExtensionUri = FunctionsAggregateGeneric.Uri,
+                        ExtensionUrn = FunctionsAggregateGeneric.Urn,
                         ExtensionName = FunctionsAggregateGeneric.Count,
                         Arguments = new List<Expressions.Expression>()
                     },
@@ -715,7 +715,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.GetAggregateUrn(FunctionsArithmetic.Sum, argExpr.Type),
                             ExtensionName = FunctionsArithmetic.Sum,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -776,7 +776,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsArithmetic.Uri,
+                            ExtensionUrn = FunctionsArithmetic.GetAggregateUrn(FunctionsArithmetic.Sum0, argExpr.Type),
                             ExtensionName = FunctionsArithmetic.Sum0,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -786,9 +786,9 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException("sum0 must have exactly one argument, and not be '*'");
             });
 
-            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "min", FunctionsArithmetic.Uri, FunctionsArithmetic.Min, p1 => p1);
-            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "max", FunctionsArithmetic.Uri, FunctionsArithmetic.Max, p1 => p1);
-            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, p1 =>
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "min", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Min, p1 => p1);
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "max", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Max, p1 => p1);
+            RegisterSingleVariableAggregateFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Average, p1 =>
             {
                 if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64 || p1.Type == SubstraitType.Int32 || p1.Type == SubstraitType.Fp32)
                 {
@@ -800,8 +800,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
                 return AnyType.Instance;
             }, rejectDistinct: true);
-            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
-            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
+            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MinBy, (p1type, p2type) => p1type);
+            RegisterTwoVariableAggregateFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MaxBy, (p1type, p2type) => p1type);
 
             sqlFunctionRegister.RegisterAggregateFunction("list_agg", (f, visitor, emitData) =>
             {
@@ -822,7 +822,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsList.Uri,
+                            ExtensionUrn = FunctionsList.Urn,
                             ExtensionName = FunctionsList.ListAgg,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -851,7 +851,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsList.Uri,
+                            ExtensionUrn = FunctionsList.Urn,
                             ExtensionName = FunctionsList.ListUnionDistinctAgg,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -886,7 +886,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.Urn,
                             ExtensionName = FunctionsString.StringAgg,
                             Arguments = new List<Expressions.Expression>() { argExpr, argExpr2 }
                         },
@@ -907,7 +907,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = FunctionsAggregateGeneric.Uri,
+                            ExtensionUrn = FunctionsAggregateGeneric.FlowtideUrn,
                             ExtensionName = FunctionsAggregateGeneric.SurrogateKeyInt64,
                             Arguments = new List<Expressions.Expression>()
                         },
@@ -917,28 +917,28 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
 
 
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Uri, FunctionsArithmetic.Power);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "exp", FunctionsArithmetic.Uri, FunctionsArithmetic.Exp);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cos", FunctionsArithmetic.Uri, FunctionsArithmetic.Cos);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sin", FunctionsArithmetic.Uri, FunctionsArithmetic.Sin);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tan", FunctionsArithmetic.Uri, FunctionsArithmetic.Tan);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cosh", FunctionsArithmetic.Uri, FunctionsArithmetic.Cosh);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sinh", FunctionsArithmetic.Uri, FunctionsArithmetic.Sinh);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tanh", FunctionsArithmetic.Uri, FunctionsArithmetic.Tanh);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acos", FunctionsArithmetic.Uri, FunctionsArithmetic.Acos);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asin", FunctionsArithmetic.Uri, FunctionsArithmetic.Asin);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atan", FunctionsArithmetic.Uri, FunctionsArithmetic.Atan);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acosh", FunctionsArithmetic.Uri, FunctionsArithmetic.Acosh);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asinh", FunctionsArithmetic.Uri, FunctionsArithmetic.Asinh);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atanh", FunctionsArithmetic.Uri, FunctionsArithmetic.Atanh);
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "atan2", FunctionsArithmetic.Uri, FunctionsArithmetic.Atan2);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "radians", FunctionsArithmetic.Uri, FunctionsArithmetic.Radians);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "degrees", FunctionsArithmetic.Uri, FunctionsArithmetic.Degrees);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "abs", FunctionsArithmetic.Uri, FunctionsArithmetic.Abs);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Uri, FunctionsArithmetic.Sign);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "power", FunctionsArithmetic.Urn, FunctionsArithmetic.Power);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sqrt", FunctionsArithmetic.Urn, FunctionsArithmetic.Sqrt);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "exp", FunctionsArithmetic.Urn, FunctionsArithmetic.Exp);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cos", FunctionsArithmetic.Urn, FunctionsArithmetic.Cos);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sin", FunctionsArithmetic.Urn, FunctionsArithmetic.Sin);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tan", FunctionsArithmetic.Urn, FunctionsArithmetic.Tan);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "cosh", FunctionsArithmetic.Urn, FunctionsArithmetic.Cosh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sinh", FunctionsArithmetic.Urn, FunctionsArithmetic.Sinh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "tanh", FunctionsArithmetic.Urn, FunctionsArithmetic.Tanh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acos", FunctionsArithmetic.Urn, FunctionsArithmetic.Acos);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asin", FunctionsArithmetic.Urn, FunctionsArithmetic.Asin);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atan", FunctionsArithmetic.Urn, FunctionsArithmetic.Atan);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "acosh", FunctionsArithmetic.Urn, FunctionsArithmetic.Acosh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "asinh", FunctionsArithmetic.Urn, FunctionsArithmetic.Asinh);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "atanh", FunctionsArithmetic.Urn, FunctionsArithmetic.Atanh);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "atan2", FunctionsArithmetic.Urn, FunctionsArithmetic.Atan2);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "radians", FunctionsArithmetic.Urn, FunctionsArithmetic.Radians);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "degrees", FunctionsArithmetic.Urn, FunctionsArithmetic.Degrees);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "abs", FunctionsArithmetic.Urn, FunctionsArithmetic.Abs);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "sign", FunctionsArithmetic.Urn, FunctionsArithmetic.Sign);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "log10", FunctionsLogarithmic.Uri, FunctionsLogarithmic.Log10, (p1) =>
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "log10", FunctionsLogarithmic.Urn, FunctionsLogarithmic.Log10, (p1) =>
             {
                 if (p1.Type == SubstraitType.Int64)
                 {
@@ -954,30 +954,30 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 }
             });
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "starts_with", FunctionsString.Uri, FunctionsString.StartsWith);
-            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "replace", FunctionsString.Uri, FunctionsString.Replace);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "starts_with", FunctionsString.Urn, FunctionsString.StartsWith);
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "replace", FunctionsString.Urn, FunctionsString.Replace);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_encode", FunctionsString.Uri, FunctionsString.StringBase64Encode);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_decode", FunctionsString.Uri, FunctionsString.StringBase64Decode);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_encode", FunctionsString.FlowtideUrn, FunctionsString.StringBase64Encode);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "string_base64_decode", FunctionsString.FlowtideUrn, FunctionsString.StringBase64Decode);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Uri, FunctionsString.CharLength);
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "strpos", FunctionsString.Uri, FunctionsString.StrPos);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "len", FunctionsString.Urn, FunctionsString.CharLength);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "strpos", FunctionsString.Urn, FunctionsString.StrPos);
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_split", FunctionsString.Uri, FunctionsString.StringSplit);
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "regexp_string_split", FunctionsString.Uri, FunctionsString.RegexStringSplit);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_split", FunctionsString.Urn, FunctionsString.StringSplit);
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "regexp_string_split", FunctionsString.Urn, FunctionsString.RegexStringSplit);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.Uri, FunctionsString.ToJson);
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.Uri, FunctionsString.FromJson);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "to_json", FunctionsString.FlowtideUrn, FunctionsString.ToJson);
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "from_json", FunctionsString.FlowtideUrn, FunctionsString.FromJson);
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, (p1) => new TimestampType());
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_extract", FunctionsDatetime.Uri, FunctionsDatetime.Extract, (p1, p2) => new Int64Type());
-            RegisterFiveVariableScalarFunction(sqlFunctionRegister, "round_calendar", FunctionsDatetime.Uri, FunctionsDatetime.RoundCalendar, (p1, p2, p3, p4, p5) => new TimestampType());
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "floor_timestamp_day", FunctionsDatetime.Urn, FunctionsDatetime.FloorTimestampDay, (p1) => new TimestampType());
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_extract", FunctionsDatetime.Urn, FunctionsDatetime.Extract, (p1, p2) => new Int64Type());
+            RegisterFiveVariableScalarFunction(sqlFunctionRegister, "round_calendar", FunctionsDatetime.Urn, FunctionsDatetime.RoundCalendar, (p1, p2, p3, p4, p5) => new TimestampType());
 
-            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Uri, FunctionsList.ListSortAscendingNullLast, p1 =>
+            RegisterOneVariableScalarFunction(sqlFunctionRegister, "list_sort_asc_null_last", FunctionsList.Urn, FunctionsList.ListSortAscendingNullLast, p1 =>
             {
                 return p1;
             });
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "list_first_difference", FunctionsList.Uri, FunctionsList.ListFirstDifference, (list1type, list2type) => 
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "list_first_difference", FunctionsList.Urn, FunctionsList.ListFirstDifference, (list1type, list2type) =>
             { 
                 if (list1type is ListType listType)
                 {
@@ -986,10 +986,10 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return AnyType.Instance;
             });
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.Uri, FunctionsString.StringJoin, (p1, p2) => new StringType());
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "string_join", FunctionsString.FlowtideUrn, FunctionsString.StringJoin, (p1, p2) => new StringType());
 
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_parse", FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, (p1, p2) => new TimestampType());
-            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_format", FunctionsDatetime.Uri, FunctionsDatetime.Format, (p1, p2) => new StringType());
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_parse", FunctionsDatetime.Urn, FunctionsDatetime.ParseTimestamp, (p1, p2) => new TimestampType());
+            RegisterTwoVariableScalarFunction(sqlFunctionRegister, "timestamp_format", FunctionsDatetime.Urn, FunctionsDatetime.Format, (p1, p2) => new StringType());
 
             // Table functions
             UnnestSqlFunction.AddUnnest(sqlFunctionRegister);
@@ -997,13 +997,13 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             TumblingWindowSqlFunction.AddTumblingWindow(sqlFunctionRegister);
 
             // WindowFunction
-            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, (p1) => p1, true, false);
-            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
-            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
-            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
-            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
-            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
-            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.Uri, FunctionsArithmetic.Average, (p1) =>
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "sum", FunctionsArithmetic.Urn, FunctionsArithmetic.Sum, (p1) => p1, true, false);
+            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "row_number", FunctionsArithmetic.Urn, FunctionsArithmetic.RowNumber, new Int64Type(), false, true);
+            RegisterZeroVariableWindowFunction(sqlFunctionRegister, "surrogate_key_int64", FunctionsAggregateGeneric.FlowtideUrn, FunctionsAggregateGeneric.SurrogateKeyInt64, new Int64Type(), false, false);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "last_value", FunctionsArithmetic.Urn, FunctionsArithmetic.LastValue, (p1) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "min_by", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MinBy, (p1, p2) => p1, true, true);
+            RegisterTwoVariableWindowFunction(sqlFunctionRegister, "max_by", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MaxBy, (p1, p2) => p1, true, true);
+            RegisterSingleVariableWindowFunction(sqlFunctionRegister, "avg", FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Average, (p1) =>
             {
                 if (p1.Type == SubstraitType.Int64 || p1.Type == SubstraitType.Fp64)
                 {
@@ -1047,7 +1047,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         Arguments = new List<Expressions.Expression>(),
                         ExtensionName = FunctionsDatetime.SessionWindow,
-                        ExtensionUri = FunctionsDatetime.Uri,
+                        ExtensionUrn = FunctionsDatetime.Urn,
                     };
 
                     for (int i = 0; i < argList.Args.Count; i++)
@@ -1079,7 +1079,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 // max(ts + gap) is max(ts) + gap, order preserved.
                 var shifted = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsDatetime.Uri,
+                    ExtensionUrn = FunctionsDatetime.Urn,
                     ExtensionName = FunctionsDatetime.TimestampAdd,
                     Arguments = new List<Expressions.Expression>() { unit, amount, timestamp }
                 };
@@ -1087,7 +1087,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new AggregateResponse(
                     new AggregateFunction()
                     {
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.FlowtideUrn,
                         ExtensionName = FunctionsArithmetic.Max,
                         Arguments = new List<Expressions.Expression>() { shifted }
                     },
@@ -1130,7 +1130,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         Arguments = new List<Expressions.Expression>(),
                         ExtensionName = FunctionsArithmetic.Lead,
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                     };
 
                     SubstraitBaseType? returnType = null;
@@ -1143,6 +1143,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             {
                                 var expr = visitor.Visit(funcExpr.Expression, emitData);
                                 windowFunc.Arguments.Add(expr.Expr);
+                                if (i == 1) windowFunc.ExtensionUrn = expr.Type.Type == SubstraitType.Int32 ? FunctionsArithmetic.Urn : FunctionsArithmetic.FlowtideUrn;
 
                                 if (i == 0)
                                 {
@@ -1208,7 +1209,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     {
                         Arguments = new List<Expressions.Expression>(),
                         ExtensionName = FunctionsArithmetic.Lag,
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                     };
 
                     SubstraitBaseType? returnType = null;
@@ -1221,6 +1222,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                             {
                                 var expr = visitor.Visit(funcExpr.Expression, emitData);
                                 windowFunc.Arguments.Add(expr.Expr);
+                                if (i == 1) windowFunc.ExtensionUrn = expr.Type.Type == SubstraitType.Int32 ? FunctionsArithmetic.Urn : FunctionsArithmetic.FlowtideUrn;
 
                                 if (i == 0)
                                 {
@@ -1308,7 +1310,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsCheck.Uri,
+                            ExtensionUrn = FunctionsCheck.Urn,
                             ExtensionName = FunctionsCheck.CheckValue,
                             Arguments = argumentList
                         },
@@ -1370,7 +1372,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsCheck.Uri,
+                            ExtensionUrn = FunctionsCheck.Urn,
                             ExtensionName = FunctionsCheck.CheckTrue,
                             Arguments = argumentList
                         },
@@ -1381,8 +1383,8 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 throw new InvalidOperationException($"check_true must have at least two arguments, and not be '*'");
             });
 
-            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
-            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "datediff", FunctionsDatetime.Uri, FunctionsDatetime.Datediff, (p1, p2, p3) => new Int64Type());
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "timestamp_add", FunctionsDatetime.Urn, FunctionsDatetime.TimestampAdd, (p1, p2, p3) => new TimestampType());
+            RegisterThreeVariableScalarFunction(sqlFunctionRegister, "datediff", FunctionsDatetime.Urn, FunctionsDatetime.Datediff, (p1, p2, p3) => new Int64Type());
 
             // Hash functions
             sqlFunctionRegister.RegisterScalarFunction("xxhash128_guid_string", (sqlFunc, visitor, emitData) =>
@@ -1412,7 +1414,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     Arguments = argumentList,
                     ExtensionName = FunctionsHash.XxHash128GuidString,
-                    ExtensionUri = FunctionsHash.Uri
+                    ExtensionUrn = FunctionsHash.Urn
                 }, new StringType());
             });
 
@@ -1443,7 +1445,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 {
                     Arguments = argumentList,
                     ExtensionName = FunctionsHash.XxHash64,
-                    ExtensionUri = FunctionsHash.Uri
+                    ExtensionUrn = FunctionsHash.Urn
                 }, new Int64Type());
             });
         }
@@ -1451,7 +1453,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterSingleVariableAggregateFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
             bool rejectDistinct = false)
@@ -1482,7 +1484,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn == FunctionsArithmetic.Urn || extensionUrn == FunctionsArithmetic.FlowtideUrn ? FunctionsArithmetic.GetAggregateUrn(extensionName, argExpr.Type) : extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -1496,7 +1498,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterTwoVariableAggregateFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType> returnTypeFunc)
         {
@@ -1525,7 +1527,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new AggregateResponse(
                         new AggregateFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr1.Expr, argExpr2.Expr }
                         },
@@ -1539,7 +1541,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterOneVariableScalarFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
@@ -1569,7 +1571,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr }
                         },
@@ -1583,7 +1585,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterTwoVariableScalarFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
@@ -1619,7 +1621,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr }
                         },
@@ -1661,7 +1663,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterThreeVariableScalarFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
@@ -1702,7 +1704,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr, argExpr3.Expr }
                         },
@@ -1716,7 +1718,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterFiveVariableScalarFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType, SubstraitBaseType>? typeFunc = default)
         {
@@ -1769,7 +1771,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr, argExpr3.Expr, argExpr4.Expr, argExpr5.Expr }
                         },
@@ -1784,7 +1786,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var coalesceFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.Coalesce,
                 Arguments = new List<Expressions.Expression>()
             };
@@ -1838,7 +1840,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var coalesceFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsString.Uri,
+                ExtensionUrn = FunctionsString.Urn,
                 ExtensionName = FunctionsString.Concat,
                 Arguments = new List<Expressions.Expression>()
             };
@@ -1892,7 +1894,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         {
             var greatestFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.Greatest,
                 Arguments = new List<Expressions.Expression>()
             };
@@ -2004,7 +2006,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterSingleVariableWindowFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
             bool supportRowBounds,
@@ -2076,7 +2078,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new WindowResponse(
                         new WindowFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = GetWindowUrn(extensionUrn, extensionName, argExpr.Type, f.NullTreatment),
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr },
                             LowerBound = lowerBound,
@@ -2090,10 +2092,23 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
             });
         }
 
+        private static string GetWindowUrn(string urn, string name, SubstraitBaseType inputType, NullTreatment? nullTreatment)
+        {
+            if (urn != FunctionsArithmetic.Urn && urn != FunctionsArithmetic.FlowtideUrn)
+            {
+                return urn;
+            }
+            if (name == FunctionsArithmetic.LastValue)
+            {
+                return nullTreatment is NullTreatment.IgnoreNulls ? FunctionsArithmetic.FlowtideUrn : FunctionsArithmetic.Urn;
+            }
+            return FunctionsArithmetic.GetAggregateUrn(name, inputType);
+        }
+
         private static void RegisterZeroVariableWindowFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             SubstraitBaseType returnType,
             bool supportRowBounds,
@@ -2144,7 +2159,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                 return new WindowResponse(
                     new WindowFunction()
                     {
-                        ExtensionUri = extensionUri,
+                        ExtensionUrn = extensionUrn,
                         ExtensionName = extensionName,
                         Arguments = new List<Expressions.Expression>(),
                         LowerBound = lowerBound,
@@ -2159,7 +2174,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
         private static void RegisterTwoVariableWindowFunction(
             SqlFunctionRegister sqlFunctionRegister,
             string functionName,
-            string extensionUri,
+            string extensionUrn,
             string extensionName,
             Func<SubstraitBaseType, SubstraitBaseType, SubstraitBaseType> returnTypeFunc,
             bool supportRowBounds,
@@ -2237,7 +2252,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     return new WindowResponse(
                         new WindowFunction()
                         {
-                            ExtensionUri = extensionUri,
+                            ExtensionUrn = extensionUrn,
                             ExtensionName = extensionName,
                             Arguments = new List<Expressions.Expression>() { argExpr.Expr, argExpr2.Expr },
                             LowerBound = lowerBound,

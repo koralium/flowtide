@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddStringFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Concat,
+            functionsRegister.RegisterScalarFunction(FunctionsString.Urn, FunctionsString.Concat,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     List<System.Linq.Expressions.Expression> expressions = new List<System.Linq.Expressions.Expression>();
@@ -49,20 +49,20 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return ConcatExpr(array);
                 });
 
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Lower, (x) => LowerImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Upper, (x) => UpperImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Trim, (x) => TrimImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.LTrim, (x) => LTrimImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.RTrim, (x) => RTrimImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.To_String, (x) => ToStringImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Like, (x, y, z) => LikeImplementation(x, y, z));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.Replace, (x, y, z) => ReplaceImplementation(x, y, z));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Encode, (x) => StringBase64EncodeImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.StringBase64Decode, (x) => StringBase64DecodeImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Uri, FunctionsString.CharLength, (x) => CharLengthImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.Lower, (x) => LowerImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.Upper, (x) => UpperImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.Trim, (x) => TrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.LTrim, (x) => LTrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.RTrim, (x) => RTrimImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.To_String, (x) => ToStringImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.StartsWith, (x, y) => StartsWithImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.Like, (x, y, z) => LikeImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.Replace, (x, y, z) => ReplaceImplementation(x, y, z));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.StringBase64Encode, (x) => StringBase64EncodeImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.FlowtideUrn, FunctionsString.StringBase64Decode, (x) => StringBase64DecodeImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsString.Urn, FunctionsString.CharLength, (x) => CharLengthImplementation(x));
 
-            functionsRegister.RegisterScalarFunction(FunctionsString.Uri, FunctionsString.Substring,
+            functionsRegister.RegisterScalarFunction(FunctionsString.Urn, FunctionsString.Substring,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     if (scalarFunction.Arguments.Count < 2)

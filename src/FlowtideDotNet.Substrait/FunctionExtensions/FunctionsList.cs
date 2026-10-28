@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,7 +14,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
     public static class FunctionsList
     {
-        public const string Uri = "/functions_list.yaml";
+        public const string Urn = "extension:io.github.koralium.flowtide:functions_list";
         public const string ListAgg = "list_agg";
         public const string ListUnionDistinctAgg = "list_union_distinct_agg";
         public const string ListSortAscendingNullLast = "list_sort_asc_null_last";

@@ -136,7 +136,7 @@ namespace FlowtideDotNet.AcceptanceTests
         private static void UseExtraAuxSum(FlowtideTestStream stream)
         {
             ((FunctionsRegister)stream.FunctionsRegister).SetBulkWindowFunctionForTests(
-                FunctionsArithmetic.Uri,
+                FunctionsArithmetic.Urn,
                 FunctionsArithmetic.Sum,
                 new ExtraAuxDefinition(new BulkSumWindowFunctionDefinition()));
         }

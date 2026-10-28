@@ -3,13 +3,17 @@
 urn: extension:io.github.koralium.flowtide:types
 description: Shared Flowtide types used by the function extensions.
 types:
+  - name: named_struct
+    description: Named-struct schema wrapper. Type parameters contain the ordered field names as strings followed
+      by one STRUCT datatype parameter containing the corresponding field types. Nullability belongs to the wrapper.
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:types
   - name: dynamic
     description: Opaque dynamic Flowtide value when the result kind, decimal scale, or nested shape cannot be fixed
       by the function signature. The catalog name dynamic avoids the reserved Substrait type-expression token any.
     metadata:
-      legacy_extension_uri: /any_type.yaml
-      legacy_type_name: any
+      runtime_extension_urn: extension:io.github.koralium.flowtide:types
+      runtime_type_name: dynamic
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: The any schema codec uses legacy type URI /any_type.yaml and name any. This URN identifies the
-    extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.

@@ -31,12 +31,22 @@ public class RuntimeCoverageTests
         CatalogValidationTests.Valid(RuntimeCoverage.Functions(CatalogValidationTests.Catalog, Builtins()));
 
     [Fact]
+    public void Builtins_use_declared_URN_namespaces_and_reject_legacy_file_identifiers()
+    {
+        var register = Builtins();
+        Assert.True(register.TryGetColumnScalarFunction("extension:io.substrait:functions_string", "lower", out _));
+        Assert.True(register.TryGetColumnScalarFunction("extension:io.github.koralium.flowtide:functions_string", "from_json", out _));
+        Assert.False(register.TryGetColumnScalarFunction("extension:io.substrait:functions_string", "from_json", out _));
+        Assert.Throws<ArgumentException>(() => register.RegisterColumnScalarFunction("/custom.yaml", "invalid", (_, _, _, _) => throw new NotSupportedException()));
+    }
+
+    [Fact]
     public void A_new_undocumented_registration_fails_validation()
     {
         var register = Builtins();
-        register.RegisterColumnScalarFunction("/validation.yaml", "new_function", (_, _, _, _) => throw new NotSupportedException());
+        register.RegisterColumnScalarFunction("extension:org.example:validation", "new_function", (_, _, _, _) => throw new NotSupportedException());
         Assert.Contains(RuntimeCoverage.Functions(CatalogValidationTests.Catalog, register),
-            error => error.Message.Contains("/validation.yaml:new_function") && error.Message.Contains("missing"));
+            error => error.Message.Contains("extension:org.example:validation:new_function") && error.Message.Contains("missing"));
     }
 
     [Fact]
@@ -44,9 +54,21 @@ public class RuntimeCoverageTests
     {
         var catalog = CatalogValidationTests.Catalog;
         var data = (JsonObject)catalog.Dialect.Data.DeepClone();
-        data["supported_scalar_functions"]![0]!["metadata"]!["legacy_extension_uri"] = "/missing.yaml";
+        data["supported_scalar_functions"]![0]!["metadata"]!["runtime_extension_urn"] = "extension:org.example:missing";
         Assert.Contains(RuntimeCoverage.Functions(catalog.WithDialect(data), Builtins()),
-            error => error.Message.Contains("/missing.yaml:") && error.Message.Contains("no built-in registration"));
+            error => error.Message.Contains("extension:org.example:missing:") && error.Message.Contains("no built-in registration"));
+    }
+
+    [Fact]
+    public void A_registered_namespace_cannot_replace_the_declared_extension_contract()
+    {
+        var catalog = CatalogValidationTests.Catalog;
+        var data = (JsonObject)catalog.Dialect.Data.DeepClone();
+        var sum = data["supported_aggregate_functions"].Objects().First(entry =>
+            entry["name"].Text() == "sum" && entry["source"].Text() == "arithmetic");
+        sum["metadata"]!["runtime_extension_urn"] = "extension:io.github.koralium.flowtide:functions_arithmetic";
+        Assert.Contains(RuntimeCoverage.Functions(catalog.WithDialect(data), Builtins()),
+            error => error.Message.Contains("does not match the source extension URN"));
     }
 
     [Fact]
@@ -56,8 +78,8 @@ public class RuntimeCoverageTests
         builder.Sql("CREATE TABLE input_data (id INT); SELECT gettimestamp() FROM input_data;");
         var proto = SubstraitSerializer.Serialize(builder.GetPlan());
         var binding = Assert.Single(proto.Extensions.Where(extension => extension.ExtensionFunction?.Name == "gettimestamp")).ExtensionFunction;
-        var uri = Assert.Single(proto.ExtensionUris.Where(uri => uri.ExtensionUriAnchor == binding.ExtensionUriReference)).Uri;
-        Assert.Equal(RuntimeCoverage.TimestampIntrinsic, uri + ":" + binding.Name);
+        var urn = Assert.Single(proto.ExtensionUrns.Where(urn => urn.ExtensionUrnAnchor == binding.ExtensionUrnReference)).Urn;
+        Assert.Equal(RuntimeCoverage.TimestampIntrinsic, urn + ":" + binding.Name);
         var entry = Assert.Single(CatalogValidationTests.Catalog.Functions().Where(entry => entry.Category == "scalar"
             && entry.Data["name"].Text() == binding.Name));
         Assert.Equal("TimestampToJoin", entry.Data["metadata"]?["requires_optimizer_pass"].Text());

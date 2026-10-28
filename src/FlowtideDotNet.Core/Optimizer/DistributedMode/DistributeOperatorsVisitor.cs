@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -430,7 +430,7 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             }
 
             if (aggregateRelation.Measures != null &&
-                aggregateRelation.Measures.Any(x => x.Measure.ExtensionUri == FunctionsAggregateGeneric.Uri &&
+                aggregateRelation.Measures.Any(x => x.Measure.ExtensionUrn == FunctionsAggregateGeneric.FlowtideUrn &&
                     x.Measure.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
             {
                 // Surrogate key is not supported in distribution
@@ -497,7 +497,7 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 return consistentPartitionWindowRelation;
             }
 
-            if (consistentPartitionWindowRelation.WindowFunctions.Any(x => x.ExtensionUri == FunctionsAggregateGeneric.Uri && x.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
+            if (consistentPartitionWindowRelation.WindowFunctions.Any(x => x.ExtensionUrn == FunctionsAggregateGeneric.FlowtideUrn && x.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
             {
                 // Surrogate key is not supported in distribution
                 consistentPartitionWindowRelation.Input = Visit(consistentPartitionWindowRelation.Input, state);

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
     {
         public static Task<IAggregateContainer> CompileMeasure(int groupingLength, IStateManagerClient stateManagerClient, AggregateFunction aggregateFunction, FunctionsRegister functionsRegister, IMemoryAllocator memoryAllocator)
         {
-            if (functionsRegister.TryGetAggregateFunction(aggregateFunction.ExtensionUri, aggregateFunction.ExtensionName, out var definition))
+            if (functionsRegister.TryGetAggregateFunction(aggregateFunction.ExtensionUrn, aggregateFunction.ExtensionName, out var definition))
             {
                 var param = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
                 var stateParam = System.Linq.Expressions.Expression.Parameter(typeof(byte[]));
@@ -47,7 +47,7 @@ namespace FlowtideDotNet.Core.Operators.Aggregate
             }
             else
             {
-                throw new InvalidOperationException($"The function {aggregateFunction.ExtensionUri}:{aggregateFunction.ExtensionName} is not defined.");
+                throw new InvalidOperationException($"The function {aggregateFunction.ExtensionUrn}:{aggregateFunction.ExtensionName} is not defined.");
             }
         }
     }

@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         {
             return new WindowFunction()
             {
-                ExtensionUri = uri,
+                ExtensionUrn = uri,
                 ExtensionName = name,
                 Arguments = new List<Expression>()
                 {
@@ -66,9 +66,9 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         }
 
         [Fact]
-        public void ExtensionUriChangedNotEqual()
+        public void ExtensionUrnChangedNotEqual()
         {
-            clone.ExtensionUri = notEqual.ExtensionUri;
+            clone.ExtensionUrn = notEqual.ExtensionUrn;
             Assert.NotEqual(root, clone);
         }
 

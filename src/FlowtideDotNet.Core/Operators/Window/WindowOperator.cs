@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Core.Operators.Window
                 }
                 else
                 {
-                    throw new InvalidOperationException($"The function {relation.WindowFunctions[i].ExtensionUri}:{relation.WindowFunctions[i].ExtensionName} is not defined.");
+                    throw new InvalidOperationException($"The function {relation.WindowFunctions[i].ExtensionUrn}:{relation.WindowFunctions[i].ExtensionName} is not defined.");
                 }
             }
         }

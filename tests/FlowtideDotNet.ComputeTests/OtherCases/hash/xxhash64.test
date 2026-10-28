@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_hash.yaml'
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_hash'
 
 # Basic tests
 xxhash64('2016-12-31T13:30:15'::ts) = -6067517087359942292::i64

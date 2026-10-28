@@ -28,25 +28,25 @@ namespace Substrait.Protobuf {
             "YWxnZWJyYS5wcm90bxolc3Vic3RyYWl0L2V4dGVuc2lvbnMvZXh0ZW5zaW9u",
             "cy5wcm90byJYCgdQbGFuUmVsEh0KA3JlbBgBIAEoCzIOLnN1YnN0cmFpdC5S",
             "ZWxIABIiCgRyb290GAIgASgLMhIuc3Vic3RyYWl0LlJlbFJvb3RIAEIKCghy",
-            "ZWxfdHlwZSK8AgoEUGxhbhIjCgd2ZXJzaW9uGAYgASgLMhIuc3Vic3RyYWl0",
-            "LlZlcnNpb24SQAoOZXh0ZW5zaW9uX3VyaXMYASADKAsyKC5zdWJzdHJhaXQu",
-            "ZXh0ZW5zaW9ucy5TaW1wbGVFeHRlbnNpb25VUkkSRAoKZXh0ZW5zaW9ucxgC",
+            "ZWxfdHlwZSLCAgoEUGxhbhIjCgd2ZXJzaW9uGAYgASgLMhIuc3Vic3RyYWl0",
+            "LlZlcnNpb24SQAoOZXh0ZW5zaW9uX3VybnMYCCADKAsyKC5zdWJzdHJhaXQu",
+            "ZXh0ZW5zaW9ucy5TaW1wbGVFeHRlbnNpb25VUk4SRAoKZXh0ZW5zaW9ucxgC",
             "IAMoCzIwLnN1YnN0cmFpdC5leHRlbnNpb25zLlNpbXBsZUV4dGVuc2lvbkRl",
             "Y2xhcmF0aW9uEiUKCXJlbGF0aW9ucxgDIAMoCzISLnN1YnN0cmFpdC5QbGFu",
             "UmVsEkQKE2FkdmFuY2VkX2V4dGVuc2lvbnMYBCABKAsyJy5zdWJzdHJhaXQu",
             "ZXh0ZW5zaW9ucy5BZHZhbmNlZEV4dGVuc2lvbhIaChJleHBlY3RlZF90eXBl",
-            "X3VybHMYBSADKAkiMgoLUGxhblZlcnNpb24SIwoHdmVyc2lvbhgGIAEoCzIS",
-            "LnN1YnN0cmFpdC5WZXJzaW9uIm8KB1ZlcnNpb24SFAoMbWFqb3JfbnVtYmVy",
-            "GAEgASgNEhQKDG1pbm9yX251bWJlchgCIAEoDRIUCgxwYXRjaF9udW1iZXIY",
-            "AyABKA0SEAoIZ2l0X2hhc2gYBCABKAkSEAoIcHJvZHVjZXIYBSABKAlCVwoS",
-            "aW8uc3Vic3RyYWl0LnByb3RvUAFaKmdpdGh1Yi5jb20vc3Vic3RyYWl0LWlv",
-            "L3N1YnN0cmFpdC1nby9wcm90b6oCElN1YnN0cmFpdC5Qcm90b2J1ZmIGcHJv",
-            "dG8z"));
+            "X3VybHMYBSADKAlKBAgBEAIiMgoLUGxhblZlcnNpb24SIwoHdmVyc2lvbhgG",
+            "IAEoCzISLnN1YnN0cmFpdC5WZXJzaW9uIm8KB1ZlcnNpb24SFAoMbWFqb3Jf",
+            "bnVtYmVyGAEgASgNEhQKDG1pbm9yX251bWJlchgCIAEoDRIUCgxwYXRjaF9u",
+            "dW1iZXIYAyABKA0SEAoIZ2l0X2hhc2gYBCABKAkSEAoIcHJvZHVjZXIYBSAB",
+            "KAlCVwoSaW8uc3Vic3RyYWl0LnByb3RvUAFaKmdpdGh1Yi5jb20vc3Vic3Ry",
+            "YWl0LWlvL3N1YnN0cmFpdC1nby9wcm90b6oCElN1YnN0cmFpdC5Qcm90b2J1",
+            "ZmIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Substrait.Protobuf.AlgebraReflection.Descriptor, global::Substrait.Protobuf.ExtensionsReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.PlanRel), global::Substrait.Protobuf.PlanRel.Parser, new[]{ "Rel", "Root" }, new[]{ "RelType" }, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Plan), global::Substrait.Protobuf.Plan.Parser, new[]{ "Version", "ExtensionUris", "Extensions", "Relations", "AdvancedExtensions", "ExpectedTypeUrls" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Plan), global::Substrait.Protobuf.Plan.Parser, new[]{ "Version", "ExtensionUrns", "Extensions", "Relations", "AdvancedExtensions", "ExpectedTypeUrls" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.PlanVersion), global::Substrait.Protobuf.PlanVersion.Parser, new[]{ "Version" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.Version), global::Substrait.Protobuf.Version.Parser, new[]{ "MajorNumber", "MinorNumber", "PatchNumber", "GitHash", "Producer" }, null, null, null, null)
           }));
@@ -398,7 +398,7 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public Plan(Plan other) : this() {
       version_ = other.version_ != null ? other.version_.Clone() : null;
-      extensionUris_ = other.extensionUris_.Clone();
+      extensionUrns_ = other.extensionUrns_.Clone();
       extensions_ = other.extensions_.Clone();
       relations_ = other.relations_.Clone();
       advancedExtensions_ = other.advancedExtensions_ != null ? other.advancedExtensions_.Clone() : null;
@@ -428,18 +428,15 @@ namespace Substrait.Protobuf {
       }
     }
 
-    /// <summary>Field number for the "extension_uris" field.</summary>
-    public const int ExtensionUrisFieldNumber = 1;
-    private static readonly pb::FieldCodec<global::Substrait.Protobuf.SimpleExtensionURI> _repeated_extensionUris_codec
-        = pb::FieldCodec.ForMessage(10, global::Substrait.Protobuf.SimpleExtensionURI.Parser);
-    private readonly pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURI> extensionUris_ = new pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURI>();
-    /// <summary>
-    /// a list of yaml specifications this plan may depend on
-    /// </summary>
+    /// <summary>Field number for the "extension_urns" field.</summary>
+    public const int ExtensionUrnsFieldNumber = 8;
+    private static readonly pb::FieldCodec<global::Substrait.Protobuf.SimpleExtensionURN> _repeated_extensionUrns_codec
+        = pb::FieldCodec.ForMessage(66, global::Substrait.Protobuf.SimpleExtensionURN.Parser);
+    private readonly pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURN> extensionUrns_ = new pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURN>();
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURI> ExtensionUris {
-      get { return extensionUris_; }
+    public pbc::RepeatedField<global::Substrait.Protobuf.SimpleExtensionURN> ExtensionUrns {
+      get { return extensionUrns_; }
     }
 
     /// <summary>Field number for the "extensions" field.</summary>
@@ -519,7 +516,7 @@ namespace Substrait.Protobuf {
         return true;
       }
       if (!object.Equals(Version, other.Version)) return false;
-      if(!extensionUris_.Equals(other.extensionUris_)) return false;
+      if(!extensionUrns_.Equals(other.extensionUrns_)) return false;
       if(!extensions_.Equals(other.extensions_)) return false;
       if(!relations_.Equals(other.relations_)) return false;
       if (!object.Equals(AdvancedExtensions, other.AdvancedExtensions)) return false;
@@ -532,7 +529,7 @@ namespace Substrait.Protobuf {
     public override int GetHashCode() {
       int hash = 1;
       if (version_ != null) hash ^= Version.GetHashCode();
-      hash ^= extensionUris_.GetHashCode();
+      hash ^= extensionUrns_.GetHashCode();
       hash ^= extensions_.GetHashCode();
       hash ^= relations_.GetHashCode();
       if (advancedExtensions_ != null) hash ^= AdvancedExtensions.GetHashCode();
@@ -555,7 +552,6 @@ namespace Substrait.Protobuf {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      extensionUris_.WriteTo(output, _repeated_extensionUris_codec);
       extensions_.WriteTo(output, _repeated_extensions_codec);
       relations_.WriteTo(output, _repeated_relations_codec);
       if (advancedExtensions_ != null) {
@@ -567,6 +563,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(50);
         output.WriteMessage(Version);
       }
+      extensionUrns_.WriteTo(output, _repeated_extensionUrns_codec);
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -577,7 +574,6 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      extensionUris_.WriteTo(ref output, _repeated_extensionUris_codec);
       extensions_.WriteTo(ref output, _repeated_extensions_codec);
       relations_.WriteTo(ref output, _repeated_relations_codec);
       if (advancedExtensions_ != null) {
@@ -589,6 +585,7 @@ namespace Substrait.Protobuf {
         output.WriteRawTag(50);
         output.WriteMessage(Version);
       }
+      extensionUrns_.WriteTo(ref output, _repeated_extensionUrns_codec);
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -602,7 +599,7 @@ namespace Substrait.Protobuf {
       if (version_ != null) {
         size += 1 + pb::CodedOutputStream.ComputeMessageSize(Version);
       }
-      size += extensionUris_.CalculateSize(_repeated_extensionUris_codec);
+      size += extensionUrns_.CalculateSize(_repeated_extensionUrns_codec);
       size += extensions_.CalculateSize(_repeated_extensions_codec);
       size += relations_.CalculateSize(_repeated_relations_codec);
       if (advancedExtensions_ != null) {
@@ -627,7 +624,7 @@ namespace Substrait.Protobuf {
         }
         Version.MergeFrom(other.Version);
       }
-      extensionUris_.Add(other.extensionUris_);
+      extensionUrns_.Add(other.extensionUrns_);
       extensions_.Add(other.extensions_);
       relations_.Add(other.relations_);
       if (other.advancedExtensions_ != null) {
@@ -656,10 +653,6 @@ namespace Substrait.Protobuf {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
-          case 10: {
-            extensionUris_.AddEntriesFrom(input, _repeated_extensionUris_codec);
-            break;
-          }
           case 18: {
             extensions_.AddEntriesFrom(input, _repeated_extensions_codec);
             break;
@@ -686,6 +679,10 @@ namespace Substrait.Protobuf {
             input.ReadMessage(Version);
             break;
           }
+          case 66: {
+            extensionUrns_.AddEntriesFrom(input, _repeated_extensionUrns_codec);
+            break;
+          }
         }
       }
     #endif
@@ -705,10 +702,6 @@ namespace Substrait.Protobuf {
           default:
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
-          case 10: {
-            extensionUris_.AddEntriesFrom(ref input, _repeated_extensionUris_codec);
-            break;
-          }
           case 18: {
             extensions_.AddEntriesFrom(ref input, _repeated_extensions_codec);
             break;
@@ -733,6 +726,10 @@ namespace Substrait.Protobuf {
               Version = new global::Substrait.Protobuf.Version();
             }
             input.ReadMessage(Version);
+            break;
+          }
+          case 66: {
+            extensionUrns_.AddEntriesFrom(ref input, _repeated_extensionUrns_codec);
             break;
           }
         }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddBuiltInDatetimeFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, (x, y) => StrfTimeImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsDatetime.Urn, FunctionsDatetime.Strftime, (x, y) => StrfTimeImplementation(x, y));
         }
 
         internal static FlxValue StrfTimeImplementation(FlxValue value, FlxValue format)

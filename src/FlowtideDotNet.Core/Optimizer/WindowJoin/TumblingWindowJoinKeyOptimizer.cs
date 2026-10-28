@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Core.Optimizer.WindowJoin
             }
 
             var tableFunction = startTrace.Relation.TableFunction;
-            if (tableFunction.ExtensionUri != FunctionsDatetime.Uri ||
+            if (tableFunction.ExtensionUrn != FunctionsDatetime.Urn ||
                 tableFunction.ExtensionName != FunctionsDatetime.TumblingWindow ||
                 tableFunction.Arguments.Count != 3)
             {
@@ -154,7 +154,7 @@ namespace FlowtideDotNet.Core.Optimizer.WindowJoin
             // Compute the bucket as an extra column on the left input
             var bucketFunction = new ScalarFunction
             {
-                ExtensionUri = FunctionsDatetime.Uri,
+                ExtensionUrn = FunctionsDatetime.Urn,
                 ExtensionName = FunctionsDatetime.TumblingWindowStart,
                 Arguments = new List<Expression>
                 {
@@ -261,7 +261,7 @@ namespace FlowtideDotNet.Core.Optimizer.WindowJoin
             {
                 return false;
             }
-            if (scalar.ExtensionUri == FunctionsBoolean.Uri && scalar.ExtensionName == FunctionsBoolean.And)
+            if (scalar.ExtensionUrn == FunctionsBoolean.Urn && scalar.ExtensionName == FunctionsBoolean.And)
             {
                 foreach (var argument in scalar.Arguments)
                 {
@@ -272,7 +272,7 @@ namespace FlowtideDotNet.Core.Optimizer.WindowJoin
                 }
                 return false;
             }
-            if (scalar.ExtensionUri != FunctionsComparison.Uri || scalar.Arguments.Count != 2)
+            if (scalar.ExtensionUrn != FunctionsComparison.Urn || scalar.Arguments.Count != 2)
             {
                 return false;
             }

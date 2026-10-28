@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -31,20 +31,20 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
         public static void AddComparisonFunctions(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.Equal, typeof(BuiltInComparisonFunctions), nameof(EqualImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.NotEqual, typeof(BuiltInComparisonFunctions), nameof(NotEqualImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.GreaterThan, typeof(BuiltInComparisonFunctions), nameof(GreaterThanImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.GreaterThanOrEqual, typeof(BuiltInComparisonFunctions), nameof(GreaterThanOrEqualImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.LessThan, typeof(BuiltInComparisonFunctions), nameof(LessThanImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.LessThanOrEqual, typeof(BuiltInComparisonFunctions), nameof(LessThanOrEqualImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNull, typeof(BuiltInComparisonFunctions), nameof(IsNullImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNotNull, typeof(BuiltInComparisonFunctions), nameof(IsNotNullImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.Between, typeof(BuiltInComparisonFunctions), nameof(BetweenImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsFinite, typeof(BuiltInComparisonFunctions), nameof(IsFiniteImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.isInfinite, typeof(BuiltInComparisonFunctions), nameof(IsInfiniteImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNan, typeof(BuiltInComparisonFunctions), nameof(IsNanImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.Equal, typeof(BuiltInComparisonFunctions), nameof(EqualImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.NotEqual, typeof(BuiltInComparisonFunctions), nameof(NotEqualImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.GreaterThan, typeof(BuiltInComparisonFunctions), nameof(GreaterThanImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.GreaterThanOrEqual, typeof(BuiltInComparisonFunctions), nameof(GreaterThanOrEqualImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.LessThan, typeof(BuiltInComparisonFunctions), nameof(LessThanImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.LessThanOrEqual, typeof(BuiltInComparisonFunctions), nameof(LessThanOrEqualImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsNull, typeof(BuiltInComparisonFunctions), nameof(IsNullImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsNotNull, typeof(BuiltInComparisonFunctions), nameof(IsNotNullImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.Between, typeof(BuiltInComparisonFunctions), nameof(BetweenImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsFinite, typeof(BuiltInComparisonFunctions), nameof(IsFiniteImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.isInfinite, typeof(BuiltInComparisonFunctions), nameof(IsInfiniteImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsNan, typeof(BuiltInComparisonFunctions), nameof(IsNanImplementation));
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Coalesce,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Urn, FunctionsComparison.Coalesce,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     var lastArg = visitor.Visit(scalarFunction.Arguments[scalarFunction.Arguments.Count - 1], parametersInfo);
@@ -69,7 +69,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     return expr;
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Uri, FunctionsComparison.Greatest,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsComparison.Urn, FunctionsComparison.Greatest,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count < 2)
@@ -156,8 +156,8 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                     return block;
                 });
 
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsDistinctFromImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsComparison.Uri, FunctionsComparison.IsNotDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsNotDistinctFromImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsDistinctFromImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsNotDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsNotDistinctFromImplementation));
         }
 
         private static IDataValue EqualImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)

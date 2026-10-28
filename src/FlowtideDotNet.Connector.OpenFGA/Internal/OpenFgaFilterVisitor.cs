@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
         }
         public override string? VisitScalarFunction(ScalarFunction scalarFunction, object? state)
         {
-            if (scalarFunction.ExtensionUri == FunctionsComparison.Uri)
+            if (scalarFunction.ExtensionUrn == FunctionsComparison.Urn)
             {
                 switch (scalarFunction.ExtensionName)
                 {
@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
                         return VisitEqualComparison(scalarFunction);
                 }
             }
-            if (scalarFunction.ExtensionUri == FunctionsBoolean.Uri)
+            if (scalarFunction.ExtensionUrn == FunctionsBoolean.Urn)
             {
                 if (scalarFunction.ExtensionName == FunctionsBoolean.And)
                 {
