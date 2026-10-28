@@ -678,20 +678,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Theory]
-        [InlineData(false, 4)]
-        [InlineData(true, 4)]
-        [InlineData(false, 60)]
-        [InlineData(true, 60)]
-        public async Task ChurnMeasurements(bool legacySink, int cachePages)
+        [InlineData(4)]
+        [InlineData(60)]
+        public async Task ChurnMeasurements(int cachePages)
         {
             // Reported, not asserted, the allocation figure is process wide so run it alone
-            var table = $"{(legacySink ? "churn_legacy" : "catalog_churn")}_{cachePages}";
+            var table = $"catalog_churn_{cachePages}";
             var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
             var stream = new DeltaLakeSinkStream(table, storage, options =>
             {
                 options.MaxFileSizeBytes = 1024;
                 options.CheckpointInterval = 0;
-            }, legacySink: legacySink);
+            });
             var running = true;
             try
             {
@@ -740,7 +738,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     }
                     files = (await DeltaTransactionReader.ReadTable(storage, table))!.AddFiles.Count;
                 }
-                _output.WriteLine($"{(legacySink ? "legacy" : "catalog")} cache {cachePages}: files {files}, " +
+                _output.WriteLine($"catalog cache {cachePages}: files {files}, " +
                     $"worst round {worstRound.TotalMilliseconds:F0} ms, total {total.TotalMilliseconds:F0} ms, allocated {allocated / 1024 / 1024} MiB, peak catalog spill {peakSpill / 1024} KiB, requests {requests.Count}, " +
                     $"listings {requests.Count(x => x.StartsWith("Ls "))}, log reads {requests.Count(x => x.StartsWith("OpenRead ") && x.Contains("_delta_log"))}, " +
                     $"data reads {requests.Count(x => x.StartsWith("OpenRead ") && x.EndsWith(".parquet") && !x.Contains("_delta_log"))}");

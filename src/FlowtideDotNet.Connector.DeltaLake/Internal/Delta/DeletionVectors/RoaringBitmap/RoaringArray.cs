@@ -58,6 +58,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
 
         public long Cardinality { get; }
 
+        public bool Contains(int x)
+        {
+            var index = Array.BinarySearch(m_Keys, 0, m_Size, Util.HighBits(x));
+            return index >= 0 && m_Values[index].Contains(Util.LowBits(x));
+        }
+
         public IEnumerator<int> GetEnumerator()
         {
             for (var i = 0; i < m_Size; i++)

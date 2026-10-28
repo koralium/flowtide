@@ -17,18 +17,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     internal static class ParquetFileReaders
     {
         // Shared by every reader and never disposed
-        private static readonly ArrowReaderProperties s_properties = CreateProperties();
+        private static readonly ArrowReaderProperties s_properties = CreateProperties(forDeletes: false);
+        private static readonly ArrowReaderProperties s_deleteProperties = CreateProperties(forDeletes: true);
 
         public static FileReader Open(Stream stream)
         {
             return new FileReader(stream, null, s_properties);
         }
 
-        private static ArrowReaderProperties CreateProperties()
+        // Matching and rewriting read INT96 as microseconds
+        public static FileReader OpenForDeletes(Stream stream)
+        {
+            return new FileReader(stream, null, s_deleteProperties);
+        }
+
+        private static ArrowReaderProperties CreateProperties(bool forDeletes)
         {
             var properties = ArrowReaderProperties.GetDefault();
             // Pre-buffered reads call the managed stream from Arrow's own threads, which crashed the process on Linux
             properties.PreBuffer = false;
+            if (forDeletes)
+            {
+                properties.CoerceInt96TimestampUnit = Apache.Arrow.Types.TimeUnit.Microsecond;
+            }
             return properties;
         }
     }

@@ -15,7 +15,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
     /// <summary>
     /// Code from https://github.com/Tornhoof/RoaringBitmap/tree/master which is archived
     /// </summary>
-    internal class ArrayContainer : Container, IEquatable<ArrayContainer>
+    internal sealed class ArrayContainer : Container, IEquatable<ArrayContainer>
     {
         public static readonly ArrayContainer One;
         private readonly int m_Cardinality;
@@ -38,6 +38,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
         }
 
         protected internal override int Cardinality => m_Cardinality;
+
+        public override bool Contains(ushort x)
+        {
+            return Array.BinarySearch(m_Content, 0, m_Cardinality, x) >= 0;
+        }
 
         public override int ArraySizeInBytes => m_Cardinality * sizeof(ushort);
 

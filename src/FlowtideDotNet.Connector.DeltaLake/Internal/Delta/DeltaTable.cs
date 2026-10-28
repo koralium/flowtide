@@ -173,6 +173,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
         }
 
+        // Id mode resolves a data file's columns by field id
+        public bool ColumnMappingById
+        {
+            get
+            {
+                return _metadata.Configuration != null &&
+                    _metadata.Configuration.TryGetValue("delta.columnMapping.mode", out var mode) &&
+                    string.Equals(mode, "id", StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
         public int? MaxColumnId
         {
             get

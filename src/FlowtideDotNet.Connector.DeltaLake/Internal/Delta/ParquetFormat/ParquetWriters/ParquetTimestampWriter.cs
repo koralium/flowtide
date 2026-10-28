@@ -11,24 +11,37 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
+    // Raw longs in one unit, milliseconds or microseconds
     internal class ParquetTimestampWriter : IParquetWriter
     {
-        private TimestampArray.Builder? _builder;
-        private DateTimeOffset? _minValue;
-        private DateTimeOffset? _maxValue;
+        private static readonly long s_minMilliseconds = DateTimeOffset.MinValue.ToUnixTimeMilliseconds();
+        private static readonly long s_maxMilliseconds = DateTimeOffset.MaxValue.ToUnixTimeMilliseconds();
+        private readonly TimeUnit _unit;
+        private ArrowBuffer.Builder<long>? _values;
+        private ArrowBuffer.BitmapBuilder? _validity;
+        private long? _minValue;
+        private long? _maxValue;
         private int _nullCount;
 
-        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public ParquetTimestampWriter(TimeUnit unit = TimeUnit.Millisecond)
+        {
+            _unit = unit;
+        }
+
+        public long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is TimestampArray arr)
             {
+                var unit = ((TimestampType)arr.Data.DataType).Unit;
                 int added = 0;
                 for (int i = index; i < (index + count); i++)
                 {
@@ -38,14 +51,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     }
 
                     added++;
-                    var val = arr.GetTimestamp(i);
-                    if (!val.HasValue)
+                    if (arr.IsNull(i))
                     {
                         WriteNull();
                     }
                     else
                     {
-                        WriteValue(val.Value);
+                        Append(Scale(arr.Values[i], unit));
                     }
                 }
                 return added * 8;
@@ -53,20 +65,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             throw new NotImplementedException();
         }
 
+        // Exact, or an error
+        private long Scale(long value, TimeUnit unit)
+        {
+            if (unit == _unit)
+            {
+                return value;
+            }
+            return (unit, _unit) switch
+            {
+                (TimeUnit.Second, TimeUnit.Millisecond) => checked(value * 1_000),
+                (TimeUnit.Second, TimeUnit.Microsecond) => checked(value * 1_000_000),
+                (TimeUnit.Millisecond, TimeUnit.Microsecond) => checked(value * 1_000),
+                (TimeUnit.Nanosecond, TimeUnit.Microsecond) when value % 1_000 == 0 => value / 1_000,
+                _ => throw new InvalidOperationException($"Timestamp {value} in {unit} cannot be written exactly in {_unit}")
+            };
+        }
+
         public IArrowArray GetArray()
         {
-            Debug.Assert(_builder != null);
-            return _builder.Build();
+            Debug.Assert(_values != null && _validity != null);
+            return new TimestampArray(new TimestampType(_unit, "UTC"), _values.Build(), _validity.Build(), _validity.Length, _nullCount, 0);
         }
 
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new TimestampStatisticsComparer(_minValue, _maxValue, _nullCount);
+            return new TimestampStatisticsComparer(Bound(_minValue), Bound(_maxValue), _nullCount);
+        }
+
+        // Bounds are the stored values floored to milliseconds, none past DateTimeOffset
+        private DateTimeOffset? Bound(long? value)
+        {
+            if (value == null)
+            {
+                return null;
+            }
+            var milliseconds = _unit == TimeUnit.Microsecond ? Math.DivRem(value.Value, 1_000, out var remainder) - (remainder < 0 ? 1 : 0) : value.Value;
+            if (milliseconds < s_minMilliseconds || milliseconds > s_maxMilliseconds)
+            {
+                return null;
+            }
+            return DateTimeOffset.UnixEpoch.AddTicks(milliseconds * TimeSpan.TicksPerMillisecond);
         }
 
         public void NewBatch()
         {
-            _builder = new TimestampArray.Builder();
+            _values = new ArrowBuffer.Builder<long>();
+            _validity = new ArrowBuffer.BitmapBuilder();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
@@ -74,39 +119,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void WriteNull()
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_values != null && _validity != null);
             _nullCount++;
-            _builder.AppendNull();
+            _values.Append(0);
+            _validity.Append(false);
         }
 
-        private void WriteValue(DateTimeOffset val)
+        private void Append(long value)
         {
-            Debug.Assert(_builder != null);
-            if (_minValue == null || val < _minValue)
+            Debug.Assert(_values != null && _validity != null);
+            if (_minValue == null || value < _minValue)
             {
-                _minValue = val;
+                _minValue = value;
             }
-
-            if (_maxValue == null || val > _maxValue)
+            if (_maxValue == null || value > _maxValue)
             {
-                _maxValue = val;
+                _maxValue = value;
             }
-
-            _builder.Append(val);
+            _values.Append(value);
+            _validity.Append(true);
         }
 
+        // Inserts write milliseconds
         public long WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
-                _nullCount++;
-                _builder.AppendNull();
+                WriteNull();
                 return 8;
             }
 
-            var val = value.AsTimestamp.ToDateTimeOffset();
-            WriteValue(val);
+            Debug.Assert(_unit == TimeUnit.Millisecond);
+            Append(StoredValue.TimestampMilliseconds(value.AsTimestamp));
             return 8;
         }
     }

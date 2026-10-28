@@ -244,6 +244,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             encoder.AddValue(index, ref func);
         }
 
+        // Opens a data file, the caller disposes it
+        public static async Task<ParquetDataFile> OpenDataFile(IFileStorage storage, IOPath table, string path, bool forDeletes)
+        {
+            var stream = await storage.OpenRead(table.Combine(path));
+            if (stream == null)
+            {
+                throw new DeltaFileNotFoundException(path);
+            }
+            FileReader? reader = null;
+            try
+            {
+                reader = forDeletes ? ParquetFileReaders.OpenForDeletes(stream) : ParquetFileReaders.Open(stream);
+                return new ParquetDataFile(path, stream, reader);
+            }
+            catch
+            {
+                reader?.Dispose();
+                stream.Dispose();
+                throw;
+            }
+        }
+
         public async IAsyncEnumerable<Apache.Arrow.RecordBatch> ReadDataFileArrowFormat(IFileStorage storage, IOPath table, string path)
         {
             using var stream = await storage.OpenRead(table.Combine(path));

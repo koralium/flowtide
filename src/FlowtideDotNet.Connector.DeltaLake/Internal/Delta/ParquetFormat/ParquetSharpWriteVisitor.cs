@@ -18,6 +18,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
     internal class ParquetSharpWriteVisitor : DeltaTypeVisitor<IParquetWriter>
     {
+        private readonly IReadOnlyList<Apache.Arrow.Types.TimeUnit>? _units;
+        private int _unitsRead;
+
+        // Timestamp leaves take the units in schema order, milliseconds without
+        public ParquetSharpWriteVisitor(IReadOnlyList<Apache.Arrow.Types.TimeUnit>? units = null)
+        {
+            _units = units;
+        }
+
+        public int UnitsRead => _unitsRead;
+
         public override IParquetWriter VisitStringType(StringType type)
         {
             return new ParquetStringWriter();
@@ -70,7 +81,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public override IParquetWriter VisitTimestampType(TimestampType type)
         {
-            return new ParquetTimestampWriter();
+            return new ParquetTimestampWriter(_units == null ? Apache.Arrow.Types.TimeUnit.Millisecond : _units[_unitsRead++]);
         }
 
         public override IParquetWriter VisitBinaryType(BinaryType type)
@@ -89,11 +100,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         public override IParquetWriter VisitStructType(StructType type)
         {
-            List<KeyValuePair<string, IParquetWriter>> fields = new List<KeyValuePair<string, IParquetWriter>>();
+            List<StructFieldWriter> fields = new List<StructFieldWriter>();
             foreach (var field in type.Fields)
             {
                 var writer = Visit(field.Type);
-                fields.Add(new KeyValuePair<string, IParquetWriter>(field.Name, writer));
+                fields.Add(new StructFieldWriter(field.Name, field.PhysicalName ?? field.Name, field.FieldId, writer));
             }
             return new ParquetStructWriter(fields);
         }

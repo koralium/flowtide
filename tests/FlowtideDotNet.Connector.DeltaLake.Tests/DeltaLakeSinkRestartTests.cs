@@ -76,59 +76,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public async Task StateOfTheLegacySinkIsRestored()
-        {
-            var testName = nameof(StateOfTheLegacySinkIsRestored);
-            var stateFiles = new KeepAliveMemoryFileProvider();
-            var inner = Files.Of.InternalMemory($"./{testName}");
-            var storage = new HookFileStorage(inner);
-
-            await using (var legacy = new DeltaLakeSinkStream(testName, storage, stateFiles: stateFiles, legacySink: true))
-            {
-                legacy.WaitForUpdateDoesNotRequireDataChange();
-                AddUsers(legacy, 0, 10);
-                await legacy.StartStream(UserInsert);
-                await WaitForVersion(storage, "test", legacy, 0);
-                AddUsers(legacy, 10, 15);
-                await WaitForVersion(storage, "test", legacy, 1);
-
-                // The stop stages version 2 and its publication fails, the next start publishes it
-                var failures = 0;
-                storage.Before = (verb, path) =>
-                {
-                    if (verb == "OpenRead" && path.Full.EndsWith(CommitPath("test", 2)))
-                    {
-                        Interlocked.Increment(ref failures);
-                        throw new IOException("Simulated storage failure");
-                    }
-                    return Task.CompletedTask;
-                };
-                await legacy.StopStream();
-                Assert.True(Volatile.Read(ref failures) >= 1);
-                storage.Before = null;
-            }
-            Assert.False(await inner.Exists(CommitPath("test", 2)));
-            Assert.Single(await Internal.Delta.DeltaTransactionReader.ListHiddenLogFiles(inner, "test"));
-
-            await using (var current = NewStream(testName, storage, stateFiles, out var logs))
-            {
-                AddUsers(current, 0, 15);
-                await current.StartStream(UserInsert);
-                await WaitForVersion(storage, "test", current, 2);
-                AddUsers(current, 15, 20);
-                await WaitForVersion(storage, "test", current, 3);
-                Assert.Empty(logs.Errors);
-                await current.StopStream();
-            }
-
-            // The legacy stage is published as it was written, the first commit after it carries a stage id
-            Assert.Null((await ReadCommitActions(storage, "test", 2))[0].CommitInfo?.StageId);
-            var first = (await ReadCommitActions(storage, "test", 3))[0].CommitInfo!;
-            Assert.NotNull(first.StageId);
-            await AssertTableHolds(testName, storage, Users.Take(20));
-        }
-
-        [Fact]
         public async Task HaltEpisodesOrphanAtMostOneEmptyRootEach()
         {
             // Clear does not delete committed pages, every buffered page must be deleted before the tree is emptied

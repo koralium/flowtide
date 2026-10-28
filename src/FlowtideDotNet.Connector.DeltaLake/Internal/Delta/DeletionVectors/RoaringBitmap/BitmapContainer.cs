@@ -17,7 +17,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
     /// <summary>
     /// Code from https://github.com/Tornhoof/RoaringBitmap/tree/master which is archived
     /// </summary>
-    internal class BitmapContainer : Container, IEquatable<BitmapContainer>
+    internal sealed class BitmapContainer : Container, IEquatable<BitmapContainer>
     {
         private const int BitmapLength = 1024;
         public static readonly BitmapContainer One;
@@ -259,7 +259,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public bool Contains(ushort x)
+        public override bool Contains(ushort x)
         {
             return Contains(m_Bitmap, x);
         }

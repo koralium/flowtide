@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         }
 
 
-        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             Debug.Assert(_nullBitmap != null);
             Debug.Assert(_offsetBuilder != null);

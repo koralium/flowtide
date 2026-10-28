@@ -15,6 +15,7 @@ using Apache.Arrow.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
+using System.Buffers.Binary;
 using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
@@ -26,6 +27,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private decimal? _minValue;
         private decimal? _maxValue;
         private int _nullCount;
+        // Copied extrema as raw values, any number of digits
+        private Int128? _minCopied;
+        private Int128? _maxCopied;
 
 
         public ParquetDecimalWriter(int precision, int scale)
@@ -33,8 +37,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _type = new Decimal128Type(precision, scale);
         }
 
-        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count)
         {
+            Debug.Assert(_builder != null);
             if (array is Decimal128Array arr)
             {
                 int added = 0;
@@ -45,14 +50,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                         continue;
                     }
                     added++;
-                    var val = arr.GetValue(i);
-                    if (!val.HasValue)
+                    if (arr.IsNull(i))
                     {
                         WriteNull();
+                        continue;
                     }
-                    else
+                    var bytes = arr.GetBytes(i);
+                    _builder.Append(bytes);
+                    var value = BinaryPrimitives.ReadInt128LittleEndian(bytes);
+                    if (_minCopied == null || value < _minCopied)
                     {
-                        WriteValue(val.Value);
+                        _minCopied = value;
+                    }
+                    if (_maxCopied == null || value > _maxCopied)
+                    {
+                        _maxCopied = value;
                     }
                 }
                 return added * 16;
@@ -66,9 +78,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             return _builder.Build();
         }
 
+        // No bounds when a copied extremum has no exact System.Decimal
         public IStatisticsComparer GetStatisticsComparer()
         {
-            return new DecimalStatisticsComparer(_minValue, _maxValue, _nullCount);
+            var min = _minValue;
+            var max = _maxValue;
+            if (_minCopied != null)
+            {
+                var copiedMin = ToDecimal(_minCopied.Value, _type.Scale);
+                var copiedMax = ToDecimal(_maxCopied!.Value, _type.Scale);
+                if (copiedMin == null || copiedMax == null)
+                {
+                    return new DecimalStatisticsComparer(null, null, _nullCount);
+                }
+                min = min == null || copiedMin < min ? copiedMin : min;
+                max = max == null || copiedMax > max ? copiedMax : max;
+            }
+            return new DecimalStatisticsComparer(min, max, _nullCount);
+        }
+
+        // The exact System.Decimal, or null when it has none
+        private static decimal? ToDecimal(Int128 unscaled, int scale)
+        {
+            var negative = unscaled < 0;
+            var magnitude = negative ? (UInt128)(-(unscaled + 1)) + 1 : (UInt128)unscaled;
+            while (scale > 28 || magnitude >> 96 != 0)
+            {
+                if (scale == 0 || magnitude % 10 != 0)
+                {
+                    return null;
+                }
+                magnitude /= 10;
+                scale--;
+            }
+            return new decimal((int)(uint)magnitude, (int)(uint)(magnitude >> 32), (int)(uint)(magnitude >> 64), negative, (byte)scale);
         }
 
         public void NewBatch()
@@ -77,6 +120,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
+            _minCopied = null;
+            _maxCopied = null;
         }
 
         public void WriteNull()
@@ -90,6 +135,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             Debug.Assert(_builder != null);
             decimalValue = Math.Round(decimalValue, _type.Scale);
+            Track(decimalValue);
+            _builder.Append(decimalValue);
+        }
+
+        private void Track(decimal decimalValue)
+        {
             if (_minValue == null || _minValue.Value.CompareTo(decimalValue) > 0)
             {
                 _minValue = decimalValue;
@@ -98,7 +149,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             {
                 _maxValue = decimalValue;
             }
-            _builder.Append(decimalValue);
         }
 
         public long WriteValue<T>(T value) where T : IDataValue

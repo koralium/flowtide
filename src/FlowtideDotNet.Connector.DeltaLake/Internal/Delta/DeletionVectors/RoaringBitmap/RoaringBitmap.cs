@@ -28,6 +28,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
 
         public long Cardinality => m_HighLowContainer.Cardinality;
 
+        public bool Contains(int x)
+        {
+            return m_HighLowContainer.Contains(x);
+        }
+
         public IEnumerator<int> GetEnumerator()
         {
             return m_HighLowContainer.GetEnumerator();

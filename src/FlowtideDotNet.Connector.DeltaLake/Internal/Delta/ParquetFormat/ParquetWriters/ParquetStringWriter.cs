@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private byte[]? _maxValue;
         private int _nullCount;
 
-        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count)
         {
             if (array is StringArray arr)
             {

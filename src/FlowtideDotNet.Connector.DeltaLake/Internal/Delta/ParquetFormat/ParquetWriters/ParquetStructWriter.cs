@@ -18,18 +18,32 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
+    // A struct field's intake name, its output name and id, and its writer
+    internal readonly record struct StructFieldWriter(string Key, string OutputName, int? FieldId, IParquetWriter Value);
+
     internal class ParquetStructWriter : IParquetWriter
     {
-        private readonly List<KeyValuePair<string, IParquetWriter>> propertyWriters;
+        private readonly List<StructFieldWriter> propertyWriters;
         private List<int> order;
+        // Values match fields by name, in any order
+        private readonly Dictionary<string, int> _indexByKey = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        private readonly bool[] _written;
         ArrowBuffer.BitmapBuilder? _nullBitmap;
         private int _nullCount;
 
 
-        public ParquetStructWriter(IEnumerable<KeyValuePair<string, IParquetWriter>> propertyWriters)
+        public ParquetStructWriter(IEnumerable<StructFieldWriter> propertyWriters)
         {
             var keys = propertyWriters.Select(x => x.Key).ToList();
             this.propertyWriters = propertyWriters.OrderBy(x => x.Key).ToList();
+            for (int i = 0; i < this.propertyWriters.Count; i++)
+            {
+                if (!_indexByKey.TryAdd(this.propertyWriters[i].Key, i))
+                {
+                    throw new InvalidOperationException($"Struct field {this.propertyWriters[i].Key} is in the table more than once.");
+                }
+            }
+            _written = new bool[this.propertyWriters.Count];
 
             order = new List<int>();
             foreach (var key in keys)
@@ -45,8 +59,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             }
         }
 
-        public long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count)
+        public long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count)
         {
+            Debug.Assert(_nullBitmap != null);
             if (array is StructArray arr)
             {
                 int addedCount = 0;
@@ -56,6 +71,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     var field = arr.Fields[j];
                     addedBytes += propertyWriters[order[j]].Value.CopyArray(field, globalOffset, deleteVector, index, count);
                 }
+                // The children are copied, so only the validity bit
                 for (int i = index; i < (index + count); i++)
                 {
                     if (deleteVector.Contains(globalOffset + i))
@@ -64,9 +80,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     }
                     
                     addedCount++;
-                    if (arr.IsNull(i))
+                    var valid = arr.IsValid(i);
+                    _nullBitmap.Append(valid);
+                    if (!valid)
                     {
-                        WriteNull();
+                        _nullCount++;
                     }
                 }
                 return addedCount + addedBytes;
@@ -85,12 +103,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 var writer = propertyWriters[order[i]];
                 var arr = writer.Value.GetArray();
                 arrays.Add(arr);
-                fields.Add(new Apache.Arrow.Field(writer.Key, arr.Data.DataType, true));
+                fields.Add(new Apache.Arrow.Field(writer.OutputName, arr.Data.DataType, true, DeltaTypeArrowTypeVisitor.FieldIdMetadata(writer.FieldId)));
             }
 
             var structType = new Apache.Arrow.Types.StructType(fields);
 
-            return new StructArray(structType, arrays[0].Length, arrays, _nullBitmap.Build());
+            return new StructArray(structType, arrays[0].Length, arrays, _nullBitmap.Build(), _nullCount);
         }
 
         public IStatisticsComparer? GetStatisticsComparer()
@@ -101,7 +119,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 var comparer = writer.Value.GetStatisticsComparer();
                 if (comparer != null)
                 {
-                    statisticsComparers.Add(new KeyValuePair<string, IStatisticsComparer>(writer.Key, comparer));
+                    statisticsComparers.Add(new KeyValuePair<string, IStatisticsComparer>(writer.OutputName, comparer));
                 }
             }
             return new StructStatisticsComparer(statisticsComparers, _nullCount);
@@ -110,7 +128,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public void NewBatch()
         {
             _nullBitmap = new ArrowBuffer.BitmapBuilder();
-            _nullCount++;
+            _nullCount = 0;
             foreach (var writer in propertyWriters)
             {
                 writer.Value.NewBatch();
@@ -122,6 +140,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_nullBitmap != null);
             _nullCount++;
             _nullBitmap.Append(false);
+            foreach (var writer in propertyWriters)
+            {
+                writer.Value.WriteNull();
+            }
         }
 
         public long WriteValue<T>(T value) where T : IDataValue
@@ -129,12 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_nullBitmap != null);
             if (value.IsNull)
             {
-                _nullCount++;
-                _nullBitmap.Append(false);
-                foreach (var writer in propertyWriters)
-                {
-                    writer.Value.WriteNull();
-                }
+                WriteNull();
                 return 1;
             }
 
@@ -143,23 +160,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 var mapValue = value.AsMap;
 
                 _nullBitmap.Append(true);
+                System.Array.Clear(_written);
                 var length = mapValue.GetLength();
                 long writtenBytes = 0;
                 for (int i = 0; i < length; i++)
                 {
-                    var key = mapValue.GetKeyAt(i);
-                    var keyString = key.AsString.ToString();
-                    var val = mapValue.GetValueAt(i);
-
-                    if (propertyWriters[i].Key == keyString)
-                    {
-                        writtenBytes += propertyWriters[i].Value.WriteValue(val);
-                    }
-                    else
-                    {
-                        propertyWriters[i].Value.WriteNull();
-                    }
+                    var index = IndexOf(mapValue.GetKeyAt(i).AsString.ToString());
+                    writtenBytes += propertyWriters[index].Value.WriteValue(mapValue.GetValueAt(i));
                 }
+                NullTheRest();
                 return writtenBytes;
             }
             else if (value.Type == ArrowTypeId.Struct)
@@ -167,26 +176,47 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 var structValue = value.AsStruct;
 
                 _nullBitmap.Append(true);
+                System.Array.Clear(_written);
                 long writtenBytes = 0;
                 var length = structValue.Header.Count;
                 for (int i = 0; i < length; i++)
                 {
-                    var key = structValue.Header.GetColumnName(i);
-                    var val = structValue.GetAt(i);
-                    if (propertyWriters[i].Key == key)
-                    {
-                        writtenBytes += propertyWriters[i].Value.WriteValue(val);
-                    }
-                    else
-                    {
-                        propertyWriters[i].Value.WriteNull();
-                    }
+                    var index = IndexOf(structValue.Header.GetColumnName(i));
+                    writtenBytes += propertyWriters[index].Value.WriteValue(structValue.GetAt(i));
                 }
+                NullTheRest();
                 return writtenBytes;
             }
             else
             {
                 throw new NotImplementedException($"StructWriter does not support type {value.Type}");
+            }
+        }
+
+        // Each field the value names, once
+        private int IndexOf(string name)
+        {
+            if (!_indexByKey.TryGetValue(name, out var index))
+            {
+                throw new InvalidOperationException($"Struct field {name} does not exist in the table.");
+            }
+            if (_written[index])
+            {
+                throw new InvalidOperationException($"Struct field {name} is written more than once.");
+            }
+            _written[index] = true;
+            return index;
+        }
+
+        // Fields the value did not name are null
+        private void NullTheRest()
+        {
+            for (int i = 0; i < _written.Length; i++)
+            {
+                if (!_written[i])
+                {
+                    propertyWriters[i].Value.WriteNull();
+                }
             }
         }
     }

@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
         {
             var high = HighBytes(value);
 
-            if (high > _bitmaps.Length)
+            if (high < 0 || high >= _bitmaps.Length)
             {
                 return false;
             }

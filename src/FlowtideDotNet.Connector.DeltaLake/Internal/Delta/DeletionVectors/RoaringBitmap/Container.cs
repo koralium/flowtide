@@ -41,6 +41,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
 
         public abstract IEnumerator<ushort> GetEnumerator();
 
+        public abstract bool Contains(ushort x);
+
         public static Container operator |(Container x, Container y)
         {
             var xArrayContainer = x as ArrayContainer;

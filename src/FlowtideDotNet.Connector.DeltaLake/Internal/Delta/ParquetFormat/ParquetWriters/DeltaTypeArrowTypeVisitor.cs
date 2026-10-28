@@ -18,6 +18,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 {
     class DeltaTypeArrowTypeVisitor : DeltaTypeVisitor<Apache.Arrow.Types.ArrowType>
     {
+        private readonly IReadOnlyList<TimeUnit>? _units;
+        private int _unitsRead;
+
+        // Timestamp leaves take the units in schema order, milliseconds without
+        public DeltaTypeArrowTypeVisitor(IReadOnlyList<TimeUnit>? units = null)
+        {
+            _units = units;
+        }
+
+        public int UnitsRead => _unitsRead;
+
         public override ArrowType VisitStringType(Schema.Types.StringType type)
         {
             return new StringType();
@@ -70,7 +81,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public override ArrowType VisitTimestampType(Schema.Types.TimestampType type)
         {
-            return new TimestampType(unit: TimeUnit.Millisecond, timezone: default(string));
+            var unit = _units == null ? TimeUnit.Millisecond : _units[_unitsRead++];
+            return new TimestampType(unit, "UTC");
         }
 
         public override ArrowType VisitStructType(Schema.Types.StructType type)
@@ -79,9 +91,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             foreach (var field in type.Fields)
             {
                 var arrowType = Visit(field.Type);
-                fields.Add(new Field(field.Name, arrowType, field.Nullable));
+                fields.Add(new Field(field.PhysicalName ?? field.Name, arrowType, field.Nullable, FieldIdMetadata(field.FieldId)));
             }
             return new StructType(fields);
+        }
+
+        // The id Parquet writes for a mapped field
+        public static Dictionary<string, string>? FieldIdMetadata(int? fieldId)
+        {
+            return fieldId == null ? null : new Dictionary<string, string>() { ["PARQUET:field_id"] = fieldId.Value.ToString() };
         }
 
         public override ArrowType VisitArrayType(Schema.Types.ArrayType type)
