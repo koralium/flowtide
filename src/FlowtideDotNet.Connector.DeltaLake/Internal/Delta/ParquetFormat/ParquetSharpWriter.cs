@@ -11,6 +11,8 @@
 // limitations under the License.
 
 using Apache.Arrow;
+using Apache.Arrow.Memory;
+using TimeUnit = Apache.Arrow.Types.TimeUnit;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
@@ -36,12 +38,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private readonly IParquetWriter? _cdcWriter;
         private readonly ParquetSharp.WriterProperties? _writerProperties;
 
-        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null)
+        public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null, IReadOnlyList<TimeUnit>? units = null)
         {
             _isCdcWriter = isCdcWriter;
             _writerProperties = writerProperties;
             this.schema = schema;
-            var visitor = new ParquetSharpWriteVisitor();
+            var visitor = new ParquetSharpWriteVisitor(units);
 
             toWrite = new List<IParquetWriter>();
             writers = new List<IParquetWriter>();
@@ -87,7 +89,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
 
 
-            var schemaVisitor = new DeltaTypeArrowTypeVisitor();
+            var schemaVisitor = new DeltaTypeArrowTypeVisitor(units);
 
             List<Apache.Arrow.Field> fields = new List<Field>();
             foreach (var field in schema.Fields)
@@ -113,6 +115,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 fields.Add(structField);
             }
 
+            if (units != null && (visitor.UnitsRead != units.Count || schemaVisitor.UnitsRead != units.Count))
+            {
+                throw new InvalidOperationException($"The table has other timestamp columns than the {units.Count} units given");
+            }
+
             if (isCdcWriter)
             {
                 var stringWriter = new ParquetStringWriter();
@@ -125,47 +132,44 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             _schema = new Apache.Arrow.Schema(fields, new Dictionary<string, string>());
         }
 
+        // Every table column, timestamps in the file's unit or microseconds
+        public static ParquetSharpWriter ForRewrite(StructType table, FileBinding binding, ParquetSharp.WriterProperties? writerProperties)
+        {
+            var units = binding.TimestampUnits.Select(x => x == TimeUnit.Second || x == TimeUnit.Millisecond ? TimeUnit.Millisecond : TimeUnit.Microsecond).ToList();
+            return new ParquetSharpWriter(table, table.Fields.Select(x => x.Name).ToList(), writerProperties: writerProperties, units: units);
+        }
+
         /// <summary>
         /// Copies the rows outside the deletion vector, rolling the file between batches when full.
         /// </summary>
-        public async Task CopyFrom(IFileStorage storage, IOPath table, string filePath, IDeleteVector deleteVector, Func<ParquetSharpWriter, bool> isFull, Func<Task> rollFile)
+        public async Task CopyFrom(ParquetDataFile file, FileBinding binding, IDeleteVector deleteVector, Func<ParquetSharpWriter, bool> isFull, Func<Task> rollFile)
         {
-            using var stream = await storage.OpenRead(table.Combine(filePath));
-
-            if (stream == null)
-            {
-                throw new Exception($"File not found: {filePath}");
-            }
-
-            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
-
-            var batchReader = fileReader.GetRecordBatchReader();
-
-            // Deletion vectors enumerate ascending, one cursor counts the deletes per batch
+            // Deletion vectors enumerate ascending, one cursor fills each batch's mask
             using var deleted = deleteVector.GetEnumerator();
             bool hasDeleted = deleted.MoveNext();
+            var mask = new BatchDeleteMask();
 
-            int globalIndex = 0;
-            Apache.Arrow.RecordBatch batch;
-            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+            long globalIndex = 0;
+            await foreach (var batch in file.ReadBatches(binding.LeafColumns))
             {
                 using (batch)
+                using (var rebound = binding.Rebind(batch, MemoryAllocator.Default.Value))
                 {
-                    for (int i = 0; i < writers.Count; i++)
-                    {
-                        _writtenBytes += writers[i].CopyArray(batch.Column(i), globalIndex, deleteVector, 0, batch.Length);
-                    }
-                    long batchEnd = globalIndex + batch.Length;
-                    int deletedInBatch = 0;
+                    long batchEnd = globalIndex + rebound.Length;
+                    mask.Reset(globalIndex, rebound.Length);
                     while (hasDeleted && deleted.Current < batchEnd)
                     {
                         Debug.Assert(deleted.Current >= globalIndex, "Deletion vector positions must be ascending");
-                        deletedInBatch++;
+                        mask.Add(deleted.Current);
                         hasDeleted = deleted.MoveNext();
                     }
+                    for (int i = 0; i < writers.Count; i++)
+                    {
+                        _writtenBytes += writers[i].CopyArray(rebound.Column(i), globalIndex, mask, 0, rebound.Length);
+                    }
                     // Counted per batch, a roll can happen between batches
-                    rowCount += batch.Length - deletedInBatch;
-                    globalIndex += batch.Length;
+                    rowCount += rebound.Length - (int)mask.Cardinality;
+                    globalIndex += rebound.Length;
                 }
                 if (isFull(this))
                 {

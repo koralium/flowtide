@@ -60,9 +60,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
         };
 
         /// <summary>
-        /// The same physical file with a new deletion vector.
+        /// The same physical file with a new deletion vector and its footer row count.
         /// </summary>
-        public DeltaAddAction WithDeletionVector(DeletionVector deletionVector)
+        public DeltaAddAction WithDeletionVector(DeletionVector deletionVector, long numRecords)
         {
             return new DeltaAddAction()
             {
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
                 ModificationTime = ModificationTime,
                 // Removing rows is a data change
                 DataChange = true,
-                Statistics = WithLooseBounds(Statistics),
+                Statistics = WithLooseBounds(Statistics, numRecords),
                 Tags = Tags,
                 BaseRowId = BaseRowId,
                 DefaultRowCommitVersion = DefaultRowCommitVersion,
@@ -81,13 +81,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions
             };
         }
 
-        // Bounds may belong to deleted rows
-        private static string? WithLooseBounds(string? statistics)
+        // Bounds may belong to deleted rows, the count is physical
+        private static string WithLooseBounds(string? statistics, long numRecords)
         {
-            if (statistics == null || JsonNode.Parse(statistics) is not JsonObject node)
+            JsonObject? node = null;
+            try
             {
-                return statistics;
+                node = statistics == null ? null : JsonNode.Parse(statistics) as JsonObject;
+                // Read now, a repeated property throws on first use
+                _ = node?.Count;
             }
+            // Unreadable statistics, as the catalog reads them, keep no bounds
+            catch (Exception e) when (e is JsonException || e is ArgumentException)
+            {
+                node = null;
+            }
+            node ??= new JsonObject();
+            node["numRecords"] = numRecords;
             node["tightBounds"] = false;
             return node.ToJsonString(s_statisticsOptions);
         }

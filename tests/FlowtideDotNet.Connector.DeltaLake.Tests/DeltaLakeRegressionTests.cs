@@ -254,7 +254,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var recordsPerFile = rewrittenFiles.Select(x => JsonDocument.Parse(x.Statistics!).RootElement.GetProperty("numRecords").GetInt32()).ToList();
 
             Assert.Equal(survivors, recordsPerFile.Sum());
-            Assert.True(rewrittenFiles.Count >= 2, $"Expected the rewrite to roll into several files, got {rewrittenFiles.Count} file(s) for {survivors} rows");
+            Assert.True(rewrittenFiles.Count >= 2, $"Expected several rewritten files, got {rewrittenFiles.Count} file(s) for {survivors} rows");
 
             await AssertResult(nameof(InlineRewriteRollsOutputFiles), storage, "test", stream.Users.Select(x => new { x.UserKey, x.FirstName, x.LastName }));
         }
@@ -524,6 +524,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.True(stats.ValueComparers!["v"].IsInBetween(probe));
         }
 
+        [Theory]
+        [InlineData(null, "{\"numRecords\":12,\"tightBounds\":false}")]
+        [InlineData("{}", "{\"numRecords\":12,\"tightBounds\":false}")]
+        [InlineData("{\"minValues\":{\"v\":1}}", "{\"minValues\":{\"v\":1},\"numRecords\":12,\"tightBounds\":false}")]
+        [InlineData("{\"numRecords\":10,\"tightBounds\":true}", "{\"numRecords\":12,\"tightBounds\":false}")]
+        [InlineData("{\"numRecords\":", "{\"numRecords\":12,\"tightBounds\":false}")]
+        public void DeletionVectorReAddCarriesTheFooterCount(string? statistics, string expected)
+        {
+            var existing = new DeltaAddAction() { Path = "part-1.parquet", Statistics = statistics };
+            var deletionVector = new DeletionVector() { StorageType = "u", PathOrInlineDv = "abc", Offset = 1, SizeInBytes = 10, Cardinality = 1 };
+
+            Assert.Equal(expected, existing.WithDeletionVector(deletionVector, 12).Statistics);
+        }
+
         [Fact]
         public void DeletionVectorReAddKeepsTheFileAndMarksADataChange()
         {
@@ -542,7 +556,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             };
             var deletionVector = new DeletionVector() { StorageType = "u", PathOrInlineDv = "abc", Offset = 1, SizeInBytes = 10, Cardinality = 1 };
 
-            var readd = existing.WithDeletionVector(deletionVector);
+            // The footer holds 12 rows, the statistics a wrong 10
+            var readd = existing.WithDeletionVector(deletionVector, 12);
 
             Assert.Equal("part-1.parquet", readd.Path);
             Assert.Equal(123, readd.Size);
@@ -558,7 +573,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // Deleted rows may hold the bounds, so they are no longer tight
             var stats = JsonDocument.Parse(readd.Statistics!).RootElement;
             Assert.False(stats.GetProperty("tightBounds").GetBoolean());
-            Assert.Equal(10, stats.GetProperty("numRecords").GetInt32());
+            Assert.Equal(12, stats.GetProperty("numRecords").GetInt32());
             Assert.Equal(1, stats.GetProperty("minValues").GetProperty("v").GetInt32());
         }
 
@@ -659,7 +674,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 {
                     deleted.Add(i);
                 }
-                await writer.CopyFrom(storage, "t", path, deleted, w => w.WrittenBytes >= 100, () =>
+                using var file = await ParquetSharpReader.OpenDataFile(storage, "t", path, forDeletes: true);
+                await writer.CopyFrom(file, FileBinding.Create(schema, file, "t"), deleted, w => w.WrittenBytes >= 100, () =>
                 {
                     rolledCounts.Add(writer.WrittenCount);
                     writer.NewBatch();
@@ -797,7 +813,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var writer = new ParquetSharpWriter(schema, names);
             writer.NewBatch();
             var rolledCounts = new List<int>();
-            await writer.CopyFrom(storage, "t", "source.parquet", deleted, _ => true, () =>
+            using var file = await ParquetSharpReader.OpenDataFile(storage, "t", "source.parquet", forDeletes: true);
+            await writer.CopyFrom(file, FileBinding.Create(schema, file, "t"), deleted, _ => true, () =>
             {
                 rolledCounts.Add(writer.WrittenCount);
                 writer.NewBatch();

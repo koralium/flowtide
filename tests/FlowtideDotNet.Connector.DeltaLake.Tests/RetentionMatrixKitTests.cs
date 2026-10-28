@@ -267,7 +267,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     break;
                 case DoneViolation.VectorAtRetainedVersion:
                     var vector = await VectorAsync(cell);
-                    await RewriteAsync(cell, 13, x => x.Select(a => a.Add != null ? new DeltaAction() { Add = a.Add.WithDeletionVector(vector) } : a));
+                    await RewriteAsync(cell, 13, x => x.Select(a => a.Add != null ? new DeltaAction() { Add = a.Add.WithDeletionVector(vector, 1) } : a));
                     break;
                 case DoneViolation.SchemaAtRetainedVersion:
                 case DoneViolation.ConfigurationAtRetainedVersion:
@@ -297,7 +297,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     break;
                 case DoneViolation.RetainedVectorDeletedInMemory:
                     var retained = await VectorAsync(cell);
-                    await RewriteAsync(cell, 13, x => x.Select(a => a.Add != null ? new DeltaAction() { Add = a.Add.WithDeletionVector(retained) } : a));
+                    await RewriteAsync(cell, 13, x => x.Select(a => a.Add != null ? new DeltaAction() { Add = a.Add.WithDeletionVector(retained, 1) } : a));
                     // The vector belongs to the baseline
                     cell.Baseline = await Invariants.CaptureAsync(cell.Table, C, cell.Table.Head);
                     await cell.Table.Raw.Rm($"/t/{retained.GetAbsolutePath()}");
@@ -560,7 +560,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var last = (await DeltaTransactionReader.ReadTable(table.Raw, "t", 14))!.AddFiles.Single();
                 var vector = new DeletionVector() { StorageType = "u", PathOrInlineDv = id, Offset = 1, SizeInBytes = size, Cardinality = 1 };
                 await DeltaTestKit.WriteOwnCommit(table.Raw, "t", 15, 0, BoundarySelectorTests.Old(15),
-                    DeltaLakeCheckpointBuildTests.Remove(last.Path!, BoundarySelectorTests.Old(15)), new DeltaAction() { Add = last.WithDeletionVector(vector) });
+                    DeltaLakeCheckpointBuildTests.Remove(last.Path!, BoundarySelectorTests.Old(15)), new DeltaAction() { Add = last.WithDeletionVector(vector, 1) });
 
                 for (long version = 1; version <= 14; version++)
                 {

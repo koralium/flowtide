@@ -49,28 +49,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
-        // A table a pre-Phase 2 sink or a Phase 3 sink wrote, neither records an epoch
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public async Task EpochPrePhase4HeadStartsAtOwnVersion(bool legacySink)
+        // A table a Phase 3 sink wrote, which records no epoch
+        [Fact]
+        public async Task EpochPrePhase4HeadStartsAtOwnVersion()
         {
-            var testName = nameof(EpochPrePhase4HeadStartsAtOwnVersion) + legacySink;
+            var testName = nameof(EpochPrePhase4HeadStartsAtOwnVersion);
             var storage = Files.Of.InternalMemory($"./{testName}");
-            if (legacySink)
-            {
-                await using var old = new DeltaLakeSinkStream(testName + "-old", storage, legacySink: true);
-                old.Generate(10);
-                await old.StartStream(UserInsert);
-                await WaitForVersion(storage, "test", old, 0);
-                await Publish(storage, old, 1);
-            }
-            else
-            {
-                // A Phase 3 commit: a stage id, a timestamp and an operation, no epoch
-                await WriteCommit(storage, "test", 0, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = new string('c', 32), Timestamp = 5, Operation = "CREATE TABLE" } }, Protocol(), Metadata(UserSchema));
-                await WriteCommit(storage, "test", 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = new string('d', 32), Timestamp = 6, Operation = "WRITE" } });
-            }
+            // A Phase 3 commit: a stage id, a timestamp and an operation, no epoch
+            await WriteCommit(storage, "test", 0, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = new string('c', 32), Timestamp = 5, Operation = "CREATE TABLE" } }, Protocol(), Metadata(UserSchema));
+            await WriteCommit(storage, "test", 1, new DeltaAction() { CommitInfo = new DeltaCommitInfoAction() { StageId = new string('d', 32), Timestamp = 6, Operation = "WRITE" } });
 
             await using var stream = new DeltaLakeSinkStream(testName, storage);
             stream.Generate(10);

@@ -116,25 +116,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly Action<DeltaLakeOptions>? configureOptions;
         private readonly KeepAliveMemoryFileProvider? stateFiles;
         private readonly Func<IPersistentStorage, IPersistentStorage>? wrapState;
-        private readonly bool legacySink;
         private readonly List<DeltaLakeSink> sinks = new List<DeltaLakeSink>();
 
         /// <param name="stateFiles">Shared state files, a new stream over the same files restores the last checkpoint.</param>
         /// <param name="wrapState">Wraps the persistent storage, for example to observe page writes.</param>
-        /// <param name="legacySink">Writes with the sink as it was before Phase 2.</param>
         public DeltaLakeSinkStream(
             string testName,
             IFileStorage storage,
             Action<DeltaLakeOptions>? configureOptions = null,
             KeepAliveMemoryFileProvider? stateFiles = null,
-            Func<IPersistentStorage, IPersistentStorage>? wrapState = null,
-            bool legacySink = false) : base(testName)
+            Func<IPersistentStorage, IPersistentStorage>? wrapState = null) : base(testName)
         {
             this.storage = storage;
             this.configureOptions = configureOptions;
             this.stateFiles = stateFiles;
             this.wrapState = wrapState;
-            this.legacySink = legacySink;
             Maintenance = new MaintenanceKit();
         }
 
@@ -169,14 +165,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 created?.Invoke(sink);
             };
-            if (legacySink)
-            {
-                connectorManger.AddSink(new LegacyDeltaLakeSinkFactory(options));
-            }
-            else
-            {
-                connectorManger.AddDeltaLakeSink(options);
-            }
+            connectorManger.AddDeltaLakeSink(options);
         }
 
         // The stream, then the maintenance kit's scratch folder

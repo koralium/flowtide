@@ -30,6 +30,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         IStatisticsComparer? GetStatisticsComparer();
 
-        long CopyArray(IArrowArray array, int globalOffset, IDeleteVector deleteVector, int index, int count);
+        long CopyArray(IArrowArray array, long globalOffset, IDeleteVector deleteVector, int index, int count);
     }
 }
