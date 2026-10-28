@@ -10658,6 +10658,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Cardinality
   nameWithType: RoaringBitmap.Cardinality
+- uid: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains(System.Int32)
+  name: Contains(int)
+  href: api/FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.html#FlowtideDotNet_Connector_DeltaLake_Internal_Delta_DeletionVectors_RoaringBitmap_RoaringBitmap_Contains_System_Int32_
+  commentId: M:FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains(System.Int32)
+  name.vb: Contains(Integer)
+  fullName: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains(int)
+  fullName.vb: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains(Integer)
+  nameWithType: RoaringBitmap.Contains(int)
+  nameWithType.vb: RoaringBitmap.Contains(Integer)
+- uid: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains*
+  name: Contains
+  href: api/FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.html#FlowtideDotNet_Connector_DeltaLake_Internal_Delta_DeletionVectors_RoaringBitmap_RoaringBitmap_Contains_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Contains
+  nameWithType: RoaringBitmap.Contains
 - uid: FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.Create(System.Collections.Generic.IEnumerable{System.Int32})
   name: Create(IEnumerable<int>)
   href: api/FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap.RoaringBitmap.html#FlowtideDotNet_Connector_DeltaLake_Internal_Delta_DeletionVectors_RoaringBitmap_RoaringBitmap_Create_System_Collections_Generic_IEnumerable_System_Int32__
