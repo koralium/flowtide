@@ -32,28 +32,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.AspNetCore.Extensions.FlowtideHealthcheckExtensions.AddFlowtideCheck
   nameWithType: FlowtideHealthcheckExtensions.AddFlowtideCheck
-- uid: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions
-  name: FlowtideServiceCollectionExtensions
-  href: api/FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.html
-  commentId: T:FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions
-  fullName: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions
-  nameWithType: FlowtideServiceCollectionExtensions
-- uid: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{FlowtideDotNet.Core.Engine.FlowtideBuilder},System.String)
-  name: AddFlowtideStream(IServiceCollection, Action<FlowtideBuilder>, string)
-  href: api/FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.html#FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_FlowtideDotNet_Core_Engine_FlowtideBuilder__System_String_
-  commentId: M:FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{FlowtideDotNet.Core.Engine.FlowtideBuilder},System.String)
-  name.vb: AddFlowtideStream(IServiceCollection, Action(Of FlowtideBuilder), String)
-  fullName: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Action<FlowtideDotNet.Core.Engine.FlowtideBuilder>, string)
-  fullName.vb: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, System.Action(Of FlowtideDotNet.Core.Engine.FlowtideBuilder), String)
-  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, Action<FlowtideBuilder>, string)
-  nameWithType.vb: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, Action(Of FlowtideBuilder), String)
-- uid: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream*
-  name: AddFlowtideStream
-  href: api/FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.html#FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions_AddFlowtideStream_
-  commentId: Overload:FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream
-  isSpec: "True"
-  fullName: FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream
-  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream
 - uid: FlowtideDotNet.AspNetCore.Extensions.UIApplicationBuilderExtensions
   name: UIApplicationBuilderExtensions
   href: api/FlowtideDotNet.AspNetCore.Extensions.UIApplicationBuilderExtensions.html
@@ -12527,34 +12505,6 @@ references:
   commentId: N:FlowtideDotNet.Connector.MongoDB
   fullName: FlowtideDotNet.Connector.MongoDB
   nameWithType: FlowtideDotNet.Connector.MongoDB
-- uid: FlowtideDotNet.Connector.MongoDB.Extensions
-  name: FlowtideDotNet.Connector.MongoDB.Extensions
-  href: api/FlowtideDotNet.Connector.MongoDB.Extensions.html
-  commentId: N:FlowtideDotNet.Connector.MongoDB.Extensions
-  fullName: FlowtideDotNet.Connector.MongoDB.Extensions
-  nameWithType: FlowtideDotNet.Connector.MongoDB.Extensions
-- uid: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions
-  name: FlowtideMongoDbReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions
-  nameWithType: FlowtideMongoDbReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddMongoDbSink(ReadWriteFactory, string, FlowtideMongoDBSinkOptions, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_MongoDB_Extensions_FlowtideMongoDbReadWriteFactoryExtensions_AddMongoDbSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_MongoDB_FlowtideMongoDBSinkOptions_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddMongoDbSink(ReadWriteFactory, String, FlowtideMongoDBSinkOptions, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(ReadWriteFactory, string, FlowtideMongoDBSinkOptions, Action<WriteRelation>?)
-  nameWithType.vb: FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink(ReadWriteFactory, String, FlowtideMongoDBSinkOptions, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink*
-  name: AddMongoDbSink
-  href: api/FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_MongoDB_Extensions_FlowtideMongoDbReadWriteFactoryExtensions_AddMongoDbSink_
-  commentId: Overload:FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Connector.MongoDB.Extensions.FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink
-  nameWithType: FlowtideMongoDbReadWriteFactoryExtensions.AddMongoDbSink
 - uid: FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions
   name: FlowtideMongoDBSinkOptions
   href: api/FlowtideDotNet.Connector.MongoDB.FlowtideMongoDBSinkOptions.html
@@ -12742,50 +12692,6 @@ references:
   commentId: N:FlowtideDotNet.Connector.OpenFGA
   fullName: FlowtideDotNet.Connector.OpenFGA
   nameWithType: FlowtideDotNet.Connector.OpenFGA
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions
-  name: FlowtideDotNet.Connector.OpenFGA.Extensions
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.html
-  commentId: N:FlowtideDotNet.Connector.OpenFGA.Extensions
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions
-  nameWithType: FlowtideDotNet.Connector.OpenFGA.Extensions
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions
-  name: OpenFgaReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions
-  nameWithType: OpenFgaReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddOpenFGASink(ReadWriteFactory, string, OpenFgaSinkOptions, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_OpenFGA_Extensions_OpenFgaReadWriteFactoryExtensions_AddOpenFGASink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_OpenFGA_OpenFgaSinkOptions_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddOpenFGASink(ReadWriteFactory, String, OpenFgaSinkOptions, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(ReadWriteFactory, string, OpenFgaSinkOptions, Action<WriteRelation>?)
-  nameWithType.vb: OpenFgaReadWriteFactoryExtensions.AddOpenFGASink(ReadWriteFactory, String, OpenFgaSinkOptions, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink*
-  name: AddOpenFGASink
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_OpenFGA_Extensions_OpenFgaReadWriteFactoryExtensions_AddOpenFGASink_
-  commentId: Overload:FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASink
-  nameWithType: OpenFgaReadWriteFactoryExtensions.AddOpenFGASink
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.OpenFGA.OpenFgaSourceOptions)
-  name: AddOpenFGASource(ReadWriteFactory, string, OpenFgaSourceOptions)
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_OpenFGA_Extensions_OpenFgaReadWriteFactoryExtensions_AddOpenFGASource_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_OpenFGA_OpenFgaSourceOptions_
-  commentId: M:FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.OpenFGA.OpenFgaSourceOptions)
-  name.vb: AddOpenFGASource(ReadWriteFactory, String, OpenFgaSourceOptions)
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.OpenFGA.OpenFgaSourceOptions)
-  fullName.vb: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.OpenFGA.OpenFgaSourceOptions)
-  nameWithType: OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(ReadWriteFactory, string, OpenFgaSourceOptions)
-  nameWithType.vb: OpenFgaReadWriteFactoryExtensions.AddOpenFGASource(ReadWriteFactory, String, OpenFgaSourceOptions)
-- uid: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource*
-  name: AddOpenFGASource
-  href: api/FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.html#FlowtideDotNet_Connector_OpenFGA_Extensions_OpenFgaReadWriteFactoryExtensions_AddOpenFGASource_
-  commentId: Overload:FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource
-  isSpec: "True"
-  fullName: FlowtideDotNet.Connector.OpenFGA.Extensions.OpenFgaReadWriteFactoryExtensions.AddOpenFGASource
-  nameWithType: OpenFgaReadWriteFactoryExtensions.AddOpenFGASource
 - uid: FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions
   name: OpenFgaSinkOptions
   href: api/FlowtideDotNet.Connector.OpenFGA.OpenFgaSinkOptions.html
@@ -31817,88 +31723,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.WithStateOptions
   nameWithType: FlowtideBuilder.WithStateOptions
-- uid: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions
-  name: FlowtideCosmosDbReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions
-  nameWithType: FlowtideCosmosDbReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.String,System.String,System.String,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddCosmosDbSink(ReadWriteFactory, string, string, string, string, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideCosmosDbReadWriteFactoryExtensions_AddCosmosDbSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_System_String_System_String_System_String_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.String,System.String,System.String,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddCosmosDbSink(ReadWriteFactory, String, String, String, String, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, string, string, string, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, String, String, String, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(ReadWriteFactory, string, string, string, string, Action<WriteRelation>?)
-  nameWithType.vb: FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink(ReadWriteFactory, String, String, String, String, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink*
-  name: AddCosmosDbSink
-  href: api/FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideCosmosDbReadWriteFactoryExtensions_AddCosmosDbSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink
-  nameWithType: FlowtideCosmosDbReadWriteFactoryExtensions.AddCosmosDbSink
-- uid: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions
-  name: FlowtideElasticsearchReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions
-  nameWithType: FlowtideElasticsearchReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddElasticsearchSink(ReadWriteFactory, string, FlowtideElasticsearchOptions, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideElasticsearchReadWriteFactoryExtensions_AddElasticsearchSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_ElasticSearch_FlowtideElasticsearchOptions_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddElasticsearchSink(ReadWriteFactory, String, FlowtideElasticsearchOptions, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.ElasticSearch.FlowtideElasticsearchOptions, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(ReadWriteFactory, string, FlowtideElasticsearchOptions, Action<WriteRelation>?)
-  nameWithType.vb: FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink(ReadWriteFactory, String, FlowtideElasticsearchOptions, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink*
-  name: AddElasticsearchSink
-  href: api/FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideElasticsearchReadWriteFactoryExtensions_AddElasticsearchSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink
-  nameWithType: FlowtideElasticsearchReadWriteFactoryExtensions.AddElasticsearchSink
-- uid: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions
-  name: FlowtideKafkaReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions
-  nameWithType: FlowtideKafkaReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.Kafka.FlowtideKafkaSinkOptions,FlowtideDotNet.Core.Operators.Write.ExecutionMode)
-  name: AddKafkaSink(ReadWriteFactory, string, FlowtideKafkaSinkOptions, ExecutionMode)
-  href: api/FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideKafkaReadWriteFactoryExtensions_AddKafkaSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_Kafka_FlowtideKafkaSinkOptions_FlowtideDotNet_Core_Operators_Write_ExecutionMode_
-  commentId: M:FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.Kafka.FlowtideKafkaSinkOptions,FlowtideDotNet.Core.Operators.Write.ExecutionMode)
-  name.vb: AddKafkaSink(ReadWriteFactory, String, FlowtideKafkaSinkOptions, ExecutionMode)
-  fullName: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.Kafka.FlowtideKafkaSinkOptions, FlowtideDotNet.Core.Operators.Write.ExecutionMode)
-  fullName.vb: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.Kafka.FlowtideKafkaSinkOptions, FlowtideDotNet.Core.Operators.Write.ExecutionMode)
-  nameWithType: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(ReadWriteFactory, string, FlowtideKafkaSinkOptions, ExecutionMode)
-  nameWithType.vb: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink(ReadWriteFactory, String, FlowtideKafkaSinkOptions, ExecutionMode)
-- uid: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink*
-  name: AddKafkaSink
-  href: api/FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideKafkaReadWriteFactoryExtensions_AddKafkaSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink
-  nameWithType: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSink
-- uid: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.Kafka.FlowtideKafkaSourceOptions)
-  name: AddKafkaSource(ReadWriteFactory, string, FlowtideKafkaSourceOptions)
-  href: api/FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideKafkaReadWriteFactoryExtensions_AddKafkaSource_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_Kafka_FlowtideKafkaSourceOptions_
-  commentId: M:FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.Kafka.FlowtideKafkaSourceOptions)
-  name.vb: AddKafkaSource(ReadWriteFactory, String, FlowtideKafkaSourceOptions)
-  fullName: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.Kafka.FlowtideKafkaSourceOptions)
-  fullName.vb: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.Kafka.FlowtideKafkaSourceOptions)
-  nameWithType: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(ReadWriteFactory, string, FlowtideKafkaSourceOptions)
-  nameWithType.vb: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource(ReadWriteFactory, String, FlowtideKafkaSourceOptions)
-- uid: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource*
-  name: AddKafkaSource
-  href: api/FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_FlowtideKafkaReadWriteFactoryExtensions_AddKafkaSource_
-  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource
-  nameWithType: FlowtideKafkaReadWriteFactoryExtensions.AddKafkaSource
 - uid: FlowtideDotNet.Core.Engine.IReadWriteFactory
   name: IReadWriteFactory
   href: api/FlowtideDotNet.Core.Engine.IReadWriteFactory.html
@@ -31982,149 +31806,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Engine.ReadOperatorInfo.NormalizationRelation
   nameWithType: ReadOperatorInfo.NormalizationRelation
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory
-  name: ReadWriteFactory
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html
-  commentId: T:FlowtideDotNet.Core.Engine.ReadWriteFactory
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory
-  nameWithType: ReadWriteFactory
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver(System.Func{FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions,FlowtideDotNet.Core.Engine.ReadOperatorInfo})
-  name: AddReadResolver(Func<ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo?>)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_AddReadResolver_System_Func_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_DataflowBlockOptions_FlowtideDotNet_Core_Engine_ReadOperatorInfo__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver(System.Func{FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions,FlowtideDotNet.Core.Engine.ReadOperatorInfo})
-  name.vb: AddReadResolver(Func(Of ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver(System.Func<FlowtideDotNet.Substrait.Relations.ReadRelation, FlowtideDotNet.Core.Compute.IFunctionsRegister, System.Threading.Tasks.Dataflow.DataflowBlockOptions, FlowtideDotNet.Core.Engine.ReadOperatorInfo?>)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver(System.Func(Of FlowtideDotNet.Substrait.Relations.ReadRelation, FlowtideDotNet.Core.Compute.IFunctionsRegister, System.Threading.Tasks.Dataflow.DataflowBlockOptions, FlowtideDotNet.Core.Engine.ReadOperatorInfo))
-  nameWithType: ReadWriteFactory.AddReadResolver(Func<ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo?>)
-  nameWithType.vb: ReadWriteFactory.AddReadResolver(Func(Of ReadRelation, IFunctionsRegister, DataflowBlockOptions, ReadOperatorInfo))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver*
-  name: AddReadResolver
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_AddReadResolver_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddReadResolver
-  nameWithType: ReadWriteFactory.AddReadResolver
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver(System.Func{FlowtideDotNet.Substrait.Relations.WriteRelation,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions,FlowtideDotNet.Base.Vertices.IStreamEgressVertex})
-  name: AddWriteResolver(Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex?>)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_AddWriteResolver_System_Func_FlowtideDotNet_Substrait_Relations_WriteRelation_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_FlowtideDotNet_Base_Vertices_IStreamEgressVertex__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver(System.Func{FlowtideDotNet.Substrait.Relations.WriteRelation,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions,FlowtideDotNet.Base.Vertices.IStreamEgressVertex})
-  name.vb: AddWriteResolver(Func(Of WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver(System.Func<FlowtideDotNet.Substrait.Relations.WriteRelation, System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions, FlowtideDotNet.Base.Vertices.IStreamEgressVertex?>)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver(System.Func(Of FlowtideDotNet.Substrait.Relations.WriteRelation, System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions, FlowtideDotNet.Base.Vertices.IStreamEgressVertex))
-  nameWithType: ReadWriteFactory.AddWriteResolver(Func<WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex?>)
-  nameWithType.vb: ReadWriteFactory.AddWriteResolver(Func(Of WriteRelation, ExecutionDataflowBlockOptions, IStreamEgressVertex))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver*
-  name: AddWriteResolver
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_AddWriteResolver_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.AddWriteResolver
-  nameWithType: ReadWriteFactory.AddWriteResolver
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions)
-  name: GetReadOperator(ReadRelation, IFunctionsRegister, DataflowBlockOptions)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_GetReadOperator_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_DataflowBlockOptions_
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions)
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator(FlowtideDotNet.Substrait.Relations.ReadRelation, FlowtideDotNet.Core.Compute.IFunctionsRegister, System.Threading.Tasks.Dataflow.DataflowBlockOptions)
-  nameWithType: ReadWriteFactory.GetReadOperator(ReadRelation, IFunctionsRegister, DataflowBlockOptions)
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator*
-  name: GetReadOperator
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_GetReadOperator_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetReadOperator
-  nameWithType: ReadWriteFactory.GetReadOperator
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator(FlowtideDotNet.Substrait.Relations.WriteRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
-  name: GetWriteOperator(WriteRelation, IFunctionsRegister, ExecutionDataflowBlockOptions)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_GetWriteOperator_FlowtideDotNet_Substrait_Relations_WriteRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator(FlowtideDotNet.Substrait.Relations.WriteRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator(FlowtideDotNet.Substrait.Relations.WriteRelation, FlowtideDotNet.Core.Compute.IFunctionsRegister, System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
-  nameWithType: ReadWriteFactory.GetWriteOperator(WriteRelation, IFunctionsRegister, ExecutionDataflowBlockOptions)
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator*
-  name: GetWriteOperator
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactory.html#FlowtideDotNet_Core_Engine_ReadWriteFactory_GetWriteOperator_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactory.GetWriteOperator
-  nameWithType: ReadWriteFactory.GetWriteOperator
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions
-  name: ReadWriteFactoryExtensions
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html
-  commentId: T:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions
-  nameWithType: ReadWriteFactoryExtensions
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String)
-  name: AddBlackholeSink(ReadWriteFactory, string)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddBlackholeSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String)
-  name.vb: AddBlackholeSink(ReadWriteFactory, String)
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String)
-  nameWithType: ReadWriteFactoryExtensions.AddBlackholeSink(ReadWriteFactory, string)
-  nameWithType.vb: ReadWriteFactoryExtensions.AddBlackholeSink(ReadWriteFactory, String)
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink*
-  name: AddBlackholeSink
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddBlackholeSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddBlackholeSink
-  nameWithType: ReadWriteFactoryExtensions.AddBlackholeSink
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddConsoleSink(ReadWriteFactory, string, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddConsoleSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddConsoleSink(ReadWriteFactory, String, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: ReadWriteFactoryExtensions.AddConsoleSink(ReadWriteFactory, string, Action<WriteRelation>?)
-  nameWithType.vb: ReadWriteFactoryExtensions.AddConsoleSink(ReadWriteFactory, String, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink*
-  name: AddConsoleSink
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddConsoleSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddConsoleSink
-  nameWithType: ReadWriteFactoryExtensions.AddConsoleSink
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddSqlServerSink(ReadWriteFactory, string, SqlServerSinkOptions, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddSqlServerSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_FlowtideDotNet_Connector_SqlServer_SqlServerSinkOptions_System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions,System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddSqlServerSink(ReadWriteFactory, String, SqlServerSinkOptions, Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, FlowtideDotNet.Connector.SqlServer.SqlServerSinkOptions, System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: ReadWriteFactoryExtensions.AddSqlServerSink(ReadWriteFactory, string, SqlServerSinkOptions, Action<WriteRelation>?)
-  nameWithType.vb: ReadWriteFactoryExtensions.AddSqlServerSink(ReadWriteFactory, String, SqlServerSinkOptions, Action(Of WriteRelation))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Func{System.String},System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name: AddSqlServerSink(ReadWriteFactory, string, Func<string>, Action<WriteRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddSqlServerSink_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_System_Func_System_String__System_Action_FlowtideDotNet_Substrait_Relations_WriteRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Func{System.String},System.Action{FlowtideDotNet.Substrait.Relations.WriteRelation})
-  name.vb: AddSqlServerSink(ReadWriteFactory, String, Func(Of String), Action(Of WriteRelation))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, System.Func<string>, System.Action<FlowtideDotNet.Substrait.Relations.WriteRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, System.Func(Of String), System.Action(Of FlowtideDotNet.Substrait.Relations.WriteRelation))
-  nameWithType: ReadWriteFactoryExtensions.AddSqlServerSink(ReadWriteFactory, string, Func<string>, Action<WriteRelation>?)
-  nameWithType.vb: ReadWriteFactoryExtensions.AddSqlServerSink(ReadWriteFactory, String, Func(Of String), Action(Of WriteRelation))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink*
-  name: AddSqlServerSink
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddSqlServerSink_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSink
-  nameWithType: ReadWriteFactoryExtensions.AddSqlServerSink
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Func{System.String},System.Action{FlowtideDotNet.Substrait.Relations.ReadRelation})
-  name: AddSqlServerSource(ReadWriteFactory, string, Func<string>, Action<ReadRelation>?)
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddSqlServerSource_FlowtideDotNet_Core_Engine_ReadWriteFactory_System_String_System_Func_System_String__System_Action_FlowtideDotNet_Substrait_Relations_ReadRelation__
-  commentId: M:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource(FlowtideDotNet.Core.Engine.ReadWriteFactory,System.String,System.Func{System.String},System.Action{FlowtideDotNet.Substrait.Relations.ReadRelation})
-  name.vb: AddSqlServerSource(ReadWriteFactory, String, Func(Of String), Action(Of ReadRelation))
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource(FlowtideDotNet.Core.Engine.ReadWriteFactory, string, System.Func<string>, System.Action<FlowtideDotNet.Substrait.Relations.ReadRelation>?)
-  fullName.vb: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource(FlowtideDotNet.Core.Engine.ReadWriteFactory, String, System.Func(Of String), System.Action(Of FlowtideDotNet.Substrait.Relations.ReadRelation))
-  nameWithType: ReadWriteFactoryExtensions.AddSqlServerSource(ReadWriteFactory, string, Func<string>, Action<ReadRelation>?)
-  nameWithType.vb: ReadWriteFactoryExtensions.AddSqlServerSource(ReadWriteFactory, String, Func(Of String), Action(Of ReadRelation))
-- uid: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource*
-  name: AddSqlServerSource
-  href: api/FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.html#FlowtideDotNet_Core_Engine_ReadWriteFactoryExtensions_AddSqlServerSource_
-  commentId: Overload:FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Engine.ReadWriteFactoryExtensions.AddSqlServerSource
-  nameWithType: ReadWriteFactoryExtensions.AddSqlServerSource
 - uid: FlowtideDotNet.Core.Exceptions
   name: FlowtideDotNet.Core.Exceptions
   href: api/FlowtideDotNet.Core.Exceptions.html
@@ -38195,28 +37876,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.DependencyInjection.FlowtideDIBuilderExtensions.WriteCheckFailuresToLogger
   nameWithType: FlowtideDIBuilderExtensions.WriteCheckFailuresToLogger
-- uid: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions
-  name: FlowtideServiceCollectionExtensions
-  href: api/FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.html
-  commentId: T:FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions
-  fullName: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions
-  nameWithType: FlowtideServiceCollectionExtensions
-- uid: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)
-  name: AddFlowtideStream(IServiceCollection, string)
-  href: api/FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String_
-  commentId: M:FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)
-  name.vb: AddFlowtideStream(IServiceCollection, String)
-  fullName: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, string)
-  fullName.vb: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, String)
-  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, string)
-  nameWithType.vb: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, String)
-- uid: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream*
-  name: AddFlowtideStream
-  href: api/FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.html#FlowtideDotNet_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_
-  commentId: Overload:FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream
-  isSpec: "True"
-  fullName: FlowtideDotNet.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream
-  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream
 - uid: FlowtideDotNet.DependencyInjection.FlowtideStorageExtensions
   name: FlowtideStorageExtensions
   href: api/FlowtideDotNet.DependencyInjection.FlowtideStorageExtensions.html
@@ -75197,3 +74856,25 @@ references:
   isSpec: "True"
   fullName: Microsoft.Extensions.DependencyInjection.FlowtideOrleansExtensions.AddFlowtideOrleans
   nameWithType: FlowtideOrleansExtensions.AddFlowtideOrleans
+- uid: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions
+  name: FlowtideServiceCollectionExtensions
+  href: api/Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.html
+  commentId: T:Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions
+  fullName: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions
+  nameWithType: FlowtideServiceCollectionExtensions
+- uid: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)
+  name: AddFlowtideStream(IServiceCollection, string)
+  href: api/Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.html#Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String_
+  commentId: M:Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)
+  name.vb: AddFlowtideStream(IServiceCollection, String)
+  fullName: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, string)
+  fullName.vb: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection, String)
+  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, string)
+  nameWithType.vb: FlowtideServiceCollectionExtensions.AddFlowtideStream(IServiceCollection, String)
+- uid: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream*
+  name: AddFlowtideStream
+  href: api/Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.html#Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_
+  commentId: Overload:Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream
+  isSpec: "True"
+  fullName: Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream
+  nameWithType: FlowtideServiceCollectionExtensions.AddFlowtideStream

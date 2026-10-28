@@ -18,7 +18,7 @@
       <meta name="docfx:rel" content="../">
       
       
-      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions.md&amp;value=---%0Auid%3A%20FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
+      <meta name="docfx:docurl" content="https://github.com/koralium/flowtide/new/main/apiSpec/new?filename=Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions.md&amp;value=---%0Auid%3A%20Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions%0Asummary%3A%20&#39;*You%20can%20override%20summary%20for%20the%20API%20here%20using%20*MARKDOWN*%20syntax&#39;%0A---%0A%0A*Please%20type%20below%20more%20information%20about%20this%20API%3A*%0A%0A">
       <meta name="loc:inThisArticle" content="In this article">
       <meta name="loc:searchResultsCount" content="{count} results for &quot;{query}&quot;">
       <meta name="loc:searchNoResults" content="No results for &quot;{query}&quot;">
@@ -86,17 +86,17 @@
           <nav id="breadcrumb"></nav>
         </div>
 
-        <article data-uid="FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions">
+        <article data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions">
 
 
 
-  <h1 id="FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions" data-uid="FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions" class="text-break">
-Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.AspNetCore/Extensions/FlowtideServiceCollectionExtensions.cs/#L19"><i class="bi bi-code-slash"></i></a>
+  <h1 id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions" data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions" class="text-break">
+Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L18"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
-    <dl><dt>Namespace</dt><dd><a class="xref" href="FlowtideDotNet.html">FlowtideDotNet</a>.<a class="xref" href="FlowtideDotNet.AspNetCore.html">AspNetCore</a>.<a class="xref" href="FlowtideDotNet.AspNetCore.Extensions.html">Extensions</a></dd></dl>
-  <dl><dt>Assembly</dt><dd>FlowtideDotNet.AspNetCore.dll</dd></dl>
+    <dl><dt>Namespace</dt><dd><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft">Microsoft</a>.<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions">Extensions</a>.<a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection">DependencyInjection</a></dd></dl>
+  <dl><dt>Assembly</dt><dd>FlowtideDotNet.DependencyInjection.dll</dd></dl>
   </div>
 
   <div class="markdown summary"></div>
@@ -154,26 +154,23 @@ Class FlowtideServiceCollectionExtensions  <a class="header-action link-secondar
 </h2>
 
 
-  <a id="FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions_AddFlowtideStream_" data-uid="FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream*"></a>
+  <a id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_" data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream*"></a>
 
-  <h3 id="FlowtideDotNet_AspNetCore_Extensions_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_Action_FlowtideDotNet_Core_Engine_FlowtideBuilder__System_String_" data-uid="FlowtideDotNet.AspNetCore.Extensions.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.Action{FlowtideDotNet.Core.Engine.FlowtideBuilder},System.String)">
-  AddFlowtideStream(IServiceCollection, Action&lt;FlowtideBuilder&gt;, string)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.AspNetCore/Extensions/FlowtideServiceCollectionExtensions.cs/#L21"><i class="bi bi-code-slash"></i></a>
+  <h3 id="Microsoft_Extensions_DependencyInjection_FlowtideServiceCollectionExtensions_AddFlowtideStream_Microsoft_Extensions_DependencyInjection_IServiceCollection_System_String_" data-uid="Microsoft.Extensions.DependencyInjection.FlowtideServiceCollectionExtensions.AddFlowtideStream(Microsoft.Extensions.DependencyInjection.IServiceCollection,System.String)">
+  AddFlowtideStream(IServiceCollection, string)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L20"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">[Obsolete(&quot;Use AddFlowtideStream(string name) instead.&quot;)]
-public static IServiceCollection AddFlowtideStream(this IServiceCollection services, Action&lt;FlowtideBuilder&gt; builder, string name = &quot;stream&quot;)</code></pre>
+    <pre><code class="lang-csharp hljs">public static IFlowtideDIBuilder AddFlowtideStream(this IServiceCollection services, string name)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>services</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
-    <dd></dd>
-    <dt><code>builder</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.action-1">Action</a>&lt;<a class="xref" href="FlowtideDotNet.Core.Engine.FlowtideBuilder.html">FlowtideBuilder</a>&gt;</dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -181,7 +178,7 @@ public static IServiceCollection AddFlowtideStream(this IServiceCollection servi
 
   <h4 class="section">Returns</h4>
   <dl class="parameters">
-    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/microsoft.extensions.dependencyinjection.iservicecollection">IServiceCollection</a></dt>
+    <dt><a class="xref" href="FlowtideDotNet.DependencyInjection.IFlowtideDIBuilder.html">IFlowtideDIBuilder</a></dt>
     <dd></dd>
   </dl>
 
@@ -199,7 +196,7 @@ public static IServiceCollection AddFlowtideStream(this IServiceCollection servi
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.AspNetCore/Extensions/FlowtideServiceCollectionExtensions.cs/#L19" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.DependencyInjection/Extensions/FlowtideServiceCollectionExtensions.cs/#L18" class="edit-link">Edit this page</a>
         </div>
 
 
