@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using FlowtideDotNet.AspNetCore.Extensions;
-using FlowtideDotNet.Connector.OpenFGA.Extensions;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.DependencyInjection;

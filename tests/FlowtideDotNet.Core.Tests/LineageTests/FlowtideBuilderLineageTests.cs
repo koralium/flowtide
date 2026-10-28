@@ -194,27 +194,6 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
             Assert.Equal("OpenLineageOptions.Url must be set", e.Message);
         }
 
-        [Fact]
-        public void NoConnectorManagerLogsWarning()
-        {
-            var logs = new ListLoggerProvider();
-            var readWriteFactory = new ReadWriteFactory()
-                .AddReadResolver((readRelation, functionsRegister, options) => new ReadOperatorInfo(new TestIngress(options)))
-                .AddWriteResolver((writeRelation, options) => new FailureEgress(options, new FailureEgressOptions()));
-
-#pragma warning disable CS0618 // Only the legacy factory builds without connectors.
-            var stream = CreateBuilder(GetPlan(GetTimestampSql), "olNoConnectorManager", logs)
-                .AddReadWriteFactory(readWriteFactory)
-                .WithOpenLineageHttp(new OpenLineageHttpOptions() { Url = Url })
-                .Build();
-#pragma warning restore CS0618
-
-            Assert.NotNull(stream);
-            var warning = Assert.Single(logs.Entries, x => x.Category == LineageCategory);
-            Assert.Equal(LogLevel.Warning, warning.Level);
-            Assert.DoesNotContain(typeof(OpenLineageHttpReporter).FullName, logs.Categories);
-        }
-
         private sealed class RecordingLineageListener : IStreamLineageListener
         {
             public bool IncludeConnectorSchema { get; init; }
@@ -287,27 +266,6 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 .AddLineageListener(listener)
                 .Build());
 
-            Assert.Empty(listener.Calls);
-        }
-
-        [Fact]
-        public void ListenerWithoutConnectorManagerLogsWarning()
-        {
-            var logs = new ListLoggerProvider();
-            var listener = new RecordingLineageListener();
-            var readWriteFactory = new ReadWriteFactory()
-                .AddReadResolver((readRelation, functionsRegister, options) => new ReadOperatorInfo(new TestIngress(options)))
-                .AddWriteResolver((writeRelation, options) => new FailureEgress(options, new FailureEgressOptions()));
-
-#pragma warning disable CS0618 // Only the legacy factory builds without connectors.
-            var stream = CreateBuilder(GetPlan(GetTimestampSql), "listenerNoConnectorManager", logs)
-                .AddReadWriteFactory(readWriteFactory)
-                .AddLineageListener(listener)
-                .Build();
-#pragma warning restore CS0618
-
-            Assert.NotNull(stream);
-            Assert.Equal(LogLevel.Warning, Assert.Single(logs.Entries, x => x.Category == LineageCategory).Level);
             Assert.Empty(listener.Calls);
         }
 

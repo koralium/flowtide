@@ -10,10 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.DependencyInjection;
 using FlowtideDotNet.DependencyInjection.Internal;
-using Microsoft.Extensions.DependencyInjection;
 
-namespace FlowtideDotNet.DependencyInjection
+namespace Microsoft.Extensions.DependencyInjection
 {
     public static class FlowtideServiceCollectionExtensions
     {
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.DependencyInjection
             // Add it without key as well because its required for the UI at this moment.
             services.AddSingleton(provider =>
             {
-                return provider.GetRequiredKeyedService<Base.Engine.DataflowStream>(name);
+                return provider.GetRequiredKeyedService<FlowtideDotNet.Base.Engine.DataflowStream>(name);
             });
             services.AddHostedService(p => new StreamWorkerService(name, p));
 
