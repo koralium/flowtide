@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -19,9 +19,9 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     {
         public static void AddRoundingFunctions(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarMethod(FunctionsRounding.Uri, FunctionsRounding.Ceil, typeof(BuiltInRoundingFunctions), nameof(CeilImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsRounding.Uri, FunctionsRounding.Floor, typeof(BuiltInRoundingFunctions), nameof(FloorImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsRounding.Uri, FunctionsRounding.Round, typeof(BuiltInRoundingFunctions), nameof(RoundImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsRounding.Urn, FunctionsRounding.Ceil, typeof(BuiltInRoundingFunctions), nameof(CeilImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsRounding.Urn, FunctionsRounding.Floor, typeof(BuiltInRoundingFunctions), nameof(FloorImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsRounding.FlowtideUrn, FunctionsRounding.Round, typeof(BuiltInRoundingFunctions), nameof(RoundImplementation));
         }
 
         private static IDataValue CeilImplementation<T>(T value, DataValueContainer result)

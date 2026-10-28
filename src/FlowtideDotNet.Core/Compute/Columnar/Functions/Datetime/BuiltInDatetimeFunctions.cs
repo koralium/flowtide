@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -29,12 +29,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
             TableFunctions.HoppingWindowFunction.AddBuiltInHoppingWindowFunction(functionsRegister);
             TableFunctions.TumblingWindowFunction.AddBuiltInTumblingWindowFunction(functionsRegister);
 
-            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Uri, FunctionsDatetime.RoundCalendar, typeof(BuiltInDatetimeFunctions), nameof(TimestampRoundCalendar));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Urn, FunctionsDatetime.Strftime, typeof(BuiltInDatetimeFunctions), nameof(StrfTimeImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Urn, FunctionsDatetime.FloorTimestampDay, typeof(BuiltInDatetimeFunctions), nameof(FloorTimestampDayImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Urn, FunctionsDatetime.ParseTimestamp, typeof(BuiltInDatetimeFunctions), nameof(TimestampParseImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsDatetime.Urn, FunctionsDatetime.RoundCalendar, typeof(BuiltInDatetimeFunctions), nameof(TimestampRoundCalendar));
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.TumblingWindowStart,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Urn, FunctionsDatetime.TumblingWindowStart,
                 (function, parameterInfo, visitor, functionServices) =>
                 {
                     if (function.Arguments.Count != 2)
@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
                         System.Linq.Expressions.Expression.Constant(new DataValueContainer()));
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Extract,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Urn, FunctionsDatetime.Extract,
                 (function, parameterInfo, visitor, functionServices) =>
                 {
                     if (function.Arguments.Count != 2)
@@ -145,7 +145,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
                     return call;
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Format,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Urn, FunctionsDatetime.Format,
                 (function, parametersInfo, visitor, functionServices) =>
                 {
                     if (function.Arguments.Count != 2)
@@ -202,7 +202,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
                     return System.Linq.Expressions.Expression.Call(method, [valueExpr, formatExpr, memoryConstant, resultConstant]);
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.TimestampAdd,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Urn, FunctionsDatetime.TimestampAdd,
                 (function, parameterInfo, visitor, functionServices) =>
                 {
                     if (function.Arguments.Count != 3)
@@ -277,7 +277,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.Datetime
                     return call;
                 });
 
-            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Uri, FunctionsDatetime.Datediff,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsDatetime.Urn, FunctionsDatetime.Datediff,
                 (function, parameterInfo, visitor, functionServices) =>
                 {
                     if (function.Arguments.Count != 3)

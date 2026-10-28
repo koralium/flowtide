@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -157,7 +157,7 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 Input = new ProjectRelation()
                 {
                     Expressions = [new ScalarFunction() {
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                         ExtensionName = FunctionsArithmetic.Add,
                         Arguments = new List<Expression>()
                         {
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 Input = new ProjectRelation()
                 {
                     Expressions = [new ScalarFunction() {
-                        ExtensionUri = FunctionsArithmetic.Uri,
+                        ExtensionUrn = FunctionsArithmetic.Urn,
                         ExtensionName = FunctionsArithmetic.Add,
                         Arguments = new List<Expression>()
                         {

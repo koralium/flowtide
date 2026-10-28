@@ -14,6 +14,7 @@ using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.IfThen;
 using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Protobuf = Substrait.Protobuf;
@@ -46,24 +47,33 @@ namespace FlowtideDotNet.Substrait
 
         private sealed class ExpressionDeserializerImpl
         {
-            private readonly Dictionary<uint, string> idToFunctionLookup = new Dictionary<uint, string>();
-            private readonly Dictionary<uint, string> idToUserDefinedType = new Dictionary<uint, string>();
+            private readonly Dictionary<uint, (string Urn, string Name)> idToFunctionLookup = new();
+            private readonly Dictionary<uint, (string Urn, string Name)> idToUserDefinedType = new();
             private readonly Protobuf.Plan plan;
 
             public ExpressionDeserializerImpl(Protobuf.Plan plan)
             {
                 this.plan = plan;
+                foreach (var extensionUrn in plan.ExtensionUrns)
+                {
+                    ExtensionUrn.Validate(extensionUrn.Urn);
+                }
+                if (plan.Extensions.Count > 0 && plan.ExtensionUrns.Count == 0)
+                {
+                    throw new NotSupportedException("Extension declarations require extension_urns. URI-based plans are not supported.");
+                }
                 foreach (var extension in plan.Extensions)
                 {
                     if (extension.MappingTypeCase == Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase.ExtensionType)
                     {
-                        idToUserDefinedType.Add(extension.ExtensionType.TypeAnchor, extension.ExtensionType.Name);
+                        var declaration = extension.ExtensionType;
+                        var urn = plan.ExtensionUrns.Single(item => item.ExtensionUrnAnchor == declaration.ExtensionUrnReference).Urn;
+                        idToUserDefinedType.Add(declaration.TypeAnchor, (urn, declaration.Name));
                     }
                     else if (extension.MappingTypeCase == Protobuf.SimpleExtensionDeclaration.MappingTypeOneofCase.ExtensionFunction)
                     {
                         var id = extension.ExtensionFunction.FunctionAnchor;
-                        var uri = plan.ExtensionUris.First(x => x.ExtensionUriAnchor == extension.ExtensionFunction.ExtensionUriReference).Uri;
-                        uri = uri.Substring(uri.LastIndexOf('/'));
+                        var urn = plan.ExtensionUrns.Single(x => x.ExtensionUrnAnchor == extension.ExtensionFunction.ExtensionUrnReference).Urn;
                         var colonLocation = extension.ExtensionFunction.Name.IndexOf(':');
 
                         string? extensionName = default;
@@ -75,7 +85,7 @@ namespace FlowtideDotNet.Substrait
                         {
                             extensionName = extension.ExtensionFunction.Name.Substring(0, colonLocation);
                         }
-                        idToFunctionLookup.Add(id, $"{uri}:{extensionName}");
+                        idToFunctionLookup.Add(id, (urn, extensionName));
                     }
                     else
                     {
@@ -128,11 +138,11 @@ namespace FlowtideDotNet.Substrait
                     case Protobuf.Type.KindOneofCase.UserDefined:
                         if (idToUserDefinedType.TryGetValue(type.UserDefined.TypeReference, out var typeName))
                         {
-                            if (typeName.Equals("any", StringComparison.OrdinalIgnoreCase))
+                            if (typeName.Urn == FunctionsTypes.Urn && typeName.Name == FunctionsTypes.Dynamic)
                             {
                                 return new AnyType();
                             }
-                            else if (typeName.Equals("named_struct", StringComparison.OrdinalIgnoreCase))
+                            else if (typeName.Urn == FunctionsTypes.Urn && typeName.Name == FunctionsTypes.NamedStruct)
                             {
                                 return ParseNamedStructType(type.UserDefined);
                             }
@@ -284,14 +294,14 @@ namespace FlowtideDotNet.Substrait
                     throw new NotImplementedException();
                 }
 
-                var uri = functionName.Substring(0, functionName.IndexOf(':'));
-                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                var urn = functionName.Urn;
+                var name = functionName.Name;
 
                 var tableSchema = ParseNamedStruct(tableFunction.TableSchema);
                 var result = new TableFunction()
                 {
                     ExtensionName = name,
-                    ExtensionUri = uri,
+                    ExtensionUrn = urn,
                     TableSchema = tableSchema,
                     Arguments = new List<Expression>()
                 };
@@ -446,13 +456,13 @@ namespace FlowtideDotNet.Substrait
                     throw new NotImplementedException();
                 }
 
-                var uri = functionName.Substring(0, functionName.IndexOf(':'));
-                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                var urn = functionName.Urn;
+                var name = functionName.Name;
 
                 var result = new AggregateFunction()
                 {
                     ExtensionName = name,
-                    ExtensionUri = uri,
+                    ExtensionUrn = urn,
                     Arguments = new List<Expression>(),
                     Options = ReadOptions(aggregateFunction.Options)
                 };
@@ -556,12 +566,12 @@ namespace FlowtideDotNet.Substrait
                 {
                     throw new NotImplementedException();
                 }
-                var uri = functionName.Substring(0, functionName.IndexOf(':'));
-                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                var urn = functionName.Urn;
+                var name = functionName.Name;
                 var result = new WindowFunction()
                 {
                     ExtensionName = name,
-                    ExtensionUri = uri,
+                    ExtensionUrn = urn,
                     Arguments = new List<Expression>(),
                     LowerBound = GetWindowBound(windowRelFunction.LowerBound),
                     UpperBound = GetWindowBound(windowRelFunction.UpperBound)
@@ -690,8 +700,8 @@ namespace FlowtideDotNet.Substrait
                     throw new NotImplementedException();
                 }
 
-                var uri = functionName.Substring(0, functionName.IndexOf(':'));
-                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                var urn = functionName.Urn;
+                var name = functionName.Name;
 
                 List<Expression> args = new List<Expression>();
 
@@ -714,7 +724,7 @@ namespace FlowtideDotNet.Substrait
 
                 return new ScalarFunction()
                 {
-                    ExtensionUri = uri,
+                    ExtensionUrn = urn,
                     ExtensionName = name,
                     Arguments = args,
                     Options = ReadOptions(scalarFunction.Options)
@@ -722,10 +732,10 @@ namespace FlowtideDotNet.Substrait
 
 
 
-                throw new NotImplementedException(functionName);
+                throw new NotImplementedException($"Function '{functionName.Name}' in '{functionName.Urn}' is not implemented.");
             }
 
-            public bool TryGetFunctionName(uint functionReference, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? functionName)
+            public bool TryGetFunctionName(uint functionReference, out (string Urn, string Name) functionName)
             {
                 return idToFunctionLookup.TryGetValue(functionReference, out functionName);
             }
@@ -1076,7 +1086,11 @@ namespace FlowtideDotNet.Substrait
                         {
                             if (expressionDeserializer.TryGetFunctionName(key.Comparison.CustomFunctionReference, out var functionName))
                             {
-                                var name = functionName.Substring(functionName.IndexOf(':') + 1);
+                                if (functionName.Urn != FunctionsComparison.Urn)
+                                {
+                                    throw new NotSupportedException($"Merge join comparison extension '{functionName.Urn}' is not supported.");
+                                }
+                                var name = functionName.Name;
                                 if (name == "lt")
                                 {
                                     comparisonTypes.Add(JoinComparisonType.LessThan);

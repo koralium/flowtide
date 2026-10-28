@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         {
             return new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.IsNotDistinctFrom,
                 Arguments = new List<Expression>()
                 {
@@ -57,17 +57,17 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
 
         public override Expression? VisitScalarFunction(ScalarFunction scalarFunction, CheckGuardNode? state)
         {
-            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsCheck.Uri, FunctionsCheck.CheckValue))
+            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsCheck.Urn, FunctionsCheck.CheckValue))
             {
                 return RewriteCheck(scalarFunction, FunctionsCheck.CheckValue, false, state);
             }
-            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsCheck.Uri, FunctionsCheck.CheckTrue))
+            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsCheck.Urn, FunctionsCheck.CheckTrue))
             {
                 return RewriteCheck(scalarFunction, FunctionsCheck.CheckTrue, true, state);
             }
 
             var arguments = scalarFunction.Arguments;
-            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsComparison.Uri, FunctionsComparison.Coalesce))
+            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsComparison.Urn, FunctionsComparison.Coalesce))
             {
                 // Argument i runs only after earlier nulls
                 var guards = state;
@@ -104,12 +104,12 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         /// </summary>
         private static int GetFirstNullShortCircuitArgument(ScalarFunction scalarFunction)
         {
-            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsComparison.Uri, FunctionsComparison.Greatest))
+            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsComparison.Urn, FunctionsComparison.Greatest))
             {
                 // The first comparison runs after the second argument
                 return 2;
             }
-            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsString.Uri, FunctionsString.Concat))
+            if (CheckFunctionMatcher.IsFunction(scalarFunction, FunctionsString.Urn, FunctionsString.Concat))
             {
                 if (scalarFunction.Options != null &&
                     scalarFunction.Options.TryGetValue(BuiltInStringFunctions.NullHandling, out var nullHandling) &&
@@ -126,7 +126,7 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         {
             return new ScalarFunction()
             {
-                ExtensionUri = FunctionsComparison.Uri,
+                ExtensionUrn = FunctionsComparison.Urn,
                 ExtensionName = FunctionsComparison.IsNotNull,
                 Arguments = new List<Expression>() { expression }
             };

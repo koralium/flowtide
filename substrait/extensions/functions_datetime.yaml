@@ -4,8 +4,7 @@ urn: extension:io.github.koralium.flowtide:functions_datetime
 description: Flowtide date/time functions and overloads.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
   timestamp_precision: Flowtide timestamps use .NET ticks; the explicit timestamp results below use precision 7.
   # Custom metadata: table functions are not a standard Simple Extensions section.
   table_functions:
@@ -18,7 +17,7 @@ metadata:
         preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp
         input emits no rows.
       metadata:
-        legacy_extension_uri: /functions_datetime.yaml
+        runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
         output_column_count: 2
         literal_arguments:
           - 1
@@ -61,7 +60,7 @@ metadata:
         midnight. Results preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp
         input emits no rows.
       metadata:
-        legacy_extension_uri: /functions_datetime.yaml
+        runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
         output_column_count: 2
         literal_arguments:
           - 1
@@ -105,7 +104,7 @@ scalar_functions:
       Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format
       for typed timestamps.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: i64
@@ -116,7 +115,7 @@ scalar_functions:
     description: >-
       Remove the time-of-day component; incompatible values return null.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: precision_timestamp_tz<7>
@@ -126,7 +125,7 @@ scalar_functions:
     description: >-
       Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: string
@@ -137,7 +136,7 @@ scalar_functions:
     description: >-
       Format typed timestamps with .NET date/time format strings.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: precision_timestamp_tz<7>
@@ -150,7 +149,7 @@ scalar_functions:
       Component is a string such as YEAR, MONTH, DAY, HOUR, MINUTE, SECOND or ISO_WEEK; SQL names differ from
       runtime names.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: string
@@ -161,7 +160,7 @@ scalar_functions:
     description: >-
       Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: string
@@ -173,7 +172,7 @@ scalar_functions:
     description: >-
       Count crossed component boundaries.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: string
@@ -186,7 +185,7 @@ scalar_functions:
       Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
       Calendar-aligned rounding, for example round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1).
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
     impls:
       - args:
           - value: precision_timestamp_tz<7>
@@ -201,7 +200,7 @@ scalar_functions:
       Internal scalar used by window-join optimization. Arguments are timestamp and a positive literal size in
       ticks; no public SQL registration.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       literal_arguments:
         - 1
     impls:
@@ -215,7 +214,7 @@ scalar_functions:
       Planner intrinsic: optimizer replaces the call with a periodically updated timestamp source and joins. Default
       update interval is one hour; configure SetGetTimestampUpdateInterval. Not supported inside join conditions.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       requires_optimizer_pass: TimestampToJoin
     impls:
       - args: []
@@ -232,7 +231,7 @@ window_functions:
       duration must fit Int64 ticks. The gap measures elapsed time, with fixed-length days/weeks. SQL rejects explicit
       frames. Requires the bulk window operator.
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       literal_arguments:
         - 0
         - 1

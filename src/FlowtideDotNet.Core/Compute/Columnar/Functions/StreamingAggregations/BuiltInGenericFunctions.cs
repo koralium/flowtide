@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations
         public static void AddBuiltInAggregateGenericFunctions(FunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterStreamingColumnAggregateFunction(
-                FunctionsAggregateGeneric.Uri,
+                FunctionsAggregateGeneric.Urn,
                 FunctionsAggregateGeneric.Count,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {

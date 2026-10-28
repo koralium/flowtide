@@ -23,14 +23,14 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
         /// </summary>
         public static bool IsFunction(ScalarFunction function, string uri, string name)
         {
-            return string.Equals(function.ExtensionUri, uri, StringComparison.OrdinalIgnoreCase) &&
+            return string.Equals(function.ExtensionUrn, uri, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(function.ExtensionName, name, StringComparison.OrdinalIgnoreCase);
         }
 
         public static bool IsCheckFunction(ScalarFunction function)
         {
-            return IsFunction(function, FunctionsCheck.Uri, FunctionsCheck.CheckValue) ||
-                IsFunction(function, FunctionsCheck.Uri, FunctionsCheck.CheckTrue);
+            return IsFunction(function, FunctionsCheck.Urn, FunctionsCheck.CheckValue) ||
+                IsFunction(function, FunctionsCheck.Urn, FunctionsCheck.CheckTrue);
         }
 
         public static bool ContainsCheck(Expression? expression)

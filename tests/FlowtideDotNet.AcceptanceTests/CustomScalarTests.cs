@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -36,7 +36,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     return new Substrait.Sql.ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = "/custom.yaml",
+                            ExtensionUrn = "extension:org.example:custom",
                             ExtensionName = "static",
                             Arguments = args
                         },
@@ -44,7 +44,7 @@ namespace FlowtideDotNet.AcceptanceTests
                         );
                 });
 
-            FunctionsRegister.RegisterScalarFunction("/custom.yaml", "static",
+            FunctionsRegister.RegisterScalarFunction("extension:org.example:custom", "static",
                 (func, parameterInfo, visitor) =>
                 {
                     return System.Linq.Expressions.Expression.Constant(FlxValue.FromMemory(FlexBuffer.SingleValue("staticvalue")));
@@ -107,7 +107,7 @@ namespace FlowtideDotNet.AcceptanceTests
                     return new Substrait.Sql.ScalarResponse(
                         new ScalarFunction()
                         {
-                            ExtensionUri = "/custom.yaml",
+                            ExtensionUrn = "extension:org.example:custom",
                             ExtensionName = "addnumbers",
                             Arguments = args
                         },
@@ -115,7 +115,7 @@ namespace FlowtideDotNet.AcceptanceTests
                         );
                 });
 
-            FunctionsRegister.RegisterScalarFunctionWithExpression("/custom.yaml", "addnumbers",
+            FunctionsRegister.RegisterScalarFunctionWithExpression("extension:org.example:custom", "addnumbers",
                 (p1) => FlxValue.FromMemory(FlexBuffer.SingleValue(p1.AsString + "123"))
             );
 

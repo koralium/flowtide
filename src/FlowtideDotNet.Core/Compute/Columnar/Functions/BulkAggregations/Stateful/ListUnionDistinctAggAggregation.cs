@@ -373,7 +373,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsList.Uri, FunctionsList.ListUnionDistinctAgg, new ListUnionDistinctAggAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsList.Urn, FunctionsList.ListUnionDistinctAgg, new ListUnionDistinctAggAggregationDefinition());
         }
     }
 }

@@ -33,7 +33,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 
         public static void AddBuiltInHoppingWindowFunction(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnTableFunction(FunctionsDatetime.Uri, FunctionsDatetime.HoppingWindow,
+            functionsRegister.RegisterColumnTableFunction(FunctionsDatetime.Urn, FunctionsDatetime.HoppingWindow,
                 (tableFunc, parameterInfo, visitor, memoryAllocator, outputParam) =>
                 {
                     if (tableFunc.Arguments.Count != 5)

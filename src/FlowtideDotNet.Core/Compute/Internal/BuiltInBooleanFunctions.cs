@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -35,23 +35,23 @@ namespace FlowtideDotNet.Core.Compute.Internal
             // And function based on Kleene logic.
             // Microsoft has support for kleene logic on nullable types see here:
             // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/operators/boolean-logical-operators#nullable-boolean-logical-operators
-            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.And,
+            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.And,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, andExpr);
                 });
-            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Or,
+            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.Or,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, orExpr);
                 });
-            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Xor,
+            functionsRegister.RegisterScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.Xor,
                 (scalarFunction, parametersInfo, visitor) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, xorExpr);
                 });
 
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsBoolean.Uri, FunctionsBoolean.Not, x => NotImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsBoolean.Urn, FunctionsBoolean.Not, x => NotImplementation(x));
         }
 
         private static FlxValue NotImplementation(FlxValue value)

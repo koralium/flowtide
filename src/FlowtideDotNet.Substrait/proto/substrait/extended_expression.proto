@@ -29,8 +29,9 @@ message ExtendedExpression {
   // versions.
   Version version = 7;
 
-  // a list of yaml specifications this expression may depend on
-  repeated substrait.extensions.SimpleExtensionURI extension_uris = 1;
+  // A list of extension URNs this expression depends on.
+  reserved 1;
+  repeated substrait.extensions.SimpleExtensionURN extension_urns = 8;
 
   // a list of extensions this expression may depend on
   repeated substrait.extensions.SimpleExtensionDeclaration extensions = 2;

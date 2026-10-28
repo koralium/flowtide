@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
     public static class FunctionsStruct
     {
-        public const string Uri = "/struct.yaml";
+        public const string Urn = "extension:io.github.koralium.flowtide:struct";
         public const string Create = "create";
     }
 }

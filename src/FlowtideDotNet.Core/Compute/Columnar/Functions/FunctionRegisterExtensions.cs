@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -19,7 +19,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     internal static class FunctionRegisterExtensions
     {
         private record MethodDetails(MethodInfo methodInfo, ParameterInfo[] parameters, List<Type> genericArguments, string? option, string? optionValue);
-        private static void RegisterMethod(string extensionUri, string extensionName, IFunctionsRegister functionRegister, string methodName, MethodInfo[] methods)
+        private static void RegisterMethod(string extensionUrn, string extensionName, IFunctionsRegister functionRegister, string methodName, MethodInfo[] methods)
         {
             Dictionary<int, List<MethodDetails>> methodDetails = new Dictionary<int, List<MethodDetails>>();
 
@@ -50,7 +50,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             }
 
 
-            functionRegister.RegisterColumnScalarFunction(extensionUri, extensionName, (func, paramInfo, visitor, functionServices) =>
+            functionRegister.RegisterColumnScalarFunction(extensionUrn, extensionName, (func, paramInfo, visitor, functionServices) =>
             {
                 if (!methodDetails.TryGetValue(func.Arguments.Count, out var methodsInformation))
                 {
@@ -121,11 +121,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             });
         }
 
-        public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUri, string extensionName, System.Type classType, string methodName)
+        public static void RegisterScalarMethod(this IFunctionsRegister functionsRegister, string extensionUrn, string extensionName, System.Type classType, string methodName)
         {
             var methods = classType.GetMethods(BindingFlags.NonPublic | BindingFlags.Static).Where(x => x.Name.StartsWith(methodName)).ToArray();
             Debug.Assert(methods != null, "Method not found");
-            RegisterMethod(extensionUri, extensionName, functionsRegister, methodName, methods);
+            RegisterMethod(extensionUrn, extensionName, functionsRegister, methodName, methods);
         }
     }
 }

@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                 {
                     new WindowFunction()
                     {
-                        ExtensionUri = "uri",
+                        ExtensionUrn = "uri",
                         ExtensionName = functionName,
                         Arguments = new List<Expression>(),
                         LowerBound = new UnboundedWindowBound(),

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -25,7 +25,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         {
             root = new ScalarFunction()
             {
-                ExtensionUri = "testuri1",
+                ExtensionUrn = "testuri1",
                 ExtensionName = "testname1",
                 Arguments = new List<Expression>()
                 {
@@ -34,7 +34,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
             };
             clone = new ScalarFunction()
             {
-                ExtensionUri = "testuri1",
+                ExtensionUrn = "testuri1",
                 ExtensionName = "testname1",
                 Arguments = new List<Expression>()
                 {
@@ -43,7 +43,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
             };
             notEqual = new ScalarFunction()
             {
-                ExtensionUri = "testuri2",
+                ExtensionUrn = "testuri2",
                 ExtensionName = "testname2",
                 Arguments = new List<Expression>()
                 {
@@ -71,9 +71,9 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.ExpressionEquality
         }
 
         [Fact]
-        public void ExtensionUriChangedNotEqual()
+        public void ExtensionUrnChangedNotEqual()
         {
-            clone.ExtensionUri = notEqual.ExtensionUri;
+            clone.ExtensionUrn = notEqual.ExtensionUrn;
             Assert.NotEqual(root, clone);
         }
 

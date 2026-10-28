@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -23,16 +23,16 @@ namespace FlowtideDotNet.Substrait.Tests
         {
             var subPlan = @"
 {
-  ""extensionUris"": [
+  ""extensionUrns"": [
     {
-      ""extensionUriAnchor"": 1,
-      ""uri"": ""https://github.com/substrait-io/substrait/blob/main/extensions/functions_comparison.yaml""
+      ""extensionUrnAnchor"": 1,
+      ""urn"": ""extension:io.substrait:functions_comparison""
     }
   ],
   ""extensions"": [
     {
       ""extensionFunction"": {
-        ""extensionUriReference"": 1,
+        ""extensionUrnReference"": 1,
         ""functionAnchor"": 1,
         ""name"": ""equal:any_any""
       }
@@ -116,16 +116,16 @@ namespace FlowtideDotNet.Substrait.Tests
 
             var rootPlan = @"
 {
-  ""extensionUris"": [
+  ""extensionUrns"": [
     {
-      ""extensionUriAnchor"": 1,
-      ""uri"": ""https://github.com/substrait-io/substrait/blob/main/extensions/functions_comparison.yaml""
+      ""extensionUrnAnchor"": 1,
+      ""urn"": ""extension:io.substrait:functions_comparison""
     }
   ],
   ""extensions"": [
     {
       ""extensionFunction"": {
-        ""extensionUriReference"": 1,
+        ""extensionUrnReference"": 1,
         ""functionAnchor"": 1,
         ""name"": ""equal:any_any""
       }

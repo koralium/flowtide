@@ -55,35 +55,41 @@ namespace FlowtideDotNet.Substrait
 
         private sealed class SerializerVisitorState
         {
-            public int uriCounter = 0;
-            public int extensionCounter = 0;
-            public Dictionary<string, int> _typeExtensions = new Dictionary<string, int>();
-            public Dictionary<string, uint> _functionsExtensions = new Dictionary<string, uint>();
+            private uint urnCounter = 1;
+            private uint extensionCounter = 1;
+            private readonly Dictionary<string, uint> _urns = new(StringComparer.Ordinal);
+            private readonly Dictionary<(string Urn, string Name), uint> _typeExtensions = new();
+            private readonly Dictionary<(string Urn, string Name), uint> _functionsExtensions = new();
 
             public SerializerVisitorState(Protobuf.Plan root)
             {
                 Root = root;
             }
 
-            public uint GetFunctionExtensionAnchor(string uri, string name)
+            private uint GetUrnAnchor(string urn)
             {
-                var key = $"{uri}:{name}";
+                ExtensionUrn.Validate(urn);
+                if (_urns.TryGetValue(urn, out var existing)) return existing;
+                var anchor = urnCounter++;
+                _urns.Add(urn, anchor);
+                Root.ExtensionUrns.Add(new Protobuf.SimpleExtensionURN { Urn = urn, ExtensionUrnAnchor = anchor });
+                return anchor;
+            }
+
+            public uint GetFunctionExtensionAnchor(string urn, string name)
+            {
+                var key = (urn, name);
                 if (_functionsExtensions.TryGetValue(key, out var id))
                 {
                     return id;
                 }
-                var anchor = uriCounter++;
-                Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
-                {
-                    Uri = uri,
-                    ExtensionUriAnchor = (uint)anchor
-                });
-                var functionAnchor = (uint)extensionCounter++;
+                var anchor = GetUrnAnchor(urn);
+                var functionAnchor = extensionCounter++;
                 Root.Extensions.Add(new Protobuf.SimpleExtensionDeclaration()
                 {
                     ExtensionFunction = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction()
                     {
-                        ExtensionUriReference = (uint)anchor,
+                        ExtensionUrnReference = (uint)anchor,
                         FunctionAnchor = functionAnchor,
                         Name = name
                     }
@@ -92,35 +98,31 @@ namespace FlowtideDotNet.Substrait
                 return functionAnchor;
             }
 
-            private uint GetUserDefinedTypeId(string uri, string name)
+            private uint GetUserDefinedTypeId(string urn, string name)
             {
-                if (!_typeExtensions.TryGetValue(name, out var id))
+                var key = (urn, name);
+                if (!_typeExtensions.TryGetValue(key, out var id))
                 {
-                    var anchor = uriCounter++;
-                    Root.ExtensionUris.Add(new Protobuf.SimpleExtensionURI
-                    {
-                        Uri = uri,
-                        ExtensionUriAnchor = (uint)anchor
-                    });
-                    var typeAnchor = (uint)extensionCounter++;
+                    var anchor = GetUrnAnchor(urn);
+                    var typeAnchor = extensionCounter++;
                     Root.Extensions.Add(new Protobuf.SimpleExtensionDeclaration()
                     {
                         ExtensionType = new Protobuf.SimpleExtensionDeclaration.Types.ExtensionType()
                         {
-                            ExtensionUriReference = (uint)anchor,
+                            ExtensionUrnReference = (uint)anchor,
                             Name = name,
                             TypeAnchor = typeAnchor
                         }
                     });
-                    id = (int)typeAnchor;
-                    _typeExtensions.Add(name, id);
+                    id = typeAnchor;
+                    _typeExtensions.Add(key, id);
                 }
-                return (uint)id;
+                return id;
             }
 
             private uint GetAnyTypeId()
             {
-                return GetUserDefinedTypeId("/any_type.yaml", "any");
+                return GetUserDefinedTypeId(FunctionsTypes.Urn, FunctionsTypes.Dynamic);
             }
 
             private Protobuf.Type GetNamedStructAsUserDefinedType(Type.NamedStruct namedStruct, Protobuf.Type.Types.Nullability nullability)
@@ -128,7 +130,7 @@ namespace FlowtideDotNet.Substrait
                 var userDefined = new Protobuf.Type.Types.UserDefined()
                 {
                     Nullability = nullability,
-                    TypeReference = GetUserDefinedTypeId("/named_struct_type.yaml", "named_struct")
+                    TypeReference = GetUserDefinedTypeId(FunctionsTypes.Urn, FunctionsTypes.NamedStruct)
                 };
                 foreach (var name in namedStruct.Names)
                 {
@@ -335,7 +337,7 @@ namespace FlowtideDotNet.Substrait
         {
             public override Protobuf.Expression? VisitScalarFunction(ScalarFunction scalarFunction, SerializerVisitorState state)
             {
-                var anchor = state.GetFunctionExtensionAnchor(scalarFunction.ExtensionUri, scalarFunction.ExtensionName);
+                var anchor = state.GetFunctionExtensionAnchor(scalarFunction.ExtensionUrn, scalarFunction.ExtensionName);
 
                 var scalar = new Protobuf.Expression.Types.ScalarFunction()
                 {
@@ -780,7 +782,7 @@ namespace FlowtideDotNet.Substrait
                         {
                             m.Measure_ = new Protobuf.AggregateFunction()
                             {
-                                FunctionReference = state.GetFunctionExtensionAnchor(measure.Measure.ExtensionUri, measure.Measure.ExtensionName)
+                                FunctionReference = state.GetFunctionExtensionAnchor(measure.Measure.ExtensionUrn, measure.Measure.ExtensionName)
                             };
                             if (measure.Measure.Arguments != null)
                             {
@@ -980,7 +982,7 @@ namespace FlowtideDotNet.Substrait
                     });
                 }
 
-                output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUri, windowFunction.ExtensionName);
+                output.FunctionReference = state.GetFunctionExtensionAnchor(windowFunction.ExtensionUrn, windowFunction.ExtensionName);
                 output.Invocation = Protobuf.AggregateFunction.Types.AggregationInvocation.Unspecified;
                 
                 AddOptions(output.Options, windowFunction.Options);
@@ -1081,7 +1083,7 @@ namespace FlowtideDotNet.Substrait
                         {
                             extensionName = "gte";
                         }
-                        var anchor = state.GetFunctionExtensionAnchor(FunctionsComparison.Uri, extensionName);
+                        var anchor = state.GetFunctionExtensionAnchor(FunctionsComparison.Urn, extensionName);
                         comparison = new ComparisonJoinKey.Types.ComparisonType()
                         {
                             CustomFunctionReference = anchor
@@ -1661,7 +1663,7 @@ namespace FlowtideDotNet.Substrait
                 var protoDef = new CustomProtobuf.TableFunction();
 
                 // Serialize the table function
-                protoDef.FunctionReference = state.GetFunctionExtensionAnchor(tableFunction.ExtensionUri, tableFunction.ExtensionName);
+                protoDef.FunctionReference = state.GetFunctionExtensionAnchor(tableFunction.ExtensionUrn, tableFunction.ExtensionName);
 
                 // Serialize the table schema if it exists
                 if (tableFunction.TableSchema != null)

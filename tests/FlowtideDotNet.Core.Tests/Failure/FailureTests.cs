@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -24,13 +24,13 @@ namespace FlowtideDotNet.Core.Tests.Failure
         {
             var plan = @"
 {
-  ""extensionUris"": [{
-    ""extensionUriAnchor"": 1,
-    ""uri"": ""/functions_comparison.yaml""
+  ""extensionUrns"": [{
+    ""extensionUrnAnchor"": 1,
+    ""urn"": ""extension:io.substrait:functions_comparison""
   }],
   ""extensions"": [{
     ""extensionFunction"": {
-      ""extensionUriReference"": 1,
+      ""extensionUrnReference"": 1,
       ""functionAnchor"": 0,
       ""name"": ""equal:any_any""
     }

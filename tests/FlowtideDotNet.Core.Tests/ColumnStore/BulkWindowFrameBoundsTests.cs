@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             return new WindowFunction()
             {
-                ExtensionUri = "test",
+                ExtensionUrn = "test",
                 ExtensionName = "sum",
                 Arguments = new List<Expression>(),
                 LowerBound = lower,

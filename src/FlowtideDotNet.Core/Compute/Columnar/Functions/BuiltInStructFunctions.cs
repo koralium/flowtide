@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -28,7 +28,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     {
         public static void AddBuiltInStructFunctions(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnScalarFunction(FunctionsStruct.Uri, FunctionsStruct.Create,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsStruct.Urn, FunctionsStruct.Create,
                 (func, parameterInfo, visitor, functionServices) =>
                 {
                     if (func.Arguments.Count % 2 != 0)

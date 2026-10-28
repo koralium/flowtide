@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -49,7 +49,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.StatefulAggregations.Co
         public static void RegisterCountDistinct(IFunctionsRegister functionsRegister)
         {
             functionsRegister.RegisterStatefulColumnAggregateFunction<CountDistinctAggregationSingleton>(
-                FunctionsAggregateGeneric.Uri,
+                FunctionsAggregateGeneric.FlowtideUrn,
                 FunctionsAggregateGeneric.CountDistinct,
                 InitializeCountDistinct,
                 (singleton) => { },

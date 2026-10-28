@@ -23,7 +23,7 @@ internal static class RuntimeCoverage
 {
     // gettimestamp is a SQL/planner intrinsic, removed by TimestampToJoin before execution.
     // Its binding is separately checked against an actual SQL plan in RuntimeCoverageTests.
-    internal const string TimestampIntrinsic = "/functions_datetime.yaml:gettimestamp";
+    internal const string TimestampIntrinsic = "extension:io.github.koralium.flowtide:functions_datetime:gettimestamp";
 
     private static readonly Dictionary<string, string> RegistryCategories = new()
     {
@@ -58,10 +58,15 @@ internal static class RuntimeCoverage
             var documented = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var entry in catalog.Functions().Where(entry => entry.Category == category))
             {
-                var uri = entry.Data["metadata"]?["legacy_extension_uri"].Text();
-                if (string.IsNullOrWhiteSpace(uri))
-                    yield return new(catalog.Dialect.Path, entry.Pointer + "/metadata/legacy_extension_uri", "Missing runtime binding URI.");
-                else documented.Add(uri + ":" + entry.Data["name"].Text());
+                var urn = entry.Data["metadata"]?["runtime_extension_urn"].Text();
+                if (string.IsNullOrWhiteSpace(urn))
+                    yield return new(catalog.Dialect.Path, entry.Pointer + "/metadata/runtime_extension_urn", "Missing runtime binding URN.");
+                else documented.Add(urn + ":" + entry.Data["name"].Text());
+                var source = entry.Data["source"].Text();
+                var declaredUrn = source == null ? null : catalog.Dialect.Data["dependencies"]?[source].Text();
+                if (urn != declaredUrn)
+                    yield return new(catalog.Dialect.Path, entry.Pointer + "/metadata/runtime_extension_urn",
+                        $"Runtime binding '{urn}' does not match the source extension URN '{declaredUrn}'.");
             }
             foreach (var name in registered.Except(documented))
                 yield return new(catalog.Dialect.Path, "", $"Registered {category} function '{name}' is missing from the dialect.");

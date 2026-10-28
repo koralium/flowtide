@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -160,14 +160,14 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 // l.user_type = r.user_type AND l.user_id = r.user_id
                 Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>()
                     {
                         // l.user_type = r.user_type
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -190,7 +190,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // l.object_type = r.object_type
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -213,7 +213,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // l.object_id = r.object_id
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -236,7 +236,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // l.user_id = '*'
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = wildcardLeft ? FunctionsComparison.Equal : FunctionsComparison.NotEqual,
                             Arguments = new List<Expression>()
                             {
@@ -256,7 +256,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // r.user_id != '*'
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = wildcardLeft ? FunctionsComparison.NotEqual : FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -291,13 +291,13 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 Type = JoinType.Inner,
                 Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>()
                     {
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -319,7 +319,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         },
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -367,13 +367,13 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 Type = JoinType.Inner,
                 Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>()
                     {
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -395,7 +395,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         },
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -441,14 +441,14 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 },
                 Expression = new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     ExtensionName = FunctionsBoolean.And,
                     Arguments = new List<Expression>()
                     {
                         // user_type = object_type
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -471,7 +471,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // user_id = object_id
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -554,12 +554,12 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 Condition = new ScalarFunction()
                 {
                     ExtensionName = FunctionsBoolean.And,
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     Arguments = new List<Expression>()
                     {
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -578,7 +578,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         },
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -597,7 +597,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         },
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -628,13 +628,13 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 Condition = new ScalarFunction()
                 {
                     ExtensionName = FunctionsBoolean.And,
-                    ExtensionUri = FunctionsBoolean.Uri,
+                    ExtensionUrn = FunctionsBoolean.Urn,
                     Arguments = new List<Expression>()
                     {
                         // user_type = {relationReference.Type}
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -654,7 +654,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // user_relation = {relationReference.Relation}'
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -674,7 +674,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // relation = {toRelationName}
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -694,7 +694,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                         // object_type = {objectType.Type}
                         new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {

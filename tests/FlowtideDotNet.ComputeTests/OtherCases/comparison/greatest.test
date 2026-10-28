@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_comparison.yaml'
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.substrait:functions_comparison'
 
 # basic: Basic examples without any special cases
 greatest(3::i64, 2::i64) = 3::i64

@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statef
 
         public static void Register(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkAggregationFunction(FunctionsString.Uri, FunctionsString.StringAgg, new StringAggAggregationDefinition());
+            functionsRegister.RegisterBulkAggregationFunction(FunctionsString.Urn, FunctionsString.StringAgg, new StringAggAggregationDefinition());
         }
     }
 }

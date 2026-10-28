@@ -13,6 +13,7 @@
 using FlowtideDotNet.Core.Compute.Columnar.Functions.CheckFunctions;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.StreamingAggregations;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
@@ -47,6 +48,21 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
             BuiltInWindowFunctions.AddBuiltInWindowFunctions(functionsRegister);
             Columnar.Functions.WindowFunctions.Bulk.BuiltInBulkWindowFunctions.AddBuiltInBulkWindowFunctions(functionsRegister);
+
+            foreach (var name in new[] { FunctionsString.Trim, FunctionsString.LTrim, FunctionsString.RTrim, FunctionsString.Like })
+            {
+                functionsRegister.RegisterBuiltinUrns(name, FunctionsString.Urn, FunctionsString.FlowtideUrn);
+            }
+            foreach (var name in new[] { FunctionsArithmetic.Sum, FunctionsArithmetic.Sum0, FunctionsArithmetic.Average,
+                FunctionsArithmetic.Lead, FunctionsArithmetic.Lag, FunctionsArithmetic.LastValue })
+            {
+                functionsRegister.RegisterBuiltinUrns(name, FunctionsArithmetic.Urn, FunctionsArithmetic.FlowtideUrn);
+            }
+            foreach (var name in new[] { FunctionsArithmetic.Min, FunctionsArithmetic.Max })
+            {
+                functionsRegister.RegisterBuiltinUrns(name, FunctionsArithmetic.Urn, FunctionsArithmetic.DecimalUrn,
+                    FunctionsDatetime.StandardUrn, FunctionsArithmetic.FlowtideUrn);
+            }
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -82,7 +82,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
         public static void AddBooleanFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.And,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.And,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count == 0)
@@ -92,7 +92,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
                     return BuildExpression(visitor, parametersInfo, scalarFunction, andExpr);
                 });
-            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Or,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.Or,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     if (scalarFunction.Arguments.Count == 0)
@@ -102,13 +102,13 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 
                     return BuildExpression(visitor, parametersInfo, scalarFunction, orExpr);
                 });
-            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Uri, FunctionsBoolean.Xor,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsBoolean.Urn, FunctionsBoolean.Xor,
                 (scalarFunction, parametersInfo, visitor, functionServices) =>
                 {
                     return BuildExpression(visitor, parametersInfo, scalarFunction, xorExpr);
                 });
 
-            functionsRegister.RegisterScalarMethod(FunctionsBoolean.Uri, FunctionsBoolean.Not, typeof(BuiltInBooleanFunctions), nameof(NotImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsBoolean.Urn, FunctionsBoolean.Not, typeof(BuiltInBooleanFunctions), nameof(NotImplementation));
         }
 
         private static IDataValue NotImplementation<T>(T value)

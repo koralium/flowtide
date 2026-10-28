@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -50,11 +50,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         public override System.Linq.Expressions.Expression? VisitScalarFunction(ScalarFunction scalarFunction, ColumnParameterInfo state)
         {
-            if (functionsRegister.TryGetColumnScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var functionDef))
+            if (functionsRegister.TryGetColumnScalarFunction(scalarFunction.ExtensionUrn, scalarFunction.ExtensionName, out var functionDef))
             {
                 return functionDef.MapFunc(scalarFunction, state, this, functionsRegister.FunctionServices);
             }
-            if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUri, scalarFunction.ExtensionName, out var function))
+            if (functionsRegister.TryGetScalarFunction(scalarFunction.ExtensionUrn, scalarFunction.ExtensionName, out var function))
             {
                 // Use old implementation for now where rows are created from the columns at a specific index
 
@@ -293,7 +293,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
         {
             ScalarFunction scalarFunction = new ScalarFunction()
             {
-                ExtensionUri = FunctionsBoolean.Uri,
+                ExtensionUrn = FunctionsBoolean.Urn,
                 ExtensionName = FunctionsBoolean.Or,
                 Arguments = new List<Substrait.Expressions.Expression>()
             };
@@ -302,7 +302,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             {
                 scalarFunction.Arguments.Add(new ScalarFunction()
                 {
-                    ExtensionUri = FunctionsComparison.Uri,
+                    ExtensionUrn = FunctionsComparison.Urn,
                     ExtensionName = FunctionsComparison.Equal,
                     Arguments = new List<Substrait.Expressions.Expression>()
                     {

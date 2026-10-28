@@ -4,14 +4,13 @@ urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
 description: Additional Flowtide generic aggregate functions.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
 aggregate_functions:
   - name: count_distinct
     description: Count distinct non-null values, returning zero for empty/all-null groups. SQL COUNT(DISTINCT x)
       maps to this dedicated binding; a DISTINCT invocation flag on count is not a substitute.
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
     impls:
       - args:
           - value: any
@@ -24,7 +23,7 @@ aggregate_functions:
       scoped to the aggregate operator, not globally unique across streams. An empty global aggregate also receives
       a key.
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
     impls:
       - args: []
         return: i64
@@ -40,7 +39,7 @@ window_functions:
       checkpoint restore; deleting and recreating a partition can assign a new key. Assignment is operator-scoped
       and is not deterministic across a full replay. No ORDER BY is required and SQL rejects ROWS frames.
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
     impls:
       - args: []
         return: i64

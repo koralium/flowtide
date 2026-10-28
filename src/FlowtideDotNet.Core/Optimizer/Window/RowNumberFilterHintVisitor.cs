@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Optimizer.Window
         private static IEnumerable<Expression> FlattenAnd(Expression condition)
         {
             if (condition is ScalarFunction scalarFunction &&
-                scalarFunction.ExtensionUri == FunctionsBoolean.Uri &&
+                scalarFunction.ExtensionUrn == FunctionsBoolean.Urn &&
                 string.Equals(scalarFunction.ExtensionName, FunctionsBoolean.And, StringComparison.OrdinalIgnoreCase))
             {
                 foreach (var argument in scalarFunction.Arguments)
@@ -78,7 +78,7 @@ namespace FlowtideDotNet.Core.Optimizer.Window
             fieldIndex = -1;
             bound = 0;
             if (condition is not ScalarFunction scalarFunction ||
-                scalarFunction.ExtensionUri != FunctionsComparison.Uri ||
+                scalarFunction.ExtensionUrn != FunctionsComparison.Urn ||
                 scalarFunction.Arguments.Count != 2)
             {
                 return false;

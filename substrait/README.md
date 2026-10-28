@@ -2,8 +2,30 @@
 
 `dialect.yaml` describes the supported expressions, function bindings, relations and types.
 `extensions/` contains Flowtide definitions grouped by function family. Standard function
-URNs resolve against upstream Substrait definitions; Flowtide function metadata records
-the legacy URI/name bindings used by the runtime.
+URNs resolve against upstream Substrait definitions. Each function's `runtime_extension_urn`
+records the namespace used by the planner and runtime.
+
+## Extension references
+
+Plans use Substrait extension URNs, such as `extension:io.substrait:functions_string`
+for standard string functions and `extension:io.github.koralium.flowtide:functions_string`
+for Flowtide-specific functions. An extension declaration identifies a function by its
+URN and name; the URN does not need to be fetched from the web. The dialect resolves
+it to the checked-in definition for validation and documentation generation.
+
+Native function expressions expose `ExtensionUrn`, and the `Functions*` classes expose
+`Urn` constants. Families with additional Flowtide profiles expose `FlowtideUrn`.
+Custom function registrations must also use `extension:<OWNER>:<ID>`, for example
+`extension:com.example:my_functions`, together with the function name.
+
+Serialized plans use `extensionUrns`, `extensionUrnAnchor` and `extensionUrnReference`.
+Dynamic values and standalone named structs share `extension:io.github.koralium.flowtide:types`,
+with the names `dynamic` and `named_struct` respectively.
+
+This is a breaking change: the old `ExtensionUri`/`Uri` API names and YAML-file identifiers
+are removed, and old URI-based plans are unsupported. Regenerate saved plans and start
+streams with fresh state: the changed identifiers also change the plan hash used to
+identify state versions.
 
 ## Validation
 

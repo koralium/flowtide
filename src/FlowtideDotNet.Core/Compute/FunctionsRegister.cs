@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions;
 using FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk;
 using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
@@ -39,6 +40,39 @@ namespace FlowtideDotNet.Core.Compute
 
         public IFunctionServices FunctionServices => _functionServices;
 
+        private static string GetKey(string urn, string name) => $"{ExtensionUrn.Validate(urn)}:{name}";
+
+        // Several current Substrait extension profiles share one native implementation.
+        // Register each supported namespace without changing the caller's declared URN.
+        internal void RegisterBuiltinUrns(string name, params string[] urns)
+        {
+            AddUrns(_scalarFunctions, name, urns);
+            AddUrns(_columnScalarFunctions, name, urns);
+            AddUrns(_aggregateFunctions, name, urns);
+            AddUrns(_columnAggregateFunctions, name, urns);
+            AddUrns(_bulkAggregationFunctions, name, urns);
+            AddUrns(_windowFunctions, name, urns);
+            AddUrns(_bulkWindowFunctions, name, urns);
+            AddUrns(_tableFunctions, name, urns);
+            AddUrns(_columnTableFunctions, name, urns);
+        }
+
+        private static void AddUrns<T>(Dictionary<string, T> functions, string name, string[] urns)
+        {
+            foreach (var urn in urns)
+            {
+                if (!functions.TryGetValue(GetKey(urn, name), out var implementation))
+                {
+                    continue;
+                }
+                foreach (var supportedUrn in urns)
+                {
+                    functions.TryAdd(GetKey(supportedUrn, name), implementation);
+                }
+                return;
+            }
+        }
+
         public FunctionsRegister()
         {
             _scalarFunctions = new Dictionary<string, FunctionDefinition>(StringComparer.OrdinalIgnoreCase);
@@ -56,29 +90,29 @@ namespace FlowtideDotNet.Core.Compute
             _bulkWindowFunctions = new Dictionary<string, BulkWindowFunctionDefinition>(StringComparer.OrdinalIgnoreCase);
         }
 
-        public bool TryGetScalarFunction(string uri, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
+        public bool TryGetScalarFunction(string urn, string name, [NotNullWhen(true)] out FunctionDefinition? functionDefinition)
         {
-            return _scalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+            return _scalarFunctions.TryGetValue(GetKey(urn, name), out functionDefinition);
         }
 
-        public bool TryGetColumnScalarFunction(string uri, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition)
+        public bool TryGetColumnScalarFunction(string urn, string name, [NotNullWhen(true)] out ColumnFunctionDefinition? functionDefinition)
         {
-            return _columnScalarFunctions.TryGetValue($"{uri}:{name}", out functionDefinition);
+            return _columnScalarFunctions.TryGetValue(GetKey(urn, name), out functionDefinition);
         }
 
-        public void RegisterColumnScalarFunction(string uri, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc)
+        public void RegisterColumnScalarFunction(string urn, string name, Func<ScalarFunction, ColumnParameterInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ColumnParameterInfo>, IFunctionServices, System.Linq.Expressions.Expression> mapFunc)
         {
-            _columnScalarFunctions.Add($"{uri}:{name}", new ColumnFunctionDefinition(uri, name, mapFunc));
+            _columnScalarFunctions.Add(GetKey(urn, name), new ColumnFunctionDefinition(urn, name, mapFunc));
         }
 
-        public void RegisterScalarFunction(string uri, string name, Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
+        public void RegisterScalarFunction(string urn, string name, Func<ScalarFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
-            _scalarFunctions.Add($"{uri}:{name}", new FunctionDefinition(uri, name, mapFunc));
+            _scalarFunctions.Add(GetKey(urn, name), new FunctionDefinition(urn, name, mapFunc));
         }
 
-        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue>> expression)
+        public void RegisterScalarFunctionWithExpression(string urn, string name, Expression<Func<FlxValue, FlxValue>> expression)
         {
-            RegisterScalarFunction(uri, name, (scalarFunction, parametersInfo, expressionVisitor) =>
+            RegisterScalarFunction(urn, name, (scalarFunction, parametersInfo, expressionVisitor) =>
             {
                 if (scalarFunction.Arguments.Count != 1)
                 {
@@ -95,9 +129,9 @@ namespace FlowtideDotNet.Core.Compute
             });
         }
 
-        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue, FlxValue>> expression)
+        public void RegisterScalarFunctionWithExpression(string urn, string name, Expression<Func<FlxValue, FlxValue, FlxValue>> expression)
         {
-            RegisterScalarFunction(uri, name, (scalarFunction, parametersInfo, expressionVisitor) =>
+            RegisterScalarFunction(urn, name, (scalarFunction, parametersInfo, expressionVisitor) =>
             {
                 if (scalarFunction.Arguments.Count != 2)
                 {
@@ -118,9 +152,9 @@ namespace FlowtideDotNet.Core.Compute
             });
         }
 
-        public void RegisterScalarFunctionWithExpression(string uri, string name, Expression<Func<FlxValue, FlxValue, FlxValue, FlxValue>> expression)
+        public void RegisterScalarFunctionWithExpression(string urn, string name, Expression<Func<FlxValue, FlxValue, FlxValue, FlxValue>> expression)
         {
-            RegisterScalarFunction(uri, name, (scalarFunction, parametersInfo, expressionVisitor) =>
+            RegisterScalarFunction(urn, name, (scalarFunction, parametersInfo, expressionVisitor) =>
             {
                 if (scalarFunction.Arguments.Count != 3)
                 {
@@ -144,37 +178,37 @@ namespace FlowtideDotNet.Core.Compute
         }
 
         public void RegisterStreamingAggregateFunction(
-            string uri,
+            string urn,
             string name,
             Func<AggregateFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Func<byte[]?, FlxValue> stateToValueFunc)
         {
-            _aggregateFunctions.Add($"{uri}:{name}", new StreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
+            _aggregateFunctions.Add(GetKey(urn, name), new StreamingAggregateFunctionDefinition(urn, name, mapFunc, stateToValueFunc));
         }
 
         /// <summary>
         /// Register a streaming aggregate function that uses columnar data.
         /// </summary>
-        /// <param name="uri"></param>
+        /// <param name="urn"></param>
         /// <param name="name"></param>
         /// <param name="mapFunc"></param>
         /// <param name="stateToValueFunc"></param>
         public void RegisterStreamingColumnAggregateFunction(
-            string uri,
+            string urn,
             string name,
             Func<AggregateFunction, ColumnParameterInfo, ColumnarExpressionVisitor, ParameterExpression, ParameterExpression, System.Linq.Expressions.Expression> mapFunc,
             Action<ColumnReference, ColumnStore.Column> stateToValueFunc)
         {
-            _columnAggregateFunctions.Add($"{uri}:{name}", new ColumnStreamingAggregateFunctionDefinition(uri, name, mapFunc, stateToValueFunc));
+            _columnAggregateFunctions.Add(GetKey(urn, name), new ColumnStreamingAggregateFunctionDefinition(urn, name, mapFunc, stateToValueFunc));
         }
 
-        public bool TryGetAggregateFunction(string uri, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition)
+        public bool TryGetAggregateFunction(string urn, string name, [NotNullWhen(true)] out AggregateFunctionDefinition? aggregateFunctionDefinition)
         {
-            return _aggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
+            return _aggregateFunctions.TryGetValue(GetKey(urn, name), out aggregateFunctionDefinition);
         }
 
         public void RegisterStatefulAggregateFunction<T>(
-            string uri,
+            string urn,
             string name,
             IFunctionsRegister.AggregateInitializeFunction<T> stateFunction,
             Action<T> disposeFunction,
@@ -182,7 +216,7 @@ namespace FlowtideDotNet.Core.Compute
             IFunctionsRegister.AggregateMapFunction mapFunc,
             IFunctionsRegister.AggregateStateToValueFunction<T> stateToValueFunc)
         {
-            _aggregateFunctions.Add($"{uri}:{name}", new StatefulAggregateFunctionDefinition<T>(
+            _aggregateFunctions.Add(GetKey(urn, name), new StatefulAggregateFunctionDefinition<T>(
                 stateFunction,
                 disposeFunction,
                 commitFunction,
@@ -190,32 +224,32 @@ namespace FlowtideDotNet.Core.Compute
                 stateToValueFunc));
         }
 
-        public void RegisterTableFunction(string uri, string name, Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
+        public void RegisterTableFunction(string urn, string name, Func<TableFunction, ParametersInfo, ExpressionVisitor<System.Linq.Expressions.Expression, ParametersInfo>, System.Linq.Expressions.Expression> mapFunc)
         {
-            _tableFunctions.Add($"{uri}:{name}", new TableFunctionDefinition(uri, name, mapFunc));
+            _tableFunctions.Add(GetKey(urn, name), new TableFunctionDefinition(urn, name, mapFunc));
         }
 
         public void RegisterColumnTableFunction(
-            string uri,
+            string urn,
             string name,
             Func<TableFunction, ColumnParameterInfo, ColumnarExpressionVisitor, IMemoryAllocator, ParameterExpression, TableFunctionResult> mapFunc)
         {
-            _columnTableFunctions.Add($"{uri}:{name}", new ColumnTableFunctionDefinition(uri, name, mapFunc));
+            _columnTableFunctions.Add(GetKey(urn, name), new ColumnTableFunctionDefinition(urn, name, mapFunc));
         }
 
-        public bool TryGetTableFunction(string uri, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition)
+        public bool TryGetTableFunction(string urn, string name, [NotNullWhen(true)] out TableFunctionDefinition? tableFunctionDefinition)
         {
-            return _tableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
+            return _tableFunctions.TryGetValue(GetKey(urn, name), out tableFunctionDefinition);
         }
 
-        public bool TryGetColumnTableFunction(string uri, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition)
+        public bool TryGetColumnTableFunction(string urn, string name, [NotNullWhen(true)] out ColumnTableFunctionDefinition? tableFunctionDefinition)
         {
-            return _columnTableFunctions.TryGetValue($"{uri}:{name}", out tableFunctionDefinition);
+            return _columnTableFunctions.TryGetValue(GetKey(urn, name), out tableFunctionDefinition);
         }
 
-        public void RegisterStatefulColumnAggregateFunction<T>(string uri, string name, IFunctionsRegister.AggregateInitializeFunction<T> initializeFunction, Action<T> disposeFunction, Func<T, Task> commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction<T> stateToValueFunc)
+        public void RegisterStatefulColumnAggregateFunction<T>(string urn, string name, IFunctionsRegister.AggregateInitializeFunction<T> initializeFunction, Action<T> disposeFunction, Func<T, Task> commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction<T> stateToValueFunc)
         {
-            _columnAggregateFunctions.Add($"{uri}:{name}", new StatefulColumnAggregateFunctionDefinition<T>(
+            _columnAggregateFunctions.Add(GetKey(urn, name), new StatefulColumnAggregateFunctionDefinition<T>(
                 initializeFunction,
                 disposeFunction,
                 commitFunction,
@@ -224,19 +258,19 @@ namespace FlowtideDotNet.Core.Compute
                 ));
         }
 
-        public bool TryGetColumnAggregateFunction(string uri, string name, [NotNullWhen(true)] out ColumnAggregateFunctionDefinition? aggregateFunctionDefinition)
+        public bool TryGetColumnAggregateFunction(string urn, string name, [NotNullWhen(true)] out ColumnAggregateFunctionDefinition? aggregateFunctionDefinition)
         {
-            return _columnAggregateFunctions.TryGetValue($"{uri}:{name}", out aggregateFunctionDefinition);
+            return _columnAggregateFunctions.TryGetValue(GetKey(urn, name), out aggregateFunctionDefinition);
         }
 
-        public void RegisterWindowFunction(string uri, string name, WindowFunctionDefinition windowFunctionDefinition)
+        public void RegisterWindowFunction(string urn, string name, WindowFunctionDefinition windowFunctionDefinition)
         {
-            _windowFunctions.Add($"{uri}:{name}", windowFunctionDefinition);
+            _windowFunctions.Add(GetKey(urn, name), windowFunctionDefinition);
         }
 
         public bool TryGetWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IWindowFunction? windowFunc)
         {
-            if(_windowFunctions.TryGetValue($"{windowFunction.ExtensionUri}:{windowFunction.ExtensionName}", out var windowFunctionDefinition))
+            if(_windowFunctions.TryGetValue(GetKey(windowFunction.ExtensionUrn, windowFunction.ExtensionName), out var windowFunctionDefinition))
             {
                 windowFunc = windowFunctionDefinition.Create(windowFunction, this);
                 return true;
@@ -245,28 +279,28 @@ namespace FlowtideDotNet.Core.Compute
             return false;
         }
 
-        public void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition)
+        public void RegisterBulkAggregationFunction(string urn, string name, IBulkAggregationDefinition bulkAggregationDefinition)
         {
-            _bulkAggregationFunctions.Add($"{uri}:{name}", bulkAggregationDefinition);
+            _bulkAggregationFunctions.Add(GetKey(urn, name), bulkAggregationDefinition);
         }
 
-        public bool TryGetBulkAggregationFunction(string uri, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition)
+        public bool TryGetBulkAggregationFunction(string urn, string name, [NotNullWhen(true)] out IBulkAggregationDefinition? bulkAggregationDefinition)
         {
-            return _bulkAggregationFunctions.TryGetValue($"{uri}:{name}", out bulkAggregationDefinition);
+            return _bulkAggregationFunctions.TryGetValue(GetKey(urn, name), out bulkAggregationDefinition);
         }
 
-        public void RegisterBulkWindowFunction(string uri, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
+        public void RegisterBulkWindowFunction(string urn, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
         {
-            _bulkWindowFunctions.Add($"{uri}:{name}", bulkWindowFunctionDefinition);
+            _bulkWindowFunctions.Add(GetKey(urn, name), bulkWindowFunctionDefinition);
         }
 
         /// <summary>
         /// Replaces a registered bulk window function, used by tests to simulate builds with other
         /// function implementations.
         /// </summary>
-        internal void SetBulkWindowFunctionForTests(string uri, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
+        internal void SetBulkWindowFunctionForTests(string urn, string name, BulkWindowFunctionDefinition bulkWindowFunctionDefinition)
         {
-            _bulkWindowFunctions[$"{uri}:{name}"] = bulkWindowFunctionDefinition;
+            _bulkWindowFunctions[GetKey(urn, name)] = bulkWindowFunctionDefinition;
         }
 
         /// <summary>
@@ -276,7 +310,7 @@ namespace FlowtideDotNet.Core.Compute
         /// </summary>
         public bool TryCreateBulkWindowFunction(WindowFunction windowFunction, [NotNullWhen(true)] out IBulkWindowFunction? bulkWindowFunction)
         {
-            if (_bulkWindowFunctions.TryGetValue($"{windowFunction.ExtensionUri}:{windowFunction.ExtensionName}", out var definition))
+            if (_bulkWindowFunctions.TryGetValue(GetKey(windowFunction.ExtensionUrn, windowFunction.ExtensionName), out var definition))
             {
                 return definition.TryCreate(windowFunction, this, out bulkWindowFunction);
             }

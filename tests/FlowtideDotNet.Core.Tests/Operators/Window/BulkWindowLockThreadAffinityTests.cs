@@ -55,7 +55,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Window
         {
             TaskScheduler = _scheduler;
             ((FunctionsRegister)FunctionsRegister).SetBulkWindowFunctionForTests(
-                FunctionsArithmetic.Uri,
+                FunctionsArithmetic.Urn,
                 FunctionsArithmetic.RowNumber,
                 _rowNumber);
         }

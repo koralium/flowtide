@@ -2416,6 +2416,33 @@
       <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
     </para>
     <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Dynamically typed numeric average for any inputs. Integer values produce a fractional Double; decimal values use System.Decimal. Empty/all-null input returns null. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
       <b>list_agg(x)</b>
     </para>
     <para>Collects non-null values with weighted duplicates, in ascending Flowtide value order. Empty/all-null groups return an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected.</para>
@@ -2541,7 +2568,7 @@
     <para>
       <b>Profile: ptstz</b>
     </para>
-    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime uses the standard datetime extension URN for this timestamp profile.</para>
     <list type="bullet">
       <item>
         <description>Extension signatures: <c>max:ptstz</c></description>
@@ -2685,7 +2712,7 @@
     <para>
       <b>Profile: ptstz</b>
     </para>
-    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime uses the standard datetime extension URN for this timestamp profile.</para>
     <list type="bullet">
       <item>
         <description>Extension signatures: <c>min:ptstz</c></description>
@@ -2866,6 +2893,33 @@
       <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
     </para>
     <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Dynamically typed numeric sum for any inputs. The runtime selects Int64, Double or System.Decimal; empty/all-null input returns null. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
       <b>sum0(x)</b>
     </para>
     <para>
@@ -2923,6 +2977,33 @@
       </item>
       <item>
         <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Dynamically typed numeric sum for any inputs. The runtime selects Int64, Double or System.Decimal; empty/all-null input returns zero. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum0:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
       </item>
       <item>
         <description>Sql distinct: <c>false</c></description>
@@ -3105,6 +3186,45 @@
       </item>
     </list>
     <code language="sql">SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Dynamically typed numeric avg for any inputs. The runtime chooses the numeric value kind from input values. Null and incompatible inputs are ignored; empty/all-null frames return null. Explicit ROWS frames use integer literal bounds. Without ORDER BY the whole partition is used; otherwise the default frame ends at the current row. RANGE, GROUPS, FILTER and DISTINCT are unsupported.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
     <para>
       <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
     </para>
@@ -3642,6 +3762,45 @@
       </item>
     </list>
     <code language="sql">SELECT sum(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Dynamically typed numeric sum for any inputs. The runtime chooses the numeric value kind from input values. Null and incompatible inputs are ignored; empty/all-null frames return null. Explicit ROWS frames use integer literal bounds. Without ORDER BY the whole partition is used; otherwise the default frame ends at the current row. RANGE, GROUPS, FILTER and DISTINCT are unsupported.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
     <para>
       <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
     </para>

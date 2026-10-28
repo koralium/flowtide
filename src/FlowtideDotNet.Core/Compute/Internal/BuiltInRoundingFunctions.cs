@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,9 +21,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddBuiltInRoundingFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Uri, FunctionsRounding.Ceil, (x) => CeilingImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Uri, FunctionsRounding.Floor, (x) => FloorImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Uri, FunctionsRounding.Round, (x) => RoundImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Urn, FunctionsRounding.Ceil, (x) => CeilingImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.Urn, FunctionsRounding.Floor, (x) => FloorImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsRounding.FlowtideUrn, FunctionsRounding.Round, (x) => RoundImplementation(x));
         }
 
         private static FlxValue CeilingImplementation(FlxValue x)

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.HashFunctions
     {
         public static void AddXxHash128Functions(IFunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnScalarFunction(FunctionsHash.Uri, FunctionsHash.XxHash128GuidString,
+            functionsRegister.RegisterColumnScalarFunction(FunctionsHash.Urn, FunctionsHash.XxHash128GuidString,
                 (func, paramInfo, visitor, functionServices) =>
                 {
                     if (func.Arguments.Count < 1)

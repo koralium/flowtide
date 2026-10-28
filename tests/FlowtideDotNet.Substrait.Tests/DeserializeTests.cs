@@ -19,16 +19,16 @@ namespace FlowtideDotNet.Substrait.Tests
         {
             string ibisOutput = @"
 {
-  ""extensionUris"": [
+  ""extensionUrns"": [
     {
-      ""extensionUriAnchor"": 1,
-      ""uri"": ""https://github.com/substrait-io/substrait/blob/main/extensions/functions_comparison.yaml""
+      ""extensionUrnAnchor"": 1,
+      ""urn"": ""extension:io.substrait:functions_comparison""
     }
   ],
   ""extensions"": [
     {
       ""extensionFunction"": {
-        ""extensionUriReference"": 1,
+        ""extensionUrnReference"": 1,
         ""functionAnchor"": 1,
         ""name"": ""equal:any_any""
       }

@@ -1,5 +1,5 @@
-﻿### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_datetime'
 
 # basic: Basic examples without any special cases
 format('2020-03-04T13:04:01'::ts, 'yyyyMMdd'::str) = '20200304'::str

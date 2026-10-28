@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Substrait.Tests.CloneTests.ExpressionClone
         {
             root = new ScalarFunction()
             {
-                ExtensionUri = "http://example.com",
+                ExtensionUrn = "http://example.com",
                 ExtensionName = "myFunc",
                 Arguments = new List<Expression>
                 {

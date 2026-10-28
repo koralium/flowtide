@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,7 +14,8 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
     public static class FunctionsRounding
     {
-        public const string Uri = "/functions_rounding.yaml";
+        public const string Urn = "extension:io.substrait:functions_rounding";
+        public const string FlowtideUrn = "extension:io.github.koralium.flowtide:functions_rounding";
         public const string Ceil = "ceil";
         public const string Floor = "floor";
         public const string Round = "round";

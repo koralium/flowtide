@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -14,7 +14,8 @@ namespace FlowtideDotNet.Substrait.FunctionExtensions
 {
     public static class FunctionsDatetime
     {
-        public const string Uri = "/functions_datetime.yaml";
+        public const string Urn = "extension:io.github.koralium.flowtide:functions_datetime";
+        public const string StandardUrn = "extension:io.substrait:functions_datetime";
         public const string Strftime = "strftime";
         public const string GetTimestamp = "gettimestamp";
         public const string FloorTimestampDay = "floor_timestamp_day";

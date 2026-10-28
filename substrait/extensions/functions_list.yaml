@@ -6,14 +6,13 @@ dependencies:
   flowtide_types: extension:io.github.koralium.flowtide:types
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
 scalar_functions:
   - name: list_sort_asc_null_last
     description: >-
       Sort ascending with nulls last. Non-list input returns null.
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
     impls:
       - args:
           - value: list<any>
@@ -23,7 +22,7 @@ scalar_functions:
     description: >-
       First differing element of the first list, or null if none differs.
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
     impls:
       - args:
           - value: list<any>
@@ -36,7 +35,7 @@ aggregate_functions:
     description: Collect non-null values, retaining weighted duplicates, in ascending Flowtide value order. Empty/all-null
       groups return an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected.
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
     impls:
       - args:
           - value: any1
@@ -48,7 +47,7 @@ aggregate_functions:
       Null lists are ignored; null elements inside lists are retained once. Empty input returns an empty list. Aggregate
       ORDER BY and SQL DISTINCT are rejected; deduplication is intrinsic to the function.
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
     impls:
       - args:
           - value: list<any1>

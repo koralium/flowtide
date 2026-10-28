@@ -4,15 +4,14 @@ urn: extension:io.github.koralium.flowtide:functions_hash
 description: Flowtide non-cryptographic hash functions.
 metadata:
   dialect: ../dialect.yaml
-  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
-    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  runtime_binding: References use this extension URN and the function or type name.
 scalar_functions:
   - name: xxhash64
     description: >-
       Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
       a GUID-formatted string.
     metadata:
-      legacy_extension_uri: /functions_hash.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_hash
     impls:
       - args:
           - value: any
@@ -26,7 +25,7 @@ scalar_functions:
       Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
       a GUID-formatted string.
     metadata:
-      legacy_extension_uri: /functions_hash.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_hash
     impls:
       - args:
           - value: any

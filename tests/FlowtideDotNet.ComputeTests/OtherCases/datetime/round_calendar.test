@@ -1,5 +1,5 @@
 ### SUBSTRAIT_SCALAR_TEST: v1.0
-### SUBSTRAIT_INCLUDE: '/extensions/functions_datetime.yaml'
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_datetime'
 
 # Rounding to the nearest year
 round_calendar('2020-03-04T13:04:01'::ts, 'FLOOR'::str, 'YEAR'::str, 'YEAR'::str, 1::i64) = '2020-01-01T00:00:00'::ts

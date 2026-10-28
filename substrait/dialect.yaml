@@ -74,7 +74,7 @@ metadata:
           - list
           - map
         metadata:
-          legacy_extension_uri: /functions_table_generic.yaml
+          runtime_extension_urn: extension:io.github.koralium.flowtide:functions_table_generic
           sql_signature: unnest(collection)
           sql_examples:
             - SELECT val FROM UNNEST(list(1, 2, 3)) val
@@ -89,7 +89,7 @@ metadata:
         supported_impls:
           - ptstz_i64_str
         metadata:
-          legacy_extension_uri: /functions_datetime.yaml
+          runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
           sql_signature: tumbling_window(timestamp, size_amount, size_unit)
           sql_examples:
             - SELECT o.id, window_start, window_end FROM orders o INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')
@@ -104,7 +104,7 @@ metadata:
         supported_impls:
           - ptstz_i64_str_i64_str
         metadata:
-          legacy_extension_uri: /functions_datetime.yaml
+          runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
           sql_signature: hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)
           sql_examples:
             - SELECT o.id, window_start, window_end FROM orders o INNER JOIN hopping_window(o.order_time, 5, 'MINUTE',
@@ -200,7 +200,7 @@ supported_scalar_functions:
       overflow: SILENT
     supported_impls: [i64_i64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x + y
       notes: >-
         Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
@@ -215,7 +215,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x + y
       notes: >-
         Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
@@ -229,7 +229,7 @@ supported_scalar_functions:
       overflow: SILENT
     supported_impls: [i64_i64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x - y
       notes: >-
         Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
@@ -244,7 +244,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x - y
       notes: >-
         Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
@@ -258,7 +258,7 @@ supported_scalar_functions:
       overflow: SILENT
     supported_impls: [i64_i64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x * y
       notes: >-
         Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
@@ -273,7 +273,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x * y
       notes: >-
         Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
@@ -287,7 +287,7 @@ supported_scalar_functions:
       overflow: SILENT
     supported_impls: [i64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: -x
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -300,7 +300,7 @@ supported_scalar_functions:
       notation: PREFIX
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: -x
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -315,7 +315,7 @@ supported_scalar_functions:
       overflow: ERROR
     supported_impls: [i64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: abs(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -328,7 +328,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: abs(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -343,7 +343,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: x / y
       notes: >-
         Floating division. Integer inputs also produce a floating result in Flowtide, so the upstream integer-returning
@@ -356,7 +356,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: power(x, y)
       notes: >-
         Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results
@@ -369,7 +369,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sign(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -385,7 +385,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sqrt(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -400,7 +400,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: exp(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -415,7 +415,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: cos(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -430,7 +430,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sin(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -445,7 +445,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: tan(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -460,7 +460,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: cosh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -475,7 +475,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sinh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -490,7 +490,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: tanh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -506,7 +506,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: acos(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -522,7 +522,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: asin(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -537,7 +537,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: atan(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -553,7 +553,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: acosh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -568,7 +568,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: asinh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -584,7 +584,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: atanh(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -600,7 +600,7 @@ supported_scalar_functions:
       on_domain_error: NAN
     supported_impls: [fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: atan2(y, x)
       notes: >-
         Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results
@@ -615,7 +615,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: radians(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -630,7 +630,7 @@ supported_scalar_functions:
       rounding: TIE_TO_EVEN
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: degrees(x)
       notes: >-
         Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
@@ -644,7 +644,7 @@ supported_scalar_functions:
     supported_impls: [bool]
     variadic: {}
     metadata:
-      legacy_extension_uri: /functions_boolean.yaml
+      runtime_extension_urn: extension:io.substrait:functions_boolean
       sql_signature: x AND y
       notes: >-
         Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation
@@ -658,7 +658,7 @@ supported_scalar_functions:
     supported_impls: [bool]
     variadic: {}
     metadata:
-      legacy_extension_uri: /functions_boolean.yaml
+      runtime_extension_urn: extension:io.substrait:functions_boolean
       sql_signature: x OR y
       notes: >-
         Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation
@@ -671,7 +671,7 @@ supported_scalar_functions:
       notation: PREFIX
     supported_impls: [bool]
     metadata:
-      legacy_extension_uri: /functions_boolean.yaml
+      runtime_extension_urn: extension:io.substrait:functions_boolean
       sql_signature: NOT x
       notes: >-
         SQL three-valued boolean negation.
@@ -683,7 +683,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [bool_bool]
     metadata:
-      legacy_extension_uri: /functions_boolean.yaml
+      runtime_extension_urn: extension:io.substrait:functions_boolean
       sql_signature: x XOR y
       notes: >-
         Boolean exclusive OR.
@@ -695,7 +695,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x = y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -708,7 +708,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x <> y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -721,7 +721,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x > y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -734,7 +734,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x >= y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -747,7 +747,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x < y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -760,7 +760,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x <= y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -773,7 +773,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x IS DISTINCT FROM y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -786,7 +786,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x IS NOT DISTINCT FROM y
       notes: >-
         Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
@@ -799,7 +799,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: nullif(x, y)
       notes: >-
         Return null when equal; otherwise return x.
@@ -811,7 +811,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [any_any_any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x BETWEEN lower AND upper
       notes: >-
         Inclusive range test using SQL null semantics.
@@ -823,7 +823,7 @@ supported_scalar_functions:
       notation: POSTFIX
     supported_impls: [any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x IS NULL
       notes: >-
         Null test returning a boolean.
@@ -835,7 +835,7 @@ supported_scalar_functions:
       notation: POSTFIX
     supported_impls: [any]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: x IS NOT NULL
       notes: >-
         Null test returning a boolean.
@@ -847,7 +847,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: is_finite(x)
       notes: >-
         Test for a special numeric value.
@@ -859,7 +859,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: is_infinite(x)
       notes: >-
         Test for a special numeric value.
@@ -871,7 +871,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: is_nan(x)
       notes: >-
         Test for a special numeric value.
@@ -885,7 +885,7 @@ supported_scalar_functions:
     variadic:
       min: 2
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: coalesce(x, ...)
       notes: >-
         First non-null argument.
@@ -899,7 +899,7 @@ supported_scalar_functions:
     variadic:
       min: 2
     metadata:
-      legacy_extension_uri: /functions_comparison.yaml
+      runtime_extension_urn: extension:io.substrait:functions_comparison
       sql_signature: greatest(x, y, ...)
       notes: >-
         Greatest value; a null argument propagates null. Requires at least two arguments.
@@ -911,7 +911,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: lower(string)
       notes: >-
         String operation; incompatible input kinds generally yield null.
@@ -923,7 +923,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: upper(string)
       notes: >-
         String operation; incompatible input kinds generally yield null.
@@ -935,7 +935,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: len(string)
       notes: >-
         Counts Unicode text elements (grapheme clusters) using .NET StringInfo. The SQL spelling is len.
@@ -947,7 +947,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: trim(string)
       notes: >-
         The native Substrait binding supports an explicit character set as the second argument. Flowtide also
@@ -960,7 +960,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: ltrim(string)
       notes: >-
         The native Substrait binding supports an explicit character set as the second argument. Flowtide also
@@ -973,7 +973,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: rtrim(string)
       notes: >-
         The native Substrait binding supports an explicit character set as the second argument. Flowtide also
@@ -986,7 +986,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: replace(string, old, replacement)
       notes: >-
         String operation; incompatible input kinds generally yield null.
@@ -1000,7 +1000,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_SENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: string LIKE pattern [ESCAPE character]
       notes: >-
         Case-sensitive LIKE. The native runtime also accepts an explicit escape argument and SQL Server-style
@@ -1013,7 +1013,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: string_split(string, separator)
       notes: >-
         String operation; incompatible input kinds generally yield null.
@@ -1027,7 +1027,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_SENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: regexp_string_split(string, pattern)
       notes: >-
         Case-sensitive .NET regular expression splitting with explicit capture. Multiline and dotall modes are
@@ -1042,7 +1042,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_SENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: starts_with(string, prefix)
       notes: >-
         Prefix test; incompatible runtime input kinds return false.
@@ -1056,7 +1056,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_INSENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: starts_with(string, prefix)
       notes: >-
         Prefix test; incompatible runtime input kinds return false.
@@ -1070,7 +1070,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_SENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: strpos(string, substring)
       notes: >-
         One-based position, or zero if the substring is absent.
@@ -1084,7 +1084,7 @@ supported_scalar_functions:
       case_sensitivity: CASE_INSENSITIVE
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: strpos(string, substring)
       notes: >-
         One-based position, or zero if the substring is absent.
@@ -1100,7 +1100,7 @@ supported_scalar_functions:
     variadic:
       min: 1
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: concat(x, y, ...)
       notes: >-
         Null propagates. Also exposed as the SQL || operator.
@@ -1116,7 +1116,7 @@ supported_scalar_functions:
     variadic:
       min: 1
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: concat(x, y, ...)
       notes: >-
         Null propagates. Also exposed as the SQL || operator.
@@ -1130,7 +1130,7 @@ supported_scalar_functions:
       negative_start: WRAP_FROM_END
     supported_impls: [str_i32, str_i32_i32]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: substring(string, start [, length])
       notes: >-
         Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument
@@ -1145,7 +1145,7 @@ supported_scalar_functions:
       negative_start: LEFT_OF_BEGINNING
     supported_impls: [str_i32_i32]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: substring(string, start [, length])
       notes: >-
         Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument
@@ -1158,7 +1158,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_rounding.yaml
+      runtime_extension_urn: extension:io.substrait:functions_rounding
       sql_signature: ceil(x)
       sql_aliases:
         - ceiling
@@ -1173,7 +1173,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [fp64]
     metadata:
-      legacy_extension_uri: /functions_rounding.yaml
+      runtime_extension_urn: extension:io.substrait:functions_rounding
       sql_signature: floor(x)
       notes: >-
         The native double implementation converts the rounded value through Int64. Restrict inputs to finite values
@@ -1189,7 +1189,7 @@ supported_scalar_functions:
       on_log_zero: NAN
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1205,7 +1205,7 @@ supported_scalar_functions:
       on_log_zero: ERROR
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1221,7 +1221,7 @@ supported_scalar_functions:
       on_log_zero: MINUS_INFINITY
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1237,7 +1237,7 @@ supported_scalar_functions:
       on_log_zero: NAN
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1253,7 +1253,7 @@ supported_scalar_functions:
       on_log_zero: ERROR
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1269,7 +1269,7 @@ supported_scalar_functions:
       on_log_zero: MINUS_INFINITY
     supported_impls: [i64, fp64]
     metadata:
-      legacy_extension_uri: /functions_logarithmic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_logarithmic
       sql_signature: log10(x)
       notes: >-
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
@@ -1282,7 +1282,7 @@ supported_scalar_functions:
       notation: INFIX
     supported_impls: [i64_i64, fp64_fp64]
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: x % y
       notes: >-
         Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload
@@ -1296,7 +1296,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [i64, fp64, dec]
     metadata:
-      legacy_extension_uri: /functions_rounding.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_rounding
       sql_signature: round(x)
       notes: >-
         One-argument rounding with ties to even, unlike upstream round(value, scale). Double results pass through
@@ -1310,7 +1310,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: trim(string)
       notes: >-
         One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
@@ -1323,7 +1323,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: ltrim(string)
       notes: >-
         One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
@@ -1336,7 +1336,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: rtrim(string)
       notes: >-
         One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
@@ -1349,7 +1349,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str_str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: string LIKE pattern [ESCAPE character]
       notes: >-
         Three-argument LIKE with an explicit escape character. SQL Server-style %/_/bracket patterns are supported.
@@ -1362,7 +1362,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: string_base64_encode(string)
       notes: >-
         Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
@@ -1374,7 +1374,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: string_base64_decode(string)
       notes: >-
         Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
@@ -1386,7 +1386,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [any]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: to_string(value)
       notes: >-
         String operation; incompatible input kinds generally yield null.
@@ -1398,7 +1398,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [any]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: to_json(value)
       notes: >-
         Serialize a Flowtide value to JSON text.
@@ -1410,7 +1410,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str, vbin]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: from_json(json)
       notes: >-
         Parse JSON text or UTF-8 binary into dynamic Flowtide values.
@@ -1422,7 +1422,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_list]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: string_join(separator, list)
       notes: >-
         Separator is the first argument. Null list returns null; empty/all-null list returns an empty string;
@@ -1435,7 +1435,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str]
     metadata:
-      legacy_extension_uri: /functions_guid.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_guid
       sql_signature: guid(string)
       notes: >-
         Parse a GUID string into its 16-byte .NET GUID representation. Invalid input returns null; this does not
@@ -1449,7 +1449,7 @@ supported_scalar_functions:
     variadic:
       min: 1
     metadata:
-      legacy_extension_uri: /functions_hash.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_hash
       sql_signature: xxhash64(value, ...)
       notes: >-
         Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
@@ -1464,7 +1464,7 @@ supported_scalar_functions:
     variadic:
       min: 1
     metadata:
-      legacy_extension_uri: /functions_hash.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_hash
       sql_signature: xxhash128_guid_string(value, ...)
       notes: >-
         Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
@@ -1477,7 +1477,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [list]
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
       sql_signature: list_sort_asc_null_last(list)
       notes: >-
         Sort ascending with nulls last. Non-list input returns null.
@@ -1489,7 +1489,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [list_list]
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
       sql_signature: list_first_difference(first, second)
       notes: >-
         First differing element of the first list, or null if none differs.
@@ -1503,7 +1503,7 @@ supported_scalar_functions:
     variadic:
       min: 2
     metadata:
-      legacy_extension_uri: /struct.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:struct
       sql_signature: named_struct('field', value, ...)
       notes: >-
         named_struct alternates string-literal field names and values, with an even argument count. The schema
@@ -1518,7 +1518,7 @@ supported_scalar_functions:
     variadic:
       min: 2
     metadata:
-      legacy_extension_uri: /check.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:check
       sql_signature: check_true(condition, 'message' [, tags...])
       requires_optimizer_pass: CheckExtractor
       notes: >-
@@ -1537,7 +1537,7 @@ supported_scalar_functions:
     variadic:
       min: 3
     metadata:
-      legacy_extension_uri: /check.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:check
       sql_signature: check_value(value, condition, 'message' [, tags...])
       requires_optimizer_pass: CheckExtractor
       notes: >-
@@ -1554,7 +1554,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [i64_str]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: strftime(unix_microseconds, format)
       notes: >-
         Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format
@@ -1567,7 +1567,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [ptstz]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: floor_timestamp_day(timestamp)
       notes: >-
         Remove the time-of-day component; incompatible values return null.
@@ -1579,7 +1579,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_str]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: timestamp_parse(string, format)
       notes: >-
         Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.
@@ -1591,7 +1591,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [ptstz_str]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: timestamp_format(timestamp, format)
       notes: >-
         Format typed timestamps with .NET date/time format strings.
@@ -1603,7 +1603,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_ptstz]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: timestamp_extract(component, timestamp)
       notes: >-
         Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
@@ -1617,7 +1617,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_i64_ptstz]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: timestamp_add(component, amount, timestamp)
       notes: >-
         Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.
@@ -1629,7 +1629,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str_ptstz_ptstz]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: datediff(component, start, end)
       notes: >-
         Count crossed component boundaries.
@@ -1641,7 +1641,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [ptstz_str_str_str_i64]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: round_calendar(timestamp, operation, component, reference, step)
       notes: >-
         Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
@@ -1651,7 +1651,7 @@ supported_scalar_functions:
     name: tumbling_window_start
     supported_impls: [ptstz_i64]
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_exposed: false
       notes: >-
         Internal scalar used by window-join optimization. Arguments are timestamp and a positive literal size
@@ -1666,7 +1666,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: ['']
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       sql_signature: gettimestamp()
       requires_optimizer_pass: TimestampToJoin
       notes: >-
@@ -1681,7 +1681,7 @@ supported_scalar_functions:
       notation: FUNCTION
     supported_impls: [str, vbin]
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_string
       sql_signature: from_json(json)
       notes: >-
         Parse JSON text or UTF-8 binary into dynamic Flowtide values.
@@ -1705,7 +1705,7 @@ supported_aggregate_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_aggregate_generic
       sql_signature: COUNT(*)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1722,7 +1722,7 @@ supported_aggregate_functions:
     supported_impls:
       - any
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
       sql_signature: COUNT(DISTINCT x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1738,7 +1738,7 @@ supported_aggregate_functions:
     supported_impls:
       - ''
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
       sql_signature: surrogate_key_int64()
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1758,7 +1758,7 @@ supported_aggregate_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sum(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1777,7 +1777,7 @@ supported_aggregate_functions:
     required_options:
       overflow: ERROR
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: sum(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1798,7 +1798,7 @@ supported_aggregate_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: sum0(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1818,7 +1818,7 @@ supported_aggregate_functions:
     required_options:
       overflow: ERROR
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: sum0(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1839,7 +1839,7 @@ supported_aggregate_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: avg(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1857,7 +1857,7 @@ supported_aggregate_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: avg(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1876,7 +1876,7 @@ supported_aggregate_functions:
     required_options:
       overflow: ERROR
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: avg(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1896,7 +1896,7 @@ supported_aggregate_functions:
       - i64
       - fp64
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: min(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1912,7 +1912,7 @@ supported_aggregate_functions:
     supported_impls:
       - dec
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic_decimal
       sql_signature: min(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1929,7 +1929,7 @@ supported_aggregate_functions:
     supported_impls:
       - ptstz
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_datetime
       sql_signature: min(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1937,7 +1937,7 @@ supported_aggregate_functions:
       sql_distinct: true
       notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
         no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain
-        the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.
+        the chosen value's offset. The runtime uses the standard datetime extension URN for this timestamp profile.
       doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
   - source: flowtide_arithmetic
     name: min
@@ -1947,7 +1947,7 @@ supported_aggregate_functions:
     supported_impls:
       - any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: min(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1965,7 +1965,7 @@ supported_aggregate_functions:
       - i64
       - fp64
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       sql_signature: max(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1981,7 +1981,7 @@ supported_aggregate_functions:
     supported_impls:
       - dec
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic_decimal
       sql_signature: max(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -1998,7 +1998,7 @@ supported_aggregate_functions:
     supported_impls:
       - ptstz
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_datetime
       sql_signature: max(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2006,7 +2006,7 @@ supported_aggregate_functions:
       sql_distinct: true
       notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
         no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain
-        the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.
+        the chosen value's offset. The runtime uses the standard datetime extension URN for this timestamp profile.
       doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
   - source: flowtide_arithmetic
     name: max
@@ -2016,7 +2016,7 @@ supported_aggregate_functions:
     supported_impls:
       - any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: max(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2033,7 +2033,7 @@ supported_aggregate_functions:
     supported_impls:
       - any_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: min_by(x, y)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2048,7 +2048,7 @@ supported_aggregate_functions:
     supported_impls:
       - any_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: max_by(x, y)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2063,7 +2063,7 @@ supported_aggregate_functions:
     supported_impls:
       - any
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
       sql_signature: list_agg(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2080,7 +2080,7 @@ supported_aggregate_functions:
     supported_impls:
       - list
     metadata:
-      legacy_extension_uri: /functions_list.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_list
       sql_signature: list_union_distinct_agg(x)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2098,7 +2098,7 @@ supported_aggregate_functions:
     supported_impls:
       - str_str
     metadata:
-      legacy_extension_uri: /functions_string.yaml
+      runtime_extension_urn: extension:io.substrait:functions_string
       sql_signature: string_agg(x, separator)
       aggregation_phase: INITIAL_TO_RESULT
       supports_filter: true
@@ -2111,6 +2111,49 @@ supported_aggregate_functions:
         also yields null if all strings and the separator are empty. User-supplied aggregate ORDER BY and SQL DISTINCT
         are rejected.
       doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.html
+
+  - source: flowtide_arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
+      sql_signature: sum(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Dynamically typed numeric sum for any inputs. The runtime selects Int64, Double or System.Decimal; empty/all-null input returns null. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: sum0
+    system_metadata:
+      name: sum0
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
+      sql_signature: sum0(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Dynamically typed numeric sum for any inputs. The runtime selects Int64, Double or System.Decimal; empty/all-null input returns zero. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
+      sql_signature: avg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Dynamically typed numeric average for any inputs. Integer values produce a fractional Double; decimal values use System.Decimal. Empty/all-null input returns null. Int64 overflow wraps; decimal overflow throws. Null and incompatible inputs are ignored.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
 
 # Window functions
 # Execute through ConsistentPartitionWindowRel, not the general WINDOW_FUNCTION expression form.
@@ -2125,7 +2168,7 @@ supported_window_functions:
     supported_impls:
       - ''
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: row_number() OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2148,7 +2191,7 @@ supported_window_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: sum(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2185,7 +2228,7 @@ supported_window_functions:
     required_options:
       overflow: ERROR
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: sum(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2219,7 +2262,7 @@ supported_window_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: avg(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2251,7 +2294,7 @@ supported_window_functions:
     required_options:
       overflow: SILENT
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: avg(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2284,7 +2327,7 @@ supported_window_functions:
     required_options:
       overflow: ERROR
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: avg(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2316,7 +2359,7 @@ supported_window_functions:
     supported_impls:
       - any_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: min_by(x, y) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2344,7 +2387,7 @@ supported_window_functions:
     supported_impls:
       - any_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: AGGREGATE_FUNCTION
       sql_signature: max_by(x, y) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2372,7 +2415,7 @@ supported_window_functions:
     supported_impls:
       - any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: last_value(x) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2401,7 +2444,7 @@ supported_window_functions:
     required_options:
       NULL_TREATMENT: IGNORE_NULLS
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: last_value(x) IGNORE NULLS OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2430,7 +2473,7 @@ supported_window_functions:
       - any_i32
       - any_i32_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: lead(x [, offset [, default]]) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2457,7 +2500,7 @@ supported_window_functions:
       - any_i64
       - any_i64_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: lead(x, offset [, default]) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2484,7 +2527,7 @@ supported_window_functions:
       - any_i32
       - any_i32_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: lag(x [, offset [, default]]) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2511,7 +2554,7 @@ supported_window_functions:
       - any_i64
       - any_i64_any
     metadata:
-      legacy_extension_uri: /functions_arithmetic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       definition_kind: WINDOW_FUNCTION
       sql_signature: lag(x, offset [, default]) OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2536,7 +2579,7 @@ supported_window_functions:
     supported_impls:
       - ''
     metadata:
-      legacy_extension_uri: /functions_aggregate_generic.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
       definition_kind: WINDOW_FUNCTION
       sql_signature: surrogate_key_int64() OVER (...)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2559,7 +2602,7 @@ supported_window_functions:
     supported_impls:
       - i64_str
     metadata:
-      legacy_extension_uri: /functions_datetime.yaml
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_datetime
       definition_kind: WINDOW_FUNCTION
       sql_signature: session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC)
       plan_representation: CONSISTENT_PARTITION_WINDOW
@@ -2591,6 +2634,49 @@ supported_window_functions:
         for the bulk window operator.
       sql_example: SELECT session_window(30, 'MINUTE') OVER (PARTITION BY user_id ORDER BY event_time) FROM events
       doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/datetime.html
+
+  - source: flowtide_arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: sum(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types: [ROWS]
+      supports_filter: false
+      sql_distinct: false
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      notes: Dynamically typed numeric sum for any inputs. The runtime chooses the numeric value kind from input values. Null and incompatible inputs are ignored; empty/all-null frames return null. Explicit ROWS frames use integer literal bounds. Without ORDER BY the whole partition is used; otherwise the default frame ends at the current row. RANGE, GROUPS, FILTER and DISTINCT are unsupported.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: avg(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types: [ROWS]
+      supports_filter: false
+      sql_distinct: false
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      notes: Dynamically typed numeric avg for any inputs. The runtime chooses the numeric value kind from input values. Null and incompatible inputs are ignored; empty/all-null frames return null. Explicit ROWS frames use integer literal bounds. Without ORDER BY the whole partition is used; otherwise the default frame ends at the current row. RANGE, GROUPS, FILTER and DISTINCT are unsupported.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
 
 # Relations
 # Lists executable protobuf relation forms, with known import/export restrictions in metadata.
@@ -3016,7 +3102,7 @@ supported_types:
         schema_export: PARTIAL
         non_null_literal_import: false
       standalone_protobuf_codec:
-        legacy_extension_uri: /named_struct_type.yaml
+        runtime_extension_urn: extension:io.github.koralium.flowtide:types
         name: named_struct
         parameters: FIELD_NAME_STRINGS_THEN_STRUCT_DATA_TYPE
       native_cast: false
@@ -3036,13 +3122,13 @@ supported_types:
       runtime_value: Dynamically tagged IDataValue
       wire_support:
         schema_import: PARTIAL
-        schema_export: LEGACY_CODEC
+        schema_export: FLOWTIDE_CODEC
         non_null_literal_import: false
-      legacy_extension_uri: /any_type.yaml
-      legacy_type_name: any
+      runtime_extension_urn: extension:io.github.koralium.flowtide:types
+      runtime_type_name: dynamic
       imported_nullability: ALWAYS_NULLABLE
       notes: Flowtide any represents dynamic values, including null and values whose output kind, decimal scale
-        or nested shape cannot be fixed by a signature. It serializes through the legacy /any_type.yaml type named
-        any. Import always creates nullable AnyType, even when the wire annotation is required. It is a Flowtide
+        or nested shape cannot be fixed by a signature. It serializes as the dynamic type in
+        extension:io.github.koralium.flowtide:types. Import always creates nullable AnyType, even when the wire annotation is required. It is a Flowtide
         type codec, not the standard UNBOUND type. Other user-defined names are rejected except named_struct, which
         is the STRUCT annotation wrapper described above.

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -165,7 +165,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Condition = new ScalarFunction()
                             {
                                 ExtensionName = FunctionsComparison.Equal,
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 Arguments = new List<Expression>()
                                 {
                                     new DirectFieldReference()
@@ -328,7 +328,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Expression = new ScalarFunction()
                             {
                                 ExtensionName = FunctionsComparison.Equal,
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 Arguments = new List<Expression>()
                                 {
                                     new DirectFieldReference()
@@ -421,7 +421,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Expression = new ScalarFunction()
                             {
                                 ExtensionName = FunctionsComparison.Equal,
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 Arguments = new List<Expression>()
                                 {
                                     new DirectFieldReference()
@@ -570,7 +570,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         {
                             new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsString.Uri,
+                                ExtensionUrn = FunctionsString.Urn,
                                 ExtensionName = FunctionsString.Concat,
                                 Arguments = new List<Expression>()
                                 {
@@ -645,7 +645,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         If = new ScalarFunction()
                                         {
                                             ExtensionName = FunctionsComparison.Equal,
-                                            ExtensionUri = FunctionsComparison.Uri,
+                                            ExtensionUrn = FunctionsComparison.Urn,
                                             Arguments = new List<Expression>()
                                             {
                                                 new DirectFieldReference()
@@ -665,7 +665,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                         If = new ScalarFunction()
                                         {
                                             ExtensionName = FunctionsComparison.Equal,
-                                            ExtensionUri = FunctionsComparison.Uri,
+                                            ExtensionUrn = FunctionsComparison.Urn,
                                             Arguments = new List<Expression>()
                                             {
                                                 new DirectFieldReference()
@@ -727,7 +727,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         {
                             new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Coalesce,
                                 Arguments = new List<Expression>()
                                 {
@@ -895,7 +895,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         Input = new FilterRelation(){
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.IsNotNull,
                                 Arguments = new List<Expression>()
                                 {
@@ -1143,7 +1143,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                 {
                                     Measure = new AggregateFunction()
                                     {
-                                        ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                        ExtensionUrn = FunctionsAggregateGeneric.Urn,
                                         ExtensionName = FunctionsAggregateGeneric.Count,
                                         Arguments = new List<Expression>()
                                     }
@@ -1231,7 +1231,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                 {
                                     Measure = new AggregateFunction()
                                     {
-                                        ExtensionUri = FunctionsAggregateGeneric.Uri,
+                                        ExtensionUrn = FunctionsAggregateGeneric.Urn,
                                         ExtensionName = FunctionsAggregateGeneric.Count,
                                         Arguments = new List<Expression>()
                                     }
@@ -1270,7 +1270,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         {
                             new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsArithmetic.Uri,
+                                ExtensionUrn = FunctionsArithmetic.Urn,
                                 ExtensionName = FunctionsArithmetic.Add,
                                 Arguments = new List<Expression>()
                                 {
@@ -1622,7 +1622,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Type = JoinType.Left,
                             Expression = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>
                                 {
@@ -1730,7 +1730,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Type = JoinType.Left,
                             Expression = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>
                                 {
@@ -1898,7 +1898,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Type = JoinType.Left,
                             Expression = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>
                                 {
@@ -1923,7 +1923,7 @@ namespace FlowtideDotNet.Substrait.Tests
                                 Type = JoinType.Left,
                                 Expression = new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionUrn = FunctionsComparison.Urn,
                                     ExtensionName = FunctionsComparison.Equal,
                                     Arguments = new List<Expression>
                                     {
@@ -2057,7 +2057,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             Type = JoinType.Left,
                             Expression = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>
                                 {
@@ -2349,7 +2349,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         {
                             new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.IsDistinctFrom,
                                 Arguments = new List<Expression>()
                                 {
@@ -2413,7 +2413,7 @@ namespace FlowtideDotNet.Substrait.Tests
                         {
                             new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.IsNotDistinctFrom,
                                 Arguments = new List<Expression>()
                                 {

@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Filter = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -159,7 +159,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Filter = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -212,7 +212,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Filter = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -262,7 +262,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Filter = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -317,7 +317,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         {
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -372,7 +372,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             Emit = new List<int>() {0, 1, 2, 4},
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -488,7 +488,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -583,7 +583,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -679,7 +679,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {
@@ -771,7 +771,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             },
                             Condition = new ScalarFunction()
                             {
-                                ExtensionUri = FunctionsComparison.Uri,
+                                ExtensionUrn = FunctionsComparison.Urn,
                                 ExtensionName = FunctionsComparison.Equal,
                                 Arguments = new List<Expression>()
                                 {

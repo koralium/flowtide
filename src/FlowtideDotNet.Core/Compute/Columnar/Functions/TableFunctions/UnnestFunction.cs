@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.TableFunctions
 
         public static void AddBuiltInUnnestFunction(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterColumnTableFunction(FunctionsTableGeneric.Uri, FunctionsTableGeneric.Unnest,
+            functionsRegister.RegisterColumnTableFunction(FunctionsTableGeneric.Urn, FunctionsTableGeneric.Unnest,
                 (tableFunc, parameterInfo, visitor, memoryAllocator, outputParam) =>
                 {
                     if (tableFunc.Arguments.Count != 1)

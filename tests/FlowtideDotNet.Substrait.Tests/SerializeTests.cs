@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -273,7 +273,7 @@ namespace FlowtideDotNet.Substrait.Tests
                     {
                         Expressions = [new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsString.Uri,
+                            ExtensionUrn = FunctionsString.Urn,
                             ExtensionName = FunctionsString.Substring,
                             Arguments = [new StringLiteral() { Value = "a" }],
                             Options = new SortedList<string, string>() { { "negative_start", "WRAP_FROM_END" } }
@@ -306,7 +306,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             {
                                 Measure = new AggregateFunction()
                                 {
-                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionUrn = FunctionsArithmetic.Urn,
                                     ExtensionName = FunctionsArithmetic.Sum,
                                     Arguments = [new StringLiteral() { Value = "a" }],
                                     Options = new SortedList<string, string>() { { "NULL_TREATMENT", "IGNORE_NULLS" } }
@@ -604,7 +604,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             {
                                 Measure = new AggregateFunction()
                                 {
-                                    ExtensionUri = FunctionsArithmetic.Uri,
+                                    ExtensionUrn = FunctionsArithmetic.Urn,
                                     ExtensionName = FunctionsArithmetic.Sum0,
                                     Arguments = new List<Expression>()
                                     {
@@ -672,7 +672,7 @@ namespace FlowtideDotNet.Substrait.Tests
                             {
                                 Condition = new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsComparison.Uri,
+                                    ExtensionUrn = FunctionsComparison.Urn,
                                     ExtensionName = FunctionsComparison.Equal,
                                     Arguments = new List<Expression>() { CheckField(0), CheckField(1) }
                                 },

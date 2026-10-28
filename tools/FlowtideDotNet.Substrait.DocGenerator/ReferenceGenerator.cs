@@ -26,7 +26,7 @@ internal static class ReferenceGenerator
         new("window", "Window functions", "Window"), new("table", "Table functions", "Table")
     ];
     private static readonly HashSet<string> SeparateMetadata =
-    ["notes", "sql_signature", "sql_example", "sql_examples", "doc_url", "legacy_extension_uri", "definition_kind"];
+    ["notes", "sql_signature", "sql_example", "sql_examples", "doc_url", "runtime_extension_urn", "definition_kind"];
     private const string Guidance = "Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; "
         + "they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, "
         + "not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. "
@@ -126,7 +126,7 @@ internal static class ReferenceGenerator
         if (entry.Category == "table")
             foreach (var details in implementations.Select(impl => impl.Definition).Distinct()
                 .Select(definition => definition["metadata"]).OfType<JsonObject>())
-                foreach (var fact in details.Where(pair => pair.Key != "legacy_extension_uri").OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                foreach (var fact in details.Where(pair => pair.Key != "runtime_extension_urn").OrderBy(pair => pair.Key, StringComparer.Ordinal))
                     yield return (Label(fact.Key), Format(fact.Value));
     }
 

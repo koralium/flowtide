@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -53,7 +53,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                     {
                         Measure = new Expressions.AggregateFunction()
                         {
-                            ExtensionUri = "uri",
+                            ExtensionUrn = "uri",
                             ExtensionName = "name",
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -93,7 +93,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                     {
                         Measure = new Expressions.AggregateFunction()
                         {
-                            ExtensionUri = "uri",
+                            ExtensionUrn = "uri",
                             ExtensionName = "name",
                             Arguments = new List<Expressions.Expression>()
                             {
@@ -133,7 +133,7 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
                     {
                         Measure = new Expressions.AggregateFunction()
                         {
-                            ExtensionUri = "uri2",
+                            ExtensionUrn = "uri2",
                             ExtensionName = "name2",
                             Arguments = new List<Expressions.Expression>()
                             {

@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -20,15 +20,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions
     {
         public static void AddBuiltInWindowFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new SumWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new RowNumberWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new LeadWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new SurrogateKeyInt64WindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lag, new LagWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new LastValueWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, new MinByWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, new MaxByWindowFunctionDefinition());
-            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Average, new AverageWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum, new SumWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.RowNumber, new RowNumberWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Lead, new LeadWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsAggregateGeneric.FlowtideUrn, FunctionsAggregateGeneric.SurrogateKeyInt64, new SurrogateKeyInt64WindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Lag, new LagWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.LastValue, new LastValueWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MinBy, new MinByWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MaxBy, new MaxByWindowFunctionDefinition());
+            functionsRegister.RegisterWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Average, new AverageWindowFunctionDefinition());
         }
     }
 }

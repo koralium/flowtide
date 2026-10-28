@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -25,35 +25,35 @@ namespace FlowtideDotNet.Core.Compute.Internal
 
         public static void AddBuiltInArithmaticFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Add, (x, y) => AddImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Subtract, (x, y) => SubtractImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, (x, y) => ModuloImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Power, (x, y) => PowerImplementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Sqrt, (x) => SqrtImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Exp, (x) => ExpImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Cos, (x) => CosImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Sin, (x) => SinImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Tan, (x) => TanImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Cosh, (x) => CoshImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Sinh, (x) => SinhImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Tanh, (x) => TanhImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Acos, (x) => AcosImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Asin, (x) => AsinImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Atan, (x) => AtanImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Acosh, (x) => AcoshImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Asinh, (x) => AsinhImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Atanh, (x) => AtanhImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Atan2, (x, y) => Atan2Implementation(x, y));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Radians, (x) => RadiansImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Degrees, (x) => DegreesImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Abs, (x) => AbsImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Uri, FunctionsArithmetic.Sign, (x) => SignImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Add, (x, y) => AddImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Subtract, (x, y) => SubtractImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Modulo, (x, y) => ModuloImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Power, (x, y) => PowerImplementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Sqrt, (x) => SqrtImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Exp, (x) => ExpImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Cos, (x) => CosImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Sin, (x) => SinImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Tan, (x) => TanImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Cosh, (x) => CoshImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Sinh, (x) => SinhImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Tanh, (x) => TanhImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Acos, (x) => AcosImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Asin, (x) => AsinImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Atan, (x) => AtanImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Acosh, (x) => AcoshImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Asinh, (x) => AsinhImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Atanh, (x) => AtanhImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Atan2, (x, y) => Atan2Implementation(x, y));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Radians, (x) => RadiansImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Degrees, (x) => DegreesImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Abs, (x) => AbsImplementation(x));
+            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Sign, (x) => SignImplementation(x));
 
             // Aggregate functions
-            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum,
+            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)
@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
                     return e;
                 }, GetSumValue);
 
-            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum0,
+            functionsRegister.RegisterStreamingAggregateFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum0,
                 (aggregateFunction, parametersInfo, visitor, stateParameter, weightParameter) =>
                 {
                     if (aggregateFunction.Arguments.Count != 1)

@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal.TableFunctions
                 return new TableFunction()
                 {
                     ExtensionName = FunctionsDatetime.TumblingWindow,
-                    ExtensionUri = FunctionsDatetime.Uri,
+                    ExtensionUrn = FunctionsDatetime.Urn,
                     Arguments = arguments,
                     TableSchema = outputSchema
                 };

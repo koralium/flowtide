@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -179,7 +179,7 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 return false;
             }
             if (aggregateRelation.Measures != null &&
-                aggregateRelation.Measures.Any(x => x.Measure.ExtensionUri == FunctionsAggregateGeneric.Uri &&
+                aggregateRelation.Measures.Any(x => x.Measure.ExtensionUrn == FunctionsAggregateGeneric.FlowtideUrn &&
                     x.Measure.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
             {
                 return false;
@@ -194,7 +194,7 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
             {
                 return false;
             }
-            if (windowRelation.WindowFunctions.Any(x => x.ExtensionUri == FunctionsAggregateGeneric.Uri &&
+            if (windowRelation.WindowFunctions.Any(x => x.ExtensionUrn == FunctionsAggregateGeneric.FlowtideUrn &&
                 x.ExtensionName == FunctionsAggregateGeneric.SurrogateKeyInt64))
             {
                 return false;

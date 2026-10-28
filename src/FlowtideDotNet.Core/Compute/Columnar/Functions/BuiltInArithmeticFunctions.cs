@@ -25,12 +25,12 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
     {
         public static void AddBuiltInArithmeticFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Add, typeof(BuiltInArithmeticFunctions), nameof(AddImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Subtract, typeof(BuiltInArithmeticFunctions), nameof(SubtractImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Negate, typeof(BuiltInArithmeticFunctions), nameof(NegateImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Uri, FunctionsArithmetic.Multiply, typeof(BuiltInArithmeticFunctions), nameof(MultiplyImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Add, typeof(BuiltInArithmeticFunctions), nameof(AddImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Subtract, typeof(BuiltInArithmeticFunctions), nameof(SubtractImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Negate, typeof(BuiltInArithmeticFunctions), nameof(NegateImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
+            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Multiply, typeof(BuiltInArithmeticFunctions), nameof(MultiplyImplementation));
         }
 
         private static IDataValue AddImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)

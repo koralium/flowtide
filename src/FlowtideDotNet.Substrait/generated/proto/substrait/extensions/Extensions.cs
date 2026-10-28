@@ -26,34 +26,34 @@ namespace Substrait.Protobuf {
           string.Concat(
             "CiVzdWJzdHJhaXQvZXh0ZW5zaW9ucy9leHRlbnNpb25zLnByb3RvEhRzdWJz",
             "dHJhaXQuZXh0ZW5zaW9ucxoZZ29vZ2xlL3Byb3RvYnVmL2FueS5wcm90byI/",
-            "ChJTaW1wbGVFeHRlbnNpb25VUkkSHAoUZXh0ZW5zaW9uX3VyaV9hbmNob3IY",
-            "ASABKA0SCwoDdXJpGAIgASgJIu8EChpTaW1wbGVFeHRlbnNpb25EZWNsYXJh",
+            "ChJTaW1wbGVFeHRlbnNpb25VUk4SHAoUZXh0ZW5zaW9uX3Vybl9hbmNob3IY",
+            "ASABKA0SCwoDdXJuGAIgASgJIoEFChpTaW1wbGVFeHRlbnNpb25EZWNsYXJh",
             "dGlvbhJYCg5leHRlbnNpb25fdHlwZRgBIAEoCzI+LnN1YnN0cmFpdC5leHRl",
             "bnNpb25zLlNpbXBsZUV4dGVuc2lvbkRlY2xhcmF0aW9uLkV4dGVuc2lvblR5",
             "cGVIABJrChhleHRlbnNpb25fdHlwZV92YXJpYXRpb24YAiABKAsyRy5zdWJz",
             "dHJhaXQuZXh0ZW5zaW9ucy5TaW1wbGVFeHRlbnNpb25EZWNsYXJhdGlvbi5F",
             "eHRlbnNpb25UeXBlVmFyaWF0aW9uSAASYAoSZXh0ZW5zaW9uX2Z1bmN0aW9u",
             "GAMgASgLMkIuc3Vic3RyYWl0LmV4dGVuc2lvbnMuU2ltcGxlRXh0ZW5zaW9u",
-            "RGVjbGFyYXRpb24uRXh0ZW5zaW9uRnVuY3Rpb25IABpTCg1FeHRlbnNpb25U",
-            "eXBlEh8KF2V4dGVuc2lvbl91cmlfcmVmZXJlbmNlGAEgASgNEhMKC3R5cGVf",
-            "YW5jaG9yGAIgASgNEgwKBG5hbWUYAyABKAkaZgoWRXh0ZW5zaW9uVHlwZVZh",
-            "cmlhdGlvbhIfChdleHRlbnNpb25fdXJpX3JlZmVyZW5jZRgBIAEoDRIdChV0",
-            "eXBlX3ZhcmlhdGlvbl9hbmNob3IYAiABKA0SDAoEbmFtZRgDIAEoCRpbChFF",
-            "eHRlbnNpb25GdW5jdGlvbhIfChdleHRlbnNpb25fdXJpX3JlZmVyZW5jZRgB",
-            "IAEoDRIXCg9mdW5jdGlvbl9hbmNob3IYAiABKA0SDAoEbmFtZRgDIAEoCUIO",
-            "CgxtYXBwaW5nX3R5cGUiagoRQWR2YW5jZWRFeHRlbnNpb24SKgoMb3B0aW1p",
-            "emF0aW9uGAEgASgLMhQuZ29vZ2xlLnByb3RvYnVmLkFueRIpCgtlbmhhbmNl",
-            "bWVudBgCIAEoCzIULmdvb2dsZS5wcm90b2J1Zi5BbnlCYgoSaW8uc3Vic3Ry",
-            "YWl0LnByb3RvUAFaNWdpdGh1Yi5jb20vc3Vic3RyYWl0LWlvL3N1YnN0cmFp",
-            "dC1nby9wcm90by9leHRlbnNpb25zqgISU3Vic3RyYWl0LlByb3RvYnVmYgZw",
-            "cm90bzM="));
+            "RGVjbGFyYXRpb24uRXh0ZW5zaW9uRnVuY3Rpb25IABpZCg1FeHRlbnNpb25U",
+            "eXBlEh8KF2V4dGVuc2lvbl91cm5fcmVmZXJlbmNlGAQgASgNEhMKC3R5cGVf",
+            "YW5jaG9yGAIgASgNEgwKBG5hbWUYAyABKAlKBAgBEAIabAoWRXh0ZW5zaW9u",
+            "VHlwZVZhcmlhdGlvbhIfChdleHRlbnNpb25fdXJuX3JlZmVyZW5jZRgEIAEo",
+            "DRIdChV0eXBlX3ZhcmlhdGlvbl9hbmNob3IYAiABKA0SDAoEbmFtZRgDIAEo",
+            "CUoECAEQAhphChFFeHRlbnNpb25GdW5jdGlvbhIfChdleHRlbnNpb25fdXJu",
+            "X3JlZmVyZW5jZRgEIAEoDRIXCg9mdW5jdGlvbl9hbmNob3IYAiABKA0SDAoE",
+            "bmFtZRgDIAEoCUoECAEQAkIOCgxtYXBwaW5nX3R5cGUiagoRQWR2YW5jZWRF",
+            "eHRlbnNpb24SKgoMb3B0aW1pemF0aW9uGAEgASgLMhQuZ29vZ2xlLnByb3Rv",
+            "YnVmLkFueRIpCgtlbmhhbmNlbWVudBgCIAEoCzIULmdvb2dsZS5wcm90b2J1",
+            "Zi5BbnlCYgoSaW8uc3Vic3RyYWl0LnByb3RvUAFaNWdpdGh1Yi5jb20vc3Vi",
+            "c3RyYWl0LWlvL3N1YnN0cmFpdC1nby9wcm90by9leHRlbnNpb25zqgISU3Vi",
+            "c3RyYWl0LlByb3RvYnVmYgZwcm90bzM="));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { global::Google.Protobuf.WellKnownTypes.AnyReflection.Descriptor, },
           new pbr::GeneratedClrTypeInfo(null, null, new pbr::GeneratedClrTypeInfo[] {
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionURI), global::Substrait.Protobuf.SimpleExtensionURI.Parser, new[]{ "ExtensionUriAnchor", "Uri" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration), global::Substrait.Protobuf.SimpleExtensionDeclaration.Parser, new[]{ "ExtensionType", "ExtensionTypeVariation", "ExtensionFunction" }, new[]{ "MappingType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType.Parser, new[]{ "ExtensionUriReference", "TypeAnchor", "Name" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation.Parser, new[]{ "ExtensionUriReference", "TypeVariationAnchor", "Name" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction.Parser, new[]{ "ExtensionUriReference", "FunctionAnchor", "Name" }, null, null, null, null)}),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionURN), global::Substrait.Protobuf.SimpleExtensionURN.Parser, new[]{ "ExtensionUrnAnchor", "Urn" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration), global::Substrait.Protobuf.SimpleExtensionDeclaration.Parser, new[]{ "ExtensionType", "ExtensionTypeVariation", "ExtensionFunction" }, new[]{ "MappingType" }, null, null, new pbr::GeneratedClrTypeInfo[] { new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionType.Parser, new[]{ "ExtensionUrnReference", "TypeAnchor", "Name" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionTypeVariation.Parser, new[]{ "ExtensionUrnReference", "TypeVariationAnchor", "Name" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction), global::Substrait.Protobuf.SimpleExtensionDeclaration.Types.ExtensionFunction.Parser, new[]{ "ExtensionUrnReference", "FunctionAnchor", "Name" }, null, null, null, null)}),
             new pbr::GeneratedClrTypeInfo(typeof(global::Substrait.Protobuf.AdvancedExtension), global::Substrait.Protobuf.AdvancedExtension.Parser, new[]{ "Optimization", "Enhancement" }, null, null, null, null)
           }));
     }
@@ -62,16 +62,16 @@ namespace Substrait.Protobuf {
   }
   #region Messages
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
-  public sealed partial class SimpleExtensionURI : pb::IMessage<SimpleExtensionURI>
+  public sealed partial class SimpleExtensionURN : pb::IMessage<SimpleExtensionURN>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       , pb::IBufferMessage
   #endif
   {
-    private static readonly pb::MessageParser<SimpleExtensionURI> _parser = new pb::MessageParser<SimpleExtensionURI>(() => new SimpleExtensionURI());
+    private static readonly pb::MessageParser<SimpleExtensionURN> _parser = new pb::MessageParser<SimpleExtensionURN>(() => new SimpleExtensionURN());
     private pb::UnknownFieldSet _unknownFields;
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public static pb::MessageParser<SimpleExtensionURI> Parser { get { return _parser; } }
+    public static pb::MessageParser<SimpleExtensionURN> Parser { get { return _parser; } }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
@@ -87,7 +87,7 @@ namespace Substrait.Protobuf {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public SimpleExtensionURI() {
+    public SimpleExtensionURN() {
       OnConstruction();
     }
 
@@ -95,67 +95,67 @@ namespace Substrait.Protobuf {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public SimpleExtensionURI(SimpleExtensionURI other) : this() {
-      extensionUriAnchor_ = other.extensionUriAnchor_;
-      uri_ = other.uri_;
+    public SimpleExtensionURN(SimpleExtensionURN other) : this() {
+      extensionUrnAnchor_ = other.extensionUrnAnchor_;
+      urn_ = other.urn_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public SimpleExtensionURI Clone() {
-      return new SimpleExtensionURI(this);
+    public SimpleExtensionURN Clone() {
+      return new SimpleExtensionURN(this);
     }
 
-    /// <summary>Field number for the "extension_uri_anchor" field.</summary>
-    public const int ExtensionUriAnchorFieldNumber = 1;
-    private uint extensionUriAnchor_;
+    /// <summary>Field number for the "extension_urn_anchor" field.</summary>
+    public const int ExtensionUrnAnchorFieldNumber = 1;
+    private uint extensionUrnAnchor_;
     /// <summary>
     /// A surrogate key used in the context of a single plan used to reference the
-    /// URI associated with an extension.
+    /// URN associated with an extension.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public uint ExtensionUriAnchor {
-      get { return extensionUriAnchor_; }
+    public uint ExtensionUrnAnchor {
+      get { return extensionUrnAnchor_; }
       set {
-        extensionUriAnchor_ = value;
+        extensionUrnAnchor_ = value;
       }
     }
 
-    /// <summary>Field number for the "uri" field.</summary>
-    public const int UriFieldNumber = 2;
-    private string uri_ = "";
+    /// <summary>Field number for the "urn" field.</summary>
+    public const int UrnFieldNumber = 2;
+    private string urn_ = "";
     /// <summary>
-    /// The URI where this extension YAML can be retrieved. This is the "namespace"
+    /// The extension:&lt;OWNER>:&lt;ID> identifier of this extension. This is the "namespace"
     /// of this extension.
     /// </summary>
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public string Uri {
-      get { return uri_; }
+    public string Urn {
+      get { return urn_; }
       set {
-        uri_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+        urn_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
       }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
-      return Equals(other as SimpleExtensionURI);
+      return Equals(other as SimpleExtensionURN);
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public bool Equals(SimpleExtensionURI other) {
+    public bool Equals(SimpleExtensionURN other) {
       if (ReferenceEquals(other, null)) {
         return false;
       }
       if (ReferenceEquals(other, this)) {
         return true;
       }
-      if (ExtensionUriAnchor != other.ExtensionUriAnchor) return false;
-      if (Uri != other.Uri) return false;
+      if (ExtensionUrnAnchor != other.ExtensionUrnAnchor) return false;
+      if (Urn != other.Urn) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -163,8 +163,8 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override int GetHashCode() {
       int hash = 1;
-      if (ExtensionUriAnchor != 0) hash ^= ExtensionUriAnchor.GetHashCode();
-      if (Uri.Length != 0) hash ^= Uri.GetHashCode();
+      if (ExtensionUrnAnchor != 0) hash ^= ExtensionUrnAnchor.GetHashCode();
+      if (Urn.Length != 0) hash ^= Urn.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -183,13 +183,13 @@ namespace Substrait.Protobuf {
     #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
       output.WriteRawMessage(this);
     #else
-      if (ExtensionUriAnchor != 0) {
+      if (ExtensionUrnAnchor != 0) {
         output.WriteRawTag(8);
-        output.WriteUInt32(ExtensionUriAnchor);
+        output.WriteUInt32(ExtensionUrnAnchor);
       }
-      if (Uri.Length != 0) {
+      if (Urn.Length != 0) {
         output.WriteRawTag(18);
-        output.WriteString(Uri);
+        output.WriteString(Urn);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -201,13 +201,13 @@ namespace Substrait.Protobuf {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-      if (ExtensionUriAnchor != 0) {
+      if (ExtensionUrnAnchor != 0) {
         output.WriteRawTag(8);
-        output.WriteUInt32(ExtensionUriAnchor);
+        output.WriteUInt32(ExtensionUrnAnchor);
       }
-      if (Uri.Length != 0) {
+      if (Urn.Length != 0) {
         output.WriteRawTag(18);
-        output.WriteString(Uri);
+        output.WriteString(Urn);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -219,11 +219,11 @@ namespace Substrait.Protobuf {
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public int CalculateSize() {
       int size = 0;
-      if (ExtensionUriAnchor != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUriAnchor);
+      if (ExtensionUrnAnchor != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUrnAnchor);
       }
-      if (Uri.Length != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeStringSize(Uri);
+      if (Urn.Length != 0) {
+        size += 1 + pb::CodedOutputStream.ComputeStringSize(Urn);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -233,15 +233,15 @@ namespace Substrait.Protobuf {
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-    public void MergeFrom(SimpleExtensionURI other) {
+    public void MergeFrom(SimpleExtensionURN other) {
       if (other == null) {
         return;
       }
-      if (other.ExtensionUriAnchor != 0) {
-        ExtensionUriAnchor = other.ExtensionUriAnchor;
+      if (other.ExtensionUrnAnchor != 0) {
+        ExtensionUrnAnchor = other.ExtensionUrnAnchor;
       }
-      if (other.Uri.Length != 0) {
-        Uri = other.Uri;
+      if (other.Urn.Length != 0) {
+        Urn = other.Urn;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -263,11 +263,11 @@ namespace Substrait.Protobuf {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            ExtensionUriAnchor = input.ReadUInt32();
+            ExtensionUrnAnchor = input.ReadUInt32();
             break;
           }
           case 18: {
-            Uri = input.ReadString();
+            Urn = input.ReadString();
             break;
           }
         }
@@ -290,11 +290,11 @@ namespace Substrait.Protobuf {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            ExtensionUriAnchor = input.ReadUInt32();
+            ExtensionUrnAnchor = input.ReadUInt32();
             break;
           }
           case 18: {
-            Uri = input.ReadString();
+            Urn = input.ReadString();
             break;
           }
         }
@@ -305,7 +305,7 @@ namespace Substrait.Protobuf {
   }
 
   /// <summary>
-  /// Describes a mapping between a specific extension entity and the uri where
+  /// Describes a mapping between a specific extension entity and the URN where
   /// that extension can be found.
   /// </summary>
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
@@ -696,7 +696,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public ExtensionType(ExtensionType other) : this() {
-          extensionUriReference_ = other.extensionUriReference_;
+          extensionUrnReference_ = other.extensionUrnReference_;
           typeAnchor_ = other.typeAnchor_;
           name_ = other.name_;
           _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
@@ -708,18 +708,15 @@ namespace Substrait.Protobuf {
           return new ExtensionType(this);
         }
 
-        /// <summary>Field number for the "extension_uri_reference" field.</summary>
-        public const int ExtensionUriReferenceFieldNumber = 1;
-        private uint extensionUriReference_;
-        /// <summary>
-        /// references the extension_uri_anchor defined for a specific extension URI.
-        /// </summary>
+        /// <summary>Field number for the "extension_urn_reference" field.</summary>
+        public const int ExtensionUrnReferenceFieldNumber = 4;
+        private uint extensionUrnReference_;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public uint ExtensionUriReference {
-          get { return extensionUriReference_; }
+        public uint ExtensionUrnReference {
+          get { return extensionUrnReference_; }
           set {
-            extensionUriReference_ = value;
+            extensionUrnReference_ = value;
           }
         }
 
@@ -769,7 +766,7 @@ namespace Substrait.Protobuf {
           if (ReferenceEquals(other, this)) {
             return true;
           }
-          if (ExtensionUriReference != other.ExtensionUriReference) return false;
+          if (ExtensionUrnReference != other.ExtensionUrnReference) return false;
           if (TypeAnchor != other.TypeAnchor) return false;
           if (Name != other.Name) return false;
           return Equals(_unknownFields, other._unknownFields);
@@ -779,7 +776,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (ExtensionUriReference != 0) hash ^= ExtensionUriReference.GetHashCode();
+          if (ExtensionUrnReference != 0) hash ^= ExtensionUrnReference.GetHashCode();
           if (TypeAnchor != 0) hash ^= TypeAnchor.GetHashCode();
           if (Name.Length != 0) hash ^= Name.GetHashCode();
           if (_unknownFields != null) {
@@ -800,10 +797,6 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (TypeAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(TypeAnchor);
@@ -811,6 +804,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
@@ -822,10 +819,6 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (TypeAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(TypeAnchor);
@@ -833,6 +826,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
@@ -844,8 +841,8 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (ExtensionUriReference != 0) {
-            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUriReference);
+          if (ExtensionUrnReference != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUrnReference);
           }
           if (TypeAnchor != 0) {
             size += 1 + pb::CodedOutputStream.ComputeUInt32Size(TypeAnchor);
@@ -865,8 +862,8 @@ namespace Substrait.Protobuf {
           if (other == null) {
             return;
           }
-          if (other.ExtensionUriReference != 0) {
-            ExtensionUriReference = other.ExtensionUriReference;
+          if (other.ExtensionUrnReference != 0) {
+            ExtensionUrnReference = other.ExtensionUrnReference;
           }
           if (other.TypeAnchor != 0) {
             TypeAnchor = other.TypeAnchor;
@@ -893,16 +890,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 TypeAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }
@@ -924,16 +921,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 TypeAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }
@@ -978,7 +975,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public ExtensionTypeVariation(ExtensionTypeVariation other) : this() {
-          extensionUriReference_ = other.extensionUriReference_;
+          extensionUrnReference_ = other.extensionUrnReference_;
           typeVariationAnchor_ = other.typeVariationAnchor_;
           name_ = other.name_;
           _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
@@ -990,18 +987,15 @@ namespace Substrait.Protobuf {
           return new ExtensionTypeVariation(this);
         }
 
-        /// <summary>Field number for the "extension_uri_reference" field.</summary>
-        public const int ExtensionUriReferenceFieldNumber = 1;
-        private uint extensionUriReference_;
-        /// <summary>
-        /// references the extension_uri_anchor defined for a specific extension URI.
-        /// </summary>
+        /// <summary>Field number for the "extension_urn_reference" field.</summary>
+        public const int ExtensionUrnReferenceFieldNumber = 4;
+        private uint extensionUrnReference_;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public uint ExtensionUriReference {
-          get { return extensionUriReference_; }
+        public uint ExtensionUrnReference {
+          get { return extensionUrnReference_; }
           set {
-            extensionUriReference_ = value;
+            extensionUrnReference_ = value;
           }
         }
 
@@ -1051,7 +1045,7 @@ namespace Substrait.Protobuf {
           if (ReferenceEquals(other, this)) {
             return true;
           }
-          if (ExtensionUriReference != other.ExtensionUriReference) return false;
+          if (ExtensionUrnReference != other.ExtensionUrnReference) return false;
           if (TypeVariationAnchor != other.TypeVariationAnchor) return false;
           if (Name != other.Name) return false;
           return Equals(_unknownFields, other._unknownFields);
@@ -1061,7 +1055,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (ExtensionUriReference != 0) hash ^= ExtensionUriReference.GetHashCode();
+          if (ExtensionUrnReference != 0) hash ^= ExtensionUrnReference.GetHashCode();
           if (TypeVariationAnchor != 0) hash ^= TypeVariationAnchor.GetHashCode();
           if (Name.Length != 0) hash ^= Name.GetHashCode();
           if (_unknownFields != null) {
@@ -1082,10 +1076,6 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (TypeVariationAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(TypeVariationAnchor);
@@ -1093,6 +1083,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
@@ -1104,10 +1098,6 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (TypeVariationAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(TypeVariationAnchor);
@@ -1115,6 +1105,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
@@ -1126,8 +1120,8 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (ExtensionUriReference != 0) {
-            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUriReference);
+          if (ExtensionUrnReference != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUrnReference);
           }
           if (TypeVariationAnchor != 0) {
             size += 1 + pb::CodedOutputStream.ComputeUInt32Size(TypeVariationAnchor);
@@ -1147,8 +1141,8 @@ namespace Substrait.Protobuf {
           if (other == null) {
             return;
           }
-          if (other.ExtensionUriReference != 0) {
-            ExtensionUriReference = other.ExtensionUriReference;
+          if (other.ExtensionUrnReference != 0) {
+            ExtensionUrnReference = other.ExtensionUrnReference;
           }
           if (other.TypeVariationAnchor != 0) {
             TypeVariationAnchor = other.TypeVariationAnchor;
@@ -1175,16 +1169,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 TypeVariationAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }
@@ -1206,16 +1200,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 TypeVariationAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }
@@ -1260,7 +1254,7 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public ExtensionFunction(ExtensionFunction other) : this() {
-          extensionUriReference_ = other.extensionUriReference_;
+          extensionUrnReference_ = other.extensionUrnReference_;
           functionAnchor_ = other.functionAnchor_;
           name_ = other.name_;
           _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
@@ -1272,18 +1266,15 @@ namespace Substrait.Protobuf {
           return new ExtensionFunction(this);
         }
 
-        /// <summary>Field number for the "extension_uri_reference" field.</summary>
-        public const int ExtensionUriReferenceFieldNumber = 1;
-        private uint extensionUriReference_;
-        /// <summary>
-        /// references the extension_uri_anchor defined for a specific extension URI.
-        /// </summary>
+        /// <summary>Field number for the "extension_urn_reference" field.</summary>
+        public const int ExtensionUrnReferenceFieldNumber = 4;
+        private uint extensionUrnReference_;
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
-        public uint ExtensionUriReference {
-          get { return extensionUriReference_; }
+        public uint ExtensionUrnReference {
+          get { return extensionUrnReference_; }
           set {
-            extensionUriReference_ = value;
+            extensionUrnReference_ = value;
           }
         }
 
@@ -1335,7 +1326,7 @@ namespace Substrait.Protobuf {
           if (ReferenceEquals(other, this)) {
             return true;
           }
-          if (ExtensionUriReference != other.ExtensionUriReference) return false;
+          if (ExtensionUrnReference != other.ExtensionUrnReference) return false;
           if (FunctionAnchor != other.FunctionAnchor) return false;
           if (Name != other.Name) return false;
           return Equals(_unknownFields, other._unknownFields);
@@ -1345,7 +1336,7 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public override int GetHashCode() {
           int hash = 1;
-          if (ExtensionUriReference != 0) hash ^= ExtensionUriReference.GetHashCode();
+          if (ExtensionUrnReference != 0) hash ^= ExtensionUrnReference.GetHashCode();
           if (FunctionAnchor != 0) hash ^= FunctionAnchor.GetHashCode();
           if (Name.Length != 0) hash ^= Name.GetHashCode();
           if (_unknownFields != null) {
@@ -1366,10 +1357,6 @@ namespace Substrait.Protobuf {
         #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
           output.WriteRawMessage(this);
         #else
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (FunctionAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(FunctionAnchor);
@@ -1377,6 +1364,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(output);
@@ -1388,10 +1379,6 @@ namespace Substrait.Protobuf {
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
-          if (ExtensionUriReference != 0) {
-            output.WriteRawTag(8);
-            output.WriteUInt32(ExtensionUriReference);
-          }
           if (FunctionAnchor != 0) {
             output.WriteRawTag(16);
             output.WriteUInt32(FunctionAnchor);
@@ -1399,6 +1386,10 @@ namespace Substrait.Protobuf {
           if (Name.Length != 0) {
             output.WriteRawTag(26);
             output.WriteString(Name);
+          }
+          if (ExtensionUrnReference != 0) {
+            output.WriteRawTag(32);
+            output.WriteUInt32(ExtensionUrnReference);
           }
           if (_unknownFields != null) {
             _unknownFields.WriteTo(ref output);
@@ -1410,8 +1401,8 @@ namespace Substrait.Protobuf {
         [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
         public int CalculateSize() {
           int size = 0;
-          if (ExtensionUriReference != 0) {
-            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUriReference);
+          if (ExtensionUrnReference != 0) {
+            size += 1 + pb::CodedOutputStream.ComputeUInt32Size(ExtensionUrnReference);
           }
           if (FunctionAnchor != 0) {
             size += 1 + pb::CodedOutputStream.ComputeUInt32Size(FunctionAnchor);
@@ -1431,8 +1422,8 @@ namespace Substrait.Protobuf {
           if (other == null) {
             return;
           }
-          if (other.ExtensionUriReference != 0) {
-            ExtensionUriReference = other.ExtensionUriReference;
+          if (other.ExtensionUrnReference != 0) {
+            ExtensionUrnReference = other.ExtensionUrnReference;
           }
           if (other.FunctionAnchor != 0) {
             FunctionAnchor = other.FunctionAnchor;
@@ -1459,16 +1450,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 FunctionAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }
@@ -1490,16 +1481,16 @@ namespace Substrait.Protobuf {
               default:
                 _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
                 break;
-              case 8: {
-                ExtensionUriReference = input.ReadUInt32();
-                break;
-              }
               case 16: {
                 FunctionAnchor = input.ReadUInt32();
                 break;
               }
               case 26: {
                 Name = input.ReadString();
+                break;
+              }
+              case 32: {
+                ExtensionUrnReference = input.ReadUInt32();
                 break;
               }
             }

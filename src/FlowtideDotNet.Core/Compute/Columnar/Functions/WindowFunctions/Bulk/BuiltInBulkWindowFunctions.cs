@@ -18,16 +18,16 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.WindowFunctions.Bulk
     {
         public static void AddBuiltInBulkWindowFunctions(FunctionsRegister functionsRegister)
         {
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.RowNumber, new BulkRowNumberWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Sum, new BulkSumWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MinBy, new BulkMinByWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.MaxBy, new BulkMaxByWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Average, new BulkAverageWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lag, new BulkLagWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.Lead, new BulkLeadWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Uri, FunctionsArithmetic.LastValue, new BulkLastValueWindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsAggregateGeneric.Uri, FunctionsAggregateGeneric.SurrogateKeyInt64, new BulkSurrogateKeyInt64WindowFunctionDefinition());
-            functionsRegister.RegisterBulkWindowFunction(FunctionsDatetime.Uri, FunctionsDatetime.SessionWindow, new BulkSessionWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.RowNumber, new BulkRowNumberWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Sum, new BulkSumWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MinBy, new BulkMinByWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.MaxBy, new BulkMaxByWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Average, new BulkAverageWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Lag, new BulkLagWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.Lead, new BulkLeadWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsArithmetic.Urn, FunctionsArithmetic.LastValue, new BulkLastValueWindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsAggregateGeneric.FlowtideUrn, FunctionsAggregateGeneric.SurrogateKeyInt64, new BulkSurrogateKeyInt64WindowFunctionDefinition());
+            functionsRegister.RegisterBulkWindowFunction(FunctionsDatetime.Urn, FunctionsDatetime.SessionWindow, new BulkSessionWindowFunctionDefinition());
         }
     }
 }

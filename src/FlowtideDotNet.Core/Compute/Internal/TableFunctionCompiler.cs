@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -19,9 +19,9 @@ namespace FlowtideDotNet.Core.Compute.Internal
     {
         public static Func<RowEvent, IEnumerable<RowEvent>> CompileWithArg(TableFunction tableFunction, IFunctionsRegister functionsRegister)
         {
-            if (!functionsRegister.TryGetTableFunction(tableFunction.ExtensionUri, tableFunction.ExtensionName, out var tableFunctionFactory))
+            if (!functionsRegister.TryGetTableFunction(tableFunction.ExtensionUrn, tableFunction.ExtensionName, out var tableFunctionFactory))
             {
-                throw new InvalidOperationException($"Table function {tableFunction.ExtensionUri}.{tableFunction.ExtensionName} not found.");
+                throw new InvalidOperationException($"Table function {tableFunction.ExtensionUrn}.{tableFunction.ExtensionName} not found.");
             }
             var param = System.Linq.Expressions.Expression.Parameter(typeof(RowEvent));
             var parameterInfo = new ParametersInfo(new List<ParameterExpression>() { param }, new List<int> { 0 });

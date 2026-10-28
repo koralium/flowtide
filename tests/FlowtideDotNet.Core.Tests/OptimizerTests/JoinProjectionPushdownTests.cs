@@ -1,4 +1,4 @@
-﻿// Licensed under the Apache License, Version 2.0 (the "License")
+// Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
@@ -33,13 +33,13 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Type = JoinType.Inner,
                         Expression = new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
                                 new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsString.Uri,
+                                    ExtensionUrn = FunctionsString.FlowtideUrn,
                                     ExtensionName = FunctionsString.Trim,
                                     Arguments = new List<Expression>()
                                     {
@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                                 },
                                 new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsString.Uri,
+                                    ExtensionUrn = FunctionsString.FlowtideUrn,
                                     ExtensionName = FunctionsString.Trim,
                                     Arguments = new List<Expression>()
                                     {
@@ -109,7 +109,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                         Type = JoinType.Inner,
                         Expression = new ScalarFunction()
                         {
-                            ExtensionUri = FunctionsComparison.Uri,
+                            ExtensionUrn = FunctionsComparison.Urn,
                             ExtensionName = FunctionsComparison.Equal,
                             Arguments = new List<Expression>()
                             {
@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             {
                                 new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsString.Uri,
+                                    ExtensionUrn = FunctionsString.FlowtideUrn,
                                     ExtensionName = FunctionsString.Trim,
                                     Arguments = new List<Expression>()
                                     {
@@ -168,7 +168,7 @@ namespace FlowtideDotNet.Core.Tests.OptimizerTests
                             {
                                 new ScalarFunction()
                                 {
-                                    ExtensionUri = FunctionsString.Uri,
+                                    ExtensionUrn = FunctionsString.FlowtideUrn,
                                     ExtensionName = FunctionsString.Trim,
                                     Arguments = new List<Expression>()
                                     {
