@@ -168,12 +168,12 @@ Interface IFunctionsRegister  <a class="header-action link-secondary" title="Vie
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterBulkAggregationFunction(string uri, string name, IBulkAggregationDefinition bulkAggregationDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterBulkAggregationFunction(string urn, string name, IBulkAggregationDefinition bulkAggregationDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -203,12 +203,12 @@ Interface IFunctionsRegister  <a class="header-action link-secondary" title="Vie
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterColumnScalarFunction(string uri, string name, Func&lt;ScalarFunction, ColumnParameterInfo, ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;, IFunctionServices, Expression&gt; mapFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterColumnScalarFunction(string urn, string name, Func&lt;ScalarFunction, ColumnParameterInfo, ExpressionVisitor&lt;Expression, ColumnParameterInfo&gt;, IFunctionServices, Expression&gt; mapFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -239,13 +239,13 @@ Interface IFunctionsRegister  <a class="header-action link-secondary" title="Vie
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterScalarFunction(string uri, string name, Func&lt;ScalarFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, Expression&gt; mapFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterScalarFunction(string urn, string name, Func&lt;ScalarFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, Expression&gt; mapFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
-    <dd><p>file uri of the scalar function</p>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd><p>Extension URN identifying the scalar function.</p>
 </dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd><p>name of the scalar function</p>
@@ -277,12 +277,12 @@ Interface IFunctionsRegister  <a class="header-action link-secondary" title="Vie
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterScalarFunctionWithExpression(string uri, string name, Expression&lt;Func&lt;FlxValue, FlxValue&gt;&gt; expression)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterScalarFunctionWithExpression(string urn, string name, Expression&lt;Func&lt;FlxValue, FlxValue&gt;&gt; expression)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -315,12 +315,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterStatefulAggregateFunction&lt;T&gt;(string uri, string name, IFunctionsRegister.AggregateInitializeFunction&lt;T&gt; initializeFunction, Action&lt;T&gt; disposeFunction, Func&lt;T, Task&gt; commitFunction, IFunctionsRegister.AggregateMapFunction mapFunc, IFunctionsRegister.AggregateStateToValueFunction&lt;T&gt; stateToValueFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterStatefulAggregateFunction&lt;T&gt;(string urn, string name, IFunctionsRegister.AggregateInitializeFunction&lt;T&gt; initializeFunction, Action&lt;T&gt; disposeFunction, Func&lt;T, Task&gt; commitFunction, IFunctionsRegister.AggregateMapFunction mapFunc, IFunctionsRegister.AggregateStateToValueFunction&lt;T&gt; stateToValueFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -364,12 +364,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterStatefulColumnAggregateFunction&lt;T&gt;(string uri, string name, IFunctionsRegister.AggregateInitializeFunction&lt;T&gt; initializeFunction, Action&lt;T&gt; disposeFunction, Func&lt;T, Task&gt; commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction&lt;T&gt; stateToValueFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterStatefulColumnAggregateFunction&lt;T&gt;(string urn, string name, IFunctionsRegister.AggregateInitializeFunction&lt;T&gt; initializeFunction, Action&lt;T&gt; disposeFunction, Func&lt;T, Task&gt; commitFunction, IFunctionsRegister.ColumnAggregateMapFunction mapFunc, IFunctionsRegister.ColumnAggregateStateToValueFunction&lt;T&gt; stateToValueFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -413,12 +413,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterStreamingAggregateFunction(string uri, string name, Func&lt;AggregateFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, ParameterExpression, ParameterExpression, Expression&gt; mapFunc, Func&lt;byte[]?, FlxValue&gt; stateToValueFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterStreamingAggregateFunction(string urn, string name, Func&lt;AggregateFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, ParameterExpression, ParameterExpression, Expression&gt; mapFunc, Func&lt;byte[]?, FlxValue&gt; stateToValueFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -450,12 +450,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">void RegisterTableFunction(string uri, string name, Func&lt;TableFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, Expression&gt; mapFunc)</code></pre>
+    <pre><code class="lang-csharp hljs">void RegisterTableFunction(string urn, string name, Func&lt;TableFunction, ParametersInfo, ExpressionVisitor&lt;Expression, ParametersInfo&gt;, Expression&gt; mapFunc)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -485,12 +485,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetAggregateFunction(string uri, string name, out AggregateFunctionDefinition? aggregateFunctionDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetAggregateFunction(string urn, string name, out AggregateFunctionDefinition? aggregateFunctionDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -525,12 +525,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetBulkAggregationFunction(string uri, string name, out IBulkAggregationDefinition? bulkAggregationDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetBulkAggregationFunction(string urn, string name, out IBulkAggregationDefinition? bulkAggregationDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -565,12 +565,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetColumnScalarFunction(string uri, string name, out ColumnFunctionDefinition? functionDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetColumnScalarFunction(string urn, string name, out ColumnFunctionDefinition? functionDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -605,12 +605,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetColumnTableFunction(string uri, string name, out ColumnTableFunctionDefinition? tableFunctionDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetColumnTableFunction(string urn, string name, out ColumnTableFunctionDefinition? tableFunctionDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -645,12 +645,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetScalarFunction(string uri, string name, out FunctionDefinition? functionDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetScalarFunction(string urn, string name, out FunctionDefinition? functionDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
@@ -685,12 +685,12 @@ This is useful in functions such as MIN/MAX or MEDIAN, where all values must be 
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">bool TryGetTableFunction(string uri, string name, out TableFunctionDefinition? tableFunctionDefinition)</code></pre>
+    <pre><code class="lang-csharp hljs">bool TryGetTableFunction(string urn, string name, out TableFunctionDefinition? tableFunctionDefinition)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
-    <dt><code>uri</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dt><code>urn</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>
     <dt><code>name</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
     <dd></dd>

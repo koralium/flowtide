@@ -8,7 +8,7 @@ sidebar_position: 2
 
 *This function has no substrait equivalent*
 
-* **Extension URI:** /functions_datetime.yaml
+* **Extension URN:** `extension:io.github.koralium.flowtide:functions_datetime`
 * **Extension Name:** hopping_window
 
 Hopping window, also called sliding window, returns one row for each window a timestamp belongs to.
@@ -86,7 +86,7 @@ The window columns are then null.
 
 *This function has no substrait equivalent*
 
-* **Extension URI:** /functions_datetime.yaml
+* **Extension URN:** `extension:io.github.koralium.flowtide:functions_datetime`
 * **Extension Name:** tumbling_window
 
 Tumbling window returns one row with the window a timestamp belongs to.

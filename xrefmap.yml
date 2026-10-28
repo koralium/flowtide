@@ -28806,19 +28806,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Name
   nameWithType: ColumnTableFunctionDefinition.Name
-- uid: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Uri
-  commentId: P:FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri
-  fullName: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri
-  nameWithType: ColumnTableFunctionDefinition.Uri
-- uid: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri*
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Uri_
-  commentId: Overload:FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri
+- uid: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Urn
+  commentId: P:FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn
+  fullName: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn
+  nameWithType: ColumnTableFunctionDefinition.Urn
+- uid: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn*
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Columnar_ColumnTableFunctionDefinition_Urn_
+  commentId: Overload:FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn
   isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Uri
-  nameWithType: ColumnTableFunctionDefinition.Uri
+  fullName: FlowtideDotNet.Core.Compute.Columnar.ColumnTableFunctionDefinition.Urn
+  nameWithType: ColumnTableFunctionDefinition.Urn
 - uid: FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor
   name: ColumnarExpressionVisitor
   href: api/FlowtideDotNet.Core.Compute.Columnar.ColumnarExpressionVisitor.html
@@ -30074,19 +30074,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Name
   nameWithType: ColumnFunctionDefinition.Name
-- uid: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_ColumnFunctionDefinition_Uri
-  commentId: P:FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri
-  fullName: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri
-  nameWithType: ColumnFunctionDefinition.Uri
-- uid: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri*
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_ColumnFunctionDefinition_Uri_
-  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri
+- uid: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_ColumnFunctionDefinition_Urn
+  commentId: P:FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn
+  fullName: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn
+  nameWithType: ColumnFunctionDefinition.Urn
+- uid: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn*
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_ColumnFunctionDefinition_Urn_
+  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn
   isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Uri
-  nameWithType: ColumnFunctionDefinition.Uri
+  fullName: FlowtideDotNet.Core.Compute.Internal.ColumnFunctionDefinition.Urn
+  nameWithType: ColumnFunctionDefinition.Urn
 - uid: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition
   name: FunctionDefinition
   href: api/FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.html
@@ -30138,19 +30138,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Name
   nameWithType: FunctionDefinition.Name
-- uid: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_FunctionDefinition_Uri
-  commentId: P:FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri
-  fullName: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri
-  nameWithType: FunctionDefinition.Uri
-- uid: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri*
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_FunctionDefinition_Uri_
-  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri
+- uid: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_FunctionDefinition_Urn
+  commentId: P:FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn
+  fullName: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn
+  nameWithType: FunctionDefinition.Urn
+- uid: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn*
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_FunctionDefinition_Urn_
+  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn
   isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Uri
-  nameWithType: FunctionDefinition.Uri
+  fullName: FlowtideDotNet.Core.Compute.Internal.FunctionDefinition.Urn
+  nameWithType: FunctionDefinition.Urn
 - uid: FlowtideDotNet.Core.Compute.Internal.IAggregateContainer
   name: IAggregateContainer
   href: api/FlowtideDotNet.Core.Compute.Internal.IAggregateContainer.html
@@ -30266,19 +30266,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Name
   nameWithType: TableFunctionDefinition.Name
-- uid: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_TableFunctionDefinition_Uri
-  commentId: P:FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri
-  fullName: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri
-  nameWithType: TableFunctionDefinition.Uri
-- uid: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri*
-  name: Uri
-  href: api/FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_TableFunctionDefinition_Uri_
-  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri
+- uid: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_TableFunctionDefinition_Urn
+  commentId: P:FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn
+  fullName: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn
+  nameWithType: TableFunctionDefinition.Urn
+- uid: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn*
+  name: Urn
+  href: api/FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.html#FlowtideDotNet_Core_Compute_Internal_TableFunctionDefinition_Urn_
+  commentId: Overload:FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn
   isSpec: "True"
-  fullName: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Uri
-  nameWithType: TableFunctionDefinition.Uri
+  fullName: FlowtideDotNet.Core.Compute.Internal.TableFunctionDefinition.Urn
+  nameWithType: TableFunctionDefinition.Urn
 - uid: FlowtideDotNet.Core.Compute.ParametersInfo
   name: ParametersInfo
   href: api/FlowtideDotNet.Core.Compute.ParametersInfo.html
@@ -57501,19 +57501,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionName
   nameWithType: AggregateFunction.ExtensionName
-- uid: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.AggregateFunction.html#FlowtideDotNet_Substrait_Expressions_AggregateFunction_ExtensionUri
-  commentId: P:FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri
-  fullName: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri
-  nameWithType: AggregateFunction.ExtensionUri
-- uid: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri*
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.AggregateFunction.html#FlowtideDotNet_Substrait_Expressions_AggregateFunction_ExtensionUri_
-  commentId: Overload:FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri
+- uid: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.AggregateFunction.html#FlowtideDotNet_Substrait_Expressions_AggregateFunction_ExtensionUrn
+  commentId: P:FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn
+  fullName: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn
+  nameWithType: AggregateFunction.ExtensionUrn
+- uid: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn*
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.AggregateFunction.html#FlowtideDotNet_Substrait_Expressions_AggregateFunction_ExtensionUrn_
+  commentId: Overload:FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn
   isSpec: "True"
-  fullName: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUri
-  nameWithType: AggregateFunction.ExtensionUri
+  fullName: FlowtideDotNet.Substrait.Expressions.AggregateFunction.ExtensionUrn
+  nameWithType: AggregateFunction.ExtensionUrn
 - uid: FlowtideDotNet.Substrait.Expressions.AggregateFunction.GetHashCode
   name: GetHashCode()
   href: api/FlowtideDotNet.Substrait.Expressions.AggregateFunction.html#FlowtideDotNet_Substrait_Expressions_AggregateFunction_GetHashCode
@@ -60703,19 +60703,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionName
   nameWithType: ScalarFunction.ExtensionName
-- uid: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.ScalarFunction.html#FlowtideDotNet_Substrait_Expressions_ScalarFunction_ExtensionUri
-  commentId: P:FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri
-  fullName: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri
-  nameWithType: ScalarFunction.ExtensionUri
-- uid: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri*
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.ScalarFunction.html#FlowtideDotNet_Substrait_Expressions_ScalarFunction_ExtensionUri_
-  commentId: Overload:FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri
+- uid: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.ScalarFunction.html#FlowtideDotNet_Substrait_Expressions_ScalarFunction_ExtensionUrn
+  commentId: P:FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn
+  fullName: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn
+  nameWithType: ScalarFunction.ExtensionUrn
+- uid: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn*
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.ScalarFunction.html#FlowtideDotNet_Substrait_Expressions_ScalarFunction_ExtensionUrn_
+  commentId: Overload:FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn
   isSpec: "True"
-  fullName: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUri
-  nameWithType: ScalarFunction.ExtensionUri
+  fullName: FlowtideDotNet.Substrait.Expressions.ScalarFunction.ExtensionUrn
+  nameWithType: ScalarFunction.ExtensionUrn
 - uid: FlowtideDotNet.Substrait.Expressions.ScalarFunction.GetHashCode
   name: GetHashCode()
   href: api/FlowtideDotNet.Substrait.Expressions.ScalarFunction.html#FlowtideDotNet_Substrait_Expressions_ScalarFunction_GetHashCode
@@ -61480,19 +61480,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionName
   nameWithType: TableFunction.ExtensionName
-- uid: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.TableFunction.html#FlowtideDotNet_Substrait_Expressions_TableFunction_ExtensionUri
-  commentId: P:FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri
-  fullName: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri
-  nameWithType: TableFunction.ExtensionUri
-- uid: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri*
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.TableFunction.html#FlowtideDotNet_Substrait_Expressions_TableFunction_ExtensionUri_
-  commentId: Overload:FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri
+- uid: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.TableFunction.html#FlowtideDotNet_Substrait_Expressions_TableFunction_ExtensionUrn
+  commentId: P:FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn
+  fullName: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn
+  nameWithType: TableFunction.ExtensionUrn
+- uid: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn*
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.TableFunction.html#FlowtideDotNet_Substrait_Expressions_TableFunction_ExtensionUrn_
+  commentId: Overload:FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn
   isSpec: "True"
-  fullName: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUri
-  nameWithType: TableFunction.ExtensionUri
+  fullName: FlowtideDotNet.Substrait.Expressions.TableFunction.ExtensionUrn
+  nameWithType: TableFunction.ExtensionUrn
 - uid: FlowtideDotNet.Substrait.Expressions.TableFunction.GetHashCode
   name: GetHashCode()
   href: api/FlowtideDotNet.Substrait.Expressions.TableFunction.html#FlowtideDotNet_Substrait_Expressions_TableFunction_GetHashCode
@@ -61770,19 +61770,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionName
   nameWithType: WindowFunction.ExtensionName
-- uid: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.WindowFunction.html#FlowtideDotNet_Substrait_Expressions_WindowFunction_ExtensionUri
-  commentId: P:FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri
-  fullName: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri
-  nameWithType: WindowFunction.ExtensionUri
-- uid: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri*
-  name: ExtensionUri
-  href: api/FlowtideDotNet.Substrait.Expressions.WindowFunction.html#FlowtideDotNet_Substrait_Expressions_WindowFunction_ExtensionUri_
-  commentId: Overload:FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri
+- uid: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.WindowFunction.html#FlowtideDotNet_Substrait_Expressions_WindowFunction_ExtensionUrn
+  commentId: P:FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn
+  fullName: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn
+  nameWithType: WindowFunction.ExtensionUrn
+- uid: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn*
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.Expressions.WindowFunction.html#FlowtideDotNet_Substrait_Expressions_WindowFunction_ExtensionUrn_
+  commentId: Overload:FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn
   isSpec: "True"
-  fullName: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUri
-  nameWithType: WindowFunction.ExtensionUri
+  fullName: FlowtideDotNet.Substrait.Expressions.WindowFunction.ExtensionUrn
+  nameWithType: WindowFunction.ExtensionUrn
 - uid: FlowtideDotNet.Substrait.Expressions.WindowFunction.GetHashCode
   name: GetHashCode()
   href: api/FlowtideDotNet.Substrait.Expressions.WindowFunction.html#FlowtideDotNet_Substrait_Expressions_WindowFunction_GetHashCode
@@ -61873,6 +61873,28 @@ references:
   fullName.vb: FlowtideDotNet.Substrait.Expressions.WindowFunction.<>
   nameWithType: WindowFunction.operator !=
   nameWithType.vb: WindowFunction.<>
+- uid: FlowtideDotNet.Substrait.ExtensionUrn
+  name: ExtensionUrn
+  href: api/FlowtideDotNet.Substrait.ExtensionUrn.html
+  commentId: T:FlowtideDotNet.Substrait.ExtensionUrn
+  fullName: FlowtideDotNet.Substrait.ExtensionUrn
+  nameWithType: ExtensionUrn
+- uid: FlowtideDotNet.Substrait.ExtensionUrn.Validate(System.String)
+  name: Validate(string)
+  href: api/FlowtideDotNet.Substrait.ExtensionUrn.html#FlowtideDotNet_Substrait_ExtensionUrn_Validate_System_String_
+  commentId: M:FlowtideDotNet.Substrait.ExtensionUrn.Validate(System.String)
+  name.vb: Validate(String)
+  fullName: FlowtideDotNet.Substrait.ExtensionUrn.Validate(string)
+  fullName.vb: FlowtideDotNet.Substrait.ExtensionUrn.Validate(String)
+  nameWithType: ExtensionUrn.Validate(string)
+  nameWithType.vb: ExtensionUrn.Validate(String)
+- uid: FlowtideDotNet.Substrait.ExtensionUrn.Validate*
+  name: Validate
+  href: api/FlowtideDotNet.Substrait.ExtensionUrn.html#FlowtideDotNet_Substrait_ExtensionUrn_Validate_
+  commentId: Overload:FlowtideDotNet.Substrait.ExtensionUrn.Validate
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.ExtensionUrn.Validate
+  nameWithType: ExtensionUrn.Validate
 - uid: FlowtideDotNet.Substrait.FunctionExtensions
   name: FlowtideDotNet.Substrait.FunctionExtensions
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.html
@@ -61897,18 +61919,24 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.CountDistinct
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.CountDistinct
   nameWithType: FunctionsAggregateGeneric.CountDistinct
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.FlowtideUrn
+  name: FlowtideUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsAggregateGeneric_FlowtideUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.FlowtideUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.FlowtideUrn
+  nameWithType: FunctionsAggregateGeneric.FlowtideUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.SurrogateKeyInt64
   name: SurrogateKeyInt64
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsAggregateGeneric_SurrogateKeyInt64
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.SurrogateKeyInt64
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.SurrogateKeyInt64
   nameWithType: FunctionsAggregateGeneric.SurrogateKeyInt64
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsAggregateGeneric_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Uri
-  nameWithType: FunctionsAggregateGeneric.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsAggregateGeneric_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsAggregateGeneric.Urn
+  nameWithType: FunctionsAggregateGeneric.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic
   name: FunctionsArithmetic
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html
@@ -61987,6 +62015,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Cosh
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Cosh
   nameWithType: FunctionsArithmetic.Cosh
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.DecimalUrn
+  name: DecimalUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_DecimalUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.DecimalUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.DecimalUrn
+  nameWithType: FunctionsArithmetic.DecimalUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Degrees
   name: Degrees
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Degrees
@@ -62005,6 +62039,28 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Exp
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Exp
   nameWithType: FunctionsArithmetic.Exp
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.FlowtideUrn
+  name: FlowtideUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_FlowtideUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.FlowtideUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.FlowtideUrn
+  nameWithType: FunctionsArithmetic.FlowtideUrn
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn(System.String,FlowtideDotNet.Substrait.Type.SubstraitBaseType)
+  name: GetAggregateUrn(string, SubstraitBaseType)
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_GetAggregateUrn_System_String_FlowtideDotNet_Substrait_Type_SubstraitBaseType_
+  commentId: M:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn(System.String,FlowtideDotNet.Substrait.Type.SubstraitBaseType)
+  name.vb: GetAggregateUrn(String, SubstraitBaseType)
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn(string, FlowtideDotNet.Substrait.Type.SubstraitBaseType)
+  fullName.vb: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn(String, FlowtideDotNet.Substrait.Type.SubstraitBaseType)
+  nameWithType: FunctionsArithmetic.GetAggregateUrn(string, SubstraitBaseType)
+  nameWithType.vb: FunctionsArithmetic.GetAggregateUrn(String, SubstraitBaseType)
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn*
+  name: GetAggregateUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_GetAggregateUrn_
+  commentId: Overload:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.GetAggregateUrn
+  nameWithType: FunctionsArithmetic.GetAggregateUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Lag
   name: Lag
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Lag
@@ -62137,12 +62193,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Tanh
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Tanh
   nameWithType: FunctionsArithmetic.Tanh
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Uri
-  nameWithType: FunctionsArithmetic.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Urn
+  nameWithType: FunctionsArithmetic.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean
   name: FunctionsBoolean
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.html
@@ -62167,12 +62223,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Or
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Or
   nameWithType: FunctionsBoolean.Or
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsBoolean_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Uri
-  nameWithType: FunctionsBoolean.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsBoolean_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Urn
+  nameWithType: FunctionsBoolean.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.Xor
   name: Xor
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsBoolean.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsBoolean_Xor
@@ -62197,12 +62253,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.CheckValue
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.CheckValue
   nameWithType: FunctionsCheck.CheckValue
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsCheck_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Uri
-  nameWithType: FunctionsCheck.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsCheck_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsCheck.Urn
+  nameWithType: FunctionsCheck.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison
   name: FunctionsComparison
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.html
@@ -62305,12 +62361,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.NullIf
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.NullIf
   nameWithType: FunctionsComparison.NullIf
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsComparison_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Uri
-  nameWithType: FunctionsComparison.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsComparison_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.Urn
+  nameWithType: FunctionsComparison.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.isInfinite
   name: isInfinite
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsComparison.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsComparison_isInfinite
@@ -62377,6 +62433,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.SessionWindow
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.SessionWindow
   nameWithType: FunctionsDatetime.SessionWindow
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.StandardUrn
+  name: StandardUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_StandardUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.StandardUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.StandardUrn
+  nameWithType: FunctionsDatetime.StandardUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Strftime
   name: Strftime
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_Strftime
@@ -62401,12 +62463,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindowStart
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.TumblingWindowStart
   nameWithType: FunctionsDatetime.TumblingWindowStart
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Uri
-  nameWithType: FunctionsDatetime.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsDatetime_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsDatetime.Urn
+  nameWithType: FunctionsDatetime.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid
   name: FunctionsGuid
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.html
@@ -62419,24 +62481,24 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.ParseGuid
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.ParseGuid
   nameWithType: FunctionsGuid.ParseGuid
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsGuid_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Uri
-  nameWithType: FunctionsGuid.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsGuid_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsGuid.Urn
+  nameWithType: FunctionsGuid.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash
   name: FunctionsHash
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.html
   commentId: T:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash
   nameWithType: FunctionsHash
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsHash_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Uri
-  nameWithType: FunctionsHash.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsHash_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.Urn
+  nameWithType: FunctionsHash.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.XxHash128GuidString
   name: XxHash128GuidString
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsHash.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsHash_XxHash128GuidString
@@ -62479,12 +62541,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.ListUnionDistinctAgg
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.ListUnionDistinctAgg
   nameWithType: FunctionsList.ListUnionDistinctAgg
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsList_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Uri
-  nameWithType: FunctionsList.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsList_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsList.Urn
+  nameWithType: FunctionsList.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic
   name: FunctionsLogarithmic
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.html
@@ -62497,12 +62559,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Log10
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Log10
   nameWithType: FunctionsLogarithmic.Log10
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsLogarithmic_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Uri
-  nameWithType: FunctionsLogarithmic.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsLogarithmic_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsLogarithmic.Urn
+  nameWithType: FunctionsLogarithmic.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding
   name: FunctionsRounding
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.html
@@ -62521,18 +62583,24 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Floor
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Floor
   nameWithType: FunctionsRounding.Floor
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.FlowtideUrn
+  name: FlowtideUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsRounding_FlowtideUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.FlowtideUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.FlowtideUrn
+  nameWithType: FunctionsRounding.FlowtideUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Round
   name: Round
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsRounding_Round
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Round
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Round
   nameWithType: FunctionsRounding.Round
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsRounding_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Uri
-  nameWithType: FunctionsRounding.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsRounding_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsRounding.Urn
+  nameWithType: FunctionsRounding.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString
   name: FunctionsString
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.html
@@ -62551,6 +62619,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Concat
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Concat
   nameWithType: FunctionsString.Concat
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.FlowtideUrn
+  name: FlowtideUrn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsString_FlowtideUrn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.FlowtideUrn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.FlowtideUrn
+  nameWithType: FunctionsString.FlowtideUrn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.FromJson
   name: FromJson
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsString_FromJson
@@ -62665,12 +62739,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Upper
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Upper
   nameWithType: FunctionsString.Upper
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsString_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Uri
-  nameWithType: FunctionsString.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsString_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsString.Urn
+  nameWithType: FunctionsString.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct
   name: FunctionsStruct
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.html
@@ -62683,12 +62757,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Create
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Create
   nameWithType: FunctionsStruct.Create
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsStruct_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Uri
-  nameWithType: FunctionsStruct.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsStruct_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsStruct.Urn
+  nameWithType: FunctionsStruct.Urn
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric
   name: FunctionsTableGeneric
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.html
@@ -62701,12 +62775,36 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Unnest
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Unnest
   nameWithType: FunctionsTableGeneric.Unnest
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Uri
-  name: Uri
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsTableGeneric_Uri
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Uri
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Uri
-  nameWithType: FunctionsTableGeneric.Uri
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsTableGeneric_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTableGeneric.Urn
+  nameWithType: FunctionsTableGeneric.Urn
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes
+  name: FunctionsTypes
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.html
+  commentId: T:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes
+  nameWithType: FunctionsTypes
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Dynamic
+  name: Dynamic
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsTypes_Dynamic
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Dynamic
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Dynamic
+  nameWithType: FunctionsTypes.Dynamic
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.NamedStruct
+  name: NamedStruct
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsTypes_NamedStruct
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.NamedStruct
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.NamedStruct
+  nameWithType: FunctionsTypes.NamedStruct
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Urn
+  name: Urn
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsTypes_Urn
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Urn
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsTypes.Urn
+  nameWithType: FunctionsTypes.Urn
 - uid: FlowtideDotNet.Substrait.Hints
   name: FlowtideDotNet.Substrait.Hints
   href: api/FlowtideDotNet.Substrait.Hints.html

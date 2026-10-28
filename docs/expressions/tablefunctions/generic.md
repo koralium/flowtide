@@ -8,7 +8,7 @@ sidebar_position: 1
 
 *There is not substrait definition for unnest*
 
-* **Extension URI:** /functions_table_generic.yaml
+* **Extension URN:** `extension:io.github.koralium.flowtide:functions_table_generic`
 * **Extension Name:** unnest
 
 Unnest is a table function which takes in one argument that can be a list of element or a map.
