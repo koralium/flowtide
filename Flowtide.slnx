@@ -70,6 +70,7 @@
     <Project Path="tests/FlowtideDotNet.Storage.SqlServer.Tests/FlowtideDotNet.Storage.SqlServer.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Storage.Tests/FlowtideDotNet.Storage.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.Substrait.Tests/FlowtideDotNet.Substrait.Tests.csproj" />
+    <Project Path="tests/FlowtideDotNet.Substrait.Dialect.Tests/FlowtideDotNet.Substrait.Dialect.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.TestFramework.Tests/FlowtideDotNet.TestFramework.Tests.csproj" />
     <Project Path="tests/FlowtideDotNet.TestFramework.WebTesting/FlowtideDotNet.TestFramework.WebTesting.csproj" />
   </Folder>

@@ -1,0 +1,20 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:functions_guid
+description: Flowtide GUID parsing functions.
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+scalar_functions:
+  - name: parse_guid
+    description: >-
+      Parse a GUID string into its 16-byte .NET GUID representation. Invalid input returns null; this does not
+      generate random GUIDs.
+    metadata:
+      legacy_extension_uri: /functions_guid.yaml
+    impls:
+      - args:
+          - value: string
+        return: binary?
+        nullability: DECLARED_OUTPUT

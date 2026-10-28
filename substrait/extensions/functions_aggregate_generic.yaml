@@ -1,0 +1,51 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:functions_aggregate_generic
+description: Additional Flowtide generic aggregate functions.
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+aggregate_functions:
+  - name: count_distinct
+    description: Count distinct non-null values, returning zero for empty/all-null groups. SQL COUNT(DISTINCT x)
+      maps to this dedicated binding; a DISTINCT invocation flag on count is not a substitute.
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+    impls:
+      - args:
+          - value: any
+        return: i64
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+  - name: surrogate_key_int64
+    description: Assign a stateful Int64 counter value to an aggregate group. The key remains stable while that
+      group exists and its state is checkpointed; deleting and recreating a group can assign a new key. Keys are
+      scoped to the aggregate operator, not globally unique across streams. An empty global aggregate also receives
+      a key.
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+    impls:
+      - args: []
+        return: i64
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        deterministic: false
+        sessionDependent: true
+
+window_functions:
+  - name: surrogate_key_int64
+    description: Assign one stateful Int64 counter key per PARTITION BY tuple and return it for every row in that
+      partition. With no PARTITION BY, all rows share one key. A live partition retains its key across updates and
+      checkpoint restore; deleting and recreating a partition can assign a new key. Assignment is operator-scoped
+      and is not deterministic across a full replay. No ORDER BY is required and SQL rejects ROWS frames.
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+    impls:
+      - args: []
+        return: i64
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: STREAMING
+        deterministic: false
+        sessionDependent: true

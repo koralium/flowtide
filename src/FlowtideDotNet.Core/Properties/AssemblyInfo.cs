@@ -13,6 +13,7 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("FlowtideDotNet.Core.Tests")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Substrait.Dialect.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Lineage.DataHub")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Lineage.DataHub.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.OpenFGA")]

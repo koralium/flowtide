@@ -1,0 +1,20 @@
+{
+  "repository": "https://github.com/substrait-io/substrait",
+  "revision": "00f1faa056e8f8547df1f5aa3fc76cb0247de9b9",
+  "files": [
+    "LICENSE",
+    "text/dialect_schema.yaml",
+    "text/simple_extensions_schema.yaml",
+    "grammar/SubstraitType.g4",
+    "grammar/SubstraitLexer.g4",
+    "extensions/functions_arithmetic.yaml",
+    "extensions/functions_boolean.yaml",
+    "extensions/functions_comparison.yaml",
+    "extensions/functions_string.yaml",
+    "extensions/functions_rounding.yaml",
+    "extensions/functions_logarithmic.yaml",
+    "extensions/functions_aggregate_generic.yaml",
+    "extensions/functions_arithmetic_decimal.yaml",
+    "extensions/functions_datetime.yaml"
+  ]
+}
