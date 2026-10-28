@@ -266,27 +266,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
-        public async IAsyncEnumerable<Apache.Arrow.RecordBatch> ReadDataFileArrowFormat(IFileStorage storage, IOPath table, string path)
-        {
-            using var stream = await storage.OpenRead(table.Combine(path));
-
-            if (stream == null)
-            {
-                throw new DeltaFileNotFoundException(path);
-            }
-
-            using ParquetSharp.Arrow.FileReader fileReader = ParquetFileReaders.Open(stream);
-
-            // Must be released before its file reader
-            using var batchReader = fileReader.GetRecordBatchReader();
-
-            Apache.Arrow.RecordBatch batch;
-            while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
-            {
-                yield return batch;
-            }
-        }
-
         public async IAsyncEnumerable<BatchResultWithWeights> ReadAddRemovedDataFile(
             IFileStorage storage,
             IOPath table,

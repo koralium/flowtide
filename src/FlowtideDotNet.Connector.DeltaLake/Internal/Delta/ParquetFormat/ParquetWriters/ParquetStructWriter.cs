@@ -18,8 +18,8 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters
 {
-    // A struct field's intake name, its output name and id, and its writer
-    internal readonly record struct StructFieldWriter(string Key, string OutputName, int? FieldId, IParquetWriter Value);
+    // A struct field's names, id, writer and counted null bytes
+    internal readonly record struct StructFieldWriter(string Key, string OutputName, int? FieldId, IParquetWriter Value, int NullWidth = 0);
 
     internal class ParquetStructWriter : IParquetWriter
     {
@@ -30,7 +30,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private readonly bool[] _written;
         ArrowBuffer.BitmapBuilder? _nullBitmap;
         private int _nullCount;
-
+        // Every field's counted null bytes
+        private readonly int _nullWidth;
 
         public ParquetStructWriter(IEnumerable<StructFieldWriter> propertyWriters)
         {
@@ -44,6 +45,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 }
             }
             _written = new bool[this.propertyWriters.Count];
+            _nullWidth = this.propertyWriters.Sum(x => x.NullWidth);
 
             order = new List<int>();
             foreach (var key in keys)
@@ -152,7 +154,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             if (value.IsNull)
             {
                 WriteNull();
-                return 1;
+                return 1 + _nullWidth;
             }
 
             if (value.Type == ArrowTypeId.Map)
@@ -168,8 +170,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     var index = IndexOf(mapValue.GetKeyAt(i).AsString.ToString());
                     writtenBytes += propertyWriters[index].Value.WriteValue(mapValue.GetValueAt(i));
                 }
-                NullTheRest();
-                return writtenBytes;
+                return writtenBytes + NullTheRest();
             }
             else if (value.Type == ArrowTypeId.Struct)
             {
@@ -184,8 +185,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                     var index = IndexOf(structValue.Header.GetColumnName(i));
                     writtenBytes += propertyWriters[index].Value.WriteValue(structValue.GetAt(i));
                 }
-                NullTheRest();
-                return writtenBytes;
+                return writtenBytes + NullTheRest();
             }
             else
             {
@@ -209,15 +209,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         }
 
         // Fields the value did not name are null
-        private void NullTheRest()
+        private long NullTheRest()
         {
+            long nullBytes = 0;
             for (int i = 0; i < _written.Length; i++)
             {
                 if (!_written[i])
                 {
                     propertyWriters[i].Value.WriteNull();
+                    nullBytes += propertyWriters[i].NullWidth;
                 }
             }
+            return nullBytes;
         }
     }
 }

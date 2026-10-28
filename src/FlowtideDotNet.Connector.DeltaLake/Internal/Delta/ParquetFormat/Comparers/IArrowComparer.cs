@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
@@ -29,22 +28,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         /// <returns></returns>
         bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray);
 
-        /// <summary>
-        /// Iterates over the right array to find the first occurance of the value from the left array
-        /// </summary>
-        /// <param name="toFindIndex"></param>
-        /// <param name="toFindFrom"></param>
-        /// <param name="searchIndex"></param>
-        /// <param name="searchLength"></param>
-        /// <param name="toFindIn"></param>
-        /// <returns></returns>
-        int FindOccurance(
-            int toFindIndex,
-            IArrowArray toFindFrom,
-            int searchIndex,
-            int searchLength,
-            IArrowArray toFindIn,
-            int globalOffset,
-            IDeleteVector deleteVector);
+        // Mixes the value in, false if no stored value equals it
+        bool TryHash(IArrowArray? array, int index, ref ulong state);
+
+        // A total order whose zero is exactly IsEqual
+        int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex);
+
+        // TryHash for every row of a column, rejected rows stay rejected
+        void HashColumn(IArrowArray? array, Span<ulong> states, Span<bool> rejected)
+        {
+            for (int i = 0; i < states.Length; i++)
+            {
+                if (!rejected[i] && !TryHash(array, i, ref states[i]))
+                {
+                    rejected[i] = true;
+                }
+            }
+        }
     }
 }

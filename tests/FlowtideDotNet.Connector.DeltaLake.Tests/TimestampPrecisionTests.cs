@@ -70,6 +70,73 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(expected, Rows(flags, rows.Count));
         }
 
+        [Theory]
+        [InlineData(1)]
+        [InlineData(7)]
+        [InlineData(500)]
+        public void ACursorAgreesWithTheBitmapAtTheRowsItIsAsked(int step)
+        {
+            var rows = NestedRows(new Random(41), 1500);
+            var file = WriteNestedList(rows);
+            using var reader = new ParquetFileReader(new MemoryStream(file));
+            var leaf = Leaf(reader, int96: true);
+            var expected = Rows(TimestampPrecision.FlagRowGroup(reader, "nested.parquet", 0, new[] { leaf }), rows.Count);
+            Assert.Contains(true, expected);
+
+            using var cursor = new TimestampPrecision.RowGroupCursor(reader, "nested.parquet", 0, new[] { leaf });
+            for (int row = step / 2; row < rows.Count; row += step)
+            {
+                Assert.Equal(expected[row], cursor.Flagged(row));
+            }
+        }
+
+        [Fact]
+        public void ACursorReadsOnlyAsFarAsTheRowAsked()
+        {
+            var file = WriteInt96(Enumerable.Range(0, 100_000).Select(i => (Int96?)Int96(i % 2 == 0 ? 1_000 : 1_001, Day)).ToArray());
+            using var reader = new ParquetFileReader(new MemoryStream(file));
+            using var cursor = new TimestampPrecision.RowGroupCursor(reader, "flat.parquet", 0, new[] { Leaf(reader, int96: true) });
+
+            Assert.False(cursor.Flagged(10));
+            Assert.Equal(4096, cursor.LevelsRead);
+            Assert.True(cursor.Flagged(5_001));
+            Assert.Equal(8192, cursor.LevelsRead);
+        }
+
+        [Fact]
+        public void ACursorAskedPastItsLastLevelIsADecodeError()
+        {
+            var path = "cursor-ends-early.parquet";
+            var file = WriteList(new[] { ListRows(new Random(7), 40, nulls: false) });
+            using var reader = new ParquetFileReader(new MemoryStream(file));
+            var leaf = Leaf(reader, int96: true);
+            // A flagged row the cut-short read never reaches
+            var expected = Rows(TimestampPrecision.FlagRowGroup(reader, path, 0, new[] { leaf }), 40);
+            var row = System.Array.IndexOf(expected, true, 1);
+            Assert.True(row > 0, "the fixture flags no row after the first");
+            TimestampPrecision.LevelsHookForTests = (string hookPath, PrecisionLeaf hookLeaf, Span<short> definitions, Span<short> repetitions, ref long levels, ref long valuesRead) =>
+            {
+                if (hookPath == path)
+                {
+                    // Stops at the second row's first level
+                    levels = repetitions.Slice(1, (int)levels - 1).IndexOf((short)0) + 1;
+                    valuesRead = levels;
+                }
+            };
+            try
+            {
+                using var cursor = new TimestampPrecision.RowGroupCursor(reader, path, 0, new[] { leaf });
+
+                var error = Assert.Throws<InvalidDataException>(() => cursor.Flagged(row));
+
+                Assert.Contains("ended after", error.Message);
+            }
+            finally
+            {
+                TimestampPrecision.LevelsHookForTests = null;
+            }
+        }
+
         [Fact]
         public void ARowAcrossTheBatchBoundaryKeepsItsFlag()
         {

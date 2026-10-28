@@ -267,6 +267,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Storage = HookFileStorage.Wrap(Files.Of.LocalDisk(root));
             Stream = new DeltaLakeSinkStream(name, Storage, options =>
             {
+                // The prefilter's measurement runs it off as well
+                if (Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_PREFILTER") == "0")
+                {
+                    options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { Prefilter = false };
+                }
                 configure?.Invoke(options);
                 var previous = options.CommitVersionHookForTests;
                 // After the commit file is written and the stage removed

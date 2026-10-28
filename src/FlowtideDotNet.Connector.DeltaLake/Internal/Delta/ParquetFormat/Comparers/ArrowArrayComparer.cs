@@ -11,7 +11,6 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
@@ -22,22 +21,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
         public ArrowArrayComparer(IArrowComparer innerComparer)
         {
             _innerComparer = innerComparer;
-        }
-
-        public int FindOccurance(int toFindIndex, IArrowArray toFindFrom, int searchIndex, int searchLength, IArrowArray toFindIn, int globalOffset, IDeleteVector deleteVector)
-        {
-            for (int i = searchIndex; i < searchLength; i++)
-            {
-                if (deleteVector.Contains(globalOffset + i))
-                {
-                    continue;
-                }
-                if (IsEqual(toFindIndex, toFindFrom, i, toFindIn))
-                {
-                    return i;
-                }
-            }
-            return -1;
         }
 
         public bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray)
@@ -73,6 +56,53 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Compar
                 }
             }
             return true;
+        }
+
+        // The length, then the elements in order
+        public bool TryHash(IArrowArray? array, int index, ref ulong state)
+        {
+            if (ArrowHash.IsNull(array, index))
+            {
+                ArrowHash.Add(ref state, ArrowHash.Null);
+                return true;
+            }
+            var list = (ListArray)array!;
+            var offset = list.ValueOffsets[index];
+            var length = list.GetValueLength(index);
+            ArrowHash.Add(ref state, (ulong)length);
+            for (int i = 0; i < length; i++)
+            {
+                if (!_innerComparer.TryHash(list.Values, offset + i, ref state))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Element by element, then by length
+        public int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex)
+        {
+            var nulls = ArrowHash.CompareNulls(left, leftIndex, right, rightIndex);
+            if (nulls != null)
+            {
+                return nulls.Value;
+            }
+            var leftList = (ListArray)left!;
+            var rightList = (ListArray)right!;
+            var leftOffset = leftList.ValueOffsets[leftIndex];
+            var rightOffset = rightList.ValueOffsets[rightIndex];
+            var leftLength = leftList.GetValueLength(leftIndex);
+            var rightLength = rightList.GetValueLength(rightIndex);
+            for (int i = 0; i < Math.Min(leftLength, rightLength); i++)
+            {
+                var compared = _innerComparer.CompareCanonical(leftList.Values, leftOffset + i, rightList.Values, rightOffset + i);
+                if (compared != 0)
+                {
+                    return compared;
+                }
+            }
+            return leftLength.CompareTo(rightLength);
         }
     }
 }

@@ -11,37 +11,29 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
     internal class ArrowBoolComparer : IArrowComparer
     {
-        public int FindOccurance(int toFindIndex, IArrowArray toFindFrom, int searchIndex, int searchLength, IArrowArray toFindIn, int globalOffset, IDeleteVector deleteVector)
-        {
-            var left = (BooleanArray)toFindFrom;
-            var right = (BooleanArray)toFindIn;
-            var toSearchValue = left.GetValue(toFindIndex);
-            for (int i = searchIndex; i < searchLength; i++)
-            {
-                if (deleteVector.Contains(globalOffset + i))
-                {
-                    continue;
-                }
-                if (right.GetValue(i) == toSearchValue)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         public bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray)
         {
             var left = (BooleanArray)array;
             var right = (BooleanArray)otherArray;
 
             return left.GetValue(leftIndex) == right.GetValue(rightIndex);
+        }
+
+        public bool TryHash(IArrowArray? array, int index, ref ulong state)
+        {
+            ArrowHash.Add(ref state, ArrowHash.IsNull(array, index) ? ArrowHash.Null : ((BooleanArray)array!).GetValue(index)!.Value ? 1UL : 0UL);
+            return true;
+        }
+
+        // False before true
+        public int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex)
+        {
+            return ArrowHash.CompareNulls(left, leftIndex, right, rightIndex) ?? ((BooleanArray)left!).GetValue(leftIndex)!.Value.CompareTo(((BooleanArray)right!).GetValue(rightIndex)!.Value);
         }
     }
 }

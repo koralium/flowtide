@@ -72,6 +72,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         // Borrowed, the file disposes it and its footer
         public ParquetFileReader LowLevel { get; }
 
+        // Arrow reads each chunk up to its value count
+        public void CheckRowGroups(int[] leafColumns)
+        {
+            var schema = LowLevel.FileMetaData.Schema;
+            for (int group = 0; group < RowGroupStarts.Length; group++)
+            {
+                using var rowGroup = LowLevel.RowGroup(group);
+                var rows = rowGroup.MetaData.NumRows;
+                foreach (var column in leafColumns)
+                {
+                    var descriptor = schema.Column(column);
+                    if (descriptor.MaxRepetitionLevel != 0)
+                    {
+                        continue;
+                    }
+                    using var chunk = rowGroup.MetaData.GetColumnChunkMetaData(column);
+                    if (chunk.NumValues != rows)
+                    {
+                        using var path = descriptor.Path;
+                        throw new InvalidDataException($"Delta file {Path} cannot be decoded: leaf {path.ToDotString()} holds {chunk.NumValues} values in row group {group} of {rows} rows");
+                    }
+                }
+            }
+        }
+
         // All columns when no leaves are given
         public async IAsyncEnumerable<RecordBatch> ReadBatches(int[]? leafColumns)
         {

@@ -270,6 +270,15 @@ namespace FlowtideDotNet.Core.Compute.Columnar
             {
                 var keyExpr = pair.Key.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer())));
                 var valueExpr = pair.Value.Accept(this, state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer())));
+                // Struct keys and values are value types, as in lists
+                if (keyExpr!.Type != typeof(IDataValue))
+                {
+                    keyExpr = System.Linq.Expressions.Expression.Convert(keyExpr, typeof(IDataValue));
+                }
+                if (valueExpr!.Type != typeof(IDataValue))
+                {
+                    valueExpr = System.Linq.Expressions.Expression.Convert(valueExpr, typeof(IDataValue));
+                }
                 var keyValueExpr = System.Linq.Expressions.Expression.New(typeof(KeyValuePair<IDataValue, IDataValue>).GetConstructor([typeof(IDataValue), typeof(IDataValue)])!, keyExpr, valueExpr);
                 arrInitExpressions.Add(keyValueExpr);
             }

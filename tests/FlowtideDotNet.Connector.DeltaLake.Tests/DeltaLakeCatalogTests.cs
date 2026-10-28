@@ -14,6 +14,7 @@ using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
@@ -79,6 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 options.WriteChangeDataOnNewTables = changeData;
                 options.MaxFileSizeBytes = 2048;
                 options.ReservationOverride = reservation;
+                options.DeleteLimitsOverride = new DeleteLimits() { RowCap = 10 };
                 if (treeMode)
                 {
                     options.PruningMemoryBytes = 1;
