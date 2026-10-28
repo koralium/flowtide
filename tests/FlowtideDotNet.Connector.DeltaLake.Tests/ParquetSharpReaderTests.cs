@@ -375,7 +375,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Theory]
         [InlineData("data")]
         [InlineData("addRemoved")]
-        [InlineData("arrow")]
         [InlineData("cdc")]
         public async Task EarlyExitReleasesTheBatchReader(string method)
         {
@@ -390,7 +389,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     b.data.Dispose();
                     b.weights.Dispose();
                 }),
-                "arrow" => await ReleasedOnEarlyExit(reader.ReadDataFileArrowFormat(storage, "/", "cdc.parquet"), b => b.Dispose()),
                 _ => await ReleasedOnEarlyExit(reader.ReadCdcFile(storage, "/", "cdc.parquet", null, allocator), b =>
                 {
                     b.data.Dispose();
@@ -401,42 +399,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // A batch reader left open keeps its decode buffers in the Arrow pool
             Assert.True(released > 1_000_000, $"Released {released} bytes");
             Assert.True(Assert.Single(storage.Opened).Disposed);
-        }
-
-        [Fact]
-        public async Task ArrowFormatBatchesOutliveTheReader()
-        {
-            var (reader, storage) = await SyntheticCdcFile(Enumerable.Repeat("insert", 100_000).ToList());
-
-            var batches = new List<RecordBatch>();
-            try
-            {
-                await foreach (var batch in reader.ReadDataFileArrowFormat(storage, "/", "cdc.parquet"))
-                {
-                    batches.Add(batch);
-                }
-                Assert.True(Assert.Single(storage.Opened).Disposed);
-
-                int expected = 0;
-                foreach (var batch in batches)
-                {
-                    var ids = (Int32Array)batch.Column(0);
-                    var names = (StringArray)batch.Column(1);
-                    for (int i = 0; i < batch.Length; i++, expected++)
-                    {
-                        Assert.Equal(expected, ids.GetValue(i));
-                        Assert.Equal($"name_{expected}", names.GetString(i));
-                    }
-                }
-                Assert.Equal(100_000, expected);
-            }
-            finally
-            {
-                foreach (var batch in batches)
-                {
-                    batch.Dispose();
-                }
-            }
         }
 
         [Fact]

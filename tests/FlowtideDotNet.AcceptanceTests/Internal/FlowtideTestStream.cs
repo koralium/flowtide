@@ -209,6 +209,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             generator.Generate(count);
         }
 
+        // Tests that need a change no generator makes
+        internal MockDatabase MockDatabaseForTests => _db;
+
         public void GenerateUsers(int count = 1000)
         {
             generator.GenerateUsers(count);

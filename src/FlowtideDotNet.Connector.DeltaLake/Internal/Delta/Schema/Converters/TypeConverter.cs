@@ -256,7 +256,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Converters
 
             reader.Read();
 
-            if (reader.TokenType != JsonTokenType.String)
+            // A nested element type is an object
+            if (reader.TokenType != JsonTokenType.String && reader.TokenType != JsonTokenType.StartObject)
             {
                 throw new JsonException();
             }

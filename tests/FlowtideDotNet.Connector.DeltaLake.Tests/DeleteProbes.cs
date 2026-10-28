@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Core.ColumnStore;
@@ -227,6 +228,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var users = Sample(pool, deletes, new Random(deletes));
             var removed = new List<ProbeSample>();
             var inserted = new List<ProbeSample>();
+            var matching = new List<DeleteStatistics>();
             for (int run = 0; run <= ProbeKit.Runs; run++)
             {
                 await using var table = await fixture.Open(latency);
@@ -234,6 +236,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 ProbeSample? insert = null;
                 if (delete != null)
                 {
+                    if (run > 0)
+                    {
+                        matching.Add(table.Stream.Sinks[0].DeleteStatisticsForTests!);
+                    }
                     // Every delete matched, and the insert starts on an idle stream
                     await ExpectRows(table, fixture.Rows - deletes);
                     await table.Settle();
@@ -254,14 +260,28 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var shares = latency is { } l
                 ? $" | latency share {ProbeKit.Spread(removed, x => x.Requests * l.TotalMilliseconds * 100 / x.WallMs)} % | dv request latency share {ProbeKit.Spread(removed, x => x.DvWrites * l.TotalMilliseconds * 100 / x.WallMs)} %"
                 : "";
-            // Today's commit walk resolves 100k deletes per pass
-            kit.Report($"D={deletes} delete", removed, $" | passes {(deletes + 99_999) / 100_000} (derived){shares}");
+            kit.Report($"D={deletes} delete", removed, shares);
+            ReportMatching(kit, $"D={deletes}", matching);
             kit.Report($"D={deletes} insert", inserted);
             var pairs = Enumerable.Range(0, removed.Count).ToList();
             kit.Write($"D={deletes} | delete minus insert, per run | wall {ProbeKit.Spread(pairs.Select(i => removed[i].WallMs - inserted[i].WallMs).ToList())} ms" +
                 $" | sink {ProbeKit.Spread(pairs.Select(i => removed[i].SinkMs - inserted[i].SinkMs).ToList())} ms" +
                 $" | cpu {ProbeKit.Spread(pairs.Select(i => removed[i].CpuMs - inserted[i].CpuMs).ToList())} ms");
             return true;
+        }
+
+        // Counts from the last run, tick shares over the runs
+        internal static void ReportMatching(ProbeKit kit, string name, List<DeleteStatistics> runs)
+        {
+            static double Ms(long ticks) => ticks * 1000.0 / Stopwatch.Frequency;
+            static long Scan(DeleteStatistics x) => x.OpenTicks + x.ReadTicks + x.PrecisionTicks + x.HashTicks;
+            var last = runs[^1];
+            string Share(Func<DeleteStatistics, long> part) => ProbeKit.Spread(runs.Select(x => Scan(x) == 0 ? 0 : part(x) * 100.0 / Scan(x)).ToList());
+            kit.Write($"{name} matching | passes {last.Passes} | files {last.FilesScanned} | rows scanned {last.RowsScanned}, hashed {last.RowsHashed}, skipped {last.RowsSkipped}" +
+                $" | hits {last.Hits} | claims {last.Claims} | vectors read {last.VectorsRead} | row groups raw-read {last.RowGroupsRawRead}, raw levels {last.RawLevelsRead} | claim-free vector bytes {last.PeakClaimFreeVectorBytes}");
+            kit.Write($"{name} scan split | scan {ProbeKit.Spread(runs.Select(x => Ms(Scan(x))).ToList())} ms | open {Share(x => x.OpenTicks)} % | read and decode {Share(x => x.ReadTicks)} %" +
+                $" | precision {Share(x => x.PrecisionTicks)} % | hash and probe {Share(x => x.HashTicks)} %" +
+                $" | per candidate {ProbeKit.Spread(runs.Select(x => x.FilesScanned == 0 ? 0 : Ms(Scan(x)) / x.FilesScanned).ToList())} ms");
         }
 
         private static async Task ExpectRows(ProbeTable table, long expected)

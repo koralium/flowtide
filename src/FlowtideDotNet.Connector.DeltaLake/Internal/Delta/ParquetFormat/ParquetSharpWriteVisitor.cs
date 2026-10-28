@@ -19,12 +19,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     internal class ParquetSharpWriteVisitor : DeltaTypeVisitor<IParquetWriter>
     {
         private readonly IReadOnlyList<Apache.Arrow.Types.TimeUnit>? _units;
+        private readonly bool _countNulls;
         private int _unitsRead;
 
         // Timestamp leaves take the units in schema order, milliseconds without
-        public ParquetSharpWriteVisitor(IReadOnlyList<Apache.Arrow.Types.TimeUnit>? units = null)
+        public ParquetSharpWriteVisitor(IReadOnlyList<Apache.Arrow.Types.TimeUnit>? units = null, bool countNulls = false)
         {
             _units = units;
+            _countNulls = countNulls;
         }
 
         public int UnitsRead => _unitsRead;
@@ -104,7 +106,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             foreach (var field in type.Fields)
             {
                 var writer = Visit(field.Type);
-                fields.Add(new StructFieldWriter(field.Name, field.PhysicalName ?? field.Name, field.FieldId, writer));
+                // A null field's slots, counted only for the delete batch
+                var nullWidth = _countNulls ? ParquetSharpWriter.NullWidth(new DeltaTypeArrowTypeVisitor(null).Visit(field.Type)) : 0;
+                fields.Add(new StructFieldWriter(field.Name, field.PhysicalName ?? field.Name, field.FieldId, writer, nullWidth));
             }
             return new ParquetStructWriter(fields);
         }

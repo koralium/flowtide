@@ -59,6 +59,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                             throw new InvalidOperationException($"Argument {i + 1} must be a valid expression.");
                         }
 
+                        // A nested struct is a value type, so box it
+                        if (argResult.Type != typeof(IDataValue))
+                        {
+                            argResult = System.Linq.Expressions.Expression.Convert(argResult, typeof(IDataValue));
+                        }
                         var arrAccess = System.Linq.Expressions.Expression.ArrayAccess(arr, System.Linq.Expressions.Expression.Constant(argIndex));
                         var assignArr = System.Linq.Expressions.Expression.Assign(arrAccess, argResult);
                         expressions.Add(assignArr);

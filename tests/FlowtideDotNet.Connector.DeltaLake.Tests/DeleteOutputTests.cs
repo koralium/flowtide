@@ -134,8 +134,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.Contains("column name has field id 2, which the file stores as old_name", failure.ToString());
                 return;
             }
-            // Name mode reads the renamed column as null, as other engines do
-            await WaitForVersion(storage, "test", stream, 3);
+            // Name mode reads the renamed column as null, as other engines do, so no copy matches
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(1);
+            while (stream.Sinks[0].DeleteStatisticsForTests?.Passes != 1 && DateTime.UtcNow < deadline)
+            {
+                await RunCheckpoints(stream, 1);
+            }
+            await RunCheckpoints(stream, 2);
+            Assert.False(await storage.Exists(CommitPath("test", 3)));
+            var statistics = stream.Sinks[0].DeleteStatisticsForTests!;
+            // Only the deleted key passes the first column's test
+            Assert.Equal((1, 10L, 1L, 0L), (statistics.Passes, statistics.RowsScanned, statistics.RowsHashed, statistics.Claims));
         }
 
         [Theory]

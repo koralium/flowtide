@@ -11,37 +11,33 @@
 // limitations under the License.
 
 using Apache.Arrow;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers
 {
     internal class ArrowDateComparer : IArrowComparer
     {
-        public int FindOccurance(int toFindIndex, IArrowArray toFindFrom, int searchIndex, int searchLength, IArrowArray toFindIn, int globalOffset, IDeleteVector deleteVector)
-        {
-            var left = (Date32Array)toFindFrom;
-            var right = (Date32Array)toFindIn;
-            var toSearchValue = left.GetValue(toFindIndex);
-            for (int i = searchIndex; i < searchLength; i++)
-            {
-                if (deleteVector.Contains(globalOffset + i))
-                {
-                    continue;
-                }
-                if (right.GetValue(i) == toSearchValue)
-                {
-                    return i;
-                }
-            }
-            return -1;
-        }
-
         public bool IsEqual(int leftIndex, IArrowArray array, int rightIndex, IArrowArray otherArray)
         {
             var left = (Date32Array)array;
             var right = (Date32Array)otherArray;
 
             return left.GetValue(leftIndex) == right.GetValue(rightIndex);
+        }
+
+        public bool TryHash(IArrowArray? array, int index, ref ulong state)
+        {
+            ArrowHash.Add(ref state, ArrowHash.IsNull(array, index) ? ArrowHash.Null : (ulong)(long)((Date32Array)array!).Values[index]);
+            return true;
+        }
+
+        public void HashColumn(IArrowArray? array, Span<ulong> states, Span<bool> rejected)
+        {
+            ArrowHash.AddColumn<int, WideBits>(array, states);
+        }
+
+        public int CompareCanonical(IArrowArray? left, int leftIndex, IArrowArray? right, int rightIndex)
+        {
+            return ArrowHash.CompareNulls(left, leftIndex, right, rightIndex) ?? ((Date32Array)left!).Values[leftIndex].CompareTo(((Date32Array)right!).Values[rightIndex]);
         }
     }
 }
