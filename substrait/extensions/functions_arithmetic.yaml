@@ -1,0 +1,212 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:functions_arithmetic
+description: Additional Flowtide arithmetic functions.
+dependencies:
+  flowtide_types: extension:io.github.koralium.flowtide:types
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+scalar_functions:
+  - name: modulo
+    description: >-
+      Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload
+      has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric
+      inputs are also accepted natively.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: i64
+          - value: i64
+        return: flowtide_types.u!dynamic?
+        nullability: DECLARED_OUTPUT
+      - args:
+          - value: fp64
+          - value: fp64
+        return: fp64?
+        nullability: DECLARED_OUTPUT
+
+aggregate_functions:
+  - name: sum
+    description: Uses System.Decimal rather than the upstream Decimal<38,S> accumulator. Use precision at most 28
+      and require every intermediate and final sum to fit Decimal<28,S>; CLR decimal overflow throws. Null input
+      values are ignored. Empty/all-null groups return null.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      decimal_precision_max: 28
+    impls:
+      - args:
+          - value: decimal<P,S>
+        return: decimal?<28,S>
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        options:
+          overflow:
+            values:
+              - ERROR
+  - name: sum0
+    description: Uses System.Decimal rather than the upstream Decimal<38,S> accumulator. Use precision at most 28
+      and require every intermediate and final sum to fit Decimal<28,S>; CLR decimal overflow throws. Null input
+      values are ignored. Empty/all-null groups return decimal zero. Set AggregateFunction.output_type to the decimal
+      result type so an empty group is typed correctly.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      decimal_precision_max: 28
+    impls:
+      - args:
+          - value: decimal<P,S>
+        return: decimal<28,S>
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        options:
+          overflow:
+            values:
+              - ERROR
+  - name: avg
+    description: Integer input returns a fractional Double rather than the upstream truncated integer. Decimal input
+      returns System.Decimal with a scale determined by division, rather than the upstream fixed-scale Decimal<38,S>.
+      Its opaque result describes this dynamic decimal scale; the runtime result kind is always decimal for decimal
+      input. Use decimal precision at most 28. Null values are ignored; empty/all-null groups return null.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      decimal_precision_max: 28
+    impls:
+      - args:
+          - value: i64
+        return: fp64?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        options:
+          overflow:
+            values:
+              - SILENT
+      - args:
+          - value: decimal<P,S>
+        return: flowtide_types.u!dynamic?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        options:
+          overflow:
+            values:
+              - ERROR
+  - name: min
+    description: Return the minimum non-null value using Flowtide value comparison, or null for an empty/all-null
+      group. This generic overload includes strings, booleans, binary and nested values that have no matching upstream
+      arithmetic signature. Numeric and timestamp matches are listed separately in the dialect.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: any1
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+  - name: max
+    description: Return the maximum non-null value using Flowtide value comparison, or null for an empty/all-null
+      group. This generic overload includes strings, booleans, binary and nested values that have no matching upstream
+      arithmetic signature. Numeric and timestamp matches are listed separately in the dialect.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: any1
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+  - name: min_by
+    description: Return x associated with the minimum y. Rows with null y are ignored; x may be null. Empty groups,
+      or groups with no non-null y, return null. Do not rely on a particular row when y ties.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: any1
+          - value: any2
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+  - name: max_by
+    description: Return x associated with the maximum y. Rows with null y are ignored; x may be null. Empty groups,
+      or groups with no non-null y, return null. Do not rely on a particular row when y ties.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: any1
+          - value: any2
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+
+window_functions:
+  - name: last_value
+    description: Return the last non-null value within the ROWS frame. Empty/all-null frames return null. The NULL_TREATMENT
+      option extends the upstream definition; without this option, the upstream last_value binding respects nulls.
+      SQL requires ORDER BY.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+    impls:
+      - args:
+          - value: any1
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: PARTITION
+        options:
+          NULL_TREATMENT:
+            values:
+              - IGNORE_NULLS
+  - name: lead
+    description: Return a value from the following row at an Int64 physical offset. The offset can be a per-row
+      expression; negative offsets reverse direction and zero selects the current row. A null offset falls back
+      to 1, unlike upstream which returns null. If the target is outside the partition, evaluate the optional default
+      expression on the current row, or return null. Null target values are respected. The three-argument overload
+      permits a different default value kind, so its result is opaque/dynamic. SQL requires ORDER BY and rejects
+      ROWS frames.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      offset_null_behavior: USE_ONE
+    impls:
+      - args:
+          - value: any1
+          - value: i64
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: PARTITION
+      - args:
+          - value: any1
+          - value: i64
+          - value: any2
+        return: flowtide_types.u!dynamic?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: PARTITION
+  - name: lag
+    description: Return a value from the preceding row at an Int64 physical offset. The offset can be a per-row
+      expression; negative offsets reverse direction and zero selects the current row. A null offset falls back
+      to 1, unlike upstream which returns null. If the target is outside the partition, evaluate the optional default
+      expression on the current row, or return null. Null target values are respected. The three-argument overload
+      permits a different default value kind, so its result is opaque/dynamic. SQL requires ORDER BY and rejects
+      ROWS frames.
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      offset_null_behavior: USE_ONE
+    impls:
+      - args:
+          - value: any1
+          - value: i64
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: PARTITION
+      - args:
+          - value: any1
+          - value: i64
+          - value: any2
+        return: flowtide_types.u!dynamic?
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: PARTITION

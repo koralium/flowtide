@@ -1,0 +1,66 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:check
+description: Flowtide data-quality check functions.
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+scalar_functions:
+  - name: check_true
+    description: >-
+      Planner intrinsic extracted into check relations. Returns true only for boolean true; only boolean false
+      raises an issue. Message must be a string literal. Include a row key in tags for one issue per failing row.
+    metadata:
+      legacy_extension_uri: /check.yaml
+      requires_optimizer_pass: CheckExtractor
+      literal_arguments:
+        - 1
+    impls:
+      - args:
+          - value: boolean
+          - value: string
+        return: boolean
+        nullability: DECLARED_OUTPUT
+        variadic:
+          min: 2
+          parameterConsistency: INCONSISTENT
+      - args:
+          - value: boolean
+          - value: string
+          - value: any
+        return: boolean
+        nullability: DECLARED_OUTPUT
+        variadic:
+          min: 2
+          parameterConsistency: INCONSISTENT
+  - name: check_value
+    description: >-
+      Planner intrinsic extracted into check relations. Returns value while recording boolean-false failures;
+      null/non-boolean conditions do not raise an issue. Message must be a string literal. Named tags use key
+      => expression.
+    metadata:
+      legacy_extension_uri: /check.yaml
+      requires_optimizer_pass: CheckExtractor
+      literal_arguments:
+        - 2
+    impls:
+      - args:
+          - value: any1
+          - value: boolean
+          - value: string
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        variadic:
+          min: 3
+          parameterConsistency: INCONSISTENT
+      - args:
+          - value: any1
+          - value: boolean
+          - value: string
+          - value: any
+        return: any1?
+        nullability: DECLARED_OUTPUT
+        variadic:
+          min: 3
+          parameterConsistency: INCONSISTENT

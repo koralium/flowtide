@@ -1,0 +1,379 @@
+$id: http://substrait.io/schemas/simple_extensions
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Simple Extensions
+additionalProperties: false
+type: object
+required: [urn]
+properties:
+  urn:
+    type: string
+  description:
+    type: string
+  dependencies:
+    # For reusing types from other extension files.
+    # The keys are namespace identifiers that you can then use as dot-separated
+    # prefixes for type names in functions. The values must be extension URNs,
+    # following the same format and conventions as those used in the proto plans.
+    type: object
+    patternProperties:
+      "^[a-zA-Z_\\$][a-zA-Z0-9_\\$]*$":
+        type: string
+  metadata: # arbitrary data created by extension author
+    type: object
+  types:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+        deprecated:
+          $ref: "#/$defs/deprecationStatus"
+        description:
+          type: string
+        metadata: # arbitrary data created by extension author
+          type: object
+        structure:
+          $ref: "#/$defs/type"
+        parameters: # parameter list for compound types
+          $ref: "#/$defs/type_param_defs"
+        variadic: # when set, last parameter may be specified one or more times
+          type: boolean
+  type_variations:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      additionalProperties: false
+      required: [parent, name]
+      properties:
+        parent:
+          $ref: "#/$defs/type"
+        name:
+          type: string
+        deprecated:
+          $ref: "#/$defs/deprecationStatus"
+        description:
+          type: string
+        functions:
+          type: string
+          enum: [INHERITS, SEPARATE]
+  scalar_functions:
+    type: array
+    items:
+      $ref: "#/$defs/scalarFunction"
+  aggregate_functions:
+    type: array
+    items:
+      $ref: "#/$defs/aggregateFunction"
+  window_functions:
+    type: array
+    items:
+      $ref: "#/$defs/windowFunction"
+
+$defs:
+  type:
+    description: String values are Substrait type expressions parsed by grammar/SubstraitType.g4.
+    oneOf:
+      - type: string # any data type
+      - type: object # syntactic sugar for a non-nullable named struct
+  type_param_defs: # an array of compound type parameter definitions
+    type: array
+    items:
+      type: object
+      required: [type]
+      properties:
+        name: # name of the parameter (for documentation only)
+          type: string
+        description: # description (for documentation only)
+          type: string
+        type: # expected metatype for the parameter
+          type: string
+          enum:
+            - dataType
+            - boolean
+            - integer
+            - enumeration
+            - string
+        min: # for integers, the minimum supported value (inclusive)
+          type: number
+        max: # for integers, the maximum supported value (inclusive)
+          type: number
+        options: # for enums, the list of supported values
+          $ref: "#/$defs/enum_options"
+        optional: # when set to true, the parameter may be omitted at the end or skipped using null
+          type: boolean
+  enum_options:
+    type: array
+    minItems: 1
+    uniqueItems: true
+    items:
+      type: string
+  enumeration_arg:
+    type: object
+    additionalProperties: false
+    required: [options]
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      options:
+        $ref: "#/$defs/enum_options"
+  value_arg:
+    type: object
+    required: [value]
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      value:
+        $ref: "#/$defs/type"
+      constant:
+        type: boolean
+  type_arg:
+    type: object
+    required: [type]
+    properties:
+      name:
+        type: string
+      description:
+        type: string
+      type:
+        description: Type arguments are Substrait type expressions parsed by grammar/SubstraitType.g4.
+        type: string
+  arguments: # an array of arguments
+    type: array
+    items:
+      oneOf:
+        - $ref: "#/$defs/enumeration_arg"
+        - $ref: "#/$defs/value_arg"
+        - $ref: "#/$defs/type_arg"
+  options: # a map of options
+    type: object
+    additionalProperties:
+      type: object # option
+      additionalProperties: false
+      required: [values]
+      properties:
+        description:
+          type: string
+        values:
+          type: array
+          items:
+            type: string
+  variadicBehavior:
+    type: object
+    additionalProperties: false
+    properties:
+      min:
+        type: number
+      max:
+        type: number
+      parameterConsistency:
+        type: string
+        enum: [CONSISTENT, INCONSISTENT]
+  deterministic:
+    type: boolean
+  sessionDependent:
+    type: boolean
+  nullabilityHandling:
+    description: >-
+      Describes how nullability of arguments maps to nullability of output.
+
+      * MIRROR: Output is nullable if any argument is nullable; argument and return
+      types must not include nullability markers as they will be ignored for output
+      nullability derivation.
+
+      * DECLARED_OUTPUT: Output nullability matches the declared return type
+      regardless of argument nullability; argument types must not include
+      nullability markers.
+
+      * DISCRETE: Like DECLARED_OUTPUT, but arguments must also match their
+      declared nullability exactly.
+    type: string
+    enum: [MIRROR, DECLARED_OUTPUT, DISCRETE]
+  returnValue:
+    $ref: "#/$defs/type"
+  implementation:
+    type: object
+    additionalProperties:
+      type: string
+  intermediate:
+    $ref: "#/$defs/type"
+  decomposable:
+    type: string
+    enum: [NONE, ONE, MANY]
+  maxset:
+    type: number
+  ordered:
+    type: boolean
+  coreSemanticVersionString:
+    type: string
+    pattern: "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+    description: >-
+      Semantic version string. Should follow semantic versioning format (e.g. "1.2.3").
+      We intentiaonally allow only core components (major.minor.patch) of the semantic version string.
+  deprecationStatus:
+    type: object
+    additionalProperties: false
+    required: [since]
+    properties:
+      since:
+        description: >-
+          Version since when the item is deprecated.
+        $ref: "#/$defs/coreSemanticVersionString"
+      reason:
+        description: >-
+          Description of the deprecation (for documentation only).
+        type: string
+      metadata:
+        description: >-
+          Arbitrary data created by extension author.
+        type: object
+  scalarFunction:
+    type: object
+    additionalProperties: false
+    required: [name, impls]
+    properties:
+      name:
+        type: string
+      deprecated:
+        $ref: "#/$defs/deprecationStatus"
+      description:
+        type: string
+      metadata: # arbitrary data created by extension author
+        type: object
+      impls:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [return]
+          properties:
+            deprecated:
+              $ref: "#/$defs/deprecationStatus"
+            description:
+              type: string
+            args:
+              $ref: "#/$defs/arguments"
+            options:
+              $ref: "#/$defs/options"
+            variadic:
+              $ref: "#/$defs/variadicBehavior"
+            sessionDependent:
+              $ref: "#/$defs/sessionDependent"
+            deterministic:
+              $ref: "#/$defs/deterministic"
+            nullability:
+              $ref: "#/$defs/nullabilityHandling"
+            return:
+              $ref: "#/$defs/returnValue"
+            implementation:
+              $ref: "#/$defs/implementation"
+  aggregateFunction:
+    type: object
+    additionalProperties: false
+    required: [name, impls]
+    properties:
+      name:
+        type: string
+      deprecated:
+        $ref: "#/$defs/deprecationStatus"
+      description:
+        type: string
+      metadata: # arbitrary data created by extension author
+        type: object
+      impls:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [return]
+          properties:
+            deprecated:
+              $ref: "#/$defs/deprecationStatus"
+            description:
+              type: string
+            args:
+              $ref: "#/$defs/arguments"
+            options:
+              $ref: "#/$defs/options"
+            variadic:
+              $ref: "#/$defs/variadicBehavior"
+            sessionDependent:
+              $ref: "#/$defs/sessionDependent"
+            deterministic:
+              $ref: "#/$defs/deterministic"
+            nullability:
+              $ref: "#/$defs/nullabilityHandling"
+            return:
+              $ref: "#/$defs/returnValue"
+            implementation:
+              $ref: "#/$defs/implementation"
+            intermediate:
+              $ref: "#/$defs/intermediate"
+            ordered:
+              $ref: "#/$defs/ordered"
+            maxset:
+              $ref: "#/$defs/maxset"
+            decomposable:
+              $ref: "#/$defs/decomposable"
+  windowFunction:
+    type: object
+    additionalProperties: false
+    required: [name, impls]
+    properties:
+      name:
+        type: string
+      deprecated:
+        $ref: "#/$defs/deprecationStatus"
+      description:
+        type: string
+      metadata: # arbitrary data created by extension author
+        type: object
+      impls:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [return]
+          properties:
+            deprecated:
+              $ref: "#/$defs/deprecationStatus"
+            description:
+              type: string
+            args:
+              $ref: "#/$defs/arguments"
+            options:
+              $ref: "#/$defs/options"
+            variadic:
+              $ref: "#/$defs/variadicBehavior"
+            sessionDependent:
+              $ref: "#/$defs/sessionDependent"
+            deterministic:
+              $ref: "#/$defs/deterministic"
+            nullability:
+              $ref: "#/$defs/nullabilityHandling"
+            return:
+              $ref: "#/$defs/returnValue"
+            implementation:
+              $ref: "#/$defs/implementation"
+            intermediate:
+              $ref: "#/$defs/intermediate"
+            ordered:
+              $ref: "#/$defs/ordered"
+            maxset:
+              $ref: "#/$defs/maxset"
+            decomposable:
+              $ref: "#/$defs/decomposable"
+            window_type:
+              type: string
+              enum: [STREAMING, PARTITION]

@@ -1,0 +1,36 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:functions_table_generic
+description: Flowtide generic table functions, described as custom metadata.
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  table_functions:
+    - name: unnest
+      description: Emit one column and one row per list element or map entry. List elements retain their original
+        value kind, including null elements. For a map, each result is a single map/object with string fields key
+        and value containing the original key and value; these are not separate columns. Null, empty, and non-list/non-map
+        inputs emit no rows. SQL uses the table alias as the single output column name, or generates a name when
+        no alias is supplied. No ordinality column is added.
+      metadata:
+        legacy_extension_uri: /functions_table_generic.yaml
+        output_column_count: 1
+      impls:
+        - args:
+            - name: collection
+              value: list<any1>
+          output_columns:
+            - name: value
+              value: any1
+              name_is_configurable: true
+        - args:
+            - name: collection
+              value: map<any1,any2>
+          output_columns:
+            - name: value
+              value: map<string,any>
+              name_is_configurable: true
+              fields:
+                key: any1
+                value: any2

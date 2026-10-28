@@ -1,0 +1,251 @@
+%YAML 1.2
+---
+urn: extension:io.github.koralium.flowtide:functions_datetime
+description: Flowtide date/time functions and overloads.
+metadata:
+  dialect: ../dialect.yaml
+  runtime_binding: Use legacy_extension_uri metadata and the function name for the current Flowtide runtime. This
+    URN identifies the extension document; runtime URN resolution is not added by this documentation.
+  timestamp_precision: Flowtide timestamps use .NET ticks; the explicit timestamp results below use precision 7.
+  # Custom metadata: table functions are not a standard Simple Extensions section.
+  table_functions:
+    - name: tumbling_window
+      description: Emit the single fixed-size window containing a timestamp. Duration amounts must be positive integer
+        numeric literals; units must be string literals WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND
+        (case-insensitive). Fractions, column/expression durations, MONTH and YEAR are rejected. Each converted duration
+        must fit Int64 ticks. Days are fixed 24-hour durations and weeks are seven days. Window starts align to UTC
+        ticks from 0001-01-01T00:00:00Z; a week grid therefore begins Monday UTC, not local calendar midnight. Results
+        preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp
+        input emits no rows.
+      metadata:
+        legacy_extension_uri: /functions_datetime.yaml
+        output_column_count: 2
+        literal_arguments:
+          - 1
+          - 2
+        duration_units:
+          - WEEK
+          - DAY
+          - HOUR
+          - MINUTE
+          - SECOND
+          - MILLISECOND
+          - MICROSECOND
+        timestamp_precision: 7
+      impls:
+        - args:
+            - name: timestamp
+              value: precision_timestamp_tz<7>
+            - name: size_amount
+              value: i64
+              constant: true
+            - name: size_unit
+              value: string
+              constant: true
+          output_columns:
+            - name: window_start
+              value: precision_timestamp_tz<7>
+            - name: window_end
+              value: precision_timestamp_tz<7>
+    - name: hopping_window
+      description: Emit every fixed-size window containing a timestamp, with starts spaced by the hop duration. A
+        smaller hop than size creates overlapping windows; equal durations produce one tumbling window; a larger hop
+        can leave gaps and emit no rows. Results are emitted from the latest matching start backwards, though a SQL
+        result requires ORDER BY to guarantee presentation order. The number of matching windows varies by alignment
+        and is at most ceil(size_ticks / hop_ticks). The compile-time guard rejects floor(size_ticks / hop_ticks)
+        > 100000; a non-integral ratio just below 100001 can therefore emit 100001 rows. Duration amounts must be
+        positive integer numeric literals; units must be string literals WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND
+        or MICROSECOND (case-insensitive). Fractions, column/expression durations, MONTH and YEAR are rejected. Each
+        converted duration must fit Int64 ticks. Days are fixed 24-hour durations and weeks are seven days. Window
+        starts align to UTC ticks from 0001-01-01T00:00:00Z; a week grid therefore begins Monday UTC, not local calendar
+        midnight. Results preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp
+        input emits no rows.
+      metadata:
+        legacy_extension_uri: /functions_datetime.yaml
+        output_column_count: 2
+        literal_arguments:
+          - 1
+          - 2
+          - 3
+          - 4
+        duration_units:
+          - WEEK
+          - DAY
+          - HOUR
+          - MINUTE
+          - SECOND
+          - MILLISECOND
+          - MICROSECOND
+        timestamp_precision: 7
+        fanout_guard: floor(size_ticks / hop_ticks) <= 100000
+      impls:
+        - args:
+            - name: timestamp
+              value: precision_timestamp_tz<7>
+            - name: hop_amount
+              value: i64
+              constant: true
+            - name: hop_unit
+              value: string
+              constant: true
+            - name: size_amount
+              value: i64
+              constant: true
+            - name: size_unit
+              value: string
+              constant: true
+          output_columns:
+            - name: window_start
+              value: precision_timestamp_tz<7>
+            - name: window_end
+              value: precision_timestamp_tz<7>
+scalar_functions:
+  - name: strftime
+    description: >-
+      Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format
+      for typed timestamps.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: i64
+          - value: string
+        return: string?
+        nullability: DECLARED_OUTPUT
+  - name: floor_timestamp_day
+    description: >-
+      Remove the time-of-day component; incompatible values return null.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: precision_timestamp_tz<7>
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+  - name: parse_timestamp
+    description: >-
+      Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: string
+          - value: string
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+  - name: format
+    description: >-
+      Format typed timestamps with .NET date/time format strings.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: precision_timestamp_tz<7>
+          - value: string
+        return: string?
+        nullability: DECLARED_OUTPUT
+  - name: extract
+    description: >-
+      Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
+      Component is a string such as YEAR, MONTH, DAY, HOUR, MINUTE, SECOND or ISO_WEEK; SQL names differ from
+      runtime names.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: string
+          - value: precision_timestamp_tz<7>
+        return: i64?
+        nullability: DECLARED_OUTPUT
+  - name: timestamp_add
+    description: >-
+      Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: string
+          - value: i64
+          - value: precision_timestamp_tz<7>
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+  - name: datediff
+    description: >-
+      Count crossed component boundaries.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: string
+          - value: precision_timestamp_tz<7>
+          - value: precision_timestamp_tz<7>
+        return: i64?
+        nullability: DECLARED_OUTPUT
+  - name: round_calendar
+    description: >-
+      Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
+      Calendar-aligned rounding, for example round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1).
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+    impls:
+      - args:
+          - value: precision_timestamp_tz<7>
+          - value: string
+          - value: string
+          - value: string
+          - value: i64
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+  - name: tumbling_window_start
+    description: >-
+      Internal scalar used by window-join optimization. Arguments are timestamp and a positive literal size in
+      ticks; no public SQL registration.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      literal_arguments:
+        - 1
+    impls:
+      - args:
+          - value: precision_timestamp_tz<7>
+          - value: i64
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+  - name: gettimestamp
+    description: >-
+      Planner intrinsic: optimizer replaces the call with a periodically updated timestamp source and joins. Default
+      update interval is one hour; configure SetGetTimestampUpdateInterval. Not supported inside join conditions.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      requires_optimizer_pass: TimestampToJoin
+    impls:
+      - args: []
+        return: precision_timestamp_tz<7>
+        nullability: DECLARED_OUTPUT
+
+window_functions:
+  - name: session_window
+    description: Return the first timestamp of the session containing each row. Order by exactly one ascending timestamp
+      expression; partitioning is optional. Consecutive valid timestamps separated by at most the gap belong to
+      the same session; a larger gap starts a new session. Null/non-timestamp order values yield null and do not
+      split a session. Inserts can merge sessions and deletes can split them. Gap amount must be a positive integer
+      literal; the unit must be a string literal WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND. The
+      duration must fit Int64 ticks. The gap measures elapsed time, with fixed-length days/weeks. SQL rejects explicit
+      frames. Requires the bulk window operator.
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      literal_arguments:
+        - 0
+        - 1
+      requires_bulk_window_operator: true
+    impls:
+      - args:
+          - value: i64
+            name: gap_amount
+            constant: true
+          - value: string
+            name: gap_unit
+            constant: true
+        return: precision_timestamp_tz?<7>
+        nullability: DECLARED_OUTPUT
+        decomposable: NONE
+        window_type: STREAMING

@@ -1,0 +1,3048 @@
+name: "Flowtide dialect"
+
+metadata:
+  max_expression_depth: 128
+  flowtide_type_compatibility:
+    declaration_scope: supported_types describes native value/model capabilities. Each entry separately states schema
+      and non-null literal wire support; a native type declaration alone does not imply that every schema/literal
+      form can be imported.
+    nullability: Native columns store nulls separately from value kinds. Required schema annotations are not a row-validation
+      step. For supported scalar/LIST/MAP schema paths, nullability annotations are retained; any imports as nullable,
+      and standard nested STRUCT container nullability is not retained. Typed protobuf null literals import as an untyped NullLiteral and lose
+      their original type annotation.
+    type_variations: Only default type behavior is advertised. Type-variation references are not preserved or enforced
+      by the current model/reader/writer.
+    numeric_string_cast_culture: Numeric string casts use the process .NET culture (TryParse without an explicit provider);
+      format numeric strings for that culture.
+    additional_model_types:
+      - native_model: DateType
+        protobuf_type: DATE
+        schema_import: true
+        schema_export: true
+        non_null_literal_import: false
+        native_cast: false
+        notes: DATE schema annotations are accepted, but there is no dedicated native date value/cast implementation.
+          CLR DateTime uses TimestampType. DATE is therefore not advertised as a complete runtime value type.
+      - native_model: NullType
+        runtime_value: NullValue
+        protobuf_codec: nullable Flowtide any
+        notes: NullType serializes as nullable any and imports as AnyType. Null values are supported through nullable/dynamic
+          types rather than a separate standard NULL type class.
+    unsupported_standard_type_classes:
+      - I8
+      - I16
+      - FIXED_BINARY
+      - VARCHAR
+      - FIXED_CHAR
+      - DATE
+      - PRECISION_TIME
+      - PRECISION_TIMESTAMP
+      - INTERVAL_COMPOUND
+      - INTERVAL_DAY
+      - INTERVAL_YEAR
+      - UUID
+      - UNBOUND
+      - FUNC
+  # Table functions are Flowtide metadata, not a standard Substrait function section.
+  flowtide_table_functions:
+    description: Flowtide-specific metadata. Neither the dialect schema nor Simple Extensions defines a standard table-function
+      catalog. Definitions are stored in each source extension metadata.table_functions.
+    plan_representation:
+      protobuf_type: flowtide.TableFunctionRelation
+      type_url: type.googleapis.com/flowtide.TableFunctionRelation
+      with_input: EXTENSION_SINGLE
+      without_input: EXTENSION_LEAF
+      requires_table_schema: true
+      argument_kind: VALUE
+      sql_join_types:
+        - INNER
+        - LEFT
+      notes: Function references use ordinary extension URI/name anchors. Supply TableFunction.table_schema with the
+        correct number of output columns. With input, argument expressions can reference that input row and output
+        fields append the function columns to the input before emit projection. An optional ON predicate can reference
+        both input and function columns. INNER JOIN retains only matching function rows; LEFT JOIN emits one row with
+        null function columns if no rows match, including an empty function result or an ON predicate rejecting every
+        row. SQL does not support RIGHT/FULL/CROSS joins for these built-in table functions. Standalone FROM calls
+        execute without input and emit their static result as a source.
+    supported_functions:
+      - source: flowtide_table_generic
+        name: unnest
+        system_metadata:
+          name: unnest
+          notation: FUNCTION
+        supported_impls:
+          - list
+          - map
+        metadata:
+          legacy_extension_uri: /functions_table_generic.yaml
+          sql_signature: unnest(collection)
+          sql_examples:
+            - SELECT val FROM UNNEST(list(1, 2, 3)) val
+            - SELECT d.id, element FROM documents d LEFT JOIN UNNEST(d.items) element
+            - SELECT d.id, element FROM documents d INNER JOIN UNNEST(d.items) element ON element = 123
+          doc_url: https://koralium.github.io/flowtide/docs/expressions/tablefunctions/generic.html
+      - source: flowtide_datetime
+        name: tumbling_window
+        system_metadata:
+          name: tumbling_window
+          notation: FUNCTION
+        supported_impls:
+          - ptstz_i64_str
+        metadata:
+          legacy_extension_uri: /functions_datetime.yaml
+          sql_signature: tumbling_window(timestamp, size_amount, size_unit)
+          sql_examples:
+            - SELECT o.id, window_start, window_end FROM orders o INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')
+            - SELECT window_start, COUNT(*) FROM orders o INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE') GROUP
+              BY window_start
+          doc_url: https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.html
+      - source: flowtide_datetime
+        name: hopping_window
+        system_metadata:
+          name: hopping_window
+          notation: FUNCTION
+        supported_impls:
+          - ptstz_i64_str_i64_str
+        metadata:
+          legacy_extension_uri: /functions_datetime.yaml
+          sql_signature: hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)
+          sql_examples:
+            - SELECT o.id, window_start, window_end FROM orders o INNER JOIN hopping_window(o.order_time, 5, 'MINUTE',
+              10, 'MINUTE')
+            - SELECT o.id, window_start FROM orders o LEFT JOIN hopping_window(o.order_time, 10, 'MINUTE', 5, 'MINUTE')
+          doc_url: https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.html
+
+supported_expressions:
+  - expression: LITERAL
+    metadata:
+      notes: Protobuf import accepts boolean, null, i32, i64, string, fixed_char and binary literals. Fractional
+        NumericLiteral values in native plans execute as doubles and serialize as fp64, but fp64 literal import
+        is not implemented. Use NESTED LIST/MAP for collection construction; collection literals are not supported
+        by the protobuf literal reader.
+  - expression: SELECTION
+    metadata:
+      notes: Use a direct StructField reference with a zero-based input column index. RootReference selects
+        from the current input; OuterReference is used for correlated EXISTS filters and must be removed by
+        decorrelation before execution. Masked references and expression-rooted selections are unsupported.
+        Child reference segments are not preserved by the protobuf reader/writer, even though native plans
+        can access nested fields.
+  - expression: SCALAR_FUNCTION
+    metadata:
+      notes: Calls resolve through registered extension URI/name pairs. Availability depends on the engine's
+        function registry; this expression form does not imply support for every function in a Substrait extension.
+  - expression: IF_THEN
+    metadata:
+      notes: 'Searched CASE semantics: evaluate conditions in order and return the first matching result. Supply
+        an explicit else expression when importing a plan; use a null literal for CASE without an ELSE clause.'
+  - expression: SINGULAR_OR_LIST
+    metadata:
+      notes: Tests one value against a list of expression options, using equality comparisons combined with
+        boolean OR and SQL null semantics. This is the expression form used for SQL IN lists.
+  - expression: CAST
+    failure_options:
+      - RETURN_NULL
+    metadata:
+      notes: The serializer emits RETURN_NULL. Invalid string conversions and incompatible input value kinds
+        return null. Numeric-to-integer casts truncate fractional parts toward zero; numeric overflow is not
+        uniformly handled and can still throw. The importer does not retain the protobuf failure behavior,
+        so THROW_EXCEPTION cannot be requested reliably.
+  - expression: SUBQUERY
+    subquery_types:
+      - SET_PREDICATE
+    metadata:
+      notes: Only the EXISTS set-predicate operation is supported, in filter conditions. NOT EXISTS wraps it
+        in boolean NOT. The plan optimizer decorrelates these expressions into mark joins before execution.
+        SQL IN/NOT IN subqueries are lowered by the SQL planner rather than imported as IN_PREDICATE. SCALAR
+        and SET_COMPARISON are unsupported.
+  - expression: NESTED
+    nested_types:
+      - LIST
+      - MAP
+    metadata:
+      notes: Construct lists and maps from child expressions. STRUCT is supported as a virtual-table row container,
+        but is not compiled as a general nested expression; use the registered named_struct scalar function
+        to construct struct-valued columns.
+
+
+# Functions
+
+# Standard sources and implementation IDs follow the upstream extension definitions.
+# Flowtide sources follow the runtime function families and contain extra functions/signatures and differing bindings.
+dependencies:
+  arithmetic: extension:io.substrait:functions_arithmetic
+  boolean: extension:io.substrait:functions_boolean
+  comparison: extension:io.substrait:functions_comparison
+  string: extension:io.substrait:functions_string
+  rounding: extension:io.substrait:functions_rounding
+  logarithmic: extension:io.substrait:functions_logarithmic
+  aggregate_generic: extension:io.substrait:functions_aggregate_generic
+  arithmetic_decimal: extension:io.substrait:functions_arithmetic_decimal
+  datetime: extension:io.substrait:functions_datetime
+  flowtide_arithmetic: extension:io.github.koralium.flowtide:functions_arithmetic
+  flowtide_aggregate_generic: extension:io.github.koralium.flowtide:functions_aggregate_generic
+  flowtide_rounding: extension:io.github.koralium.flowtide:functions_rounding
+  flowtide_string: extension:io.github.koralium.flowtide:functions_string
+  flowtide_guid: extension:io.github.koralium.flowtide:functions_guid
+  flowtide_hash: extension:io.github.koralium.flowtide:functions_hash
+  flowtide_list: extension:io.github.koralium.flowtide:functions_list
+  flowtide_struct: extension:io.github.koralium.flowtide:struct
+  flowtide_check: extension:io.github.koralium.flowtide:check
+  flowtide_datetime: extension:io.github.koralium.flowtide:functions_datetime
+  flowtide_table_generic: extension:io.github.koralium.flowtide:functions_table_generic
+  flowtide_types: extension:io.github.koralium.flowtide:types
+supported_scalar_functions:
+  - source: arithmetic
+    name: add
+    system_metadata:
+      name: +
+      notation: INFIX
+    required_options:
+      overflow: SILENT
+    supported_impls: [i64_i64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x + y
+      notes: >-
+        Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
+        widens those values.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: add
+    system_metadata:
+      name: +
+      notation: INFIX
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x + y
+      notes: >-
+        Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: subtract
+    system_metadata:
+      name: '-'
+      notation: INFIX
+    required_options:
+      overflow: SILENT
+    supported_impls: [i64_i64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x - y
+      notes: >-
+        Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
+        widens those values.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: subtract
+    system_metadata:
+      name: '-'
+      notation: INFIX
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x - y
+      notes: >-
+        Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: multiply
+    system_metadata:
+      name: '*'
+      notation: INFIX
+    required_options:
+      overflow: SILENT
+    supported_impls: [i64_i64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x * y
+      notes: >-
+        Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime
+        widens those values.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: multiply
+    system_metadata:
+      name: '*'
+      notation: INFIX
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x * y
+      notes: >-
+        Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: negate
+    system_metadata:
+      name: '-'
+      notation: PREFIX
+    required_options:
+      overflow: SILENT
+    supported_impls: [i64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: -x
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: negate
+    system_metadata:
+      name: '-'
+      notation: PREFIX
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: -x
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: abs
+    system_metadata:
+      name: abs
+      notation: FUNCTION
+    required_options:
+      overflow: ERROR
+    supported_impls: [i64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: abs(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: abs
+    system_metadata:
+      name: abs
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: abs(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: divide
+    system_metadata:
+      name: /
+      notation: INFIX
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x / y
+      notes: >-
+        Floating division. Integer inputs also produce a floating result in Flowtide, so the upstream integer-returning
+        divide overload is not declared here. Division by zero follows runtime floating-point behavior.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: power
+    system_metadata:
+      name: power
+      notation: FUNCTION
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: power(x, y)
+      notes: >-
+        Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results
+        can differ.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: sign
+    system_metadata:
+      name: sign
+      notation: FUNCTION
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sign(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: sqrt
+    system_metadata:
+      name: sqrt
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sqrt(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: exp
+    system_metadata:
+      name: exp
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: exp(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: cos
+    system_metadata:
+      name: cos
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: cos(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: sin
+    system_metadata:
+      name: sin
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sin(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: tan
+    system_metadata:
+      name: tan
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: tan(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: cosh
+    system_metadata:
+      name: cosh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: cosh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: sinh
+    system_metadata:
+      name: sinh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sinh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: tanh
+    system_metadata:
+      name: tanh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: tanh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: acos
+    system_metadata:
+      name: acos
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: acos(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: asin
+    system_metadata:
+      name: asin
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: asin(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: atan
+    system_metadata:
+      name: atan
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: atan(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: acosh
+    system_metadata:
+      name: acosh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: acosh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: asinh
+    system_metadata:
+      name: asinh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: asinh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: atanh
+    system_metadata:
+      name: atanh
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: atanh(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: atan2
+    system_metadata:
+      name: atan2
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+      on_domain_error: NAN
+    supported_impls: [fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: atan2(y, x)
+      notes: >-
+        Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results
+        can differ.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: radians
+    system_metadata:
+      name: radians
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: radians(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic
+    name: degrees
+    system_metadata:
+      name: degrees
+      notation: FUNCTION
+    required_options:
+      rounding: TIE_TO_EVEN
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: degrees(x)
+      notes: >-
+        Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield
+        null. Trigonometric angles use radians.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: boolean
+    name: and
+    system_metadata:
+      name: AND
+      notation: INFIX
+    supported_impls: [bool]
+    variadic: {}
+    metadata:
+      legacy_extension_uri: /functions_boolean.yaml
+      sql_signature: x AND y
+      notes: >-
+        Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation
+        permits an empty argument list.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html
+  - source: boolean
+    name: or
+    system_metadata:
+      name: OR
+      notation: INFIX
+    supported_impls: [bool]
+    variadic: {}
+    metadata:
+      legacy_extension_uri: /functions_boolean.yaml
+      sql_signature: x OR y
+      notes: >-
+        Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation
+        permits an empty argument list.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html
+  - source: boolean
+    name: not
+    system_metadata:
+      name: NOT
+      notation: PREFIX
+    supported_impls: [bool]
+    metadata:
+      legacy_extension_uri: /functions_boolean.yaml
+      sql_signature: NOT x
+      notes: >-
+        SQL three-valued boolean negation.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html
+  - source: boolean
+    name: xor
+    system_metadata:
+      name: XOR
+      notation: INFIX
+    supported_impls: [bool_bool]
+    metadata:
+      legacy_extension_uri: /functions_boolean.yaml
+      sql_signature: x XOR y
+      notes: >-
+        Boolean exclusive OR.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html
+  - source: comparison
+    name: equal
+    system_metadata:
+      name: '='
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x = y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: not_equal
+    system_metadata:
+      name: <>
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x <> y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: gt
+    system_metadata:
+      name: '>'
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x > y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: gte
+    system_metadata:
+      name: '>='
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x >= y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: lt
+    system_metadata:
+      name: <
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x < y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: lte
+    system_metadata:
+      name: <=
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x <= y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_distinct_from
+    system_metadata:
+      name: IS DISTINCT FROM
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x IS DISTINCT FROM y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_not_distinct_from
+    system_metadata:
+      name: IS NOT DISTINCT FROM
+      notation: INFIX
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x IS NOT DISTINCT FROM y
+      notes: >-
+        Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons;
+        ordinary comparisons can return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: nullif
+    system_metadata:
+      name: nullif
+      notation: FUNCTION
+    supported_impls: [any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: nullif(x, y)
+      notes: >-
+        Return null when equal; otherwise return x.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: between
+    system_metadata:
+      name: BETWEEN
+      notation: INFIX
+    supported_impls: [any_any_any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x BETWEEN lower AND upper
+      notes: >-
+        Inclusive range test using SQL null semantics.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_null
+    system_metadata:
+      name: IS NULL
+      notation: POSTFIX
+    supported_impls: [any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x IS NULL
+      notes: >-
+        Null test returning a boolean.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_not_null
+    system_metadata:
+      name: IS NOT NULL
+      notation: POSTFIX
+    supported_impls: [any]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: x IS NOT NULL
+      notes: >-
+        Null test returning a boolean.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_finite
+    system_metadata:
+      name: is_finite
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: is_finite(x)
+      notes: >-
+        Test for a special numeric value.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_infinite
+    system_metadata:
+      name: is_infinite
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: is_infinite(x)
+      notes: >-
+        Test for a special numeric value.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: is_nan
+    system_metadata:
+      name: is_nan
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: is_nan(x)
+      notes: >-
+        Test for a special numeric value.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: coalesce
+    system_metadata:
+      name: coalesce
+      notation: FUNCTION
+    supported_impls: [any]
+    variadic:
+      min: 2
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: coalesce(x, ...)
+      notes: >-
+        First non-null argument.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: comparison
+    name: greatest
+    system_metadata:
+      name: greatest
+      notation: FUNCTION
+    supported_impls: [any]
+    variadic:
+      min: 2
+    metadata:
+      legacy_extension_uri: /functions_comparison.yaml
+      sql_signature: greatest(x, y, ...)
+      notes: >-
+        Greatest value; a null argument propagates null. Requires at least two arguments.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html
+  - source: string
+    name: lower
+    system_metadata:
+      name: lower
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: lower(string)
+      notes: >-
+        String operation; incompatible input kinds generally yield null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: upper
+    system_metadata:
+      name: upper
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: upper(string)
+      notes: >-
+        String operation; incompatible input kinds generally yield null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: char_length
+    system_metadata:
+      name: len
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: len(string)
+      notes: >-
+        Counts Unicode text elements (grapheme clusters) using .NET StringInfo. The SQL spelling is len.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: trim
+    system_metadata:
+      name: trim
+      notation: FUNCTION
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: trim(string)
+      notes: >-
+        The native Substrait binding supports an explicit character set as the second argument. Flowtide also
+        has a one-argument whitespace-trimming overload, declared separately in its scalar extension.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: ltrim
+    system_metadata:
+      name: ltrim
+      notation: FUNCTION
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: ltrim(string)
+      notes: >-
+        The native Substrait binding supports an explicit character set as the second argument. Flowtide also
+        has a one-argument whitespace-trimming overload, declared separately in its scalar extension.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: rtrim
+    system_metadata:
+      name: rtrim
+      notation: FUNCTION
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: rtrim(string)
+      notes: >-
+        The native Substrait binding supports an explicit character set as the second argument. Flowtide also
+        has a one-argument whitespace-trimming overload, declared separately in its scalar extension.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: replace
+    system_metadata:
+      name: replace
+      notation: FUNCTION
+    supported_impls: [str_str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: replace(string, old, replacement)
+      notes: >-
+        String operation; incompatible input kinds generally yield null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: like
+    system_metadata:
+      name: like
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_SENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string LIKE pattern [ESCAPE character]
+      notes: >-
+        Case-sensitive LIKE. The native runtime also accepts an explicit escape argument and SQL Server-style
+        bracket patterns; the three-argument form is declared in the Flowtide scalar extension.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: string_split
+    system_metadata:
+      name: string_split
+      notation: FUNCTION
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string_split(string, separator)
+      notes: >-
+        String operation; incompatible input kinds generally yield null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: regexp_string_split
+    system_metadata:
+      name: regexp_string_split
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_SENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: regexp_string_split(string, pattern)
+      notes: >-
+        Case-sensitive .NET regular expression splitting with explicit capture. Multiline and dotall modes are
+        disabled; other mode options are not declared.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: starts_with
+    system_metadata:
+      name: starts_with
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_SENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: starts_with(string, prefix)
+      notes: >-
+        Prefix test; incompatible runtime input kinds return false.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: starts_with
+    system_metadata:
+      name: starts_with
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_INSENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: starts_with(string, prefix)
+      notes: >-
+        Prefix test; incompatible runtime input kinds return false.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: strpos
+    system_metadata:
+      name: strpos
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_SENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: strpos(string, substring)
+      notes: >-
+        One-based position, or zero if the substring is absent.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: strpos
+    system_metadata:
+      name: strpos
+      notation: FUNCTION
+    required_options:
+      case_sensitivity: CASE_INSENSITIVE
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: strpos(string, substring)
+      notes: >-
+        One-based position, or zero if the substring is absent.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: concat
+    system_metadata:
+      name: concat
+      notation: FUNCTION
+    required_options:
+      null_handling: ACCEPT_NULLS
+    supported_impls: [str]
+    variadic:
+      min: 1
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: concat(x, y, ...)
+      notes: >-
+        Null propagates. Also exposed as the SQL || operator.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: concat
+    system_metadata:
+      name: concat
+      notation: FUNCTION
+    required_options:
+      null_handling: IGNORE_NULLS
+    supported_impls: [str]
+    variadic:
+      min: 1
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: concat(x, y, ...)
+      notes: >-
+        Null propagates. Also exposed as the SQL || operator.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: substring
+    system_metadata:
+      name: substring
+      notation: FUNCTION
+    required_options:
+      negative_start: WRAP_FROM_END
+    supported_impls: [str_i32, str_i32_i32]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: substring(string, start [, length])
+      notes: >-
+        Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument
+        overload fails for that mode.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: string
+    name: substring
+    system_metadata:
+      name: substring
+      notation: FUNCTION
+    required_options:
+      negative_start: LEFT_OF_BEGINNING
+    supported_impls: [str_i32_i32]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: substring(string, start [, length])
+      notes: >-
+        Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument
+        overload fails for that mode.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: rounding
+    name: ceil
+    system_metadata:
+      name: ceil
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_rounding.yaml
+      sql_signature: ceil(x)
+      sql_aliases:
+        - ceiling
+      notes: >-
+        The native double implementation converts the rounded value through Int64. Restrict inputs to finite values
+        whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html
+  - source: rounding
+    name: floor
+    system_metadata:
+      name: floor
+      notation: FUNCTION
+    supported_impls: [fp64]
+    metadata:
+      legacy_extension_uri: /functions_rounding.yaml
+      sql_signature: floor(x)
+      notes: >-
+        The native double implementation converts the rounded value through Int64. Restrict inputs to finite values
+        whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: NAN
+      on_log_zero: NAN
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: NAN
+      on_log_zero: ERROR
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: NAN
+      on_log_zero: MINUS_INFINITY
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: ERROR
+      on_log_zero: NAN
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: ERROR
+      on_log_zero: ERROR
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: logarithmic
+    name: log10
+    system_metadata:
+      name: log10
+      notation: FUNCTION
+    required_options:
+      on_domain_error: ERROR
+      on_log_zero: MINUS_INFINITY
+    supported_impls: [i64, fp64]
+    metadata:
+      legacy_extension_uri: /functions_logarithmic.yaml
+      sql_signature: log10(x)
+      notes: >-
+        These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
+        explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
+  - source: flowtide_arithmetic
+    name: modulo
+    system_metadata:
+      name: '%'
+      notation: INFIX
+    supported_impls: [i64_i64, fp64_fp64]
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: x % y
+      notes: >-
+        Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload
+        has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric
+        inputs are also accepted natively.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: flowtide_rounding
+    name: round
+    system_metadata:
+      name: round
+      notation: FUNCTION
+    supported_impls: [i64, fp64, dec]
+    metadata:
+      legacy_extension_uri: /functions_rounding.yaml
+      sql_signature: round(x)
+      notes: >-
+        One-argument rounding with ties to even, unlike upstream round(value, scale). Double results pass through
+        Int64: use finite inputs with an Int64-representable rounded value. Decimal arithmetic uses System.Decimal
+        (conservatively at most 28 digits).
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html
+  - source: flowtide_string
+    name: trim
+    system_metadata:
+      name: trim
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: trim(string)
+      notes: >-
+        One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
+        argument.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: ltrim
+    system_metadata:
+      name: ltrim
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: ltrim(string)
+      notes: >-
+        One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
+        argument.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: rtrim
+    system_metadata:
+      name: rtrim
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: rtrim(string)
+      notes: >-
+        One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set
+        argument.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: like
+    system_metadata:
+      name: like
+      notation: FUNCTION
+    supported_impls: [str_str_str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string LIKE pattern [ESCAPE character]
+      notes: >-
+        Three-argument LIKE with an explicit escape character. SQL Server-style %/_/bracket patterns are supported.
+        Matching is case-sensitive.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: string_base64_encode
+    system_metadata:
+      name: string_base64_encode
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string_base64_encode(string)
+      notes: >-
+        Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: string_base64_decode
+    system_metadata:
+      name: string_base64_decode
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string_base64_decode(string)
+      notes: >-
+        Base64 conversion of UTF-8 text. Invalid Base64 input returns null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: to_string
+    system_metadata:
+      name: to_string
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: to_string(value)
+      notes: >-
+        String operation; incompatible input kinds generally yield null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: to_json
+    system_metadata:
+      name: to_json
+      notation: FUNCTION
+    supported_impls: [any]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: to_json(value)
+      notes: >-
+        Serialize a Flowtide value to JSON text.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: from_json
+    system_metadata:
+      name: from_json
+      notation: FUNCTION
+    supported_impls: [str, vbin]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: from_json(json)
+      notes: >-
+        Parse JSON text or UTF-8 binary into dynamic Flowtide values.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_string
+    name: string_join
+    system_metadata:
+      name: string_join
+      notation: FUNCTION
+    supported_impls: [str_list]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string_join(separator, list)
+      notes: >-
+        Separator is the first argument. Null list returns null; empty/all-null list returns an empty string;
+        null elements are skipped.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+  - source: flowtide_guid
+    name: parse_guid
+    system_metadata:
+      name: guid
+      notation: FUNCTION
+    supported_impls: [str]
+    metadata:
+      legacy_extension_uri: /functions_guid.yaml
+      sql_signature: guid(string)
+      notes: >-
+        Parse a GUID string into its 16-byte .NET GUID representation. Invalid input returns null; this does not
+        generate random GUIDs.
+  - source: flowtide_hash
+    name: xxhash64
+    system_metadata:
+      name: xxhash64
+      notation: FUNCTION
+    supported_impls: [any]
+    variadic:
+      min: 1
+    metadata:
+      legacy_extension_uri: /functions_hash.yaml
+      sql_signature: xxhash64(value, ...)
+      notes: >-
+        Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
+        a GUID-formatted string.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html
+  - source: flowtide_hash
+    name: xxhash128_guid_string
+    system_metadata:
+      name: xxhash128_guid_string
+      notation: FUNCTION
+    supported_impls: [any]
+    variadic:
+      min: 1
+    metadata:
+      legacy_extension_uri: /functions_hash.yaml
+      sql_signature: xxhash128_guid_string(value, ...)
+      notes: >-
+        Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns
+        a GUID-formatted string.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html
+  - source: flowtide_list
+    name: list_sort_asc_null_last
+    system_metadata:
+      name: list_sort_asc_null_last
+      notation: FUNCTION
+    supported_impls: [list]
+    metadata:
+      legacy_extension_uri: /functions_list.yaml
+      sql_signature: list_sort_asc_null_last(list)
+      notes: >-
+        Sort ascending with nulls last. Non-list input returns null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html
+  - source: flowtide_list
+    name: list_first_difference
+    system_metadata:
+      name: list_first_difference
+      notation: FUNCTION
+    supported_impls: [list_list]
+    metadata:
+      legacy_extension_uri: /functions_list.yaml
+      sql_signature: list_first_difference(first, second)
+      notes: >-
+        First differing element of the first list, or null if none differs.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html
+  - source: flowtide_struct
+    name: create
+    system_metadata:
+      name: named_struct
+      notation: FUNCTION
+    supported_impls: [any]
+    variadic:
+      min: 2
+    metadata:
+      legacy_extension_uri: /struct.yaml
+      sql_signature: named_struct('field', value, ...)
+      notes: >-
+        named_struct alternates string-literal field names and values, with an even argument count. The schema
+        cannot express repeating heterogeneous pairs; any plus this argument-pattern restriction describes the
+        native variadic binding.
+  - source: flowtide_check
+    name: check_true
+    system_metadata:
+      name: check_true
+      notation: FUNCTION
+    supported_impls: [bool_str, bool_str_any]
+    variadic:
+      min: 2
+    metadata:
+      legacy_extension_uri: /check.yaml
+      sql_signature: check_true(condition, 'message' [, tags...])
+      requires_optimizer_pass: CheckExtractor
+      notes: >-
+        Planner intrinsic extracted into check relations. Returns true only for boolean true; only boolean false
+        raises an issue. Message must be a string literal. Include a row key in tags for one issue per failing
+        row.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html
+      literal_arguments:
+        - 1
+  - source: flowtide_check
+    name: check_value
+    system_metadata:
+      name: check_value
+      notation: FUNCTION
+    supported_impls: [any_bool_str, any_bool_str_any]
+    variadic:
+      min: 3
+    metadata:
+      legacy_extension_uri: /check.yaml
+      sql_signature: check_value(value, condition, 'message' [, tags...])
+      requires_optimizer_pass: CheckExtractor
+      notes: >-
+        Planner intrinsic extracted into check relations. Returns value while recording boolean-false failures;
+        null/non-boolean conditions do not raise an issue. Message must be a string literal. Named tags use key
+        => expression.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html
+      literal_arguments:
+        - 2
+  - source: flowtide_datetime
+    name: strftime
+    system_metadata:
+      name: strftime
+      notation: FUNCTION
+    supported_impls: [i64_str]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: strftime(unix_microseconds, format)
+      notes: >-
+        Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format
+        for typed timestamps.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: floor_timestamp_day
+    system_metadata:
+      name: floor_timestamp_day
+      notation: FUNCTION
+    supported_impls: [ptstz]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: floor_timestamp_day(timestamp)
+      notes: >-
+        Remove the time-of-day component; incompatible values return null.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: parse_timestamp
+    system_metadata:
+      name: timestamp_parse
+      notation: FUNCTION
+    supported_impls: [str_str]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: timestamp_parse(string, format)
+      notes: >-
+        Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: format
+    system_metadata:
+      name: timestamp_format
+      notation: FUNCTION
+    supported_impls: [ptstz_str]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: timestamp_format(timestamp, format)
+      notes: >-
+        Format typed timestamps with .NET date/time format strings.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: extract
+    system_metadata:
+      name: timestamp_extract
+      notation: FUNCTION
+    supported_impls: [str_ptstz]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: timestamp_extract(component, timestamp)
+      notes: >-
+        Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
+        Component is a string such as YEAR, MONTH, DAY, HOUR, MINUTE, SECOND or ISO_WEEK; SQL names differ from
+        runtime names.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: timestamp_add
+    system_metadata:
+      name: timestamp_add
+      notation: FUNCTION
+    supported_impls: [str_i64_ptstz]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: timestamp_add(component, amount, timestamp)
+      notes: >-
+        Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: datediff
+    system_metadata:
+      name: datediff
+      notation: FUNCTION
+    supported_impls: [str_ptstz_ptstz]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: datediff(component, start, end)
+      notes: >-
+        Count crossed component boundaries.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: round_calendar
+    system_metadata:
+      name: round_calendar
+      notation: FUNCTION
+    supported_impls: [ptstz_str_str_str_i64]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: round_calendar(timestamp, operation, component, reference, step)
+      notes: >-
+        Flowtide uses positional string-valued components/operations rather than upstream required enum arguments.
+        Calendar-aligned rounding, for example round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1).
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_datetime
+    name: tumbling_window_start
+    supported_impls: [ptstz_i64]
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_exposed: false
+      notes: >-
+        Internal scalar used by window-join optimization. Arguments are timestamp and a positive literal size
+        in ticks; no public SQL registration.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+      literal_arguments:
+        - 1
+  - source: flowtide_datetime
+    name: gettimestamp
+    system_metadata:
+      name: gettimestamp
+      notation: FUNCTION
+    supported_impls: ['']
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      sql_signature: gettimestamp()
+      requires_optimizer_pass: TimestampToJoin
+      notes: >-
+        Planner intrinsic: optimizer replaces the call with a periodically updated timestamp source and joins.
+        Default update interval is one hour; configure SetGetTimestampUpdateInterval. Not supported inside join
+        conditions.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html
+  - source: flowtide_string
+    name: from_json
+    system_metadata:
+      name: from_json
+      notation: FUNCTION
+    supported_impls: [str, vbin]
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: from_json(json)
+      notes: >-
+        Parse JSON text or UTF-8 binary into dynamic Flowtide values.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html
+    required_options:
+      error_handling: ERROR
+
+# Aggregate functions
+# Execution consumes raw input and produces final results (INITIAL_TO_RESULT).
+# Partial-state phases, invocation flags and aggregate sort fields are not represented by the native model.
+# FILTER is supported per measure. COUNT(DISTINCT x) uses the dedicated count_distinct binding.
+supported_aggregate_functions:
+  - source: aggregate_generic
+    name: count
+    system_metadata:
+      name: count
+      notation: FUNCTION
+    supported_impls:
+      - any
+      - ''
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+      sql_signature: COUNT(*)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_count_expression: false
+      notes: The zero-argument binding counts rows. The one-argument native binding counts non-null values, but
+        ordinary SQL COUNT(x) is currently rejected by the SQL planner; SQL accepts COUNT(*) and COUNT(DISTINCT
+        x). Empty input returns Int64 zero. The DISTINCT form uses the separate count_distinct binding.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html
+  - source: flowtide_aggregate_generic
+    name: count_distinct
+    system_metadata:
+      name: count
+      notation: FUNCTION
+    supported_impls:
+      - any
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+      sql_signature: COUNT(DISTINCT x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: true
+      notes: Counts distinct non-null values; empty/all-null groups return Int64 zero. This is an exact stateful
+        aggregate with one expression argument, not an approximate distinct count.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html
+  - source: flowtide_aggregate_generic
+    name: surrogate_key_int64
+    system_metadata:
+      name: surrogate_key_int64
+      notation: FUNCTION
+    supported_impls:
+      - ''
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+      sql_signature: surrogate_key_int64()
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      deterministic: false
+      notes: Assigns a stateful counter key per group, stable while the group exists and across checkpoint restore.
+        Keys are operator-scoped; deleting and recreating a group can assign a new key. Empty global input also
+        receives a key.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html
+  - source: arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls:
+      - i64
+      - fp64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sum(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Ignores null values and returns null for empty/all-null groups. Int64 accumulation wraps on overflow;
+        FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are widened internally; the declarations
+        here use native I64/FP64 value kinds. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    required_options:
+      overflow: ERROR
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sum(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      decimal_precision_max: 28
+      sql_distinct: false
+      notes: Uses System.Decimal rather than the upstream Decimal<38,S> accumulator. Use precision at most 28 and
+        require every intermediate and final sum to fit Decimal<28,S>; CLR decimal overflow throws. Null input values
+        are ignored. Empty/all-null groups return null. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic
+    name: sum0
+    system_metadata:
+      name: sum0
+      notation: FUNCTION
+    supported_impls:
+      - i64
+      - fp64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sum0(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Ignores null values and returns a zero matching the declared output type for empty/all-null groups.
+        Int64 accumulation wraps on overflow; FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are
+        widened internally; the declarations here use native I64/FP64 value kinds. Set AggregateFunction.output_type
+        for a correctly typed empty-group zero. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: sum0
+    system_metadata:
+      name: sum0
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    required_options:
+      overflow: ERROR
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: sum0(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      decimal_precision_max: 28
+      sql_distinct: false
+      notes: Uses System.Decimal rather than the upstream Decimal<38,S> accumulator. Use precision at most 28 and
+        require every intermediate and final sum to fit Decimal<28,S>; CLR decimal overflow throws. Null input values
+        are ignored. Empty/all-null groups return a zero matching the declared output type. Set AggregateFunction.output_type
+        to the decimal result type. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - fp64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: avg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: FP64 average ignores null values and returns null for empty/all-null groups. Integer and decimal results
+        differ from their upstream overloads and are declared separately. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - i64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: avg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      notes: Integer average returns a fractional Double; the average of values 1 and 2 is 1.5, instead of truncating
+        to an integer as upstream does. The Int64 sum wraps on overflow before division. Nulls are ignored; empty/all-null
+        groups return null. SQL DISTINCT is rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    required_options:
+      overflow: ERROR
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: avg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      decimal_precision_max: 28
+      sql_distinct: false
+      notes: Returns System.Decimal with runtime-computed scale, not the upstream fixed-scale Decimal<38,S>. The
+        opaque result describes the dynamic scale; the actual non-null result kind is decimal. Decimal overflow
+        throws. Use precision at most 28. Nulls are ignored; empty/all-null groups return null. SQL DISTINCT is
+        rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic
+    name: min
+    system_metadata:
+      name: min
+      notation: FUNCTION
+    supported_impls:
+      - i64
+      - fp64
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: min(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic_decimal
+    name: min
+    system_metadata:
+      name: min
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: min(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      decimal_precision_max: 28
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: datetime
+    name: min
+    system_metadata:
+      name: min
+      notation: FUNCTION
+    supported_impls:
+      - ptstz
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: min(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      timestamp_precision: 7
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain
+        the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: min
+    system_metadata:
+      name: min
+      notation: FUNCTION
+    supported_impls:
+      - any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: min(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and
+        nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic
+    name: max
+    system_metadata:
+      name: max
+      notation: FUNCTION
+    supported_impls:
+      - i64
+      - fp64
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: max(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: arithmetic_decimal
+    name: max
+    system_metadata:
+      name: max
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: max(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      decimal_precision_max: 28
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: datetime
+    name: max
+    system_metadata:
+      name: max
+      notation: FUNCTION
+    supported_impls:
+      - ptstz
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: max(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      timestamp_precision: 7
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain
+        the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: max
+    system_metadata:
+      name: max
+      notation: FUNCTION
+    supported_impls:
+      - any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: max(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: true
+      notes: Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic
+        no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and
+        nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: min_by
+    system_metadata:
+      name: min_by
+      notation: FUNCTION
+    supported_impls:
+      - any_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: min_by(x, y)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      notes: Returns x at the minimum y; rows with null y are ignored, while the selected x may be null. Empty groups,
+        or groups containing only null y, return null. Do not depend on which row wins tied y.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: max_by
+    system_metadata:
+      name: max_by
+      notation: FUNCTION
+    supported_impls:
+      - any_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      sql_signature: max_by(x, y)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      notes: Returns x at the maximum y; rows with null y are ignored, while the selected x may be null. Empty groups,
+        or groups containing only null y, return null. Do not depend on which row wins tied y.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html
+  - source: flowtide_list
+    name: list_agg
+    system_metadata:
+      name: list_agg
+      notation: FUNCTION
+    supported_impls:
+      - any
+    metadata:
+      legacy_extension_uri: /functions_list.yaml
+      sql_signature: list_agg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      supports_order_by: false
+      notes: Collects non-null values with weighted duplicates, in ascending Flowtide value order. Empty/all-null
+        groups return an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html
+  - source: flowtide_list
+    name: list_union_distinct_agg
+    system_metadata:
+      name: list_union_distinct_agg
+      notation: FUNCTION
+    supported_impls:
+      - list
+    metadata:
+      legacy_extension_uri: /functions_list.yaml
+      sql_signature: list_union_distinct_agg(x)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      supports_order_by: false
+      notes: Flattens lists and returns distinct elements in ascending Flowtide value order. Null lists are ignored;
+        null elements inside lists are retained once. Empty input returns an empty list. Aggregate ORDER BY and
+        SQL DISTINCT are rejected; deduplication is intrinsic to this function.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html
+  - source: string
+    name: string_agg
+    system_metadata:
+      name: string_agg
+      notation: FUNCTION
+    supported_impls:
+      - str_str
+    metadata:
+      legacy_extension_uri: /functions_string.yaml
+      sql_signature: string_agg(x, separator)
+      aggregation_phase: INITIAL_TO_RESULT
+      supports_filter: true
+      sql_distinct: false
+      supports_order_by: false
+      literal_arguments:
+        - 1
+      notes: The separator must be a string literal. Null input values are ignored; values are concatenated in ascending
+        Flowtide string order, retaining duplicates. No contributing values yield null. The current implementation
+        also yields null if all strings and the separator are empty. User-supplied aggregate ORDER BY and SQL DISTINCT
+        are rejected.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.html
+
+# Window functions
+# Execute through ConsistentPartitionWindowRel, not the general WINDOW_FUNCTION expression form.
+# Aggregate definitions can also be referenced here where their value/return contract matches.
+# ROWS frames use literal row offsets. RANGE/GROUPS, dynamic frame bounds, FILTER and DISTINCT are not supported.
+supported_window_functions:
+  - source: arithmetic
+    name: row_number
+    system_metadata:
+      name: row_number
+      notation: FUNCTION
+    supported_impls:
+      - ''
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: row_number() OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      notes: Numbers rows from 1 within each partition. SQL requires ORDER BY and rejects ROWS frames. Include a
+        stable tie breaker in ORDER BY when row positions must be deterministic. Do not pass arguments.
+      sql_example: SELECT row_number() OVER (PARTITION BY p ORDER BY o, unique_key) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls:
+      - i64
+      - fp64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: sum(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: &id001
+        - UNBOUNDED_PRECEDING
+        - PRECEDING
+        - CURRENT_ROW
+        - FOLLOWING
+        - UNBOUNDED_FOLLOWING
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      notes: Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole
+        partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including
+        only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded
+        endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition
+        as a window function.
+      sql_example: SELECT sum(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM
+        t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: sum
+    system_metadata:
+      name: sum
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    required_options:
+      overflow: ERROR
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: sum(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      decimal_precision_max: 28
+      notes: Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole
+        partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including
+        only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded
+        endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition
+        as a window function. Decimal arithmetic uses System.Decimal at precision at most 28; CLR decimal overflow
+        throws. Every intermediate and final sum must fit Decimal<28,S>.
+      sql_example: SELECT sum(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM
+        t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - fp64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: avg(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      notes: Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole
+        partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including
+        only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded
+        endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition
+        as a window function.
+      sql_example: SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM
+        t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - i64
+    required_options:
+      overflow: SILENT
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: avg(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      notes: Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole
+        partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including
+        only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded
+        endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition
+        as a window function. Integer average returns a fractional Double, rather than the upstream truncated integer.
+        Its Int64 sum wraps before division.
+      sql_example: SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM
+        t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: avg
+    system_metadata:
+      name: avg
+      notation: FUNCTION
+    supported_impls:
+      - dec
+    required_options:
+      overflow: ERROR
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: avg(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        without_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+      decimal_precision_max: 28
+      notes: Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole
+        partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including
+        only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded
+        endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition
+        as a window function. Decimal arithmetic uses System.Decimal at precision at most 28; CLR decimal overflow
+        throws. Average returns a decimal with runtime-computed scale, represented by the shared opaque result type.
+      sql_example: SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM
+        t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: min_by
+    system_metadata:
+      name: min_by
+      notation: FUNCTION
+    supported_impls:
+      - any_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: min_by(x, y) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      notes: Return x associated with the minimum y in the ROWS frame. Null y values are ignored, but the chosen
+        x may be null. Empty frames or frames with no non-null y return null. SQL requires ORDER BY; the default
+        frame is UNBOUNDED PRECEDING through CURRENT ROW. Do not depend on which row wins tied y. Uses the existing
+        aggregate definition as a window function.
+      sql_example: SELECT min_by(x, y) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)
+        FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: max_by
+    system_metadata:
+      name: max_by
+      notation: FUNCTION
+    supported_impls:
+      - any_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: AGGREGATE_FUNCTION
+      sql_signature: max_by(x, y) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      notes: Return x associated with the maximum y in the ROWS frame. Null y values are ignored, but the chosen
+        x may be null. Empty frames or frames with no non-null y return null. SQL requires ORDER BY; the default
+        frame is UNBOUNDED PRECEDING through CURRENT ROW. Do not depend on which row wins tied y. Uses the existing
+        aggregate definition as a window function.
+      sql_example: SELECT max_by(x, y) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW)
+        FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: arithmetic
+    name: last_value
+    system_metadata:
+      name: last_value
+      notation: FUNCTION
+    supported_impls:
+      - any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: last_value(x) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      notes: Return the value at the last row of the ROWS frame, including null. An empty frame returns null. SQL
+        requires ORDER BY; the default frame ends at CURRENT ROW. Use UNBOUNDED FOLLOWING explicitly for the last
+        value in the entire partition. IGNORE NULLS uses the Flowtide option overload below.
+      sql_example: SELECT last_value(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED
+        FOLLOWING) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: last_value
+    system_metadata:
+      name: last_value
+      notation: FUNCTION
+    supported_impls:
+      - any
+    required_options:
+      NULL_TREATMENT: IGNORE_NULLS
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: last_value(x) IGNORE NULLS OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types:
+        - ROWS
+      supports_filter: false
+      sql_distinct: false
+      frame_bounds: *id001
+      bound_offsets: NONNEGATIVE_INTEGER_LITERALS
+      default_frame:
+        with_order_by: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+      notes: Skip null values when finding the last value in the ROWS frame. Empty/all-null frames return null.
+        SQL requires ORDER BY; the default frame ends at CURRENT ROW. The native option key is case-sensitive NULL_TREATMENT
+        with value IGNORE_NULLS.
+      sql_example: SELECT last_value(x) IGNORE NULLS OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND
+        CURRENT ROW) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: arithmetic
+    name: lead
+    system_metadata:
+      name: lead
+      notation: FUNCTION
+    supported_impls:
+      - any
+      - any_i32
+      - any_i32_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: lead(x [, offset [, default]]) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      explicit_offset_must_be_non_null: true
+      default_same_type_as_value: true
+      notes: Return x from a following row in the same partition, defaulting to offset 1. Negative offsets reverse
+        direction and zero selects the current row. A missing target yields the provided default, evaluated on the
+        current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS
+        frames; IGNORE NULLS is not implemented. These upstream signatures apply when any explicit offset is non-null
+        and fits Int32, and the default has the same type as x. A null offset has different native behavior, described
+        below.
+      sql_example: SELECT lead(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: lead
+    system_metadata:
+      name: lead
+      notation: FUNCTION
+    supported_impls:
+      - any_i64
+      - any_i64_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: lead(x, offset [, default]) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      offset_null_behavior: USE_ONE
+      notes: Return x from a following row in the same partition, defaulting to offset 1. Negative offsets reverse
+        direction and zero selects the current row. A missing target yields the provided default, evaluated on the
+        current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS
+        frames; IGNORE NULLS is not implemented. Native offsets are Int64 and may be expressions. A null offset
+        is treated as 1, unlike upstream. The default can have a different value kind; that overload has an opaque/dynamic
+        result.
+      sql_example: SELECT lead(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: arithmetic
+    name: lag
+    system_metadata:
+      name: lag
+      notation: FUNCTION
+    supported_impls:
+      - any
+      - any_i32
+      - any_i32_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: lag(x [, offset [, default]]) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      explicit_offset_must_be_non_null: true
+      default_same_type_as_value: true
+      notes: Return x from a preceding row in the same partition, defaulting to offset 1. Negative offsets reverse
+        direction and zero selects the current row. A missing target yields the provided default, evaluated on the
+        current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS
+        frames; IGNORE NULLS is not implemented. These upstream signatures apply when any explicit offset is non-null
+        and fits Int32, and the default has the same type as x. A null offset has different native behavior, described
+        below.
+      sql_example: SELECT lag(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: lag
+    system_metadata:
+      name: lag
+      notation: FUNCTION
+    supported_impls:
+      - any_i64
+      - any_i64_any
+    metadata:
+      legacy_extension_uri: /functions_arithmetic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: lag(x, offset [, default]) OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      offset_null_behavior: USE_ONE
+      notes: Return x from a preceding row in the same partition, defaulting to offset 1. Negative offsets reverse
+        direction and zero selects the current row. A missing target yields the provided default, evaluated on the
+        current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS
+        frames; IGNORE NULLS is not implemented. Native offsets are Int64 and may be expressions. A null offset
+        is treated as 1, unlike upstream. The default can have a different value kind; that overload has an opaque/dynamic
+        result.
+      sql_example: SELECT lag(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html
+  - source: flowtide_aggregate_generic
+    name: surrogate_key_int64
+    system_metadata:
+      name: surrogate_key_int64
+      notation: FUNCTION
+    supported_impls:
+      - ''
+    metadata:
+      legacy_extension_uri: /functions_aggregate_generic.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: surrogate_key_int64() OVER (...)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: false
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      deterministic: false
+      notes: One stateful counter key per partition, shared by all its rows. Without PARTITION BY, all rows share
+        one key. ORDER BY is optional; SQL rejects ROWS frames. Live partitions retain their key across updates
+        and checkpoint restore; deleting and recreating a partition can assign a new key. Allocation is operator-scoped
+        and not deterministic across a full replay.
+      sql_example: SELECT surrogate_key_int64() OVER (PARTITION BY p) FROM t
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/generic.html
+  - source: flowtide_datetime
+    name: session_window
+    system_metadata:
+      name: session_window
+      notation: FUNCTION
+    supported_impls:
+      - i64_str
+    metadata:
+      legacy_extension_uri: /functions_datetime.yaml
+      definition_kind: WINDOW_FUNCTION
+      sql_signature: session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC)
+      plan_representation: CONSISTENT_PARTITION_WINDOW
+      requires_order_by: true
+      frame_types: []
+      supports_filter: false
+      sql_distinct: false
+      requires_bulk_window_operator: true
+      order_by_count: 1
+      order_by_direction: ASC
+      order_by_type: precision_timestamp_tz<7>
+      literal_arguments:
+        - 0
+        - 1
+      gap_units:
+        - WEEK
+        - DAY
+        - HOUR
+        - MINUTE
+        - SECOND
+        - MILLISECOND
+        - MICROSECOND
+      timestamp_precision: 7
+      notes: Return the start timestamp of the session containing each row. Exactly one ascending timestamp sort
+        expression is required. A neighbouring gap equal to the limit remains in the session; a larger gap starts
+        a new one. Null/non-timestamp sort values return null and do not split the run. Inserts can merge sessions
+        and deletes can split them. The gap is a positive integer literal and a string unit literal; WEEK/DAY are
+        fixed durations, not calendar arithmetic. Explicit frames are rejected. This binding is registered only
+        for the bulk window operator.
+      sql_example: SELECT session_window(30, 'MINUTE') OVER (PARTITION BY user_id ORDER BY event_time) FROM events
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/windowfunctions/datetime.html
+
+# Relations
+# Lists executable protobuf relation forms, with known import/export restrictions in metadata.
+# Native SQL/model capabilities that exceed protobuf support are documented in the relevant entries.
+supported_relations:
+  - relation: READ
+    read_types:
+      - NAMED_TABLE
+      - VIRTUAL_TABLE
+    metadata:
+      requires_base_schema: true
+      virtual_table_encoding: EXPRESSIONS
+      imports_read_filter: false
+      imports_projection_mask: false
+      notes: Named tables resolve through configured source connectors. Supply a base_schema with column names and
+        types. Virtual tables use ReadRel.virtual_table.expressions (Struct expressions); the legacy values field
+        is not read. ReadRel.filter and projection masks are not imported, so express required predicates with FILTER
+        and output selection with common.emit or PROJECT. Local-file, extension-table and Iceberg ReadRel forms
+        are not implemented.
+  - relation: FILTER
+    metadata:
+      notes: A condition expression is required. Rows whose condition evaluates to true pass through; false and
+        null are rejected. Supports common.emit output mappings and incremental insert/retract weights. Use this
+        relation for predicates that must survive protobuf import instead of ReadRel.filter.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/filter.html
+  - relation: PROJECT
+    metadata:
+      output_layout: INPUT_COLUMNS_THEN_EXPRESSIONS
+      notes: Expressions append columns to the input schema; use common.emit to select/reorder input and computed
+        columns. Field indices are zero-based and refer to the input schema. Supported expression forms and function
+        bindings are listed in the expression/scalar catalogs.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/projection.html
+  - relation: JOIN
+    join_types:
+      - INNER
+      - LEFT
+      - RIGHT
+      - LEFT_MARK
+    metadata:
+      native_join_types:
+        - INNER
+        - LEFT
+        - RIGHT
+        - OUTER
+        - LEFT_MARK
+      predicate_reference_schema: LEFT_COLUMNS_THEN_RIGHT_COLUMNS
+      roundtrip_post_join_filter: false
+      notes: 'The protobuf importer accepts INNER, LEFT, RIGHT and LEFT_MARK. Native SQL/model plans also support
+        OUTER; importing a generic JoinRel with OUTER throws. The optimizer may lower suitable keyed joins to MERGE_JOIN;
+        other predicates use the block-nested join operator. Predicate field references use the concatenated left/right
+        schema. LEFT_MARK outputs left columns plus a boolean mark. For reliable export, leave PostJoinFilter unset:
+        the generic JoinRel serializer currently writes it into expression, replacing the original join predicate.
+        Express post-join filtering as a separate FILTER relation.'
+      doc_url: https://koralium.github.io/flowtide/docs/operators/join.html
+  - relation: MERGE_JOIN
+    join_types:
+      - INNER
+      - LEFT
+      - RIGHT
+      - OUTER
+      - LEFT_MARK
+    metadata:
+      key_reference_kind: DIRECT_TOP_LEVEL_STRUCT_FIELD
+      right_key_index_base: LEFT_OUTPUT_LENGTH
+      key_comparisons:
+        - EQ
+        - LT
+        - LTE
+        - GT
+        - GTE
+      notes: Supports keyed incremental joins, including OUTER and LEFT_MARK. Use direct top-level StructField key
+        references; flatten nested keys with PROJECT first. Flowtide stores right-key field indices in the combined
+        schema (left.output_length + right column index), and its wire importer/exporter retain those indices without
+        rebasing. EQ uses a simple comparison key; LT/LTE/GT/GTE are represented by custom comparison-function references.
+        Other custom comparison names fall back to EQ and are not advertised. Residual post_join_filter and common.emit
+        are retained. Physical input need not already be sorted; the runtime maintains indexed state.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/join.html
+  - relation: AGGREGATE
+    metadata:
+      max_grouping_sets: 1
+      supports_measure_filters: true
+      aggregation_phases:
+        - INITIAL_TO_RESULT
+      imports_common_emit: false
+      output_layout: GROUPING_EXPRESSIONS_THEN_MEASURES
+      notes: Supports global aggregation or one grouping set containing multiple expressions. Multiple grouping
+        sets are rejected. Outputs grouping columns followed by measures; per-measure FILTER is supported. Grouping-only
+        aggregation with no measures is supported. Aggregate bindings are listed in supported_aggregate_functions.
+        The native model executes raw input to final results; protobuf phase, invocation and aggregate sort fields
+        are not retained. COUNT(DISTINCT x) uses the dedicated count_distinct binding. The importer also drops AggregateRel.common.emit,
+        so use PROJECT above the aggregate to apply an output mapping after import.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/aggregate.html
+  - relation: SET
+    operations:
+      - UNION_ALL
+    metadata:
+      imports_operation: false
+      native_operations:
+        - UNION_ALL
+        - UNION_DISTINCT
+        - MINUS_PRIMARY
+        - MINUS_PRIMARY_ALL
+        - INTERSECTION_MULTISET
+        - INTERSECTION_MULTISET_ALL
+      max_inputs_for_native_stateful_operations: 8
+      notes: The wire importer currently sets every SetRel operation to UNION_ALL, regardless of op. Only UNION_ALL
+        is advertised for protobuf plans. Native SQL/model execution additionally supports UNION_DISTINCT, MINUS_PRIMARY,
+        MINUS_PRIMARY_ALL, INTERSECTION_MULTISET and INTERSECTION_MULTISET_ALL. Those stateful native operations
+        accept one through eight inputs; UNION_ALL uses a separate operator. Inputs must have the same column count.
+        The serializer also leaves op unspecified for the native MINUS_PRIMARY_ALL and INTERSECTION_MULTISET_ALL
+        variants. Use explicit grouping of all output columns for distinct results in an imported plan.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/set.html
+  - relation: REFERENCE
+    metadata:
+      imports_common_emit: false
+      notes: ReferenceRel.subtree_ordinal refers to a relation in the plan relation list. The importer resolves
+        its output length from the referenced relation; the runtime shares that relation rather than building another
+        copy. Common.emit is not imported for references; use PROJECT for output mapping.
+  - relation: WRITE
+    write_types:
+      - NAMED_TABLE
+    metadata:
+      requires_sink_connector: true
+      enhancement_types:
+        - type.googleapis.com/flowtide.WriteRelationPrimaryKeys
+      notes: Writes a named table through a configured sink connector. Supply table_schema and named_table. CreateMode.REPLACE_IF_EXISTS
+        maps to the native Overwrite flag; actual overwrite and update behavior depends on the connector. Flowtide
+        primary-key names can be supplied through the flowtide.WriteRelationPrimaryKeys advanced-extension enhancement.
+        Unknown enhancement message types are rejected. Supports common.emit; generic update/DDL relations are separate
+        unsupported forms.
+  - relation: CONSISTENT_PARTITION_WINDOW
+    metadata:
+      function_catalog: supported_window_functions
+      frame_types:
+        - ROWS
+      output_layout: INPUT_COLUMNS_THEN_WINDOW_RESULTS
+      notes: Partition and ordering expressions apply to a list of window functions. Input columns are followed
+        by window result columns before common.emit. Supported functions, ordering requirements and ROWS frames
+        are listed in supported_window_functions. The column-store runtime requires a bulk implementation for every
+        window function in the relation and at least one function. This relation is distinct from a general WINDOW_FUNCTION
+        expression, which is not imported.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/window.html
+  - relation: EXCHANGE
+    kinds:
+      - SCATTER_BY_FIELDS
+      - BROADCAST
+    metadata:
+      target_uris:
+        - standard_output
+      target_extension_types:
+        - type.googleapis.com/flowtide.SubstreamExchangeTarget
+        - type.googleapis.com/flowtide.PullBucketExchangeTarget
+      notes: Supports scatter-by-field and broadcast distribution. Scatter fields are field references. Targets
+        are the reserved URI standard_output, or Flowtide SubstreamExchangeTarget/PullBucketExchangeTarget extension
+        messages. Partition ids, target ids and substream names must match the receiving exchange references and
+        configured stream graph. A zero/absent partition_count imports as unspecified. Other exchange kinds and
+        target URI forms are rejected.
+  - relation: EXTENSION_SINGLE
+    message_types:
+      - type.googleapis.com/flowtide.SubStreamRootRelation
+      - type.googleapis.com/flowtide.TableFunctionRelation
+      - type.googleapis.com/flowtide.TopNRelation
+      - type.googleapis.com/flowtide.BufferRelation
+      - type.googleapis.com/flowtide.CheckRelation
+    metadata:
+      messages:
+        flowtide.SubStreamRootRelation:
+          native_relation: SubStreamRootRelation
+          notes: Names a substream boundary around the input. Use a stream graph configured for the matching substream.
+        flowtide.TableFunctionRelation:
+          native_relation: TableFunctionRelation
+          join_types:
+            - INNER
+            - LEFT
+          notes: Correlates table-function value arguments with the input row. Function bindings are documented
+            in metadata.flowtide_table_functions. The EXTENSION_SINGLE importer unconditionally reads join_condition,
+            so provide a boolean true expression for an unconditional join. Omitting it currently fails import.
+            The native SQL planner permits an omitted ON clause.
+          requires_join_condition_for_import: true
+        flowtide.TopNRelation:
+          native_relation: TopNRelation
+          notes: Incrementally maintains a bounded sorted result with Count and Offset. Use nonnegative Int32 bounds
+            and explicit sort fields. Native SQL SELECT TOP ... ORDER BY ... lowers to this extension. Standalone
+            SortRel and standard TopNRel are not imported; FetchRel parses but has no executable runtime operator.
+            A native fetch without ORDER BY is rejected. Supply the custom TopN relation when importing a bounded
+            ordered plan.
+          sort_directions:
+            - ASC_NULLS_FIRST
+            - ASC_NULLS_LAST
+            - DESC_NULLS_FIRST
+            - DESC_NULLS_LAST
+          sql_example: SELECT TOP 10 userkey FROM users ORDER BY userkey DESC
+          doc_url: https://koralium.github.io/flowtide/docs/operators/topn.html
+        flowtide.BufferRelation:
+          native_relation: BufferRelation
+          notes: Buffers the input between computation stages.
+          doc_url: https://koralium.github.io/flowtide/docs/operators/buffer.html
+        flowtide.CheckRelation:
+          native_relation: CheckRelation
+          requires_column_store: true
+          notes: Evaluates check definitions with conditions, messages, tags and optional guards. Guard kinds IS_TRUE,
+            IS_NOT_TRUE and IS_NULL are supported. The runtime requires column-store execution.
+          guard_kinds:
+            - IS_TRUE
+            - IS_NOT_TRUE
+            - IS_NULL
+          doc_url: https://koralium.github.io/flowtide/docs/operators/check.html
+      native_only_extensions:
+        - protobuf_type: flowtide.NormalizationRelation
+          native_relation: NormalizationRelation
+          protobuf_serialization: EXTENSION_SINGLE
+          protobuf_import: false
+          runtime_execution: true
+          notes: Native normalization tracks current rows by KeyIndex for upsert/delete semantics and can apply
+            a filter. It is inserted by connectors/native planning. The serializer writes this extension, but the
+            EXTENSION_SINGLE importer has no handler for it.
+          doc_url: https://koralium.github.io/flowtide/docs/operators/normalization.html
+      notes: The listed Any detail messages are imported and have runtime implementations. Their per-message restrictions
+        below are part of the supported contract.
+  - relation: EXTENSION_LEAF
+    message_types:
+      - type.googleapis.com/flowtide.TableFunctionRelation
+      - type.googleapis.com/flowtide.IterationReferenceReadRelation
+      - type.googleapis.com/flowtide.StandardOutputTargetReferenceRelation
+      - type.googleapis.com/flowtide.SubstreamExchangeReferenceRelation
+      - type.googleapis.com/flowtide.PullExchangeReferenceRelation
+    metadata:
+      messages:
+        flowtide.TableFunctionRelation:
+          native_relation: TableFunctionRelation
+          notes: A table-function source with no input, using table_schema and value arguments. An omitted join_condition
+            is accepted for this leaf form. See metadata.flowtide_table_functions.
+        flowtide.IterationReferenceReadRelation:
+          native_relation: IterationReferenceReadRelation
+          notes: Reads feedback from the enclosing named iteration. Supply its output length and a matching iteration
+            name; an unbound iteration reference cannot execute.
+        flowtide.StandardOutputTargetReferenceRelation:
+          native_relation: StandardOutputExchangeReferenceRelation
+          notes: Reads the standard-output target of an exchange using its relation/target ids and output length.
+        flowtide.SubstreamExchangeReferenceRelation:
+          native_relation: SubstreamExchangeReferenceRelation
+          notes: Reads a matching substream exchange target using the substream name, target id and output length.
+        flowtide.PullExchangeReferenceRelation:
+          native_relation: PullExchangeReferenceRelation
+          notes: Reads a configured pull exchange target using the substream name, target id and output length.
+      notes: The listed source/reference extension messages are supported. Their referenced iterations or exchange
+        endpoints must exist in the enclosing stream graph.
+  - relation: EXTENSION_MULTI
+    message_types:
+      - type.googleapis.com/flowtide.IterationRelation
+    metadata:
+      input_order:
+        - LOOP_PLAN
+        - OPTIONAL_INITIAL_INPUT
+      native_properties_not_serialized:
+        - MaxIterations
+        - SkipIterateCondition
+      notes: Flowtide iteration has the loop plan at inputs[0] and an optional initial input at inputs[1]. Feedback
+        uses a matching flowtide.IterationReferenceReadRelation. The protobuf message carries the iteration name;
+        native MaxIterations and SkipIterateCondition properties are not serialized.
+      doc_url: https://koralium.github.io/flowtide/docs/operators/iteration.html
+
+# Types
+# Native value support and protobuf compatibility are described separately in each entry.
+supported_types:
+  - type: BOOL
+    metadata:
+      native_model: BoolType
+      runtime_value: BoolValue / Boolean
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: true
+      notes: Boolean values, with null represented separately by validity. BOOLEAN casts and boolean literals are
+        supported.
+  - type: I32
+    metadata:
+      native_model: Int32Type
+      runtime_value: Int64Value / Int64
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: true
+      runtime_integer_width: 64
+      native_cast_enforces_declared_width: false
+      notes: I32 schemas and literals are accepted, but runtime integers use Int64 values. CAST to Int32Type uses
+        the same Int64 conversion as Int64Type and does not enforce 32-bit bounds. SQL INT/INTEGER/SMALLINT/TINYINT
+        casts and default CLR integer converters resolve to I64. Function support for narrow integer signatures
+        must be checked in the function catalogs; physical widening does not imply narrow-width overflow behavior.
+  - type: I64
+    metadata:
+      native_model: Int64Type
+      runtime_value: Int64Value / Int64
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: true
+      runtime_integer_width: 64
+      notes: Signed 64-bit integer values. Default CLR byte, sbyte, short, ushort, int, uint and long converters
+        use this model. Native integer NumericLiteral values serialize as I64. Function-specific overflow behavior
+        is declared separately in the function catalogs.
+  - type: FP32
+    metadata:
+      native_model: Fp32Type
+      runtime_value: DoubleValue / Double
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: false
+      runtime_float_width: 64
+      native_cast_enforces_declared_width: false
+      notes: FP32 schemas are accepted, but native values and casts use Double without enforcing single-precision
+        rounding. The default CLR float converter reports Fp64Type. FP32 literals are not imported. Check the function
+        catalogs for supported signatures rather than assuming FP32 arithmetic is implemented.
+  - type: FP64
+    metadata:
+      native_model: Fp64Type
+      runtime_value: DoubleValue / Double
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: false
+      runtime_float_width: 64
+      notes: IEEE Double values, including NaN and infinities, are supported natively. Fractional SQL/NumericLiteral
+        values evaluate as Double and serialize as FP64 literals, but those literals are not imported by the current
+        protobuf expression reader. Connector values and native plans can use them.
+  - type: STRING
+    metadata:
+      native_model: StringType
+      runtime_value: StringValue / String
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: true
+      encoding: UTF-8
+      notes: UTF-8 text. Native string values retain UTF-8 bytes; scalar functions determine their own Unicode/case
+        behavior. String literals are imported. FixedChar literals are also imported as ordinary strings; this does
+        not add FixedChar/Varchar schema support or length enforcement. Default CLR Guid conversion produces a GUID-formatted
+        string, not a UUID typed value.
+  - type: BINARY
+    metadata:
+      native_model: BinaryType
+      runtime_value: BinaryValue / Binary
+      wire_support:
+        schema_import: FULL
+        schema_export: FULL
+        non_null_literal_import: true
+      notes: Arbitrary bytes, including binary literals. The FixedBinary schema type is not implemented. parse_guid
+        returns 16-byte .NET GUID data in this value kind; the default CLR Guid converter instead uses STRING.
+  - type: DECIMAL
+    max_precision: 28
+    max_scale: 28
+    metadata:
+      native_model: DecimalType
+      runtime_value: DecimalValue / Decimal128 (System.Decimal)
+      wire_support:
+        schema_import: NONE
+        schema_export: PARTIAL
+        non_null_literal_import: false
+      native_cast_enforces_precision_scale: false
+      sql_example: SELECT CAST(123 AS DECIMAL) FROM t
+      notes: The Decimal128 runtime tag stores System.Decimal, not arbitrary 38-digit decimal arithmetic. Precision
+        28 and scale 0..28 are conservatively advertised; System.Decimal can represent some 29-digit values. Native
+        casts do not enforce DecimalType.Precision/Scale or quantize to the declared scale. The protobuf writer
+        emits a Decimal type but omits precision/scale (both default to zero), and the reader has no Decimal type
+        handler. Decimal type schemas and decimal literals therefore do not round-trip. Use native plans or connector
+        values for decimal execution; fractional SQL numeric literals evaluate as Double, so use an explicit decimal cast when
+        a decimal value is required.
+  - type: PRECISION_TIMESTAMP_TZ
+    max_precision: 7
+    metadata:
+      native_model: TimestampType
+      runtime_value: TimestampTzValue / Timestamp
+      wire_support:
+        schema_import: LEGACY_ONLY
+        schema_export: LEGACY_ONLY
+        non_null_literal_import: false
+      legacy_protobuf_kind: TIMESTAMP_TZ
+      tick_nanoseconds: 100
+      offset_resolution: MINUTES
+      sql_example: SELECT CAST('2026-01-02T03:04:05.1234567+02:00' AS TIMESTAMP) FROM t
+      notes: Native timestamps store UTC .NET ticks (100 ns) plus a fixed offset in minutes. Runtime ordering compares
+        UTC ticks; offset information is retained when formatting/returning DateTimeOffset values. Use values representable
+        by .NET DateTimeOffset. No IANA timezone identifier is stored. CLR DateTime/DateTimeOffset map to TimestampType;
+        Unspecified/UTC DateTime input uses zero offset and Local input is converted through DateTimeOffset. The
+        bundled protobuf schema and reader/writer use the deprecated timestamp_tz type with no precision parameter;
+        modern precision_timestamp_tz fields are unavailable. Timestamp literals are not imported. The max_precision
+        here describes native values, not modern precision-type wire support.
+  - type: LIST
+    metadata:
+      native_model: ListType
+      runtime_value: ListValue / List
+      wire_support:
+        schema_import: PARTIAL
+        schema_export: FULL
+        non_null_literal_import: false
+      construction: NESTED_LIST
+      sql_example: SELECT list(1, 2, 3) FROM t
+      notes: Ordered elements with a declared element type; nullable containers and elements are supported. Dynamic
+        heterogeneous lists use Flowtide any as the element type. Construct imported values using NESTED LIST expressions;
+        collection literals are not imported. Schema support depends on the element type and its schema context,
+        including the nested STRUCT restrictions below.
+  - type: MAP
+    metadata:
+      native_model: MapType
+      runtime_value: MapValue / Map
+      wire_support:
+        schema_import: PARTIAL
+        schema_export: FULL
+        non_null_literal_import: false
+      construction: NESTED_MAP
+      notes: Maps have declared key/value types and may contain repeated keys. Substrait map keys must be non-null;
+        values may be null. Dynamic values can use Flowtide any. MapValue constructors sort their entries; treat
+        maps as unordered. JSON objects from from_json are maps, while named_struct creates STRUCT values. Use NESTED
+        MAP expressions for imported construction; map literals are not imported. Schema support depends on both
+        child types and their schema context.
+  - type: STRUCT
+    metadata:
+      native_model: NamedStruct with Struct field types
+      runtime_value: StructValue / Struct
+      wire_support:
+        schema_import: PARTIAL
+        schema_export: PARTIAL
+        non_null_literal_import: false
+      standalone_protobuf_codec:
+        legacy_extension_uri: /named_struct_type.yaml
+        name: named_struct
+        parameters: FIELD_NAME_STRINGS_THEN_STRUCT_DATA_TYPE
+      native_cast: false
+      sql_example: SELECT named_struct('id', 1, 'label', 'item') FROM t
+      notes: Named fields with per-field types and nullable values. Native CLR objects and named_struct produce
+        struct values. Standard nested Struct schema fields require the flattened name list provided by NamedStruct.
+        The READ importer currently calls ParseStruct without that name list, so nested standard structs in ReadRel.base_schema
+        (also inside LIST/MAP) fail import. WRITE/table-function schemas use the name-aware parser. Standard Struct
+        container nullability is not retained. Standalone type annotations instead use Flowtide user_defined named_struct
+        with string field-name parameters followed by a Struct datatype parameter; that wrapper preserves nullability.
+        General struct literals and NESTED STRUCT execution are not implemented; use named_struct for native construction.
+  - type: USER_DEFINED
+    source: flowtide_types
+    name: dynamic
+    metadata:
+      native_model: AnyType
+      runtime_value: Dynamically tagged IDataValue
+      wire_support:
+        schema_import: PARTIAL
+        schema_export: LEGACY_CODEC
+        non_null_literal_import: false
+      legacy_extension_uri: /any_type.yaml
+      legacy_type_name: any
+      imported_nullability: ALWAYS_NULLABLE
+      notes: Flowtide any represents dynamic values, including null and values whose output kind, decimal scale
+        or nested shape cannot be fixed by a signature. It serializes through the legacy /any_type.yaml type named
+        any. Import always creates nullable AnyType, even when the wire annotation is required. It is a Flowtide
+        type codec, not the standard UNBOUND type. Other user-defined names are rejected except named_struct, which
+        is the STRUCT annotation wrapper described above.
