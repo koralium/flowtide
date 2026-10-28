@@ -75,7 +75,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         // All columns when no leaves are given
         public async IAsyncEnumerable<RecordBatch> ReadBatches(int[]? leafColumns)
         {
-            var batchReader = leafColumns == null ? _reader.GetRecordBatchReader() : _reader.GetRecordBatchReader(columns: leafColumns);
+            using var batchReader = leafColumns == null ? _reader.GetRecordBatchReader() : _reader.GetRecordBatchReader(columns: leafColumns);
             _batchReaders.Add(batchReader);
             try
             {
@@ -88,7 +88,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             finally
             {
                 _batchReaders.Remove(batchReader);
-                batchReader.Dispose();
             }
         }
 

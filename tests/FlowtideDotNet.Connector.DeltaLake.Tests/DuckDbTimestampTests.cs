@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
     public class DuckDbTimestampTests : IDisposable
     {
-        private readonly string _root = Path.Combine(Path.GetTempPath(), "duckts-" + ScratchOwners.ShortId());
+        private readonly string _root = Path.Join(Path.GetTempPath(), "duckts-" + ScratchOwners.ShortId());
 
         public DuckDbTimestampTests()
         {
@@ -38,6 +38,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             catch (IOException)
             {
+                // A folder the system still holds is left in temp
             }
         }
 
@@ -110,7 +111,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 command.CommandText = $"SET extension_directory = '{DuckDbTimeTravelProbe.ExtensionDirectory.Replace("\\", "/")}'; LOAD delta;";
                 command.ExecuteNonQuery();
             }
-            command.CommandText = $"ATTACH '{Path.GetFullPath(Path.Combine(_root, "test")).Replace("\\", "/")}' AS probe (TYPE delta)";
+            command.CommandText = $"ATTACH '{Path.GetFullPath(Path.Join(_root, "test")).Replace("\\", "/")}' AS probe (TYPE delta)";
             command.ExecuteNonQuery();
             command.CommandText = query;
             using var reader = command.ExecuteReader();
