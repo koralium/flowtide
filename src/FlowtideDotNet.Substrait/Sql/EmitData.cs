@@ -183,6 +183,10 @@ namespace FlowtideDotNet.Substrait.Sql
             Add(new Expression.CompoundIdentifier(new SqlParser.Sequence<Ident>(new List<Ident>() { new Ident(name) })), index, name, type);
         }
 
+        /// <param name="expr">The SQL expression associated with the emitted column.</param>
+        /// <param name="index">The column's zero-based index.</param>
+        /// <param name="name">The column name.</param>
+        /// <param name="type">The column's Substrait type.</param>
         /// <param name="hiddenFromWildcard">Column exists only for internal use, '*' must not expand to it.</param>
         public void Add(Expression expr, int index, string name, SubstraitBaseType type, bool hiddenFromWildcard = false)
         {

@@ -22,6 +22,10 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 10.0.x
+    - name: Check generated SQL reference
+      run: >
+        dotnet run --project ./tools/FlowtideDotNet.Substrait.DocGenerator
+        --configuration Release --framework net10.0 -- --check
     - name: Validate Substrait dialect and extensions
       run: >
         dotnet test ./tests/FlowtideDotNet.Substrait.Dialect.Tests/FlowtideDotNet.Substrait.Dialect.Tests.csproj

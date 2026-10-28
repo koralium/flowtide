@@ -43,6 +43,9 @@
     <Project Path="src/FlowtideDotNet.TestFramework/FlowtideDotNet.TestFramework.csproj" />
     <Project Path="src/FlowtideDotNet.Zanzibar/FlowtideDotNet.Zanzibar.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/FlowtideDotNet.Substrait.DocGenerator/FlowtideDotNet.Substrait.DocGenerator.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FlowtideDotNet.AcceptanceTests/FlowtideDotNet.AcceptanceTests.csproj" />
     <Project Path="tests/FlowtideDotNet.AspNetCore.Tests/FlowtideDotNet.AspNetCore.Tests.csproj" />

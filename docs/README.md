@@ -10,7 +10,9 @@ This site is built with [DocFX](https://dotnet.github.io/docfx/).
 * `api/` — .NET API reference, generated from the source XML doc comments (`api/*.yml` is generated and git-ignored).
 * `images/` — shared image/logo assets.
 * `llms.txt` — entry point for AI assistants, published at `/flowtide/llms.txt`.
-* `llms/*.txt` — focused UTF-8 Markdown references for streams, SQL, expressions, and connectors, copied unchanged into the site as DocFX resources.
+* `llms/*.txt` — focused UTF-8 Markdown references for streams, SQL, expressions, and connectors, copied unchanged into the site as DocFX resources. The expressions guide is generated from the Substrait catalog and `reference/expressions.md`.
+* `docs/expressions/functions-reference.md` — generated SQL function reference, with the same content as `llms/expressions.txt`.
+* `reference/` — handwritten expressions introduction and generated XML includes for NuGet documentation.
 * `llms-full.yml` — ordered list of the four guides; DocFX renders it directly to `_site/llms-full.txt`, published at `/flowtide/llms-full.txt`.
 * `templates/flowtide/` — site styling and build-time templates for static LLM discovery links.
 * `docfx.json` — build configuration; `filterConfig.yml` — API reference filter.
@@ -51,13 +53,40 @@ and publishes `docs/_site` to the `gh-pages` branch.
 
 ## Maintaining the LLM references
 
-Keep `llms.txt` as a short navigation file; put detailed examples and constraints in
-the relevant `llms/*.txt` guide. These are maintained source files, not generated
-API documentation. Update them when public builder APIs, SQL syntax, function
-registrations, connector contracts, or supported target frameworks change.
+Keep `llms.txt` as a short navigation file. The streams, SQL and connectors guides
+are handwritten. The expressions guide combines `reference/expressions.md` with
+the function profiles in `../substrait/dialect.yaml` and their extension definitions.
+Edit the catalog for function signatures, options, examples and restrictions;
+edit `reference/expressions.md` for general expression guidance.
+Update the handwritten guides when public builder APIs, SQL syntax,
+connector contracts or supported target frameworks change.
 Check behavior against `src/FlowtideDotNet.Substrait/Sql`, the runtime functions,
 `tests/FlowtideDotNet.AcceptanceTests`, and the relevant samples/connector tests.
 Distinguish current repository features from availability in released packages.
+
+After changing the catalog or expressions introduction, run from the repository root:
+
+```sh
+dotnet run --project tools/FlowtideDotNet.Substrait.DocGenerator --framework net10.0
+# Validate the catalog and verify generated files without modifying them:
+dotnet run --project tools/FlowtideDotNet.Substrait.DocGenerator --framework net10.0 -- --check
+```
+
+Commit the generated Markdown, text and XML outputs together with the source change.
+CI and the documentation deployment check for stale output. Checked-in outputs keep
+`docfx docfx.json`, `docfx build docfx.json` and ordinary NuGet builds usable directly.
+The generator supports .NET 8 and .NET 10 and needs no Python or Java.
+
+`reference/sql-functions.xml` is compiled into the XML documentation of
+`FlowtideDotNet.Substrait` and `FlowtideDotNet.DependencyInjection`. Those XML files
+ship beside the assemblies in the NuGet packages; consumers need neither this
+repository nor the original include file. `SqlFunctionReference` and its nested
+`Scalar`, `Aggregate`, `Window` and `Table` reference types expose the full catalog.
+`SqlPlanBuilder.Sql`, `FunctionRegister` and `AddSqlTextAsPlan` include the signature
+index and link to those types. `AddFlowtideStream` explains the required plan,
+connectors and state storage, with a complete host example and a link to the SQL reference.
+Editor/assistant use of XML
+documentation depends on the client; package verification checks the content itself.
 
 Use absolute documentation URLs including the `/flowtide/` project prefix.
 Link to `.md` for Markdown-authored pages and `.txt` for the LLM guides.
@@ -76,9 +105,9 @@ code examples, and special characters without HTML escaping.
 
 The bundle is produced directly in the site output during the normal DocFX
 build, including `docfx docfx.json --serve`. A missing input guide fails the
-build. Edit the four guides and rebuild; do not edit or commit the generated
-bundle. There is no wrapper project, compiled plugin, or separate generation
-step, and no additional Python, Node.js, or NuGet dependency.
+build. Regenerate the expressions guide when its catalog inputs change, then
+rebuild; do not edit or commit the generated bundle. The bundle itself needs no
+wrapper project, compiled plugin, Python or Node.js dependency.
 
 DocFX also copies the original Markdown pages as resources in the `markdown`
 group, with that group's destination set to `.`. The separate group lets a

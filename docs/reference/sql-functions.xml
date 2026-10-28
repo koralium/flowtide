@@ -1,0 +1,3783 @@
+<?xml version="1.0" encoding="utf-8"?>
+<documentation>
+  <!-- Generated from the Substrait catalog. Do not edit; run FlowtideDotNet.Substrait.DocGenerator. -->
+  <topic id="functions">
+    <para>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</para>
+    <list type="bullet">
+      <item>
+        <description>
+          <see cref="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Scalar" />: -x; NOT x; abs(x); acos(x); acosh(x); asin(x); asinh(x); atan(x); atan2(y, x); atanh(x); ceil(x) (aliases: ceiling); check_true(condition, 'message' [, tags...]); check_value(value, condition, 'message' [, tags...]); coalesce(x, ...); concat(x, y, ...); cos(x); cosh(x); datediff(component, start, end); degrees(x); exp(x); floor(x); floor_timestamp_day(timestamp); from_json(json); gettimestamp(); greatest(x, y, ...); guid(string); is_finite(x); is_infinite(x); is_nan(x); len(string); list_first_difference(first, second); list_sort_asc_null_last(list); log10(x); lower(string); ltrim(string); named_struct('field', value, ...); nullif(x, y); power(x, y); radians(x); regexp_string_split(string, pattern); replace(string, old, replacement); round(x); round_calendar(timestamp, operation, component, reference, step); rtrim(string); sign(x); sin(x); sinh(x); sqrt(x); starts_with(string, prefix); strftime(unix_microseconds, format); string LIKE pattern [ESCAPE character]; string_base64_decode(string); string_base64_encode(string); string_join(separator, list); string_split(string, separator); strpos(string, substring); substring(string, start [, length]); tan(x); tanh(x); timestamp_add(component, amount, timestamp); timestamp_extract(component, timestamp); timestamp_format(timestamp, format); timestamp_parse(string, format); to_json(value); to_string(value); trim(string); upper(string); x % y; x * y; x + y; x - y; x / y; x &lt; y; x &lt;= y; x &lt;&gt; y; x = y; x &gt; y; x &gt;= y; x AND y; x BETWEEN lower AND upper; x IS DISTINCT FROM y; x IS NOT DISTINCT FROM y; x IS NOT NULL; x IS NULL; x OR y; x XOR y; xxhash128_guid_string(value, ...); xxhash64(value, ...)</description>
+      </item>
+      <item>
+        <description>
+          <see cref="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Aggregate" />: COUNT(*); COUNT(DISTINCT x); avg(x); list_agg(x); list_union_distinct_agg(x); max(x); max_by(x, y); min(x); min_by(x, y); string_agg(x, separator); sum(x); sum0(x); surrogate_key_int64()</description>
+      </item>
+      <item>
+        <description>
+          <see cref="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Window" />: avg(x) OVER (...); lag(x [, offset [, default]]) OVER (...); lag(x, offset [, default]) OVER (...); last_value(x) IGNORE NULLS OVER (...); last_value(x) OVER (...); lead(x [, offset [, default]]) OVER (...); lead(x, offset [, default]) OVER (...); max_by(x, y) OVER (...); min_by(x, y) OVER (...); row_number() OVER (...); session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC); sum(x) OVER (...); surrogate_key_int64() OVER (...)</description>
+      </item>
+      <item>
+        <description>
+          <see cref="FlowtideDotNet.Substrait.Sql.SqlFunctionReference.Table" />: hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit); tumbling_window(timestamp, size_amount, size_unit); unnest(collection)</description>
+      </item>
+    </list>
+  </topic>
+  <topic id="functions-scalar">
+    <para>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</para>
+    <para>
+      <b>-x</b>
+    </para>
+    <para>
+      <b>Profile: i64</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>negate:i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>negate:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>NOT x</b>
+    </para>
+    <para>SQL three-valued boolean negation.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>not:bool</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_boolean</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>abs(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>abs:i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>abs:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>acos(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>acos:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>acosh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>acosh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>asin(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>asin:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>asinh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>asinh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>atan(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>atan:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>atan2(y, x)</b>
+    </para>
+    <para>Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results can differ.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>atan2:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>atanh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>atanh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>ceil(x)</b>
+    </para>
+    <para>The native double implementation converts the rounded value through Int64. Restrict inputs to finite values whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>ceil:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_rounding</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Sql aliases: <c>[ceiling]</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>check_true(condition, 'message' [, tags...])</b>
+    </para>
+    <para>Planner intrinsic extracted into check relations. Returns true only for boolean true; only boolean false raises an issue. Message must be a string literal. Include a row key in tags for one issue per failing row.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>check_true:bool_str, check_true:bool_str_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:check</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean, string) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean, string, any) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=2</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[1]</c></description>
+      </item>
+      <item>
+        <description>Requires optimizer pass: <c>CheckExtractor</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>check_value(value, condition, 'message' [, tags...])</b>
+    </para>
+    <para>Planner intrinsic extracted into check relations. Returns value while recording boolean-false failures; null/non-boolean conditions do not raise an issue. Message must be a string literal. Named tags use key =&gt; expression.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>check_value:any_bool_str, check_value:any_bool_str_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:check</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, boolean, string) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, boolean, string, any) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=3</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[2]</c></description>
+      </item>
+      <item>
+        <description>Requires optimizer pass: <c>CheckExtractor</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/check.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>coalesce(x, ...)</b>
+    </para>
+    <para>First non-null argument.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>coalesce:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=2</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>concat(x, y, ...)</b>
+    </para>
+    <para>
+      <b>Profile: str</b>
+    </para>
+    <para>Null propagates. Also exposed as the SQL || operator.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>concat:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option null_handling: <c>ACCEPT_NULLS</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=1</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str</b>
+    </para>
+    <para>Null propagates. Also exposed as the SQL || operator.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>concat:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option null_handling: <c>IGNORE_NULLS</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=1</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>cos(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>cos:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>cosh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>cosh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>datediff(component, start, end)</b>
+    </para>
+    <para>Count crossed component boundaries.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>datediff:str_ptstz_ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, precision_timestamp_tz&lt;7&gt;, precision_timestamp_tz&lt;7&gt;) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>degrees(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>degrees:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>exp(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>exp:i64, exp:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>floor(x)</b>
+    </para>
+    <para>The native double implementation converts the rounded value through Int64. Restrict inputs to finite values whose rounded result fits Int64; infinities and out-of-range values do not have the upstream behavior.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>floor:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_rounding</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>floor_timestamp_day(timestamp)</b>
+    </para>
+    <para>Remove the time-of-day component; incompatible values return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>floor_timestamp_day:ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;7&gt;) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>from_json(json)</b>
+    </para>
+    <para>
+      <b>Profile: str, vbin</b>
+    </para>
+    <para>Parse JSON text or UTF-8 binary into dynamic Flowtide values.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>from_json:str, from_json:vbin</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(binary) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str, vbin</b>
+    </para>
+    <para>Parse JSON text or UTF-8 binary into dynamic Flowtide values.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>from_json:str, from_json:vbin</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(binary) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option error_handling: <c>ERROR</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>gettimestamp()</b>
+    </para>
+    <para>Planner intrinsic: optimizer replaces the call with a periodically updated timestamp source and joins. Default update interval is one hour; configure SetGetTimestampUpdateInterval. Not supported inside join conditions.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>gettimestamp:</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>() -&gt; precision_timestamp_tz&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Requires optimizer pass: <c>TimestampToJoin</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>greatest(x, y, ...)</b>
+    </para>
+    <para>Greatest value; a null argument propagates null. Requires at least two arguments.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>greatest:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1; nullability=MIRROR</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=2</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>guid(string)</b>
+    </para>
+    <para>Parse a GUID string into its 16-byte .NET GUID representation. Invalid input returns null; this does not generate random GUIDs.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>parse_guid:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_guid</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; binary?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <b>is_finite(x)</b>
+    </para>
+    <para>Test for a special numeric value.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_finite:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>is_infinite(x)</b>
+    </para>
+    <para>Test for a special numeric value.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_infinite:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>is_nan(x)</b>
+    </para>
+    <para>Test for a special numeric value.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_nan:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>len(string)</b>
+    </para>
+    <para>Counts Unicode text elements (grapheme clusters) using .NET StringInfo. The SQL spelling is len.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>char_length:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; i64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>list_first_difference(first, second)</b>
+    </para>
+    <para>First differing element of the first list, or null if none differs.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>list_first_difference:list_list</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_list</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(list&lt;any&gt;, list&lt;any&gt;) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>list_sort_asc_null_last(list)</b>
+    </para>
+    <para>Sort ascending with nulls last. Non-list input returns null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>list_sort_asc_null_last:list</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_list</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(list&lt;any&gt;) -&gt; list?&lt;any&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/list.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>log10(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>NAN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>ERROR</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>MINUS_INFINITY</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>NAN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>ERROR</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null; explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>log10:i64, log10:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_logarithmic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_log_zero: <c>MINUS_INFINITY</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>lower(string)</b>
+    </para>
+    <para>String operation; incompatible input kinds generally yield null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lower:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>ltrim(string)</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>ltrim:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str</b>
+    </para>
+    <para>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>ltrim:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>named_struct('field', value, ...)</b>
+    </para>
+    <para>named_struct alternates string-literal field names and values, with an even argument count. The schema cannot express repeating heterogeneous pairs; any plus this argument-pattern restriction describes the native variadic binding.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>create:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:struct</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; flowtide_types.u!dynamic; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=2</c></description>
+      </item>
+    </list>
+    <para>
+      <b>nullif(x, y)</b>
+    </para>
+    <para>Return null when equal; otherwise return x.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>nullif:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>power(x, y)</b>
+    </para>
+    <para>Numeric binary operation; mixed numeric inputs are handled dynamically. Decimal and non-decimal results can differ.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>power:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>radians(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>radians:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>regexp_string_split(string, pattern)</b>
+    </para>
+    <para>Case-sensitive .NET regular expression splitting with explicit capture. Multiline and dotall modes are disabled; other mode options are not declared.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>regexp_string_split:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; List&lt;string&gt;</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_SENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>replace(string, old, replacement)</b>
+    </para>
+    <para>String operation; incompatible input kinds generally yield null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>replace:str_str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string, string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>round(x)</b>
+    </para>
+    <para>One-argument rounding with ties to even, unlike upstream round(value, scale). Double results pass through Int64: use finite inputs with an Int64-representable rounded value. Decimal arithmetic uses System.Decimal (conservatively at most 28 digits).</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>round:i64, round:fp64, round:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_rounding</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; decimal?&lt;P,S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/rounding.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>round_calendar(timestamp, operation, component, reference, step)</b>
+    </para>
+    <para>Flowtide uses positional string-valued components/operations rather than upstream required enum arguments. Calendar-aligned rounding, for example round_calendar(ts, 'FLOOR', 'MONTH', 'YEAR', 1).</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>round_calendar:ptstz_str_str_str_i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;7&gt;, string, string, string, i64) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>rtrim(string)</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>rtrim:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str</b>
+    </para>
+    <para>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>rtrim:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sign(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sign:i64, sign:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sin(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sin:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sinh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sinh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sqrt(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sqrt:i64, sqrt:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NAN</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>starts_with(string, prefix)</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>Prefix test; incompatible runtime input kinds return false.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>starts_with:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; boolean</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_SENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>Prefix test; incompatible runtime input kinds return false.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>starts_with:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; boolean</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_INSENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>strftime(unix_microseconds, format)</b>
+    </para>
+    <para>Legacy integer Unix-microseconds input, unlike upstream typed-date/time overloads. Use timestamp_format for typed timestamps.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>strftime:i64_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string LIKE pattern [ESCAPE character]</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>Case-sensitive LIKE. The native runtime also accepts an explicit escape argument and SQL Server-style bracket patterns; the three-argument form is declared in the Flowtide scalar extension.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>like:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; boolean</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_SENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str_str_str</b>
+    </para>
+    <para>Three-argument LIKE with an explicit escape character. SQL Server-style %/_/bracket patterns are supported. Matching is case-sensitive.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>like:str_str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string, string) -&gt; boolean?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string_base64_decode(string)</b>
+    </para>
+    <para>Base64 conversion of UTF-8 text. Invalid Base64 input returns null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>string_base64_decode:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string_base64_encode(string)</b>
+    </para>
+    <para>Base64 conversion of UTF-8 text. Invalid Base64 input returns null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>string_base64_encode:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string_join(separator, list)</b>
+    </para>
+    <para>Separator is the first argument. Null list returns null; empty/all-null list returns an empty string; null elements are skipped.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>string_join:str_list</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, list&lt;any&gt;) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string_split(string, separator)</b>
+    </para>
+    <para>String operation; incompatible input kinds generally yield null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>string_split:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; List&lt;string&gt;</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>strpos(string, substring)</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>One-based position, or zero if the substring is absent.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>strpos:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_SENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>One-based position, or zero if the substring is absent.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>strpos:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option case_sensitivity: <c>CASE_INSENSITIVE</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>substring(string, start [, length])</b>
+    </para>
+    <para>
+      <b>Profile: str_i32, str_i32_i32</b>
+    </para>
+    <para>Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument overload fails for that mode.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>substring:str_i32, substring:str_i32_i32</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, i32, i32) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, i32) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option negative_start: <c>WRAP_FROM_END</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str_i32_i32</b>
+    </para>
+    <para>Positions are one-based. LEFT_OF_BEGINNING is declared only with an explicit length: the native two-argument overload fails for that mode.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>substring:str_i32_i32</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, i32, i32) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option negative_start: <c>LEFT_OF_BEGINNING</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>tan(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>tan:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>tanh(x)</b>
+    </para>
+    <para>Numeric operation. Runtime numeric values use Int64, Double or Decimal; unsupported value kinds yield null. Trigonometric angles use radians.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>tanh:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>timestamp_add(component, amount, timestamp)</b>
+    </para>
+    <para>Add YEAR, QUARTER, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>timestamp_add:str_i64_ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, i64, precision_timestamp_tz&lt;7&gt;) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>timestamp_extract(component, timestamp)</b>
+    </para>
+    <para>Flowtide uses positional string-valued components/operations rather than upstream required enum arguments. Component is a string such as YEAR, MONTH, DAY, HOUR, MINUTE, SECOND or ISO_WEEK; SQL names differ from runtime names.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>extract:str_ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, precision_timestamp_tz&lt;7&gt;) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>timestamp_format(timestamp, format)</b>
+    </para>
+    <para>Format typed timestamps with .NET date/time format strings.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>format:ptstz_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;7&gt;, string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>timestamp_parse(string, format)</b>
+    </para>
+    <para>Parse typed timestamps with .NET date/time format strings, for example yyyy-MM-dd HH:mm:ss.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>parse_timestamp:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>to_json(value)</b>
+    </para>
+    <para>Serialize a Flowtide value to JSON text.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>to_json:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>to_string(value)</b>
+    </para>
+    <para>String operation; incompatible input kinds generally yield null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>to_string:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>trim(string)</b>
+    </para>
+    <para>
+      <b>Profile: str_str</b>
+    </para>
+    <para>The native Substrait binding supports an explicit character set as the second argument. Flowtide also has a one-argument whitespace-trimming overload, declared separately in its scalar extension.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>trim:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: str</b>
+    </para>
+    <para>One-argument whitespace trimming. The standard upstream implementation takes an explicit second character-set argument.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>trim:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>upper(string)</b>
+    </para>
+    <para>String operation; incompatible input kinds generally yield null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>upper:str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string) -&gt; string</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x % y</b>
+    </para>
+    <para>Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric inputs are also accepted natively.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>modulo:i64_i64, modulo:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, i64) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x * y</b>
+    </para>
+    <para>
+      <b>Profile: i64_i64</b>
+    </para>
+    <para>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>multiply:i64_i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64_fp64</b>
+    </para>
+    <para>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>multiply:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x + y</b>
+    </para>
+    <para>
+      <b>Profile: i64_i64</b>
+    </para>
+    <para>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>add:i64_i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64_fp64</b>
+    </para>
+    <para>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>add:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x - y</b>
+    </para>
+    <para>
+      <b>Profile: i64_i64</b>
+    </para>
+    <para>Int64 arithmetic wraps on overflow. Narrow integer and FP32 overloads are not declared because the runtime widens those values.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>subtract:i64_i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64_fp64</b>
+    </para>
+    <para>Double arithmetic with the runtime IEEE-754 rounding policy. Other rounding modes are not implemented.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>subtract:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x / y</b>
+    </para>
+    <para>Floating division. Integer inputs also produce a floating result in Flowtide, so the upstream integer-returning divide overload is not declared here. Division by zero follows runtime floating-point behavior.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>divide:fp64_fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option rounding: <c>TIE_TO_EVEN</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x &lt; y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lt:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x &lt;= y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lte:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x &lt;&gt; y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>not_equal:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x = y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>equal:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x &gt; y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>gt:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x &gt;= y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>gte:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x AND y</b>
+    </para>
+    <para>Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation permits an empty argument list.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>and:bool</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_boolean</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean) -&gt; boolean</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c></c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x BETWEEN lower AND upper</b>
+    </para>
+    <para>Inclusive range test using SQL null semantics.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>between:any_any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1, any1) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x IS DISTINCT FROM y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_distinct_from:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x IS NOT DISTINCT FROM y</b>
+    </para>
+    <para>Comparison over runtime values. IS DISTINCT FROM and IS NOT DISTINCT FROM provide null-safe comparisons; ordinary comparisons can return null.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_not_distinct_from:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any1) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x IS NOT NULL</b>
+    </para>
+    <para>Null test returning a boolean.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_not_null:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x IS NULL</b>
+    </para>
+    <para>Null test returning a boolean.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>is_null:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_comparison</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; boolean; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/comparison.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x OR y</b>
+    </para>
+    <para>Variadic SQL three-valued logic. Zero arguments yield true for AND and false for OR; the upstream implementation permits an empty argument list.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>or:bool</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_boolean</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean) -&gt; boolean</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c></c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>x XOR y</b>
+    </para>
+    <para>Boolean exclusive OR.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>xor:bool_bool</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_boolean</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(boolean, boolean) -&gt; boolean</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/boolean.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>xxhash128_guid_string(value, ...)</b>
+    </para>
+    <para>Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns a GUID-formatted string.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>xxhash128_guid_string:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_hash</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; string; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=1</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>xxhash64(value, ...)</b>
+    </para>
+    <para>Non-cryptographic hash over one or more values. xxhash64 returns signed Int64; xxhash128_guid_string returns a GUID-formatted string.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>xxhash64:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_hash</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Variadic arguments: <c>min=1</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/hash.html">Detailed documentation</see>
+    </para>
+  </topic>
+  <topic id="functions-aggregate">
+    <para>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</para>
+    <para>
+      <b>COUNT(*)</b>
+    </para>
+    <para>The zero-argument binding counts rows. The one-argument native binding counts non-null values, but ordinary SQL COUNT(x) is currently rejected by the SQL planner; SQL accepts COUNT(*) and COUNT(DISTINCT x). Empty input returns Int64 zero. The DISTINCT form uses the separate count_distinct binding.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>count:any, count:</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_aggregate_generic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>() -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql count expression: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>COUNT(DISTINCT x)</b>
+    </para>
+    <para>Counts distinct non-null values; empty/all-null groups return Int64 zero. This is an exact stateful aggregate with one expression argument, not an approximate distinct count.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>count_distinct:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_aggregate_generic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any) -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>avg(x)</b>
+    </para>
+    <para>
+      <b>Profile: fp64</b>
+    </para>
+    <para>FP64 average ignores null values and returns null for empty/all-null groups. Integer and decimal results differ from their upstream overloads and are declared separately. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64</b>
+    </para>
+    <para>Integer average returns a fractional Double; the average of values 1 and 2 is 1.5, instead of truncating to an integer as upstream does. The Int64 sum wraps on overflow before division. Nulls are ignored; empty/all-null groups return null. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Returns System.Decimal with runtime-computed scale, not the upstream fixed-scale Decimal&lt;38,S&gt;. The opaque result describes the dynamic scale; the actual non-null result kind is decimal. Decimal overflow throws. Use precision at most 28. Nulls are ignored; empty/all-null groups return null. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>list_agg(x)</b>
+    </para>
+    <para>Collects non-null values with weighted duplicates, in ascending Flowtide value order. Empty/all-null groups return an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>list_agg:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_list</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; list&lt;any1&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports order by: <c>false</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>list_union_distinct_agg(x)</b>
+    </para>
+    <para>Flattens lists and returns distinct elements in ascending Flowtide value order. Null lists are ignored; null elements inside lists are retained once. Empty input returns an empty list. Aggregate ORDER BY and SQL DISTINCT are rejected; deduplication is intrinsic to this function.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>list_union_distinct_agg:list</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_list</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(list&lt;any1&gt;) -&gt; list&lt;any1&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports order by: <c>false</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/list.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>max(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max:i64, max:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic_decimal</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(DECIMAL&lt;P,S&gt;) -&gt; DECIMAL?&lt;P, S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: ptstz</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max:ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;P&gt;) -&gt; precision_timestamp_tz?&lt;P&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+      <item>
+        <description>Timestamp precision: <c>7</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>max_by(x, y)</b>
+    </para>
+    <para>Returns x at the maximum y; rows with null y are ignored, while the selected x may be null. Empty groups, or groups containing only null y, return null. Do not depend on which row wins tied y.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max_by:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>min(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min:i64, min:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic_decimal</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(DECIMAL&lt;P, S&gt;) -&gt; DECIMAL?&lt;P, S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: ptstz</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Timestamp values are compared by UTC ticks and retain the chosen value's offset. The runtime binding is in functions_arithmetic.yaml.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min:ptstz</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;P&gt;) -&gt; precision_timestamp_tz?&lt;P&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+      <item>
+        <description>Timestamp precision: <c>7</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: any</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. SQL DISTINCT is accepted as a semantic no-op. Native comparison uses Flowtide value ordering. Generic overload for strings, booleans, binary and nested values. Prefer the matching upstream numeric/timestamp signatures above when applicable.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>min_by(x, y)</b>
+    </para>
+    <para>Returns x at the minimum y; rows with null y are ignored, while the selected x may be null. Empty groups, or groups containing only null y, return null. Do not depend on which row wins tied y.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min_by:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>string_agg(x, separator)</b>
+    </para>
+    <para>The separator must be a string literal. Null input values are ignored; values are concatenated in ascending Flowtide string order, retaining duplicates. No contributing values yield null. The current implementation also yields null if all strings and the separator are empty. User-supplied aggregate ORDER BY and SQL DISTINCT are rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>string_agg:str_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_string</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(string, string (constant)) -&gt; string</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[1]</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+      <item>
+        <description>Supports order by: <c>false</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/string.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sum(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>Ignores null values and returns null for empty/all-null groups. Int64 accumulation wraps on overflow; FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are widened internally; the declarations here use native I64/FP64 value kinds. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:i64, sum:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Uses System.Decimal rather than the upstream Decimal&lt;38,S&gt; accumulator. Use precision at most 28 and require every intermediate and final sum to fit Decimal&lt;28,S&gt;; CLR decimal overflow throws. Null input values are ignored. Empty/all-null groups return null. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; decimal?&lt;28,S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sum0(x)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>Ignores null values and returns a zero matching the declared output type for empty/all-null groups. Int64 accumulation wraps on overflow; FP64 accumulation uses IEEE arithmetic. Narrow integers and FP32 are widened internally; the declarations here use native I64/FP64 value kinds. Set AggregateFunction.output_type for a correctly typed empty-group zero. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum0:i64, sum0:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Uses System.Decimal rather than the upstream Decimal&lt;38,S&gt; accumulator. Use precision at most 28 and require every intermediate and final sum to fit Decimal&lt;28,S&gt;; CLR decimal overflow throws. Null input values are ignored. Empty/all-null groups return a zero matching the declared output type. Set AggregateFunction.output_type to the decimal result type. SQL DISTINCT is rejected.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum0:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; decimal&lt;28,S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>surrogate_key_int64()</b>
+    </para>
+    <para>Assigns a stateful counter key per group, stable while the group exists and across checkpoint restore. Keys are operator-scoped; deleting and recreating a group can assign a new key. Empty global input also receives a key.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>surrogate_key_int64:</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_aggregate_generic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>() -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Aggregation phase: <c>INITIAL_TO_RESULT</c></description>
+      </item>
+      <item>
+        <description>Deterministic: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>true</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/aggregatefunctions/generic.html">Detailed documentation</see>
+    </para>
+  </topic>
+  <topic id="functions-window">
+    <para>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</para>
+    <para>
+      <b>avg(x) OVER (...)</b>
+    </para>
+    <para>
+      <b>Profile: fp64</b>
+    </para>
+    <para>Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition as a window function.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: i64</b>
+    </para>
+    <para>Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition as a window function. Integer average returns a fractional Double, rather than the upstream truncated integer. Its Int64 sum wraps before division.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition as a window function. Decimal arithmetic uses System.Decimal at precision at most 28; CLR decimal overflow throws. Average returns a decimal with runtime-computed scale, represented by the shared opaque result type.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>avg:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT avg(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>lag(x [, offset [, default]]) OVER (...)</b>
+    </para>
+    <para>Return x from a preceding row in the same partition, defaulting to offset 1. Negative offsets reverse direction and zero selects the current row. A missing target yields the provided default, evaluated on the current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS frames; IGNORE NULLS is not implemented. These upstream signatures apply when any explicit offset is non-null and fits Int32, and the default has the same type as x. A null offset has different native behavior, described below.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lag:any, lag:any_i32, lag:any_i32_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i32) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i32, any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Default same type as value: <c>true</c></description>
+      </item>
+      <item>
+        <description>Explicit offset must be non null: <c>true</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT lag(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>lag(x, offset [, default]) OVER (...)</b>
+    </para>
+    <para>Return x from a preceding row in the same partition, defaulting to offset 1. Negative offsets reverse direction and zero selects the current row. A missing target yields the provided default, evaluated on the current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS frames; IGNORE NULLS is not implemented. Native offsets are Int64 and may be expressions. A null offset is treated as 1, unlike upstream. The default can have a different value kind; that overload has an opaque/dynamic result.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lag:any_i64, lag:any_i64_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i64) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i64, any2) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Offset null behavior: <c>USE_ONE</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT lag(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>last_value(x) IGNORE NULLS OVER (...)</b>
+    </para>
+    <para>Skip null values when finding the last value in the ROWS frame. Empty/all-null frames return null. SQL requires ORDER BY; the default frame ends at CURRENT ROW. The native option key is case-sensitive NULL_TREATMENT with value IGNORE_NULLS.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>last_value:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option NULL_TREATMENT: <c>IGNORE_NULLS</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT last_value(x) IGNORE NULLS OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>last_value(x) OVER (...)</b>
+    </para>
+    <para>Return the value at the last row of the ROWS frame, including null. An empty frame returns null. SQL requires ORDER BY; the default frame ends at CURRENT ROW. Use UNBOUNDED FOLLOWING explicitly for the last value in the entire partition. IGNORE NULLS uses the Flowtide option overload below.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>last_value:any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT last_value(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>lead(x [, offset [, default]]) OVER (...)</b>
+    </para>
+    <para>Return x from a following row in the same partition, defaulting to offset 1. Negative offsets reverse direction and zero selects the current row. A missing target yields the provided default, evaluated on the current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS frames; IGNORE NULLS is not implemented. These upstream signatures apply when any explicit offset is non-null and fits Int32, and the default has the same type as x. A null offset has different native behavior, described below.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lead:any, lead:any_i32, lead:any_i32_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i32) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i32, any1) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Default same type as value: <c>true</c></description>
+      </item>
+      <item>
+        <description>Explicit offset must be non null: <c>true</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT lead(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>lead(x, offset [, default]) OVER (...)</b>
+    </para>
+    <para>Return x from a following row in the same partition, defaulting to offset 1. Negative offsets reverse direction and zero selects the current row. A missing target yields the provided default, evaluated on the current row, or null when omitted. Null target values are respected. SQL requires ORDER BY and rejects ROWS frames; IGNORE NULLS is not implemented. Native offsets are Int64 and may be expressions. A null offset is treated as 1, unlike upstream. The default can have a different value kind; that overload has an opaque/dynamic result.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>lead:any_i64, lead:any_i64_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i64) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, i64, any2) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Offset null behavior: <c>USE_ONE</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT lead(x, 2, x) OVER (PARTITION BY p ORDER BY o) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>max_by(x, y) OVER (...)</b>
+    </para>
+    <para>Return x associated with the maximum y in the ROWS frame. Null y values are ignored, but the chosen x may be null. Empty frames or frames with no non-null y return null. SQL requires ORDER BY; the default frame is UNBOUNDED PRECEDING through CURRENT ROW. Do not depend on which row wins tied y. Uses the existing aggregate definition as a window function.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>max_by:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT max_by(x, y) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>min_by(x, y) OVER (...)</b>
+    </para>
+    <para>Return x associated with the minimum y in the ROWS frame. Null y values are ignored, but the chosen x may be null. Empty frames or frames with no non-null y return null. SQL requires ORDER BY; the default frame is UNBOUNDED PRECEDING through CURRENT ROW. Do not depend on which row wins tied y. Uses the existing aggregate definition as a window function.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>min_by:any_any</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(any1, any2) -&gt; any1?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT min_by(x, y) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>row_number() OVER (...)</b>
+    </para>
+    <para>Numbers rows from 1 within each partition. SQL requires ORDER BY and rejects ROWS frames. Include a stable tie breaker in ORDER BY when row positions must be deterministic. Do not pass arguments.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>row_number:</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>() -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT row_number() OVER (PARTITION BY p ORDER BY o, unique_key) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>session_window(gap_amount, gap_unit) OVER (... ORDER BY timestamp ASC)</b>
+    </para>
+    <para>Return the start timestamp of the session containing each row. Exactly one ascending timestamp sort expression is required. A neighbouring gap equal to the limit remains in the session; a larger gap starts a new one. Null/non-timestamp sort values return null and do not split the run. Inserts can merge sessions and deletes can split them. The gap is a positive integer literal and a string unit literal; WEEK/DAY are fixed durations, not calendar arithmetic. Explicit frames are rejected. This binding is registered only for the bulk window operator.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>session_window:i64_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64 (constant), string (constant)) -&gt; precision_timestamp_tz?&lt;7&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Gap units: <c>[WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND]</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[0, 1]</c></description>
+      </item>
+      <item>
+        <description>Order by count: <c>1</c></description>
+      </item>
+      <item>
+        <description>Order by direction: <c>ASC</c></description>
+      </item>
+      <item>
+        <description>Order by type: <c>precision_timestamp_tz&lt;7&gt;</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires bulk window operator: <c>true</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>true</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+      <item>
+        <description>Timestamp precision: <c>7</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT session_window(30, 'MINUTE') OVER (PARTITION BY user_id ORDER BY event_time) FROM events</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>sum(x) OVER (...)</b>
+    </para>
+    <para>
+      <b>Profile: i64, fp64</b>
+    </para>
+    <para>Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition as a window function.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:i64, sum:fp64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64) -&gt; i64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>SILENT</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT sum(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec</b>
+    </para>
+    <para>Null input values are ignored; empty/all-null frames return null. Without ORDER BY, SQL uses the whole partition. With ORDER BY and no explicit frame, SQL uses ROWS UNBOUNDED PRECEDING through CURRENT ROW, including only rows through this physical row rather than all equal-order peers. Explicit ROWS bounds support preceding/following/current/unbounded endpoints. RANGE, GROUPS and dynamic frame-bound expressions are not implemented. Uses the aggregate definition as a window function. Decimal arithmetic uses System.Decimal at precision at most 28; CLR decimal overflow throws. Every intermediate and final sum must fit Decimal&lt;28,S&gt;.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>sum:dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P,S&gt;) -&gt; decimal?&lt;28,S&gt;; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Bound offsets: <c>NONNEGATIVE_INTEGER_LITERALS</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+      <item>
+        <description>Default frame: <c>with_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW; without_order_by=ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING</c></description>
+      </item>
+      <item>
+        <description>Frame bounds: <c>[UNBOUNDED_PRECEDING, PRECEDING, CURRENT_ROW, FOLLOWING, UNBOUNDED_FOLLOWING]</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[ROWS]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT sum(x) OVER (PARTITION BY p ORDER BY o ROWS BETWEEN 4 PRECEDING AND CURRENT ROW) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>surrogate_key_int64() OVER (...)</b>
+    </para>
+    <para>One stateful counter key per partition, shared by all its rows. Without PARTITION BY, all rows share one key. ORDER BY is optional; SQL rejects ROWS frames. Live partitions retain their key across updates and checkpoint restore; deleting and recreating a partition can assign a new key. Allocation is operator-scoped and not deterministic across a full replay.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>surrogate_key_int64:</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_aggregate_generic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>() -&gt; i64; nullability=DECLARED_OUTPUT</c></description>
+      </item>
+      <item>
+        <description>Deterministic: <c>false</c></description>
+      </item>
+      <item>
+        <description>Frame types: <c>[]</c></description>
+      </item>
+      <item>
+        <description>Plan representation: <c>CONSISTENT_PARTITION_WINDOW</c></description>
+      </item>
+      <item>
+        <description>Requires order by: <c>false</c></description>
+      </item>
+      <item>
+        <description>Sql distinct: <c>false</c></description>
+      </item>
+      <item>
+        <description>Supports filter: <c>false</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT surrogate_key_int64() OVER (PARTITION BY p) FROM t</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/windowfunctions/generic.html">Detailed documentation</see>
+    </para>
+  </topic>
+  <topic id="functions-table">
+    <para>Names and examples use Flowtide SQL. Square brackets in signatures mark optional arguments; they are not literal SQL. Extension signatures, type declarations and required options describe Substrait bindings, not additional SQL arguments. The Flowtide notes and constraints apply to each listed profile. Aggregate, window and table functions are separate capabilities.</para>
+    <para>
+      <b>hopping_window(timestamp, hop_amount, hop_unit, size_amount, size_unit)</b>
+    </para>
+    <para>Emit every fixed-size window containing a timestamp, with starts spaced by the hop duration. A smaller hop than size creates overlapping windows; equal durations produce one tumbling window; a larger hop can leave gaps and emit no rows. Results are emitted from the latest matching start backwards, though a SQL result requires ORDER BY to guarantee presentation order. The number of matching windows varies by alignment and is at most ceil(size_ticks / hop_ticks). The compile-time guard rejects floor(size_ticks / hop_ticks) &gt; 100000; a non-integral ratio just below 100001 can therefore emit 100001 rows. Duration amounts must be positive integer numeric literals; units must be string literals WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND (case-insensitive). Fractions, column/expression durations, MONTH and YEAR are rejected. Each converted duration must fit Int64 ticks. Days are fixed 24-hour durations and weeks are seven days. Window starts align to UTC ticks from 0001-01-01T00:00:00Z; a week grid therefore begins Monday UTC, not local calendar midnight. Results preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp input emits no rows.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>hopping_window:ptstz_i64_str_i64_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;7&gt;, i64 (constant), string (constant), i64 (constant), string (constant)) -&gt; rows(window_start: precision_timestamp_tz&lt;7&gt;, window_end: precision_timestamp_tz&lt;7&gt;)</c></description>
+      </item>
+      <item>
+        <description>Duration units: <c>[WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND]</c></description>
+      </item>
+      <item>
+        <description>Fanout guard: <c>floor(size_ticks / hop_ticks) &lt;= 100000</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[1, 2, 3, 4]</c></description>
+      </item>
+      <item>
+        <description>Output column count: <c>2</c></description>
+      </item>
+      <item>
+        <description>Timestamp precision: <c>7</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT o.id, window_start, window_end FROM orders o INNER JOIN hopping_window(o.order_time, 5, 'MINUTE', 10, 'MINUTE')</code>
+    <code language="sql">SELECT o.id, window_start FROM orders o LEFT JOIN hopping_window(o.order_time, 10, 'MINUTE', 5, 'MINUTE')</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>tumbling_window(timestamp, size_amount, size_unit)</b>
+    </para>
+    <para>Emit the single fixed-size window containing a timestamp. Duration amounts must be positive integer numeric literals; units must be string literals WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND or MICROSECOND (case-insensitive). Fractions, column/expression durations, MONTH and YEAR are rejected. Each converted duration must fit Int64 ticks. Days are fixed 24-hour durations and weeks are seven days. Window starts align to UTC ticks from 0001-01-01T00:00:00Z; a week grid therefore begins Monday UTC, not local calendar midnight. Results preserve the input timestamp offset. Boundaries are start-inclusive and end-exclusive. Null/non-timestamp input emits no rows.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>tumbling_window:ptstz_i64_str</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_datetime</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(precision_timestamp_tz&lt;7&gt;, i64 (constant), string (constant)) -&gt; rows(window_start: precision_timestamp_tz&lt;7&gt;, window_end: precision_timestamp_tz&lt;7&gt;)</c></description>
+      </item>
+      <item>
+        <description>Duration units: <c>[WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND]</c></description>
+      </item>
+      <item>
+        <description>Literal arguments: <c>[1, 2]</c></description>
+      </item>
+      <item>
+        <description>Output column count: <c>2</c></description>
+      </item>
+      <item>
+        <description>Timestamp precision: <c>7</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT o.id, window_start, window_end FROM orders o INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE')</code>
+    <code language="sql">SELECT window_start, COUNT(*) FROM orders o INNER JOIN tumbling_window(o.order_time, 10, 'MINUTE') GROUP BY window_start</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/tablefunctions/datetime.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>unnest(collection)</b>
+    </para>
+    <para>Emit one column and one row per list element or map entry. List elements retain their original value kind, including null elements. For a map, each result is a single map/object with string fields key and value containing the original key and value; these are not separate columns. Null, empty, and non-list/non-map inputs emit no rows. SQL uses the table alias as the single output column name, or generates a name when no alias is supplied. No ordinality column is added.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>unnest:list, unnest:map</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_table_generic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(list&lt;any1&gt;) -&gt; rows(value: any1)</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(map&lt;any1,any2&gt;) -&gt; rows(value: map&lt;string,any&gt;)</c></description>
+      </item>
+      <item>
+        <description>Output column count: <c>1</c></description>
+      </item>
+    </list>
+    <code language="sql">SELECT val FROM UNNEST(list(1, 2, 3)) val</code>
+    <code language="sql">SELECT d.id, element FROM documents d LEFT JOIN UNNEST(d.items) element</code>
+    <code language="sql">SELECT d.id, element FROM documents d INNER JOIN UNNEST(d.items) element ON element = 123</code>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/tablefunctions/generic.html">Detailed documentation</see>
+    </para>
+  </topic>
+</documentation>

@@ -4,6 +4,10 @@
 	<TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Existing and generated protobuf members are not all documented. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1570;CS1574;CS1589</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,4 +32,7 @@
 	  <Protobuf Include="CustomProto\custom_proto.proto" AdditionalImportDirs="proto/" />
 	</ItemGroup>
 
+  <ItemGroup>
+    <AdditionalFiles Include="../../docs/reference/sql-functions.xml" />
+  </ItemGroup>
 </Project>

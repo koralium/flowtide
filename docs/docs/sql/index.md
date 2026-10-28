@@ -31,4 +31,6 @@ var plan = sqlBuilder.GetPlan();
 > The INSERT INTO denotes which output should leave the stream.
 
 
+See the [SQL function reference](../expressions/functions-reference.md) for supported scalar, aggregate, window and table functions, including signatures and restrictions.
+
 You can find more information in the following chapters:

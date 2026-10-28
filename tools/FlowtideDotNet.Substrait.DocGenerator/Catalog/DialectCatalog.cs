@@ -1,9 +1,20 @@
-// Licensed under the Apache License, Version 2.0.
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Json.Schema;
 
-namespace FlowtideDotNet.Substrait.Dialect.Tests;
+namespace FlowtideDotNet.Substrait.Documentation.Catalog;
 
 internal sealed partial class DialectCatalog
 {
@@ -26,17 +37,20 @@ internal sealed partial class DialectCatalog
             .ToDictionary(doc => doc.Urn, StringComparer.Ordinal);
     }
 
-    public static DialectCatalog Load(string root)
+    public static DialectCatalog Load(string root, string? upstreamRoot = null)
     {
         CatalogDocument Read(string path) => CatalogDocument.Load(System.IO.Path.Combine(root, path), root);
+        upstreamRoot ??= System.IO.Path.Combine(root, "Upstream", "Substrait");
+        CatalogDocument Upstream(string path) => new($"substrait/upstream/{path}",
+            YamlJson.Load(File.ReadAllText(System.IO.Path.Combine(upstreamRoot, path))));
         var local = Directory.GetFiles(System.IO.Path.Combine(root, "substrait", "extensions"), "*.yaml")
             .Order().Select(path => CatalogDocument.Load(path, root)).ToArray();
-        var upstream = Directory.GetFiles(System.IO.Path.Combine(root, "Upstream", "Substrait", "extensions"), "*.yaml")
-            .Order().Select(path => CatalogDocument.Load(path, root)).ToArray();
+        var upstream = Directory.GetFiles(System.IO.Path.Combine(upstreamRoot, "extensions"), "*.yaml")
+            .Order().Select(path => Upstream($"extensions/{System.IO.Path.GetFileName(path)}")).ToArray();
         var schemas = new Dictionary<string, JsonSchema>();
         foreach (var name in new[] { "dialect", "simple_extensions" })
         {
-            var document = Read($"Upstream/Substrait/text/{name}_schema.yaml");
+            var document = Upstream($"text/{name}_schema.yaml");
             var registry = new SchemaRegistry { Fetch = (uri, _) => throw new InvalidOperationException($"Unexpected external schema reference: {uri}") };
             schemas[name] = JsonSchema.Build(JsonSerializer.SerializeToElement(document.Data),
                 new BuildOptions { Dialect = Json.Schema.Dialect.Draft202012, SchemaRegistry = registry });
@@ -96,6 +110,25 @@ internal sealed partial class DialectCatalog
 
     private static bool SupportsOptions(JsonObject impl, JsonObject? options) => options == null || options.All(option =>
         (impl["options"]?[option.Key]?["values"]).Strings().Contains(option.Value.Text() ?? "", StringComparer.Ordinal));
+
+    public IEnumerable<ResolvedImplementation> Implementations(FunctionEntry entry)
+    {
+        var source = Resolve(Dialect, entry.Data["source"].Text() ?? "")
+            ?? throw new InvalidDataException($"{Dialect.Path}#{entry.Pointer}: Unresolved function source.");
+        var name = entry.Data["name"].Text();
+        var category = entry.Category;
+        if (category == "window" && (entry.Data["metadata"]?["definition_kind"].Text() == "AGGREGATE_FUNCTION"
+            || !Definitions(source, "window").Any(definition => definition["name"].Text() == name))) category = "aggregate";
+        foreach (var definition in Definitions(source, category).Where(definition => definition["name"].Text() == name))
+            foreach (var impl in definition["impls"].Objects())
+            {
+                var signature = Signature(impl);
+                if (entry.Data["supported_impls"].Strings().Contains(signature, StringComparer.Ordinal)
+                    && SupportsOptions(impl, entry.Data["required_options"] as JsonObject)
+                    && (entry.Data["variadic"] is not JsonObject variadic || SupportsVariadic(impl, variadic)))
+                    yield return new(source, definition, impl, signature);
+            }
+    }
 
     public IEnumerable<ValidationIssue> ValidateReferences()
     {
