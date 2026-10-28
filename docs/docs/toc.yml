@@ -95,6 +95,8 @@
       href: operators/check.md
 - name: Expressions
   items:
+    - name: SQL Function Reference
+      href: expressions/functions-reference.md
     - name: Scalar Functions
       items:
         - name: Arithmetic Functions

@@ -4,6 +4,9 @@
     <TargetFrameworks>$(DefaultNetTargetFramework)</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1570;CS1574;CS1589</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,4 +18,7 @@
     <ProjectReference Include="..\FlowtideDotNet.Core\FlowtideDotNet.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <AdditionalFiles Include="../../docs/reference/sql-functions.xml" />
+  </ItemGroup>
 </Project>

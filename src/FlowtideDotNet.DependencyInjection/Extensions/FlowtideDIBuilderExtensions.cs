@@ -22,12 +22,28 @@ namespace FlowtideDotNet.DependencyInjection
 {
     public static class FlowtideDIBuilderExtensions
     {
+        /// <summary>Uses the contents of a SQL file as the continuously maintained stream plan.</summary>
+        /// <param name="builder">The stream builder.</param>
+        /// <param name="filePath">The SQL file to read.</param>
+        /// <returns>The stream builder.</returns>
+        /// <remarks>
+        /// <include file='../../../docs/reference/sql-functions.xml' path='documentation/topic[@id="functions"]/*' />
+        /// </remarks>
+        /// <seealso cref="SqlFunctionReference"/>
         public static IFlowtideDIBuilder AddSqlFileAsPlan(this IFlowtideDIBuilder builder, string filePath)
         {
             var sqlText = File.ReadAllText(filePath);
             return builder.AddSqlTextAsPlan(sqlText);
         }
 
+        /// <summary>Uses Flowtide SQL as the continuously maintained stream plan.</summary>
+        /// <param name="builder">The stream builder.</param>
+        /// <param name="sqlText">SQL using tables supplied by the configured connectors.</param>
+        /// <returns>The stream builder.</returns>
+        /// <remarks>
+        /// <include file='../../../docs/reference/sql-functions.xml' path='documentation/topic[@id="functions"]/*' />
+        /// </remarks>
+        /// <seealso cref="SqlFunctionReference"/>
         public static IFlowtideDIBuilder AddSqlTextAsPlan(this IFlowtideDIBuilder builder, string sqlText)
         {
             builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) =>
@@ -47,6 +63,11 @@ namespace FlowtideDotNet.DependencyInjection
             return builder;
         }
 
+        /// <summary>Builds the stream's SQL plan using the registered connectors' table providers.</summary>
+        /// <param name="builder">The stream builder.</param>
+        /// <param name="configure">Configures metadata and adds SQL statements to the plan.</param>
+        /// <returns>The stream builder.</returns>
+        /// <seealso cref="SqlFunctionReference"/>
         public static IFlowtideDIBuilder AddSqlPlan(this IFlowtideDIBuilder builder, Action<SqlPlanBuilder> configure)
         {
             builder.Services.AddKeyedSingleton<IFlowtidePlanProvider>(builder.StreamName, (provider, key) =>

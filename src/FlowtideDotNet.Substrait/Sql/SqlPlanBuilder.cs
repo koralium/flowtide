@@ -17,6 +17,8 @@ using SqlParser;
 
 namespace FlowtideDotNet.Substrait.Sql
 {
+    /// <summary>Builds a Substrait plan from Flowtide SQL and registered table metadata.</summary>
+    /// <seealso cref="SqlFunctionReference"/>
     public class SqlPlanBuilder
     {
         internal readonly TablesMetadata _tablesMetadata = new TablesMetadata();
@@ -30,6 +32,11 @@ namespace FlowtideDotNet.Substrait.Sql
             BuiltInSqlFunctions.AddBuiltInFunctions(_sqlFunctionRegister);
         }
 
+        /// <summary>Gets the SQL mappings, initially populated with Flowtide's built-in functions.</summary>
+        /// <remarks>
+        /// <para>A custom SQL mapping also needs a matching implementation in the engine's function registry.</para>
+        /// <include file='../../../docs/reference/sql-functions.xml' path='documentation/topic[@id="functions"]/*' />
+        /// </remarks>
         public ISqlFunctionRegister FunctionRegister => _sqlFunctionRegister;
 
         public void AddTableDefinition(string name, NamedStruct schema)
@@ -72,6 +79,16 @@ namespace FlowtideDotNet.Substrait.Sql
             });
         }
 
+        /// <summary>Parses Flowtide SQL statements and adds them to this plan.</summary>
+        /// <param name="sqlText">SQL statements using registered source metadata and supported Flowtide functions.</param>
+        /// <remarks>
+        /// <para>CREATE TABLE declares planner metadata. INSERT INTO identifies the destination maintained by a stream.</para>
+        /// <include file='../../../docs/reference/sql-functions.xml' path='documentation/topic[@id="functions"]/*' />
+        /// </remarks>
+        /// <seealso cref="SqlFunctionReference.Scalar"/>
+        /// <seealso cref="SqlFunctionReference.Aggregate"/>
+        /// <seealso cref="SqlFunctionReference.Window"/>
+        /// <seealso cref="SqlFunctionReference.Table"/>
         public void Sql(string sqlText)
         {
 
