@@ -74,6 +74,11 @@ namespace FlowtideDotNet.Connector.DeltaLake
         public int StatsPruningColumns { get; set; } = 8;
 
         /// <summary>
+        /// Gets or sets whether a deleted row no data file holds is skipped and counted instead of failing the checkpoint.
+        /// </summary>
+        public bool IgnoreUnmatchedDeletes { get; set; } = false;
+
+        /// <summary>
         /// Gets or sets the memory, in bytes, all Delta Lake sinks in the process may use for the statistics they skip files with.
         /// The first sink that reads its table fixes the value for the process. A table's first column has priority: tables holding more
         /// columns give them up at their next checkpoint, and the table that did not fit keeps its statistics in spillable state until the stream restarts.

@@ -78,9 +78,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
-        private void WriteValue(long val)
+        // Statistics bound the stored value, a wider one wraps
+        private void WriteValue(long value)
         {
             Debug.Assert(_builder != null);
+            var val = (short)value;
             if (_minValue == null || val < _minValue)
             {
                 _minValue = val;
@@ -90,7 +92,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _maxValue = val;
             }
 
-            _builder.Append((short)val);
+            _builder.Append(val);
         }
 
         public long WriteValue<T>(T value) where T : IDataValue

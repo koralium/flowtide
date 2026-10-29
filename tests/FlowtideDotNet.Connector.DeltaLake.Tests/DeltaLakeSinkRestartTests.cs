@@ -132,6 +132,85 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return state.LivePagesOf(origin => origin.Contains("DeltaLakeSink.InitializeOrRestore") && origin.Contains("GetOrCreateTree"));
         }
 
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task AnUnmatchedDeleteIsPublishedOnceAfterARestart(bool optOut)
+        {
+            var testName = nameof(AnUnmatchedDeleteIsPublishedOnceAfterARestart) + (optOut ? "Skipped" : "Repaired");
+            var stateFiles = new KeepAliveMemoryFileProvider();
+            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{testName}"));
+            // A file per row, and change data on
+            DeltaLakeSinkStream Restart(bool ignore)
+            {
+                var stream = new DeltaLakeSinkStream(testName, storage, options =>
+                {
+                    options.WriteChangeDataOnNewTables = true;
+                    options.MaxFileSizeBytes = 1;
+                    options.IgnoreUnmatchedDeletes = ignore;
+                }, stateFiles: stateFiles);
+                stream.WaitForUpdateDoesNotRequireDataChange();
+                return stream;
+            }
+            // Users 0 to 14 with user 0 deleted, the source resumes at the restored offset
+            async Task Start(DeltaLakeSinkStream stream)
+            {
+                AddUsers(stream, 0, 15);
+                stream.DeleteUser(Users[0]);
+                await stream.StartStream(UserInsert);
+            }
+
+            DeltaAddAction removed;
+            await using (var first = Restart(false))
+            {
+                AddUsers(first, 0, 10);
+                await first.StartStream(UserInsert);
+                await WaitForVersion(storage, "test", first, 0);
+                await SettlePublications(first);
+
+                // Another writer removes user 0's file, then the next checkpoint deletes it
+                var paths = (await ForeignRewrite.LiveRows(storage, "test")).ToDictionary(x => x.Row.Split(' ')[0], x => x.Path);
+                removed = (await Internal.Delta.DeltaTransactionReader.ReadTable(storage, "test"))!.AddFiles.Single(x => x.Path == paths[Users[0].UserKey.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+                await WriteCommit(storage, "test", 1, new DeltaAction() { Remove = new DeltaRemoveFileAction() { Path = removed.Path, DataChange = true, DeletionTimestamp = 0 } });
+                AddUsers(first, 10, 15);
+                first.DeleteUser(Users[0]);
+                var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, "test", first, 2, TimeSpan.FromSeconds(30)));
+                Assert.Contains("Could not find any data file that contains the row", failure.ToString());
+                await first.StopStream();
+            }
+
+            var published = 2L;
+            if (!optOut)
+            {
+                // The repair adds the row's file back
+                await WriteCommit(storage, "test", 2, new DeltaAction() { Add = removed });
+                published = 3;
+            }
+            await using (var second = Restart(optOut))
+            {
+                await Start(second);
+                await WaitForVersion(storage, "test", second, published);
+                await SettlePublications(second);
+                await second.StopStream();
+            }
+            // A second restart publishes nothing more
+            await using (var third = Restart(optOut))
+            {
+                await Start(third);
+                // A checkpoint asked for before the restore finishes is lost
+                await WaitUntil(third, () => third.State == FlowtideDotNet.Base.Engine.StreamStateValue.Running);
+                await RunCheckpoints(third, 2);
+                await third.StopStream();
+            }
+
+            Assert.False(await storage.Exists(CommitPath("test", published + 1)));
+            var keys = (await ForeignRewrite.LiveRows(storage, "test")).Select(x => int.Parse(x.Row.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)).Order().ToList();
+            Assert.Equal(Users.Skip(1).Take(14).Select(x => x.UserKey), keys);
+            // The new rows are inserts, and only the repaired row's match is a delete
+            Assert.Equal(optOut ? 0 : 5, await ChangeRows(storage, "test", published, "insert"));
+            Assert.Equal(optOut ? 0 : 1, await ChangeRows(storage, "test", published, "delete"));
+        }
+
         private static DeltaLakeSinkStream NewStream(string testName, HookFileStorage storage, KeepAliveMemoryFileProvider stateFiles, out TestLogCollector logs)
         {
             var stream = new DeltaLakeSinkStream(testName, storage, stateFiles: stateFiles);

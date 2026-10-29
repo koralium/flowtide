@@ -98,10 +98,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private CommitBytes? _stagedBytes;
         private CatalogOverlay? _stagedOverlay;
         private DeltaSinkCatalog? _catalog;
-        private ProbeBatch? _probes;
         private DeleteLimits? _limits;
-        // The last commit's matching, read by the passes gauge
+        // This or the last commit's matching, read by the passes gauge
         private DeleteStatistics? _deleteStatistics;
+        // Deleted rows no file held, skipped by the opt-out, over every attempt
+        private long _unmatchedRows;
+        private bool _unmatchedWarned;
         private bool _halted;
         private string? _haltReason;
         private bool _gaugesCreated;
@@ -219,7 +221,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             SetHealth(true);
             _catalog?.Dispose();
             _catalog = await DeltaSinkCatalog.Open(stateManagerClient, _options, _tablePath, _writeRelation.TableSchema.Names, MemoryAllocator, Logger);
-            _probes = null;
 
             // Meters outlive restarts
             if (!_gaugesCreated)
@@ -230,6 +231,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Metrics.CreateObservableGauge("delta_catalog_pruning_bytes", () => _catalog?.PruningBytes ?? 0);
                 Metrics.CreateObservableGauge("delta_catalog_tree_mode", () => _catalog?.TreeMode == true ? 1 : 0);
                 Metrics.CreateObservableGauge("delta_delete_passes", () => _deleteStatistics?.Passes ?? 0);
+                Metrics.CreateObservableGauge("delta_delete_unmatched_rows", () => Interlocked.Read(ref _unmatchedRows));
             }
 
             _validatedHead = -1;
@@ -979,17 +981,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     writer.NewBatch();
                     deleteWriter.NewBatch();
 
-                    // Flag that tracks if any delete was written, if this is false, no cdc file is required even if it is enabled.
+                    // Whether a delete matched, no match needs no cdc file
                     bool deleteWritten = false;
 
-                    // Copies of each deleted row and their probes
+                    // Copies of each deleted row
                     var demand = new List<long>();
-                    _probes ??= new ProbeBatch(_catalog.ScanLayout);
-                    _probes.Clear();
-                    _probes.SetLayout(_catalog.ScanLayout);
                     var deletes = new DeleteRun(_options.StorageLocation, _tablePath);
-                    // The counted table, probe views and unwritten nulls per row
-                    var rowBytes = 32 + 4 * _catalog.ScanLayout.Columns.Count + (cdcWriter != null ? 8 : 0) + deleteWriter.NullBytesPerRow * _limits.WrittenSlack;
+                    _deleteStatistics = deletes.Statistics;
+                    // The counted table, probe views and keys, and unwritten nulls per row
+                    var rowBytes = 32 + 4 * _catalog.ScanLayout.Columns.Count + ProbeBatch.KeyBytes(_catalog.ScanLayout) + (cdcWriter != null ? 8 : 0) + deleteWriter.NullBytesPerRow * _limits.WrittenSlack;
                     await foreach (var page in iterator)
                     {
                         for (int i = 0; i < page.Values.Data.Count; i++)
@@ -997,27 +997,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                             var weight = page.Values.Data[i];
                             if (weight < 0)
                             {
-                                deleteWritten = true;
                                 var rowRef = new ColumnRowReference() { referenceBatch = page.Keys.Data, RowIndex = i };
                                 deleteWriter.AddRow(rowRef);
-                                if (cdcWriter != null)
-                                {
-                                    // One change row per deleted copy, rolled per copy so a large weight stays bounded
-                                    for (int v = 0; v > weight; v--)
-                                    {
-                                        cdcWriter.AddRow(rowRef, true);
-                                        if (IsFull(cdcWriter))
-                                        {
-                                            await WriteNewCdcFile(cdcWriter, actions, created);
-                                        }
-                                    }
-                                }
-
                                 demand.Add(-(long)weight);
-                                _probes.Add(rowRef);
                                 if (deleteWriter.WrittenCount >= _limits.RowCap || deleteWriter.WrittenBytes * _limits.WrittenSlack + (long)deleteWriter.WrittenCount * rowBytes >= _limits.ByteCap)
                                 {
-                                    await ResolveBatch(overwrite, cdcWriter != null, table, deleteWriter, demand, deletes);
+                                    deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes);
                                 }
                             }
                             else
@@ -1046,9 +1031,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                     if (deleteWriter.WrittenCount > 0)
                     {
-                        await ResolveBatch(overwrite, cdcWriter != null, table, deleteWriter, demand, deletes);
+                        deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes);
                     }
-                    _deleteStatistics = deletes.Statistics;
 
                     // Inserts first, so their files stay in key order
                     if (writer.WrittenCount > 0)
@@ -1230,6 +1214,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     values.Add(array.IsNull(index) ? "null" : array switch
                     {
                         Decimal128Array decimals => decimals.GetValue(index)!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                        StringArray strings => strings.GetString(index),
+                        BinaryArray binaries => Convert.ToHexString(binaries.GetBytes(index)),
                         System.Collections.IEnumerable items => items.Cast<object?>().ElementAt(index)?.ToString() ?? "null",
                         _ => array.Data.DataType.Name
                     });
@@ -1243,78 +1229,106 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         // Match the batch against the candidates in id order
-        private async Task ResolveBatch(bool overwrite, bool changeData, DeltaTable? table, ParquetSharpWriter deleteWriter, List<long> demand, DeleteRun deletes)
+        // True when a copy matched
+        private async Task<bool> ResolveBatch(bool overwrite, ParquetSharpWriter? cdcWriter, List<DeltaAction> actions, List<string> created, DeltaTable? table, StructType schema, ParquetSharpWriter deleteWriter, List<long> demand, DeleteRun deletes)
         {
             Debug.Assert(_catalog != null);
-            Debug.Assert(_probes != null);
             Debug.Assert(_limits != null);
+            var demanded = demand.Sum();
+            bool matched;
 
-            if (table == null)
-            {
-                throw new InvalidOperationException("Table should not be null when delete is found");
-            }
             using (var deleteBatch = deleteWriter.GetRecordBatch())
             {
                 // The batch holds its own copy, so the builders can go now
                 deleteWriter.NewBatch();
                 deletes.Statistics.Passes++;
-                // An overwrite removes every file, a delete in the same commit finds none
-                var candidates = overwrite ? new Dictionary<int, List<int>>() : await _catalog.FindCandidates(_probes);
-                var matched = new bool[deleteBatch.Length];
-                foreach (var probes in candidates.Values)
-                {
-                    foreach (var probe in probes)
-                    {
-                        matched[probe] = true;
-                    }
-                }
-                for (int i = 0; i < matched.Length; i++)
-                {
-                    if (!matched[i])
-                    {
-                        throw new InvalidOperationException($"Could not find any data file that contains the row {DescribeRow(deleteBatch, i)}");
-                    }
-                }
-
-                var comparers = new IArrowComparer[table.Schema.Fields.Count];
+                var comparers = new IArrowComparer[schema.Fields.Count];
                 var visitor = new ArrowComparerVisitor();
                 for (int i = 0; i < comparers.Length; i++)
                 {
-                    comparers[i] = table.Schema.Fields[i].Type.Accept(visitor);
+                    comparers[i] = schema.Fields[i].Type.Accept(visitor);
                 }
-                var prefilter = _limits.Prefilter ? PrefilterColumn(table.Schema) : -1;
-                var batch = new DeleteBatch(deleteBatch, demand, comparers, changeData, _limits.CollideHashes, prefilter);
-                var matcher = new FileMatcher(_options.StorageLocation, _tablePath, _tableName, table.Schema, table.ColumnMappingById);
-                var ids = candidates.Keys.ToArray();
-                System.Array.Sort(ids);
-                var missing = new List<int>();
-                for (int start = 0; start < ids.Length && batch.Unresolved > 0; start += _limits.RecordGroup)
+                var prefilter = _limits.Prefilter ? PrefilterColumn(schema) : -1;
+                var batch = new DeleteBatch(deleteBatch, demand, comparers, cdcWriter != null, _limits.CollideHashes, prefilter);
+                // An overwrite or a new table has no file to search
+                if (!overwrite && table != null)
                 {
-                    var group = new ArraySegment<int>(ids, start, Math.Min(_limits.RecordGroup, ids.Length - start));
-                    missing.Clear();
-                    foreach (var id in group)
+                    var probes = ProbeBatch.Build(_catalog.ScanLayout, deleteBatch, batch.EntryRows);
+                    var candidates = await CandidateSelector.Select(_catalog, probes, _limits.SelectorThreshold);
+                    var matcher = new FileMatcher(_options.StorageLocation, _tablePath, _tableName, schema, table.ColumnMappingById);
+                    var missing = new List<int>();
+                    for (int start = 0; start < candidates.Count && batch.Unresolved > 0; start += _limits.RecordGroup)
                     {
-                        if (!deletes.Records.ContainsKey(id))
+                        var end = Math.Min(start + _limits.RecordGroup, candidates.Count);
+                        missing.Clear();
+                        for (int c = start; c < end; c++)
                         {
-                            missing.Add(id);
+                            if (!deletes.Records.ContainsKey(candidates[c]))
+                            {
+                                missing.Add(candidates[c]);
+                            }
                         }
-                    }
-                    foreach (var (id, record) in await _catalog.GetFiles(missing))
-                    {
-                        deletes.Records[id] = record;
-                    }
-                    foreach (var id in group)
-                    {
-                        if (batch.Unresolved == 0)
+                        foreach (var (id, record) in await _catalog.GetFiles(missing))
                         {
-                            break;
+                            deletes.Records[id] = record;
                         }
-                        await matcher.Scan(id, batch, deletes);
+                        for (int c = start; c < end && batch.Unresolved > 0; c++)
+                        {
+                            await matcher.Scan(candidates[c], batch, deletes);
+                        }
+                        // Records stay only for the files a delete touches
+                        for (int c = start; c < end; c++)
+                        {
+                            if (!deletes.Claims.ContainsKey(candidates[c]))
+                            {
+                                deletes.Records.Remove(candidates[c]);
+                            }
+                        }
                     }
                 }
+                CheckUnmatched(batch, deleteBatch);
+                if (cdcWriter != null)
+                {
+                    // One change row per matched copy, rolled per copy
+                    for (int entry = 0; entry < batch.Count; entry++)
+                    {
+                        for (long copy = batch.Matched(entry); copy > 0; copy--)
+                        {
+                            cdcWriter.AddStoredRow(deleteBatch, batch.EntryRows[entry], true);
+                            if (IsFull(cdcWriter))
+                            {
+                                await WriteNewCdcFile(cdcWriter, actions, created);
+                            }
+                        }
+                    }
+                }
+                matched = batch.Unresolved < demanded;
             }
             demand.Clear();
-            _probes.Clear();
+            return matched;
+        }
+
+        // Copies no data file holds fail the checkpoint, or are counted with the opt-out
+        private void CheckUnmatched(DeleteBatch batch, RecordBatch stored)
+        {
+            if (batch.Unresolved == 0)
+            {
+                return;
+            }
+            var first = batch.EntryRows[batch.FirstUnresolved()];
+            if (!_options.IgnoreUnmatchedDeletes)
+            {
+                throw new InvalidOperationException($"Could not find any data file that contains the row {DescribeRow(stored, first)}. {batch.Unresolved} deleted rows were not found. " +
+                    "Set DeltaLakeOptions.IgnoreUnmatchedDeletes to skip them; see 'Deleting rows' in the Delta Lake connector docs");
+            }
+            Interlocked.Add(ref _unmatchedRows, batch.Unresolved);
+            var level = _unmatchedWarned ? LogLevel.Debug : LogLevel.Warning;
+            _unmatchedWarned = true;
+            // The row is only described for a line that is written
+            if (Logger.IsEnabled(level))
+            {
+                Logger.Log(level, "Delta table {table} skipped {count} deleted rows no data file holds, the first is {row}", _tableName, batch.Unresolved, DescribeRow(stored, first));
+            }
         }
 
         // The first pruning column as a table column, -1 for none

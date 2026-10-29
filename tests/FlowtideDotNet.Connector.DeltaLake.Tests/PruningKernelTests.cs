@@ -182,38 +182,41 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [InlineData("a\0", "a\0b", "a", false)]
         public void StringEdgeCases(string min, string max, string probe, bool expected)
         {
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "c", PruningType.String, 1) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "c", PruningType.String, 1) });
             var row = Row(layout, new StringStatisticsComparer(Encoding.UTF8.GetBytes(min), Encoding.UTF8.GetBytes(max), 0));
-            var batch = new ProbeBatch(layout);
-            batch.Add(new IDataValue[] { new StringValue(probe) });
+            using var stored = StoredProbes.Store(StoredProbes.Table(PruningType.String), new[] { new IDataValue[] { new StringValue(probe) } });
+            var batch = StoredProbes.Build(layout, stored);
             Assert.Equal(expected, batch.Matches(row, 0));
         }
 
         [Fact]
         public void FilesWithoutStatisticsMatchEveryProbe()
         {
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "c", PruningType.Int64, 1) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "c", PruningType.Int64, 1) });
             var row = new byte[layout.RowSize];
             layout.WriteRow(null, row);
-            var batch = new ProbeBatch(layout);
-            batch.Add(new IDataValue[] { NullValue.Instance });
-            batch.Add(new IDataValue[] { new Int64Value(5) });
+            using var stored = StoredProbes.Store(StoredProbes.Table(PruningType.Int64), new[] { new IDataValue[] { NullValue.Instance }, new IDataValue[] { new Int64Value(5) } });
+            var batch = StoredProbes.Build(layout, stored);
 
             Assert.True(batch.Matches(row, 0));
             Assert.True(batch.Matches(row, 1));
         }
 
         [Fact]
-        public void AProbeTypeNoKernelAcceptsPassesTheColumn()
+        public void ADecimalBeyondTheDecimalRangePassesTheColumn()
         {
-            // The comparer threw on such a value, the projection lets it reach the file scan
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "c", PruningType.Double, 1) });
-            var row = Row(layout, new FloatStatisticsComparer(1, 2, 0));
-            var batch = new ProbeBatch(layout);
-            batch.Add(new IDataValue[] { new StringValue("text") });
+            // Another engine's 2^100 at scale 0, no kernel reads it
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "c", PruningType.Decimal, 1) });
+            var row = Row(layout, new DecimalStatisticsComparer(1, 2, 0));
+            var bytes = new byte[16];
+            System.Buffers.Binary.BinaryPrimitives.WriteInt128LittleEndian(bytes, Int128.One << 100);
+            var type = new Apache.Arrow.Types.Decimal128Type(38, 0);
+            var decimals = new Apache.Arrow.Decimal128Array(new Apache.Arrow.ArrayData(type, 1, 0, 0, new[] { Apache.Arrow.ArrowBuffer.Empty, new Apache.Arrow.ArrowBuffer(bytes) }));
+            using var stored = new Apache.Arrow.RecordBatch(new Apache.Arrow.Schema.Builder().Field(new Apache.Arrow.Field("c", type, true)).Build(), new Apache.Arrow.IArrowArray[] { decimals }, 1);
+            var batch = StoredProbes.Build(layout, stored);
 
+            Assert.Equal(new[] { 0 }, batch.Column(0).Special);
             Assert.True(batch.Matches(row, 0));
-            Assert.Throws<InvalidOperationException>(() => new FloatStatisticsComparer(1, 2, 0).IsInBetween(new StringValue("text")));
         }
 
         private static (T? Min, T? Max) RefBounds<T>(Random random, Func<T> next)
@@ -248,10 +251,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static void AssertSame(IStatisticsComparer comparer, PruningType type, IDataValue probe, bool exact)
         {
             var expected = comparer.IsInBetween(probe);
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "c", type, 1) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "c", type, 1) });
             var row = Row(layout, comparer);
-            var batch = new ProbeBatch(layout);
-            batch.Add(new[] { probe });
+            using var stored = StoredProbes.Store(StoredProbes.Table(type), new[] { new[] { probe } });
+            var batch = StoredProbes.Build(layout, stored);
             var projected = batch.Matches(row, 0);
             if (exact)
             {

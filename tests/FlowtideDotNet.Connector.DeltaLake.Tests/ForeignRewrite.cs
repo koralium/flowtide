@@ -241,8 +241,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             switch (array)
             {
+                case Int8Array bytes:
+                    return bytes.GetValue(index)!.Value.ToString(CultureInfo.InvariantCulture);
+                case Int16Array shorts:
+                    return shorts.GetValue(index)!.Value.ToString(CultureInfo.InvariantCulture);
                 case Int32Array ints:
                     return ints.GetValue(index)!.Value.ToString(CultureInfo.InvariantCulture);
+                case Decimal128Array decimals:
+                    return decimals.GetValue(index)!.Value.ToString(CultureInfo.InvariantCulture);
                 case Int64Array longs:
                     return longs.GetValue(index)!.Value.ToString(CultureInfo.InvariantCulture);
                 case StringArray strings:

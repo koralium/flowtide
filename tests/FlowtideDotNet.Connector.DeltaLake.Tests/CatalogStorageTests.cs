@@ -98,7 +98,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }, NullLoggerFactory.Instance, new Meter(nameof(GrowingChargesTheOldAndTheNewArrayDuringTheCopy)), nameof(GrowingChargesTheOldAndTheNewArrayDuringTheCopy), GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "a", PruningType.Int64, 1) });
             var reservation = new PruningReservation();
             // 64 rows fit, doubling holds 64 and 128 rows at once
             var capacity = (64 + 128) * layout.RowSize - (bothFit ? 0 : 1);
@@ -158,7 +158,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await stateManager.InitializeAsync();
             var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
             var cell = PruningCell.CellSize(PruningType.Int64);
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1), new PruningColumn(1, "b", PruningType.Int64, 1 + cell) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "a", PruningType.Int64, 1), new PruningColumn(1, 1, "b", PruningType.Int64, 1 + cell) });
             var reservation = new PruningReservation();
             using var projection = PruningProjection.Create(GlobalMemoryManager.Instance, reservation, 64 * layout.RowSize, tree, layout, expectedFiles: 1, treeMode: false, out _);
             Assert.Equal(2, projection.Layout.Columns.Count);
@@ -200,7 +200,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }, NullLoggerFactory.Instance, new Meter(nameof(ArrayScanAllocatesNoManagedMemory)), nameof(ArrayScanAllocatesNoManagedMemory), GlobalMemoryManager.Instance);
             await stateManager.InitializeAsync();
             var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
-            var layout = new PruningLayout(new[] { new PruningColumn(0, "a", PruningType.Int64, 1) });
+            var layout = new PruningLayout(new[] { new PruningColumn(0, 0, "a", PruningType.Int64, 1) });
             using var projection = PruningProjection.Create(GlobalMemoryManager.Instance, new PruningReservation(), 1L << 20, tree, layout, expectedFiles: 1000, treeMode: false, out _);
             for (int id = 0; id < 1000; id++)
             {
@@ -370,14 +370,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 (partial, 10, false),
                 (partial, 1, true)
             };
-            var probes = new ProbeBatch(layout);
             var row = new byte[layout.RowSize];
             foreach (var (statistics, key, expected) in cases)
             {
                 // Every probe has a name, so a row with statistics reads its unknown name cell
                 var probe = new IDataValue[] { new Int64Value(key), new StringValue("m") };
-                probes.Clear();
-                probes.Add(probe);
+                using var stored = StoredProbes.Store(schema, new[] { probe });
+                var probes = StoredProbes.Build(layout, stored);
                 layout.WriteRow(statistics, row);
                 Assert.Equal(expected, CatalogOracle.MayHold(statistics, layout, probe));
                 Assert.Equal(expected, probes.Matches(row, 0));

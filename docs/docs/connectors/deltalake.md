@@ -47,6 +47,7 @@ These are the options that can be configured when adding the delta lake connecto
 | CompressionCodec                 | Only used for writing, the codec of written Parquet files, see [Compression](#compression)                                   | Null       | No       |
 | StatsPruningColumns              | Only used for writing, how many written columns the sink keeps file statistics for to skip files when deleting rows         | 8          | No       |
 | PruningMemoryBytes               | Only used for writing, memory all Delta Lake sinks in the process share for those statistics, the first sink fixes the value | 1 GB       | No       |
+| IgnoreUnmatchedDeletes           | Only used for writing, skips and counts a deleted row that no file holds instead of failing the checkpoint, see [Deleting rows](#deleting-rows) | False | No |
 | CheckpointMaxAge                 | Only used for writing, writes a delta checkpoint if a version has waited this long, null turns it off | 24 hours | No |
 | MaxConcurrentMaintenanceJobs     | Only used for writing, how many checkpoint and cleanup jobs can run at the same time in the process | 2 | No |
 | MaintenanceTempDirectory         | Only used for writing, local folder used when building checkpoints | ./data/tempFiles/deltalake | No |
@@ -400,6 +401,16 @@ To find the files that can hold a deleted row, the sink keeps the statistics of 
 up to `PruningMemoryBytes` shared by all Delta Lake sinks in the process. A table's first column has priority over other tables' extra columns: when it does
 not fit, the tables holding extra columns give them up at their next checkpoint. The table that did not fit keeps its statistics in the stream's state,
 which can spill to disk, until the stream restarts.
+
+If the stream deletes a row that none of the table's files hold, for instance because another writer removed it, the checkpoint fails with
+`Could not find any data file that contains the row ...` and the stream restarts until the row can be found. It is possible to skip such deletes instead
+by setting `IgnoreUnmatchedDeletes` to true. The sink then logs a warning, counts the skipped rows in `flowtide_delta_delete_unmatched_rows`, and the table
+keeps any copy of the row it still has.
+
+Things to keep in mind:
+* Files another engine rewrote, for instance with `OPTIMIZE`, are matched by column name, also when the timestamps are stored as microseconds, nanoseconds or INT96.
+* A file whose surviving rows hold timestamps finer than a microsecond can only be deleted from with deletion vectors enabled.
+* A map with the same key more than once is only found with its entries in the same order as Flowtide wrote them.
 
 ### Other writers
 

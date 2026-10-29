@@ -121,6 +121,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [InlineData(8, true, 8, 100_000)]
         [InlineData(1, false, 8, 1_000_000)]
         [InlineData(8, true, 8, 1_000_000)]
+        [InlineData(1, true, 8, 1_000_000)]
+        [InlineData(8, false, 8, 1_000_000)]
         [InlineData(1, false, 2_000, 100_000)]
         [InlineData(8, true, 2_000, 100_000)]
         [InlineData(1, false, 8, 100_000, 64)]
@@ -179,15 +181,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var writer = new ParquetSharpWriter(table, names, countNulls: true);
                 writer.NewBatch();
                 // As the sink counts a row
-                var rowBytes = 32 + 4 * layout.Columns.Count + (changeData ? 8 : 0) + writer.NullBytesPerRow * limits.WrittenSlack;
-                var probes = new ProbeBatch(layout);
+                var rowBytes = 32 + 4 * layout.Columns.Count + ProbeBatch.KeyBytes(layout) + (changeData ? 8 : 0) + writer.NullBytesPerRow * limits.WrittenSlack;
                 var demand = new List<long>();
                 for (int i = 0; i < rowCap; i++)
                 {
                     var row = new ColumnRowReference() { referenceBatch = data, RowIndex = i };
                     writer.AddRow(row);
                     demand.Add(1);
-                    probes.Add(row);
                     if (writer.WrittenBytes * limits.WrittenSlack + (long)writer.WrittenCount * rowBytes >= limits.ByteCap)
                     {
                         break;
@@ -203,6 +203,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     // As the sink does, the builders go before matching
                     writer.NewBatch();
                     var batch = new DeleteBatch(stored, demand, comparers, changeData, false, prefilterColumn: 0);
+                    var probes = ProbeBatch.Build(layout, stored, batch.EntryRows);
                     // Nothing native is freed within a run, so allocated is live
                     var matching = GC.GetTotalMemory(true) - managedBefore + NativeAllocated() - nativeBefore;
                     GC.KeepAlive(batch);

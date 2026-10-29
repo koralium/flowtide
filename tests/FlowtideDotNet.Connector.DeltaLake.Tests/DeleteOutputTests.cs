@@ -135,12 +135,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 return;
             }
             // Name mode reads the renamed column as null, as other engines do, so no copy matches
-            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(1);
-            while (stream.Sinks[0].DeleteStatisticsForTests?.Passes != 1 && DateTime.UtcNow < deadline)
-            {
-                await RunCheckpoints(stream, 1);
-            }
-            await RunCheckpoints(stream, 2);
+            var unmatched = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 3));
+            Assert.Contains("Could not find any data file that contains the row", unmatched.ToString());
             Assert.False(await storage.Exists(CommitPath("test", 3)));
             var statistics = stream.Sinks[0].DeleteStatisticsForTests!;
             // Only the deleted key passes the first column's test
@@ -201,10 +197,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // The next insert file keeps a few bytes, then the write fails
             var torn = TearNextPartFile(storage);
+            var failures = stream.FailureNotificationCount;
             stream.Generate(5);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 1));
+            await WaitForTornFailure(stream, failures);
 
-            Assert.Contains(nameof(CrashException), failure.ToString());
+            Assert.True(torn.IsCompleted);
             Assert.False(await storage.Inner.Exists($"/test/{await torn}"));
         }
 
@@ -232,10 +229,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 await before!(verb, path);
             };
+            var failures = stream.FailureNotificationCount;
             stream.Generate(5);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 1));
+            await WaitForTornFailure(stream, failures);
 
-            Assert.Contains(nameof(CrashException), failure.ToString());
             Assert.Contains(logs.Warnings, x => x.Contains("could not delete 1 discarded files"));
         }
 
@@ -530,6 +527,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public IEnumerator<long> GetEnumerator() => ((IEnumerable<long>)_positions).GetEnumerator();
 
             System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        }
+
+        // A torn write may surface as an error or be recovered from as a crash
+        private static async Task WaitForTornFailure(FlowtideTestStream stream, int failures)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            while (stream.FailureNotificationCount == failures)
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException("The torn write did not fail the stream in time");
+                }
+                // A surfaced error is the stream's failure, wrapped
+                var error = await Record.ExceptionAsync(() => stream.SchedulerTick());
+                if (error != null)
+                {
+                    Assert.Contains(nameof(CrashException), error.ToString());
+                    return;
+                }
+                await Task.Delay(50);
+            }
         }
 
         // The path of the next insert file, whose write is torn

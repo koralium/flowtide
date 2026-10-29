@@ -21,7 +21,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         public bool BulkIntake { get; set; } = true;
 
         // Delete rows matched per pass
-        public int RowCap { get; set; } = 100_000;
+        public int RowCap { get; set; } = 1_000_000;
 
         // Stored bytes and the counted table per pass
         public long ByteCap { get; set; } = 128L * 1024 * 1024;
@@ -31,6 +31,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
         // Cold file records fetched per lookup
         public int RecordGroup { get; set; } = 1024;
+
+        // A file's entries are tested one by one up to this many
+        public int SelectorThreshold { get; set; } = 8;
 
         // Every row hashes the same, for tests
         public bool CollideHashes { get; set; }

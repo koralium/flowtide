@@ -182,97 +182,85 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
             return (cell[0] & MayContainNull) != 0;
         }
 
-        public static bool MatchInt64(ReadOnlySpan<byte> cell, PruningType type, long probe)
-        {
-            var flags = cell[0];
-            return Int64InBounds(
-                (flags & HasMin) != 0, BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1, 8)),
-                (flags & HasMax) != 0, BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1 + BoundSize(type), 8)),
-                probe);
-        }
-
-        public static bool MatchDouble(ReadOnlySpan<byte> cell, PruningType type, double probe)
-        {
-            var flags = cell[0];
-            return DoubleInBounds(
-                (flags & HasMin) != 0, BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1, 8)),
-                (flags & HasMax) != 0, BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1 + BoundSize(type), 8)),
-                probe);
-        }
-
-        public static bool MatchDecimal(ReadOnlySpan<byte> cell, decimal probe)
-        {
-            var flags = cell[0];
-            return DecimalInBounds(
-                (flags & HasMin) != 0, ReadDecimal(cell.Slice(1, 16)),
-                (flags & HasMax) != 0, ReadDecimal(cell.Slice(17, 16)),
-                probe);
-        }
-
-        public static bool MatchBool(ReadOnlySpan<byte> cell, bool probe)
-        {
-            var flags = cell[0];
-            return BoolInBounds((flags & HasMin) != 0, cell[1] != 0, (flags & HasMax) != 0, cell[2] != 0, probe);
-        }
-
         // A missing bound admits every probe on its side
-        private static bool Int64InBounds(bool hasMin, long min, bool hasMax, long max, long probe)
+        public static bool MinAdmits(ReadOnlySpan<byte> cell, PruningType type, long probe)
         {
-            return !(hasMin && min > probe) && !(hasMax && max < probe);
+            return (cell[0] & HasMin) == 0 || BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1, 8)) <= probe;
         }
 
-        // Widened by the comparer's epsilon on both sides
-        private static bool DoubleInBounds(bool hasMin, double min, bool hasMax, double max, double probe)
+        public static bool MaxAdmits(ReadOnlySpan<byte> cell, PruningType type, long probe)
         {
-            return !(hasMin && (min - FloatEpsilon) > probe) && !(hasMax && (max + FloatEpsilon) < probe);
+            return (cell[0] & HasMax) == 0 || BinaryPrimitives.ReadInt64LittleEndian(cell.Slice(1 + BoundSize(type), 8)) >= probe;
         }
 
-        // Widened by the comparer's epsilon on both sides
-        private static bool DecimalInBounds(bool hasMin, decimal min, bool hasMax, decimal max, decimal probe)
+        // Widened by the comparer's epsilon, a NaN probe is admitted
+        public static bool MinAdmits(ReadOnlySpan<byte> cell, PruningType type, double probe)
         {
-            return !(hasMin && (min - DecimalEpsilon) > probe) && !(hasMax && (max + DecimalEpsilon) < probe);
+            return (cell[0] & HasMin) == 0 || !(BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1, 8)) - FloatEpsilon > probe);
+        }
+
+        public static bool MaxAdmits(ReadOnlySpan<byte> cell, PruningType type, double probe)
+        {
+            return (cell[0] & HasMax) == 0 || !(BinaryPrimitives.ReadDoubleLittleEndian(cell.Slice(1 + BoundSize(type), 8)) + FloatEpsilon < probe);
+        }
+
+        // Widened by the comparer's epsilon, clamped at the decimal limits
+        public static bool MinAdmits(ReadOnlySpan<byte> cell, decimal probe)
+        {
+            if ((cell[0] & HasMin) == 0)
+            {
+                return true;
+            }
+            var min = ReadDecimal(cell.Slice(1, 16));
+            return min <= decimal.MinValue + DecimalEpsilon || min - DecimalEpsilon <= probe;
+        }
+
+        public static bool MaxAdmits(ReadOnlySpan<byte> cell, decimal probe)
+        {
+            if ((cell[0] & HasMax) == 0)
+            {
+                return true;
+            }
+            var max = ReadDecimal(cell.Slice(17, 16));
+            return max >= decimal.MaxValue - DecimalEpsilon || max + DecimalEpsilon >= probe;
         }
 
         // False sorts before true
-        private static bool BoolInBounds(bool hasMin, bool min, bool hasMax, bool max, bool probe)
+        public static bool MinAdmits(ReadOnlySpan<byte> cell, bool probe)
         {
-            return !(hasMin && min.CompareTo(probe) > 0) && !(hasMax && max.CompareTo(probe) < 0);
+            return (cell[0] & HasMin) == 0 || (cell[1] != 0).CompareTo(probe) <= 0;
         }
 
-        /// <summary>
-        /// The probe prefix holds at most <see cref="PrefixLength"/> bytes of a probe of the given length.
-        /// A complete bound matches exactly like the comparer, a truncated one only prunes what its prefix proves.
-        /// </summary>
-        public static bool MatchBytes(ReadOnlySpan<byte> cell, ReadOnlySpan<byte> probePrefix, int probeLength)
+        public static bool MaxAdmits(ReadOnlySpan<byte> cell, bool probe)
+        {
+            return (cell[0] & HasMax) == 0 || (cell[2] != 0).CompareTo(probe) >= 0;
+        }
+
+        // A truncated min is below the real one, a probe below it is below the real min too
+        public static bool MinAdmits(ReadOnlySpan<byte> cell, ReadOnlySpan<byte> probePrefix, int probeLength)
+        {
+            if ((cell[0] & HasMin) == 0)
+            {
+                return true;
+            }
+            return Compare(cell.Slice(2, cell[1]), probePrefix, probeLength) <= 0;
+        }
+
+        // The real max of a truncated one starts with it, only a byte that differs within it proves the probe is above
+        public static bool MaxAdmits(ReadOnlySpan<byte> cell, ReadOnlySpan<byte> probePrefix, int probeLength)
         {
             var flags = cell[0];
-            if ((flags & HasMin) != 0)
+            if ((flags & HasMax) == 0)
             {
-                var min = cell.Slice(2, cell[1]);
-                // A truncated min is below the real one, a probe below it is below the real min too
-                if (Compare(min, probePrefix, probeLength) > 0)
-                {
-                    return false;
-                }
+                return true;
             }
-            if ((flags & HasMax) != 0)
+            var max = cell.Slice(3 + PrefixLength, cell[2 + PrefixLength]);
+            var order = Compare(max, probePrefix, probeLength);
+            if ((flags & MaxComplete) != 0)
             {
-                var max = cell.Slice(3 + PrefixLength, cell[2 + PrefixLength]);
-                var order = Compare(max, probePrefix, probeLength);
-                if ((flags & MaxComplete) != 0)
-                {
-                    if (order < 0)
-                    {
-                        return false;
-                    }
-                }
-                // The real max starts with the prefix, only a byte that differs within it proves the probe is above
-                else if (order < 0 && !probePrefix.StartsWith(max))
-                {
-                    return false;
-                }
+                return order >= 0;
             }
-            return true;
+            return order >= 0 || probePrefix.StartsWith(max);
         }
 
         // Orders a bound of at most the prefix length against the probe, the probe prefix ties are broken by its full length
