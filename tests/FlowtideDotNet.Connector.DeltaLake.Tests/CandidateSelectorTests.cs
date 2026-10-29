@@ -124,8 +124,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.True(probes.Matches(row, entry));
                 Assert.False(probes.Matches(row, 1 - entry));
                 Assert.True(CandidateSelector.Admits(row, probes, 1, out var descriptor));
-                Assert.NotNull(descriptor);
-                Assert.Equal(1UL, descriptor.Value.Survivors);
+                Assert.Equal(1UL, descriptor?.Survivors);
             }
         }
 
