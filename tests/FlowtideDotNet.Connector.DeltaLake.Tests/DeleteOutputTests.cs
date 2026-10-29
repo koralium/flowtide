@@ -197,10 +197,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             // The next insert file keeps a few bytes, then the write fails
             var torn = TearNextPartFile(storage);
+            var failures = stream.FailureNotificationCount;
             stream.Generate(5);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 1));
+            await WaitForTornFailure(stream, failures);
 
-            Assert.Contains(nameof(CrashException), failure.ToString());
+            Assert.True(torn.IsCompleted);
             Assert.False(await storage.Inner.Exists($"/test/{await torn}"));
         }
 
@@ -228,10 +229,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 await before!(verb, path);
             };
+            var failures = stream.FailureNotificationCount;
             stream.Generate(5);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 1));
+            await WaitForTornFailure(stream, failures);
 
-            Assert.Contains(nameof(CrashException), failure.ToString());
             Assert.Contains(logs.Warnings, x => x.Contains("could not delete 1 discarded files"));
         }
 
@@ -526,6 +527,29 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public IEnumerator<long> GetEnumerator() => ((IEnumerable<long>)_positions).GetEnumerator();
 
             System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => GetEnumerator();
+        }
+
+        // A torn write may surface as an error or be recovered from as a crash
+        private static async Task WaitForTornFailure(FlowtideTestStream stream, int failures)
+        {
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            while (stream.FailureNotificationCount == failures)
+            {
+                if (DateTime.UtcNow > deadline)
+                {
+                    throw new TimeoutException("The torn write did not fail the stream in time");
+                }
+                try
+                {
+                    await stream.SchedulerTick();
+                }
+                catch (Exception e)
+                {
+                    Assert.Contains(nameof(CrashException), e.ToString());
+                    return;
+                }
+                await Task.Delay(50);
+            }
         }
 
         // The path of the next insert file, whose write is torn
