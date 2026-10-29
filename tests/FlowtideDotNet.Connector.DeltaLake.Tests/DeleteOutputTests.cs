@@ -539,13 +539,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 {
                     throw new TimeoutException("The torn write did not fail the stream in time");
                 }
-                try
+                // A surfaced error is the stream's failure, wrapped
+                var error = await Record.ExceptionAsync(() => stream.SchedulerTick());
+                if (error != null)
                 {
-                    await stream.SchedulerTick();
-                }
-                catch (Exception e)
-                {
-                    Assert.Contains(nameof(CrashException), e.ToString());
+                    Assert.Contains(nameof(CrashException), error.ToString());
                     return;
                 }
                 await Task.Delay(50);
