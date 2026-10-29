@@ -196,6 +196,12 @@ SELECT ... FROM my_catalog.{optional_directory_name}.my_table_name
 <td>No</td>
 </tr>
 <tr>
+<td>IgnoreUnmatchedDeletes</td>
+<td>Only used for writing, skips and counts a deleted row that no file holds instead of failing the checkpoint, see <a href="#deleting-rows">Deleting rows</a></td>
+<td>False</td>
+<td>No</td>
+</tr>
+<tr>
 <td>CheckpointMaxAge</td>
 <td>Only used for writing, writes a delta checkpoint if a version has waited this long, null turns it off</td>
 <td>24 hours</td>
@@ -566,6 +572,16 @@ Earlier versions of the connector wrote uncompressed files named <code>.snappy.p
 up to <code>PruningMemoryBytes</code> shared by all Delta Lake sinks in the process. A table's first column has priority over other tables' extra columns: when it does
 not fit, the tables holding extra columns give them up at their next checkpoint. The table that did not fit keeps its statistics in the stream's state,
 which can spill to disk, until the stream restarts.</p>
+<p>If the stream deletes a row that none of the table's files hold, for instance because another writer removed it, the checkpoint fails with
+<code>Could not find any data file that contains the row ...</code> and the stream restarts until the row can be found. It is possible to skip such deletes instead
+by setting <code>IgnoreUnmatchedDeletes</code> to true. The sink then logs a warning, counts the skipped rows in <code>flowtide_delta_delete_unmatched_rows</code>, and the table
+keeps any copy of the row it still has.</p>
+<p>Things to keep in mind:</p>
+<ul>
+<li>Files another engine rewrote, for instance with <code>OPTIMIZE</code>, are matched by column name, also when the timestamps are stored as microseconds, nanoseconds or INT96.</li>
+<li>A file whose surviving rows hold timestamps finer than a microsecond can only be deleted from with deletion vectors enabled.</li>
+<li>A map with the same key more than once is only found with its entries in the same order as Flowtide wrote them.</li>
+</ul>
 <h3 id="other-writers">Other writers</h3>
 <p>The sink expects to be the only writer of its table. Commits that another writer adds between two of the sink's commits, such as an <code>OPTIMIZE</code>,
 are picked up and kept.</p>

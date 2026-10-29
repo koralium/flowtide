@@ -10435,6 +10435,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.HistoryRetention
   nameWithType: DeltaLakeOptions.HistoryRetention
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes
+  name: IgnoreUnmatchedDeletes
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IgnoreUnmatchedDeletes
+  commentId: P:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes
+  nameWithType: DeltaLakeOptions.IgnoreUnmatchedDeletes
+- uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes*
+  name: IgnoreUnmatchedDeletes
+  href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IgnoreUnmatchedDeletes_
+  commentId: Overload:FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IgnoreUnmatchedDeletes
+  nameWithType: DeltaLakeOptions.IgnoreUnmatchedDeletes
 - uid: FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.IncludeChangeHistory
   name: IncludeChangeHistory
   href: api/FlowtideDotNet.Connector.DeltaLake.DeltaLakeOptions.html#FlowtideDotNet_Connector_DeltaLake_DeltaLakeOptions_IncludeChangeHistory
