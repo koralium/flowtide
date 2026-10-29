@@ -178,6 +178,88 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await AssertTableHolds(table, storage, stream);
         }
 
+        [Theory]
+        [InlineData(true, false)]
+        [InlineData(false, false)]
+        [InlineData(true, true)]
+        [InlineData(false, true)]
+        public async Task AnOverwriteRetractionOfAnOldRowNeverTouchesTheOldFiles(bool deletionVectors, bool optOut)
+        {
+            var table = $"catalog_overwrite_{(deletionVectors ? "dv" : "rewrite")}_{(optOut ? "skipped" : "failed")}";
+            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
+            FlowtideDotNet.AcceptanceTests.Entities.User ghost;
+            await using (var earlier = new DeltaLakeSinkStream(table + "_earlier", storage, options =>
+            {
+                options.WriteChangeDataOnNewTables = true;
+                options.MaxFileSizeBytes = 512;
+            }))
+            {
+                earlier.WaitForUpdateDoesNotRequireDataChange();
+                earlier.Generate(40);
+                // An old live row the new input lacks
+                ghost = earlier.Users[15];
+                await earlier.StartStream(Insert(table));
+                await WaitForVersion(storage, table, earlier, 0);
+                // One old file gets a deletion vector
+                earlier.DeleteUser(earlier.Users[3]);
+                await WaitForVersion(storage, table, earlier, 1);
+                await SettlePublications(earlier);
+            }
+            var head = 1L;
+            if (!deletionVectors)
+            {
+                // Another writer turns new deletion vectors off, the old one stays
+                var metadata = (await ReadCommitActions(storage, table, 0)).Single(x => x.MetaData != null).MetaData!;
+                metadata.Configuration = new Dictionary<string, string>(metadata.Configuration!) { ["delta.enableDeletionVectors"] = "false" };
+                await WriteCommit(storage, table, ++head, new DeltaAction() { MetaData = metadata });
+            }
+            var snapshot = (await DeltaTransactionReader.ReadTable(storage, table))!;
+            Assert.Equal(deletionVectors, snapshot.DeleteVectorEnabled);
+            var old = snapshot.AddFiles;
+            Assert.Contains(old, x => x.DeletionVector != null);
+            var oldPaths = old.Select(x => x.Path!).Order(StringComparer.Ordinal).ToList();
+
+            var check = new CatalogCheck(storage, table);
+            using var registration = check.Register();
+            await using var stream = new DeltaLakeSinkStream(table, storage, options => options.IgnoreUnmatchedDeletes = optOut);
+            stream.WaitForUpdateDoesNotRequireDataChange();
+            // Without normalization a retraction no insert preceded reaches the sink
+            stream.SourceImmutable();
+            stream.Generate(10);
+            Assert.DoesNotContain(stream.Users, x => x.UserKey == ghost.UserKey);
+            stream.MockDatabaseForTests.GetOrCreateTable<FlowtideDotNet.AcceptanceTests.Entities.User>("users").Delete(new[] { ghost });
+            storage.ClearRequests();
+            await stream.StartStream($@"
+                INSERT OVERWRITE {table}
+                SELECT userKey AS userkey, firstName AS name FROM users
+            ");
+
+            if (!optOut)
+            {
+                var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, table, stream, head + 1, TimeSpan.FromSeconds(30)));
+                Assert.Contains($"Could not find any data file that contains the row {{{ghost.UserKey},", failure.ToString());
+                Assert.Equal(oldPaths, (await DeltaTransactionReader.ReadTable(storage, table))!.AddFiles.Select(x => x.Path!).Order(StringComparer.Ordinal));
+                Assert.DoesNotContain(storage.Requests, x => oldPaths.Any(path => x.EndsWith(path, StringComparison.Ordinal)) || x.Contains("deletion_vector_", StringComparison.Ordinal));
+                return;
+            }
+            await WaitForVersion(storage, table, stream, head + 1);
+
+            // Each old file is removed once, nothing reads or rewrites one, and no change file is kept
+            var actions = await ReadCommitActions(storage, table, head + 1);
+            Assert.Equal(oldPaths, actions.Where(x => x.Remove != null).Select(x => x.Remove!.Path!).Order(StringComparer.Ordinal));
+            Assert.DoesNotContain(actions, x => x.Add != null && oldPaths.Contains(x.Add.Path!));
+            Assert.DoesNotContain(storage.Requests, x => oldPaths.Any(path => x.EndsWith(path, StringComparison.Ordinal)) || x.Contains("deletion_vector_", StringComparison.Ordinal));
+            Assert.DoesNotContain(actions, x => x.Cdc != null);
+            Assert.Equal(new[] { 1L }, ReadGauge(stream, "flowtide_delta_delete_unmatched_rows"));
+
+            // The new files reuse the old ids, a later delete finds exactly its row
+            stream.DeleteUser(stream.Users[2]);
+            await WaitForVersion(storage, table, stream, head + 2);
+            await RunCheckpoints(stream, 3);
+            check.AssertClean(minimumChecks: 2);
+            await AssertTableHolds(table, storage, stream);
+        }
+
         [Fact]
         public async Task ADeleteReadsOnlyTheFilesItsStatisticsAllow()
         {
@@ -622,30 +704,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
-        public async Task ADeleteNoFileCanHoldStillFailsTheCheckpoint()
-        {
-            const string table = "catalog_unmatched";
-            var storage = new HookFileStorage(Files.Of.InternalMemory($"./{table}"));
-            await using var stream = new DeltaLakeSinkStream(table, storage, options => options.CheckpointInterval = 0);
-            stream.WaitForUpdateDoesNotRequireDataChange();
-            stream.Generate(20);
-            await stream.StartStream(Insert(table));
-            await WaitForVersion(storage, table, stream, 0);
-            await SettlePublications(stream);
-
-            // Another writer removes every file
-            var snapshot = (await DeltaTransactionReader.ReadTable(storage, table))!;
-            var removes = snapshot.AddFiles.Select(x => new DeltaAction() { Remove = new DeltaRemoveFileAction() { Path = x.Path, DataChange = true, DeletionTimestamp = 0 } }).ToArray();
-            await WriteCommit(storage, table, snapshot.Version + 1, removes);
-
-            var user = stream.Users[0];
-            stream.DeleteUser(user);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, table, stream, snapshot.Version + 2, TimeSpan.FromSeconds(30)));
-
-            Assert.Contains($"Could not find any data file that contains the row {{{user.UserKey},", failure.ToString());
-        }
-
-        [Fact]
         public async Task CatalogGaugesAreRegisteredOnceAcrossARecovery()
         {
             const string table = "catalog_gauges";
@@ -1060,23 +1118,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     }
                     probes.Add(mixed);
                 }
-                var batch = new ProbeBatch(layout);
-                foreach (var probe in probes)
-                {
-                    batch.Add(probe);
-                }
-                var candidates = await catalog.FindCandidates(batch);
+                using var stored = StoredProbes.StoreProbes(layout, snapshot.Schema, probes);
+                var batch = StoredProbes.Build(layout, stored);
                 CandidateProbes += probes.Count;
                 var missed = new List<string>();
-                foreach (var (id, add) in live)
+                // Engine style, the default, and every entry tested
+                foreach (var threshold in new[] { 0, DeleteLimits.Default.SelectorThreshold, int.MaxValue })
                 {
-                    var statistics = CatalogOverlay.ParseStatistics(add.Statistics, statisticsOptions);
-                    candidates.TryGetValue(id, out var matched);
-                    for (int p = 0; p < probes.Count; p++)
+                    var selected = (await CandidateSelector.Select(catalog, batch, threshold)).ToHashSet();
+                    foreach (var (id, add) in live)
                     {
-                        if (CatalogOracle.MayHold(statistics, layout, probes[p]) && (matched == null || !matched.Contains(p)))
+                        var statistics = CatalogOverlay.ParseStatistics(add.Statistics, statisticsOptions);
+                        if (!selected.Contains(id) && probes.Any(probe => CatalogOracle.MayHold(statistics, layout, probe)))
                         {
-                            missed.Add($"{add.Path} probe {p}");
+                            missed.Add($"{add.Path} at T = {threshold}");
                         }
                     }
                 }

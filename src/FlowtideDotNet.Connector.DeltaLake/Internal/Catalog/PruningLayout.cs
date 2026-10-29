@@ -17,9 +17,10 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 {
     /// <param name="ColumnIndex">The column in the written rows.</param>
+    /// <param name="FieldIndex">The table field, the column of a stored batch.</param>
     /// <param name="Name">The logical field name, statistics comparers are keyed by it.</param>
     /// <param name="Offset">Where the column's cell starts in a row.</param>
-    internal readonly record struct PruningColumn(int ColumnIndex, string Name, PruningType Type, int Offset);
+    internal readonly record struct PruningColumn(int ColumnIndex, int FieldIndex, string Name, PruningType Type, int Offset);
 
     /// <summary>
     /// A fixed size row of bounds per file: a has-statistics byte, then one cell per pruning column.
@@ -47,17 +48,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             var offset = 1;
             for (int i = 0; i < writtenColumns.Count && columns.Count < maxColumns; i++)
             {
-                var field = schema.Fields.FirstOrDefault(x => string.Equals(x.Name, writtenColumns[i], StringComparison.OrdinalIgnoreCase));
-                if (field == null)
+                var fieldIndex = -1;
+                for (int f = 0; f < schema.Fields.Count; f++)
+                {
+                    if (string.Equals(schema.Fields[f].Name, writtenColumns[i], StringComparison.OrdinalIgnoreCase))
+                    {
+                        fieldIndex = f;
+                        break;
+                    }
+                }
+                if (fieldIndex < 0)
                 {
                     continue;
                 }
+                var field = schema.Fields[fieldIndex];
                 var type = PruningCell.TypeOf(field.Type);
                 if (type == null)
                 {
                     continue;
                 }
-                columns.Add(new PruningColumn(i, field.Name, type.Value, offset));
+                columns.Add(new PruningColumn(i, fieldIndex, field.Name, type.Value, offset));
                 offset += PruningCell.CellSize(type.Value);
             }
             return new PruningLayout(columns);

@@ -290,35 +290,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             return found;
         }
 
-        /// <summary>
-        /// The files each probe can be in, by file id. One pass over the projection for the whole batch.
-        /// </summary>
-        public async Task<Dictionary<int, List<int>>> FindCandidates(ProbeBatch probes)
-        {
-            var candidates = new Dictionary<int, List<int>>();
-            if (probes.Count == 0)
-            {
-                return candidates;
-            }
-            await ScanBounds((id, row) =>
-            {
-                List<int>? matches = null;
-                for (int p = 0; p < probes.Count; p++)
-                {
-                    if (probes.Matches(row, p))
-                    {
-                        matches ??= new List<int>();
-                        matches.Add(p);
-                    }
-                }
-                if (matches != null)
-                {
-                    candidates[id] = matches;
-                }
-            });
-            return candidates;
-        }
-
         // Every live file's bounds row, nothing while no schema is set
         internal ValueTask ScanBounds(BoundsVisitor visit)
         {

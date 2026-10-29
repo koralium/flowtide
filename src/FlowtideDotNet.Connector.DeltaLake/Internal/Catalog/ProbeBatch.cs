@@ -10,221 +10,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
-using FlowtideDotNet.Core.ColumnStore;
-using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
 {
-    /// <summary>
-    /// The pruning column values of the deleted rows of one batch, normalized like the statistics.
-    /// A value no kernel accepts passes every file, so capturing never throws.
-    /// </summary>
+    // The pruning columns of a batch's distinct deleted rows, read from the stored batch
     internal sealed class ProbeBatch
     {
-        private const byte Value = 0;
-        private const byte Null = 1;
-        private const byte Unsupported = 2;
+        private readonly PruningLayout _layout;
+        private readonly ProbeColumn[] _columns;
 
-        // One column's values, only the array its type needs is grown
-        private sealed class ColumnValues
-        {
-            public byte[] Status = Array.Empty<byte>();
-            public long[] Longs = Array.Empty<long>();
-            public double[] Doubles = Array.Empty<double>();
-            public decimal[] Decimals = Array.Empty<decimal>();
-            public byte[] Prefixes = Array.Empty<byte>();
-            public int[] Lengths = Array.Empty<int>();
-        }
-
-        private PruningLayout _layout;
-        private ColumnValues[] _columns = Array.Empty<ColumnValues>();
-        private int _count;
-        private int _capacity;
-
-        public ProbeBatch(PruningLayout layout)
+        private ProbeBatch(PruningLayout layout, ProbeColumn[] columns, int count)
         {
             _layout = layout;
-            CreateColumns();
+            _columns = columns;
+            Count = count;
         }
 
-        public int Count => _count;
+        public int Count { get; }
 
-        // Only between batches, the captured values follow the layout's columns
-        public void SetLayout(PruningLayout layout)
+        public PruningLayout Layout => _layout;
+
+        public ProbeColumn Column(int column) => _columns[column];
+
+        // Numeric columns keep a sorted 8-byte key per entry
+        public static int KeyBytes(PruningLayout layout)
         {
-            if (_count != 0)
-            {
-                throw new InvalidOperationException("The layout of a probe batch cannot change while it holds rows");
-            }
-            if (ReferenceEquals(layout, _layout))
-            {
-                return;
-            }
-            _layout = layout;
-            CreateColumns();
+            return 8 * layout.Columns.Count(x => x.Type is not (PruningType.Decimal or PruningType.String or PruningType.Binary));
         }
 
-        private void CreateColumns()
+        // One probe per entry, read from the entry's stored row
+        public static ProbeBatch Build(PruningLayout layout, RecordBatch stored, ReadOnlySpan<int> entryRows)
         {
-            _columns = new ColumnValues[_layout.Columns.Count];
-            for (int c = 0; c < _columns.Length; c++)
+            var rows = entryRows.ToArray();
+            var columns = new ProbeColumn[layout.Columns.Count];
+            for (int c = 0; c < columns.Length; c++)
             {
-                _columns[c] = new ColumnValues();
+                var column = layout.Columns[c];
+                columns[c] = new ProbeColumn(column.Type, stored.Column(column.FieldIndex), rows);
             }
-            _capacity = 0;
+            return new ProbeBatch(layout, columns, rows.Length);
         }
 
-        public void Clear()
-        {
-            _count = 0;
-        }
-
-        public void Add(in ColumnRowReference row)
-        {
-            EnsureCapacity(_count + 1);
-            var columns = _layout.Columns;
-            for (int c = 0; c < columns.Count; c++)
-            {
-                var value = row.referenceBatch.Columns[columns[c].ColumnIndex].GetValueAt(row.RowIndex, default);
-                Capture(_columns[c], _count, columns[c].Type, value);
-            }
-            _count++;
-        }
-
-        // For tests, one value per pruning column
-        internal void Add(IReadOnlyList<IDataValue> values)
-        {
-            EnsureCapacity(_count + 1);
-            var columns = _layout.Columns;
-            for (int c = 0; c < columns.Count; c++)
-            {
-                Capture(_columns[c], _count, columns[c].Type, values[c]);
-            }
-            _count++;
-        }
-
-        private static void Capture<T>(ColumnValues column, int probe, PruningType type, in T value)
-            where T : IDataValue
-        {
-            if (value.IsNull)
-            {
-                column.Status[probe] = Null;
-                return;
-            }
-            column.Status[probe] = Value;
-            switch (type)
-            {
-                case PruningType.Int64:
-                    if (value.Type == ArrowTypeId.Int64)
-                    {
-                        column.Longs[probe] = value.AsLong;
-                        return;
-                    }
-                    break;
-                case PruningType.Double:
-                case PruningType.Float32:
-                    if (TryDoubleProbe(value, type == PruningType.Float32, out var doubleValue))
-                    {
-                        column.Doubles[probe] = doubleValue;
-                        return;
-                    }
-                    break;
-                case PruningType.Decimal:
-                    if (value.Type == ArrowTypeId.Decimal128)
-                    {
-                        column.Decimals[probe] = value.AsDecimal;
-                        return;
-                    }
-                    break;
-                case PruningType.Date:
-                    if (value.Type == ArrowTypeId.Timestamp)
-                    {
-                        column.Longs[probe] = DateProbe(value);
-                        return;
-                    }
-                    break;
-                case PruningType.Timestamp:
-                    if (value.Type == ArrowTypeId.Timestamp)
-                    {
-                        column.Longs[probe] = TimestampProbe(value);
-                        return;
-                    }
-                    break;
-                case PruningType.Bool:
-                    if (value.Type == ArrowTypeId.Boolean)
-                    {
-                        column.Longs[probe] = value.AsBool ? 1 : 0;
-                        return;
-                    }
-                    break;
-                case PruningType.String:
-                    if (value.Type == ArrowTypeId.String)
-                    {
-                        CapturePrefix(column, probe, value.AsString.Span);
-                        return;
-                    }
-                    break;
-                case PruningType.Binary:
-                    if (value.Type == ArrowTypeId.Binary)
-                    {
-                        CapturePrefix(column, probe, value.AsBinary);
-                        return;
-                    }
-                    break;
-            }
-            column.Status[probe] = Unsupported;
-        }
-
-        // Stored double for float and double columns, int64 probes are accepted like the comparer always did
-        private static bool TryDoubleProbe<T>(in T value, bool isFloat32, out double probe)
-            where T : IDataValue
-        {
-            if (value.Type == ArrowTypeId.Double)
-            {
-                probe = value.AsDouble;
-            }
-            else if (value.Type == ArrowTypeId.Int64)
-            {
-                probe = value.AsLong;
-            }
-            else
-            {
-                probe = 0;
-                return false;
-            }
-            if (isFloat32)
-            {
-                probe = StoredValue.Float32(probe);
-            }
-            return true;
-        }
-
-        // Ticks of the stored date
-        private static long DateProbe<T>(in T value)
-            where T : IDataValue
-        {
-            return StoredValue.Date(new DateTime(value.AsTimestamp.ticks)).Ticks;
-        }
-
-        // Milliseconds of the stored timestamp
-        private static long TimestampProbe<T>(in T value)
-            where T : IDataValue
-        {
-            return StoredValue.TimestampMilliseconds(value.AsTimestamp);
-        }
-
-        private static void CapturePrefix(ColumnValues column, int probe, ReadOnlySpan<byte> bytes)
-        {
-            var length = Math.Min(bytes.Length, PruningCell.PrefixLength);
-            bytes.Slice(0, length).CopyTo(column.Prefixes.AsSpan(probe * PruningCell.PrefixLength, length));
-            column.Lengths[probe] = bytes.Length;
-        }
-
-        /// <summary>
-        /// Whether the probe can be in the file the row describes.
-        /// </summary>
-        public bool Matches(ReadOnlySpan<byte> row, int probe)
+        // Whether the entry can be in the row's file
+        public bool Matches(ReadOnlySpan<byte> row, int entry)
         {
             if ((row[0] & PruningLayout.HasStatistics) == 0)
             {
@@ -234,30 +64,354 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             for (int c = 0; c < columns.Count; c++)
             {
                 var column = columns[c];
-                var values = _columns[c];
-                var status = values.Status[probe];
-                var cell = row.Slice(column.Offset, PruningCell.CellSize(column.Type));
-                if (status == Null)
+                if (!_columns[c].Admits(row.Slice(column.Offset, PruningCell.CellSize(column.Type)), entry))
                 {
-                    if (!PruningCell.MayHoldNull(cell))
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    // One pruning column of the entries, ordinary ones by value, nulls and specials apart
+    internal sealed class ProbeColumn
+    {
+        // How the stored array is read
+        private enum Kind : byte
+        {
+            Int8,
+            Int16,
+            Int32,
+            Int64,
+            Float32,
+            Double,
+            Decimal,
+            Date,
+            Timestamp,
+            Bool,
+            Bytes
+        }
+
+        private readonly PruningType _type;
+        private readonly Kind _kind;
+        private readonly IArrowArray _array;
+        private readonly int[] _rows;
+        // The sorted entries' values, so a search reads one array
+        private long[]? _longKeys;
+        private double[]? _doubleKeys;
+
+        public ProbeColumn(PruningType type, IArrowArray array, int[] rows)
+        {
+            _type = type;
+            _array = array;
+            _rows = rows;
+            _kind = KindOf(type, array);
+            var ordinary = new List<int>(rows.Length);
+            var nulls = new List<int>();
+            var special = new List<int>();
+            for (int entry = 0; entry < rows.Length; entry++)
+            {
+                if (array.IsNull(rows[entry]))
+                {
+                    nulls.Add(entry);
+                }
+                else if (IsSpecial(entry))
+                {
+                    special.Add(entry);
+                }
+                else
+                {
+                    ordinary.Add(entry);
+                }
+            }
+            Sorted = ordinary.ToArray();
+            Nulls = nulls.ToArray();
+            Special = special.ToArray();
+            Sort(Sorted);
+        }
+
+        // Ordinary entries in value order
+        public int[] Sorted { get; }
+
+        public int[] Nulls { get; }
+
+        // NaN and values no kernel accepts, they pass every cell
+        public int[] Special { get; }
+
+        private static Kind KindOf(PruningType type, IArrowArray array)
+        {
+            return (type, array) switch
+            {
+                (PruningType.Int64, Int8Array) => Kind.Int8,
+                (PruningType.Int64, Int16Array) => Kind.Int16,
+                (PruningType.Int64, Int32Array) => Kind.Int32,
+                (PruningType.Int64, Int64Array) => Kind.Int64,
+                (PruningType.Float32, FloatArray) => Kind.Float32,
+                (PruningType.Double, DoubleArray) => Kind.Double,
+                (PruningType.Decimal, Decimal128Array) => Kind.Decimal,
+                (PruningType.Date, Date32Array) => Kind.Date,
+                (PruningType.Timestamp, TimestampArray timestamps) when ((Apache.Arrow.Types.TimestampType)timestamps.Data.DataType).Unit == Apache.Arrow.Types.TimeUnit.Millisecond => Kind.Timestamp,
+                (PruningType.Bool, BooleanArray) => Kind.Bool,
+                (PruningType.String, StringArray) or (PruningType.Binary, BinaryArray) => Kind.Bytes,
+                _ => throw new InvalidOperationException($"A {type} pruning column cannot read a stored {array.Data.DataType.Name} column")
+            };
+        }
+
+        private bool IsSpecial(int entry)
+        {
+            return _kind switch
+            {
+                Kind.Float32 or Kind.Double => double.IsNaN(Double(entry)),
+                Kind.Decimal => !TryDecimal(entry, out _),
+                _ => false
+            };
+        }
+
+        // Ticks of a date, milliseconds of a timestamp, 0 or 1 for a bool
+        private long Long(int entry)
+        {
+            var row = _rows[entry];
+            return _kind switch
+            {
+                Kind.Int8 => ((Int8Array)_array).Values[row],
+                Kind.Int16 => ((Int16Array)_array).Values[row],
+                Kind.Int32 => ((Int32Array)_array).Values[row],
+                Kind.Int64 => ((Int64Array)_array).Values[row],
+                Kind.Date => DateTime.UnixEpoch.Ticks + ((Date32Array)_array).Values[row] * TimeSpan.TicksPerDay,
+                Kind.Timestamp => ((TimestampArray)_array).Values[row],
+                _ => ((BooleanArray)_array).GetValue(row) == true ? 1 : 0
+            };
+        }
+
+        private double Double(int entry)
+        {
+            var row = _rows[entry];
+            return _kind == Kind.Float32 ? ((FloatArray)_array).Values[row] : ((DoubleArray)_array).Values[row];
+        }
+
+        // False above System.Decimal's range
+        private bool TryDecimal(int entry, out decimal value)
+        {
+            var decimals = (Decimal128Array)_array;
+            var row = _rows[entry];
+            var bytes = decimals.ValueBuffer.Span.Slice((decimals.Offset + row) * 16, 16);
+            var raw = System.Buffers.Binary.BinaryPrimitives.ReadInt128LittleEndian(bytes);
+            var scale = ((Apache.Arrow.Types.Decimal128Type)decimals.Data.DataType).Scale;
+            var negative = raw < 0;
+            var magnitude = raw == Int128.MinValue ? UInt128.MaxValue : negative ? (UInt128)(-raw) : (UInt128)raw;
+            // A value scaled past 96 bits may still be a decimal
+            while ((magnitude >> 96 != 0 || scale > 28) && scale > 0 && magnitude % 10 == 0)
+            {
+                magnitude /= 10;
+                scale--;
+            }
+            if (magnitude >> 96 != 0 || scale < 0 || scale > 28)
+            {
+                value = 0;
+                return false;
+            }
+            value = new decimal((int)(uint)magnitude, (int)(uint)(magnitude >> 32), (int)(uint)(magnitude >> 64), negative, (byte)scale);
+            return true;
+        }
+
+        private ReadOnlySpan<byte> Bytes(int entry)
+        {
+            return ((BinaryArray)_array).GetBytes(_rows[entry]);
+        }
+
+        private static ReadOnlySpan<byte> Prefix(ReadOnlySpan<byte> bytes)
+        {
+            return bytes.Slice(0, Math.Min(bytes.Length, PruningCell.PrefixLength));
+        }
+
+        // Whether the cell may hold the entry's value
+        public bool Admits(ReadOnlySpan<byte> cell, int entry)
+        {
+            if (_array.IsNull(_rows[entry]))
+            {
+                return PruningCell.MayHoldNull(cell);
+            }
+            if (IsSpecial(entry))
+            {
+                return true;
+            }
+            return MinAdmits(cell, entry) && MaxAdmits(cell, entry);
+        }
+
+        // Ordinary entries only
+        private bool MinAdmits(ReadOnlySpan<byte> cell, int entry)
+        {
+            switch (_kind)
+            {
+                case Kind.Float32:
+                case Kind.Double:
+                    return PruningCell.MinAdmits(cell, _type, Double(entry));
+                case Kind.Decimal:
+                    TryDecimal(entry, out var value);
+                    return PruningCell.MinAdmits(cell, value);
+                case Kind.Bool:
+                    return PruningCell.MinAdmits(cell, Long(entry) != 0);
+                case Kind.Bytes:
+                    var bytes = Bytes(entry);
+                    return PruningCell.MinAdmits(cell, Prefix(bytes), bytes.Length);
+                default:
+                    return PruningCell.MinAdmits(cell, _type, Long(entry));
+            }
+        }
+
+        private bool MaxAdmits(ReadOnlySpan<byte> cell, int entry)
+        {
+            switch (_kind)
+            {
+                case Kind.Float32:
+                case Kind.Double:
+                    return PruningCell.MaxAdmits(cell, _type, Double(entry));
+                case Kind.Decimal:
+                    TryDecimal(entry, out var value);
+                    return PruningCell.MaxAdmits(cell, value);
+                case Kind.Bool:
+                    return PruningCell.MaxAdmits(cell, Long(entry) != 0);
+                case Kind.Bytes:
+                    var bytes = Bytes(entry);
+                    return PruningCell.MaxAdmits(cell, Prefix(bytes), bytes.Length);
+                default:
+                    return PruningCell.MaxAdmits(cell, _type, Long(entry));
+            }
+        }
+
+        // The first sorted position the cell's min admits
+        public int Lower(ReadOnlySpan<byte> cell)
+        {
+            // A cell below every entry admits them all
+            if (Sorted.Length == 0 || MinAdmitsAt(cell, 0))
+            {
+                return 0;
+            }
+            int low = 1;
+            int high = Sorted.Length;
+            while (low < high)
+            {
+                var mid = (low + high) >>> 1;
+                if (MinAdmitsAt(cell, mid))
+                {
+                    high = mid;
+                }
+                else
+                {
+                    low = mid + 1;
+                }
+            }
+            return low;
+        }
+
+        // The first sorted position from lower past what the cell's max admits
+        public int Upper(ReadOnlySpan<byte> cell, int lower)
+        {
+            // A cell above every entry admits them all
+            if (lower == Sorted.Length || MaxAdmitsAt(cell, Sorted.Length - 1))
+            {
+                return Sorted.Length;
+            }
+            int low = lower;
+            int high = Sorted.Length - 1;
+            while (low < high)
+            {
+                var mid = (low + high) >>> 1;
+                if (MaxAdmitsAt(cell, mid))
+                {
+                    low = mid + 1;
+                }
+                else
+                {
+                    high = mid;
+                }
+            }
+            return low;
+        }
+
+        private bool MinAdmitsAt(ReadOnlySpan<byte> cell, int position)
+        {
+            if (_longKeys != null)
+            {
+                return _kind == Kind.Bool ? PruningCell.MinAdmits(cell, _longKeys[position] != 0) : PruningCell.MinAdmits(cell, _type, _longKeys[position]);
+            }
+            if (_doubleKeys != null)
+            {
+                return PruningCell.MinAdmits(cell, _type, _doubleKeys[position]);
+            }
+            return MinAdmits(cell, Sorted[position]);
+        }
+
+        private bool MaxAdmitsAt(ReadOnlySpan<byte> cell, int position)
+        {
+            if (_longKeys != null)
+            {
+                return _kind == Kind.Bool ? PruningCell.MaxAdmits(cell, _longKeys[position] != 0) : PruningCell.MaxAdmits(cell, _type, _longKeys[position]);
+            }
+            if (_doubleKeys != null)
+            {
+                return PruningCell.MaxAdmits(cell, _type, _doubleKeys[position]);
+            }
+            return MaxAdmits(cell, Sorted[position]);
+        }
+
+        // Numbers keep their keys, sorted entries skip the sort
+        private void Sort(int[] entries)
+        {
+            var inOrder = InOrder(entries);
+            switch (_kind)
+            {
+                case Kind.Float32:
+                case Kind.Double:
+                    var doubles = new double[entries.Length];
+                    for (int i = 0; i < entries.Length; i++)
                     {
-                        return false;
+                        // One key for -0 and +0
+                        doubles[i] = Double(entries[i]) + 0.0;
                     }
-                    continue;
-                }
-                if (status == Unsupported)
-                {
-                    continue;
-                }
-                var match = column.Type switch
-                {
-                    PruningType.Int64 or PruningType.Date or PruningType.Timestamp => PruningCell.MatchInt64(cell, column.Type, values.Longs[probe]),
-                    PruningType.Double or PruningType.Float32 => PruningCell.MatchDouble(cell, column.Type, values.Doubles[probe]),
-                    PruningType.Decimal => PruningCell.MatchDecimal(cell, values.Decimals[probe]),
-                    PruningType.Bool => PruningCell.MatchBool(cell, values.Longs[probe] != 0),
-                    _ => PruningCell.MatchBytes(cell, values.Prefixes.AsSpan(probe * PruningCell.PrefixLength, Math.Min(values.Lengths[probe], PruningCell.PrefixLength)), values.Lengths[probe])
-                };
-                if (!match)
+                    if (!inOrder)
+                    {
+                        System.Array.Sort(doubles, entries);
+                    }
+                    _doubleKeys = doubles;
+                    break;
+                case Kind.Decimal:
+                    if (!inOrder)
+                    {
+                        var decimals = new decimal[entries.Length];
+                        for (int i = 0; i < entries.Length; i++)
+                        {
+                            TryDecimal(entries[i], out decimals[i]);
+                        }
+                        System.Array.Sort(decimals, entries);
+                    }
+                    break;
+                case Kind.Bytes:
+                    if (!inOrder)
+                    {
+                        System.Array.Sort(entries, Comparer<int>.Create((left, right) => Compare(left, right)));
+                    }
+                    break;
+                default:
+                    var longs = new long[entries.Length];
+                    for (int i = 0; i < entries.Length; i++)
+                    {
+                        longs[i] = Long(entries[i]);
+                    }
+                    if (!inOrder)
+                    {
+                        System.Array.Sort(longs, entries);
+                    }
+                    _longKeys = longs;
+                    break;
+            }
+        }
+
+        private bool InOrder(int[] entries)
+        {
+            for (int i = 1; i < entries.Length; i++)
+            {
+                if (Compare(entries[i - 1], entries[i]) > 0)
                 {
                     return false;
                 }
@@ -265,40 +419,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             return true;
         }
 
-        private void EnsureCapacity(int rows)
+        // Numbers ascend, bytes by prefix, then longer probes
+        private int Compare(int left, int right)
         {
-            if (rows <= _capacity)
+            switch (_kind)
             {
-                return;
+                case Kind.Float32:
+                case Kind.Double:
+                    var leftDouble = Double(left);
+                    var rightDouble = Double(right);
+                    return leftDouble < rightDouble ? -1 : leftDouble > rightDouble ? 1 : 0;
+                case Kind.Decimal:
+                    TryDecimal(left, out var leftDecimal);
+                    TryDecimal(right, out var rightDecimal);
+                    return leftDecimal.CompareTo(rightDecimal);
+                case Kind.Bytes:
+                    var leftBytes = Bytes(left);
+                    var rightBytes = Bytes(right);
+                    var order = Prefix(leftBytes).SequenceCompareTo(Prefix(rightBytes));
+                    if (order != 0)
+                    {
+                        return order;
+                    }
+                    return (leftBytes.Length > PruningCell.PrefixLength).CompareTo(rightBytes.Length > PruningCell.PrefixLength);
+                default:
+                    return Long(left).CompareTo(Long(right));
             }
-            var capacity = Math.Max(rows, Math.Max(16, _capacity * 2));
-            var columns = _layout.Columns;
-            for (int c = 0; c < columns.Count; c++)
-            {
-                var values = _columns[c];
-                Array.Resize(ref values.Status, capacity);
-                switch (columns[c].Type)
-                {
-                    case PruningType.Int64:
-                    case PruningType.Date:
-                    case PruningType.Timestamp:
-                    case PruningType.Bool:
-                        Array.Resize(ref values.Longs, capacity);
-                        break;
-                    case PruningType.Double:
-                    case PruningType.Float32:
-                        Array.Resize(ref values.Doubles, capacity);
-                        break;
-                    case PruningType.Decimal:
-                        Array.Resize(ref values.Decimals, capacity);
-                        break;
-                    default:
-                        Array.Resize(ref values.Prefixes, capacity * PruningCell.PrefixLength);
-                        Array.Resize(ref values.Lengths, capacity);
-                        break;
-                }
-            }
-            _capacity = capacity;
         }
     }
 }

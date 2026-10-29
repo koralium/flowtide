@@ -33,8 +33,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.PartitionWriters
             }
             var dec = value.AsDecimal;
 
-            // round it to the scale
-            dec = Math.Round(dec, decimalType.Scale);
+            // Half up to the scale, as the data file stores it
+            dec = Math.Round(dec, decimalType.Scale, MidpointRounding.AwayFromZero);
             return dec.ToString(CultureInfo.InvariantCulture);
         }
     }

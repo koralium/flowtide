@@ -242,6 +242,56 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 .ToList();
         }
 
+        // One reading of a sink gauge, named with its flowtide_ prefix
+        public static List<long> ReadGauge(FlowtideTestStream stream, string name)
+        {
+            var readings = new List<long>();
+            using var listener = new System.Diagnostics.Metrics.MeterListener();
+            listener.InstrumentPublished = (instrument, meterListener) =>
+            {
+                if (instrument.Meter.Name.StartsWith($"flowtide.{stream.StreamName}.operator.", StringComparison.Ordinal) && instrument.Name == name)
+                {
+                    meterListener.EnableMeasurementEvents(instrument);
+                }
+            };
+            listener.SetMeasurementEventCallback<long>((instrument, value, tags, state) => readings.Add(value));
+            listener.Start();
+            listener.RecordObservableInstruments();
+            return readings;
+        }
+
+        // Rows of one change type in a version's change data files
+        public static async Task<long> ChangeRows(IFileStorage storage, string table, long version, string changeType)
+        {
+            long count = 0;
+            foreach (var action in await ReadCommitActions(storage, table, version))
+            {
+                if (action.Cdc == null)
+                {
+                    continue;
+                }
+                using var memory = new MemoryStream(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}"));
+                using var reader = new ParquetSharp.Arrow.FileReader(memory);
+                using var batches = reader.GetRecordBatchReader();
+                Apache.Arrow.RecordBatch batch;
+                while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
+                {
+                    using (batch)
+                    {
+                        var changes = (Apache.Arrow.StringArray)batch.Column("_change_type");
+                        for (int i = 0; i < changes.Length; i++)
+                        {
+                            if (changes.GetString(i) == changeType)
+                            {
+                                count++;
+                            }
+                        }
+                    }
+                }
+            }
+            return count;
+        }
+
         // Each version's files by content and deleted rows, not by name
         public static async Task<List<string>> TableHistory(IFileStorage storage, string table, long lastVersion)
         {

@@ -96,6 +96,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
         public long Remaining(int entry) => _remaining[entry];
 
+        // The stored row each entry stands for
+        public ReadOnlySpan<int> EntryRows => _row.AsSpan(0, _count);
+
+        // The first entry with copies still to find, -1 for none
+        public int FirstUnresolved()
+        {
+            for (int entry = 0; entry < _count; entry++)
+            {
+                if (_remaining[entry] > 0)
+                {
+                    return entry;
+                }
+            }
+            return -1;
+        }
+
         // Copies claimed so far, with change data on
         public long Matched(int entry)
         {

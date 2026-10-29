@@ -15,6 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Memory;
@@ -36,8 +37,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     {
         private const int RowsPerFile = 50_000;
         private const int SelectionFiles = 10_000;
-        // Probe-file pairs today's candidate lists may hold
-        private const long MaxCandidatePairs = 200_000_000;
+        // Per request in the latency probe
         private static readonly TimeSpan s_latency = TimeSpan.FromMilliseconds(20);
 
         private static readonly int[] s_deletes = new[] { 1, 16, 100, 1_000, 10_000, 100_000 };
@@ -81,7 +81,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var fixture = await ProbeFixture.Build($"b2b_{files}_{distribution}", files, RowsPerFile, kit);
             // Newest is the last 5 % of the files
             var pool = (distribution == "newest" ? fixture.Files.TakeLast((files + 19) / 20) : fixture.Files).SelectMany(x => x).ToList();
-            foreach (var deletes in s_deletes)
+            // A shorter list lets old and new alternate
+            var list = Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_DELETES")?.Split(',').Select(int.Parse).ToArray() ?? s_deletes;
+            foreach (var deletes in list)
             {
                 if (!await RunDeletes(kit, fixture, pool, deletes, latency: null))
                 {
@@ -99,8 +101,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return;
             }
-            // Today's selection, beyond 10k files it is not run
-            var kit = new ProbeKit(_output, $"B2a FindCandidates, {SelectionFiles} files, {columns} columns");
+            var kit = new ProbeKit(_output, $"B2a selection at T = {DeleteLimits.Default.SelectorThreshold}, {SelectionFiles} files, {columns} columns");
             await WarmSelection(columns);
             foreach (var selection in s_selections)
             {
@@ -111,35 +112,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 using var catalog = await SelectionCatalog.Create(SelectionFiles, columns, selection);
                 var random = new Random(columns);
-                double pairsPerProbe = 0;
-                double msPerProbe = 0;
                 foreach (var probes in s_probes)
                 {
                     var name = $"P={columns} {selection} B={probes}";
-                    if (pairsPerProbe * probes > MaxCandidatePairs)
-                    {
-                        kit.Write($"{name} | not run: about {pairsPerProbe * probes:0} probe-file pairs");
-                        break;
-                    }
-                    // The scan tests every probe on every file
-                    if (msPerProbe * probes > ProbeKit.DidNotFinish.TotalMilliseconds)
-                    {
-                        kit.Write($"{name} | not run: predicted over {ProbeKit.DidNotFinish.TotalSeconds:0} s, linear in B from the previous B");
-                        break;
-                    }
-                    var batch = catalog.Probes(probes, random);
+                    using var stored = catalog.Probes(probes, random);
+                    var batch = StoredProbes.Build(catalog.Catalog.ScanLayout, stored);
                     var samples = new List<ProbeSample>();
-                    long pairs = 0;
                     var candidateFiles = 0;
                     var finished = true;
                     for (int run = 0; run <= ProbeKit.Runs && finished; run++)
                     {
                         var allocated = GC.GetTotalAllocatedBytes(true);
                         var watch = Stopwatch.StartNew();
-                        var candidates = await catalog.Catalog.FindCandidates(batch);
+                        var candidates = await CandidateSelector.Select(catalog.Catalog, batch, DeleteLimits.Default.SelectorThreshold);
                         watch.Stop();
                         candidateFiles = candidates.Count;
-                        pairs = candidates.Values.Sum(x => (long)x.Count);
                         finished = watch.Elapsed <= ProbeKit.DidNotFinish;
                         if (run > 0)
                         {
@@ -152,21 +139,182 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         break;
                     }
                     kit.Write($"{name} | wall {ProbeKit.Spread(samples, x => x.WallMs)} ms | allocated {ProbeKit.Spread(samples, x => x.Allocated / 1048576.0)} MiB" +
-                        $" | candidate files {candidateFiles} | probe-file pairs {pairs}");
-                    pairsPerProbe = (double)pairs / probes;
-                    msPerProbe = ProbeKit.Median(samples.Select(x => x.WallMs)) / probes;
+                        $" | candidate files {candidateFiles}");
                 }
             }
+        }
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(8)]
+        public async Task B2aSelectionAtScale(int columns)
+        {
+            // One column count per invocation keeps each inside its time limit
+            if (!ProbeKit.Enabled || (int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_COLUMNS"), out var only) && only != columns))
+            {
+                return;
+            }
+            // The whole selection over an array projection, list included
+            var kit = new ProbeKit(_output, $"B2a synthetic selection, {columns} columns, build and select over the projection");
+            var names = Enumerable.Range(0, columns).Select(x => $"c{x}").ToList();
+            var table = new Internal.Delta.Schema.Types.StructType(names.Select(x => new Internal.Delta.Schema.Types.StructField(x, new Internal.Delta.Schema.Types.LongType(), true, new Dictionary<string, object>())).ToList());
+            var layout = PruningLayout.Create(table, names, columns);
+            foreach (var files in new[] { 10_000, 100_000, 1_000_000 })
+            {
+                foreach (var selection in s_selections)
+                {
+                    if (columns == 1 && selection == "anticorrelated")
+                    {
+                        continue;
+                    }
+                    using var projection = await SyntheticProjection.Create(layout, files, selection);
+                    var random = new Random(columns);
+                    foreach (var probes in s_probes)
+                    {
+                        var name = $"F={files} P={columns} {selection} B={probes}";
+                        using var stored = StoredProbes.Store(table, SyntheticProbes(files, columns, selection, probes, random));
+                        var entries = Enumerable.Range(0, probes).ToArray();
+                        // Every threshold at 10k files picks T, the default elsewhere
+                        var thresholds = files == 10_000 ? new[] { 8, 16, 32, 64, int.MaxValue } : new[] { DeleteLimits.Default.SelectorThreshold };
+                        var finished = true;
+                        foreach (var threshold in thresholds)
+                        {
+                            var build = new List<double>();
+                            var select = new List<double>();
+                            var candidates = 0;
+                            for (int run = 0; run <= ProbeKit.Runs && finished; run++)
+                            {
+                                var watch = Stopwatch.StartNew();
+                                var batch = ProbeBatch.Build(layout, stored, entries);
+                                var built = watch.Elapsed.TotalMilliseconds;
+                                var selected = await CandidateSelector.Select(projection.Projection.Scan, batch, threshold);
+                                watch.Stop();
+                                candidates = selected.Count;
+                                finished = watch.Elapsed <= ProbeKit.DidNotFinish;
+                                if (run > 0)
+                                {
+                                    build.Add(built);
+                                    select.Add(watch.Elapsed.TotalMilliseconds - built);
+                                }
+                            }
+                            if (!finished)
+                            {
+                                kit.Write($"{name} T={(threshold == int.MaxValue ? "exact" : threshold)} | did not finish within {ProbeKit.DidNotFinish.TotalSeconds:0} s, larger B not run");
+                                break;
+                            }
+                            kit.Write($"{name} T={(threshold == int.MaxValue ? "exact" : threshold)} | build {ProbeKit.Spread(build)} ms | select {ProbeKit.Spread(select)} ms" +
+                                $" | total {ProbeKit.Median(build.Zip(select, (x, y) => x + y)):0.0} ms | candidates {candidates}");
+                        }
+                        if (!finished)
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // An array-mode projection holding the synthetic rows
+        private sealed class SyntheticProjection : IDisposable
+        {
+            private readonly ReservoirPersistentStorage _state;
+            private readonly StateManagerSync _stateManager;
+
+            private SyntheticProjection(ReservoirPersistentStorage state, StateManagerSync stateManager, PruningProjection projection)
+            {
+                _state = state;
+                _stateManager = stateManager;
+                Projection = projection;
+            }
+
+            public PruningProjection Projection { get; }
+
+            public static async Task<SyntheticProjection> Create(PruningLayout layout, int files, string selection)
+            {
+                var state = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+                var stateManager = new StateManagerSync<object>(new StateManagerOptions() { CachePageCount = 1000, PersistentStorage = state },
+                    NullLoggerFactory.Instance, new Meter("b2a_synthetic"), "b2a_synthetic", GlobalMemoryManager.Instance);
+                await stateManager.InitializeAsync();
+                var tree = await stateManager.GetOrCreateClient("catalog").GetOrCreateEphemeralTree("bounds", DeltaSinkCatalog.TreeOptions(new BoundsRowSerializer(), GlobalMemoryManager.Instance));
+                // Room for every column once the array doubles
+                var projection = PruningProjection.Create(GlobalMemoryManager.Instance, new PruningReservation(), 2L * files * layout.RowSize, tree, layout, files, treeMode: false, out _);
+                var rows = SyntheticRows(layout, files, selection);
+                for (int id = 0; id < files; id++)
+                {
+                    await projection.Set(id, rows.AsMemory(id * layout.RowSize, layout.RowSize));
+                }
+                if (projection.TreeMode || projection.Layout.Columns.Count != layout.Columns.Count)
+                {
+                    throw new InvalidOperationException("The synthetic projection dropped columns or spilled to its tree");
+                }
+                return new SyntheticProjection(state, stateManager, projection);
+            }
+
+            public void Dispose()
+            {
+                Projection.Dispose();
+                _stateManager.Dispose();
+                _state.Dispose();
+            }
+        }
+
+        // The selection catalog's bounds, one row per file
+        private static byte[] SyntheticRows(PruningLayout layout, int files, string selection)
+        {
+            var rows = new byte[(long)files * layout.RowSize];
+            for (int file = 0; file < files; file++)
+            {
+                var row = rows.AsSpan(file * layout.RowSize, layout.RowSize);
+                row[0] = PruningLayout.HasStatistics;
+                for (int c = 0; c < layout.Columns.Count; c++)
+                {
+                    var (min, max) = SyntheticBounds(file, c, files, selection);
+                    PruningCell.WriteInt64(row.Slice(layout.Columns[c].Offset, PruningCell.CellSize(PruningType.Int64)), PruningType.Int64, min, max, 0);
+                }
+            }
+            return rows;
+        }
+
+        // Spread hits one file, skewed the newest 5 %, anticorrelated another file's second column
+        private static List<IDataValue[]> SyntheticProbes(int files, int columns, string selection, int count, Random random)
+        {
+            var probes = new List<IDataValue[]>(count);
+            for (int i = 0; i < count; i++)
+            {
+                var file = selection == "skewed" ? files - 1 - random.Next(files / 20) : random.Next(files);
+                var values = new IDataValue[columns];
+                for (int c = 0; c < columns; c++)
+                {
+                    var target = selection == "anticorrelated" && c == 1 ? (file + 1 + random.Next(files - 1)) % files : file;
+                    var (min, max) = SyntheticBounds(target, c, files, selection);
+                    values[c] = new Int64Value(min + random.NextInt64(max - min + 1));
+                }
+                probes.Add(values);
+            }
+            return probes;
+        }
+
+        private static (long Min, long Max) SyntheticBounds(int file, int column, int files, string selection)
+        {
+            const long width = 1_000;
+            return selection switch
+            {
+                "lowcardinality" when column == 0 => (file % 4, file % 4),
+                "anticorrelated" when column == 1 => ((files - 1 - file) * width, (files - 1 - file) * width + width - 1),
+                "overlap" => (0, files * width),
+                _ => (file * width, file * width + width - 1)
+            };
         }
 
         // Discarded selections, so the first measured one is not cold
         private static async Task WarmSelection(int columns)
         {
             using var catalog = await SelectionCatalog.Create(SelectionFiles, columns, "spread");
-            var batch = catalog.Probes(100, new Random(0));
+            using var stored = catalog.Probes(100, new Random(0));
+            var batch = StoredProbes.Build(catalog.Catalog.ScanLayout, stored);
             for (int i = 0; i < 50; i++)
             {
-                await catalog.Catalog.FindCandidates(batch);
+                await CandidateSelector.Select(catalog.Catalog, batch, DeleteLimits.Default.SelectorThreshold);
             }
         }
 
@@ -277,7 +425,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             static long Scan(DeleteStatistics x) => x.OpenTicks + x.ReadTicks + x.PrecisionTicks + x.HashTicks;
             var last = runs[^1];
             string Share(Func<DeleteStatistics, long> part) => ProbeKit.Spread(runs.Select(x => Scan(x) == 0 ? 0 : part(x) * 100.0 / Scan(x)).ToList());
-            kit.Write($"{name} matching | passes {last.Passes} | files {last.FilesScanned} | rows scanned {last.RowsScanned}, hashed {last.RowsHashed}, skipped {last.RowsSkipped}" +
+            kit.Write($"{name} matching | passes {last.Passes} | files {last.FilesScanned}, claimed {last.FilesClaimed} | rows scanned {last.RowsScanned}, hashed {last.RowsHashed}, skipped {last.RowsSkipped}" +
                 $" | hits {last.Hits} | claims {last.Claims} | vectors read {last.VectorsRead} | row groups raw-read {last.RowGroupsRawRead}, raw levels {last.RawLevelsRead} | claim-free vector bytes {last.PeakClaimFreeVectorBytes}");
             kit.Write($"{name} scan split | scan {ProbeKit.Spread(runs.Select(x => Ms(Scan(x))).ToList())} ms | open {Share(x => x.OpenTicks)} % | read and decode {Share(x => x.ReadTicks)} %" +
                 $" | precision {Share(x => x.PrecisionTicks)} % | hash and probe {Share(x => x.HashTicks)} %" +
@@ -376,13 +524,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 };
             }
 
-            // Spread hits one file, skewed the newest 5 %
-            public ProbeBatch Probes(int count, Random random)
+            // Spread hits one file, skewed the newest 5 %, as the delete writer stores them
+            public Apache.Arrow.RecordBatch Probes(int count, Random random)
             {
-                var batch = new ProbeBatch(Catalog.ScanLayout);
-                var values = new IDataValue[_columns];
+                var rows = new List<IDataValue[]>(count);
                 for (int i = 0; i < count; i++)
                 {
+                    var values = new IDataValue[_columns];
                     var file = _selection == "skewed" ? _files - 1 - random.Next(_files / 20) : random.Next(_files);
                     for (int c = 0; c < _columns; c++)
                     {
@@ -390,9 +538,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         var (min, max) = Bounds(target, c, _files, _selection);
                         values[c] = new Int64Value(min + random.NextInt64(max - min + 1));
                     }
-                    batch.Add(values);
+                    rows.Add(values);
                 }
-                return batch;
+                var table = new Internal.Delta.Schema.Types.StructType(Enumerable.Range(0, _columns)
+                    .Select(c => new Internal.Delta.Schema.Types.StructField($"c{c}", new Internal.Delta.Schema.Types.LongType(), true, new Dictionary<string, object>())).ToList());
+                return StoredProbes.Store(table, rows);
             }
 
             public void Dispose()

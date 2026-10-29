@@ -241,6 +241,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
+        // A row of a batch this schema stored, as the delete writer keeps them
+        public void AddStoredRow(RecordBatch stored, int row, bool isDelete)
+        {
+            if (isDelete && !_isCdcWriter)
+            {
+                throw new InvalidOperationException("Delete records are only supported in CDC mode.");
+            }
+            rowCount++;
+            for (int i = 0; i < schema.Fields.Count; i++)
+            {
+                _writtenBytes += writers[i].CopyArray(stored.Column(i), 0, EmptyDeleteVector.Instance, row, 1);
+            }
+            if (_isCdcWriter)
+            {
+                _writtenBytes += _cdcWriter!.WriteValue(new StringValue(isDelete ? "delete" : "insert"));
+            }
+        }
+
         public void NewBatch()
         {
             rowCount = 0;

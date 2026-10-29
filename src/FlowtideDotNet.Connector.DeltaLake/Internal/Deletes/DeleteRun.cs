@@ -73,6 +73,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
             {
                 claimed = new ModifiableDeleteVector(_existing[id]);
                 Claims.Add(id, claimed);
+                Statistics.FilesClaimed++;
                 _claimFreeBytes -= Records[id].DeletionVector?.SizeInBytes ?? 0;
             }
             claimed.Add(position);
@@ -95,6 +96,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         public long RowsSkipped { get; set; }
 
         public long Hits { get; set; }
+
+        // Files with a claim, every other scanned file was read for nothing
+        public long FilesClaimed { get; set; }
 
         public long Claims { get; set; }
 

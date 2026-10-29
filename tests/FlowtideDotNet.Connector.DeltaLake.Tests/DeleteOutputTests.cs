@@ -135,12 +135,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 return;
             }
             // Name mode reads the renamed column as null, as other engines do, so no copy matches
-            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(1);
-            while (stream.Sinks[0].DeleteStatisticsForTests?.Passes != 1 && DateTime.UtcNow < deadline)
-            {
-                await RunCheckpoints(stream, 1);
-            }
-            await RunCheckpoints(stream, 2);
+            var unmatched = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 3));
+            Assert.Contains("Could not find any data file that contains the row", unmatched.ToString());
             Assert.False(await storage.Exists(CommitPath("test", 3)));
             var statistics = stream.Sinks[0].DeleteStatisticsForTests!;
             // Only the deleted key passes the first column's test

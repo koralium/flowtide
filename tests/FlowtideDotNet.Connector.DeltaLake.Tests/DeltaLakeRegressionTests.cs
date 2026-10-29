@@ -711,6 +711,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public async Task NumericPruningKeysCountAgainstTheByteCap()
+        {
+            var testName = nameof(NumericPruningKeysCountAgainstTheByteCap);
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.MaxFileSizeBytes = 512;
+                options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { ByteCap = 1100 };
+            });
+            stream.Generate(60);
+            await stream.StartStream(@"
+                CREATE TABLE test (
+                    c0 INT, c1 INT, c2 INT, c3 INT, c4 INT, c5 INT, c6 INT, c7 INT
+                );
+
+                INSERT INTO test
+                SELECT userkey AS c0, userkey AS c1, userkey AS c2, userkey AS c3, userkey AS c4, userkey AS c5, userkey AS c6, userkey AS c7 FROM users
+            ");
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 0);
+
+            stream.DeleteUsers(stream.Users.Where((_, i) => i % 3 == 0).ToList());
+            await DeltaTestKit.WaitForVersion(storage, "test", stream, 1);
+
+            // 64 written bytes three times, plus 32 + 32 + 64 key bytes, so four rows fill a pass
+            Assert.Equal(5, stream.Sinks[0].DeleteStatisticsForTests!.Passes);
+            Assert.Equal(stream.Users.Select(x => x.UserKey).Order(), (await ForeignRewrite.LiveRows(storage, "test")).Select(x => int.Parse(x.Row.Split(' ')[0], System.Globalization.CultureInfo.InvariantCulture)).Order());
+        }
+
+        [Fact]
         public async Task UnwrittenColumnsCountAgainstTheByteCap()
         {
             var testName = nameof(UnwrittenColumnsCountAgainstTheByteCap);

@@ -79,9 +79,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             _builder.AppendNull();
         }
 
-        private void WriteValue(long val)
+        // Statistics bound the stored value, a wider one wraps
+        private void WriteValue(long value)
         {
             Debug.Assert(_builder != null);
+            var val = (sbyte)value;
             if (_minValue == null || val < _minValue)
             {
                 _minValue = val;
@@ -91,7 +93,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _maxValue = val;
             }
 
-            _builder.Append((sbyte)val);
+            _builder.Append(val);
         }
 
         public long WriteValue<T>(T value) where T : IDataValue
@@ -104,18 +106,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 return 1;
             }
 
-            var val = value.AsLong;
-
-            if (_minValue == null || val < _minValue)
-            {
-                _minValue = val;
-            }
-            if (_maxValue == null || val > _maxValue)
-            {
-                _maxValue = val;
-            }
-
-            _builder.Append((sbyte)val);
+            WriteValue(value.AsLong);
             return 1;
         }
     }

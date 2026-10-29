@@ -33,8 +33,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
     internal sealed class ProbeKit
     {
-        // Measured runs per case, after one warm-up
-        public const int Runs = 5;
+        // Measured runs per case, after one warm-up, one when alternating invocations
+        public static readonly int Runs = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_RUNS"), out var runs) ? runs : 5;
 
         public static readonly TimeSpan DidNotFinish = TimeSpan.FromSeconds(30);
 
@@ -267,10 +267,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Storage = HookFileStorage.Wrap(Files.Of.LocalDisk(root));
             Stream = new DeltaLakeSinkStream(name, Storage, options =>
             {
-                // The prefilter's measurement runs it off as well
-                if (Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_PREFILTER") == "0")
+                // The prefilter off, another threshold, or blind pruning, for the baselines
+                var limits = new Internal.Deletes.DeleteLimits();
+                limits.Prefilter = Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_PREFILTER") != "0";
+                if (int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_THRESHOLD"), out var threshold))
                 {
-                    options.DeleteLimitsOverride = new Internal.Deletes.DeleteLimits() { Prefilter = false };
+                    limits.SelectorThreshold = threshold;
+                }
+                options.DeleteLimitsOverride = limits;
+                if (int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_PRUNING"), out var pruning))
+                {
+                    options.StatsPruningColumns = pruning;
                 }
                 configure?.Invoke(options);
                 var previous = options.CommitVersionHookForTests;

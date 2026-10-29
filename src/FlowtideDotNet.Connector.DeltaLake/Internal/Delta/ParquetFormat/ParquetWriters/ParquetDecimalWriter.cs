@@ -134,7 +134,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private void WriteValue(decimal decimalValue)
         {
             Debug.Assert(_builder != null);
-            decimalValue = Math.Round(decimalValue, _type.Scale);
+            // Half up, as Spark and SQL round
+            decimalValue = Math.Round(decimalValue, _type.Scale, MidpointRounding.AwayFromZero);
             Track(decimalValue);
             _builder.Append(decimalValue);
         }
