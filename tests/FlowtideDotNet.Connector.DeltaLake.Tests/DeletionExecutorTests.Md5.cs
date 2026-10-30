@@ -185,10 +185,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             public async ValueTask DisposeAsync()
             {
+                // The loop ends on the token while the listener still accepts
                 _stop.Cancel();
-                _listener.Stop();
-                await _serving;
-                _stop.Dispose();
+                try
+                {
+                    await _serving;
+                }
+                finally
+                {
+                    _listener.Stop();
+                    _stop.Dispose();
+                }
             }
         }
     }
