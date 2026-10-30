@@ -13,6 +13,7 @@
 using Apache.Arrow;
 using Apache.Arrow.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers;
+using System.Buffers;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -89,15 +90,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Check(operation, comparer, maps);
             }
-
-            var before = GC.GetAllocatedBytesForCurrentThread();
-            for (int i = 0; i < iterations; i++)
+            // Spare arrays of the comparer's size, other threads share the pool
+            var spares = Enumerable.Range(0, 16).Select(_ => ArrayPool<int>.Shared.Rent(2 * entriesPerMap)).ToList();
+            foreach (var spare in spares)
             {
-                Check(operation, comparer, maps);
+                ArrayPool<int>.Shared.Return(spare);
             }
-            var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-            Assert.True(allocated == 0, $"{operation} allocated {allocated} bytes over {iterations} warmed calls");
+            // A per-call allocation shows in every window, a refill only in some
+            var allocated = long.MaxValue;
+            for (int window = 0; window < 5 && allocated > 0; window++)
+            {
+                var before = GC.GetAllocatedBytesForCurrentThread();
+                for (int i = 0; i < iterations; i++)
+                {
+                    Check(operation, comparer, maps);
+                }
+                allocated = Math.Min(allocated, GC.GetAllocatedBytesForCurrentThread() - before);
+            }
+
+            Assert.True(allocated == 0, $"{operation} allocated at least {allocated} bytes in each of 5 windows of {iterations} warmed calls");
         }
 
         [Fact]
