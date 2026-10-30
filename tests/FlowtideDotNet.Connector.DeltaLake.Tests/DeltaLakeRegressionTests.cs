@@ -458,6 +458,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public void APhysicalNameIsNotReadAsTheLogicalFieldOfTheSameName()
+        {
+            // a was renamed to b and kept its physical name, then a new a was added
+            var schema = new StructType(new List<StructField>()
+            {
+                new StructField("b", new LongType(), true, new Dictionary<string, object>()) { PhysicalName = "a" },
+                new StructField("a", new LongType(), true, new Dictionary<string, object>()) { PhysicalName = "col-new" }
+            });
+            // A file from before the add holds b's statistics under its physical name
+            var stats = DeserializeStatistics(schema, "{\"numRecords\":1,\"minValues\":{\"a\":5},\"maxValues\":{\"a\":5},\"nullCount\":{\"a\":0}}");
+
+            // The new column is null in that file, and b is 5
+            Assert.True(stats.ValueComparers!["a"].IsInBetween(NullValue.Instance));
+            Assert.True(stats.ValueComparers!["b"].IsInBetween(new Int64Value(5)));
+            Assert.False(stats.ValueComparers!["b"].IsInBetween(new Int64Value(6)));
+        }
+
+        [Fact]
         public void TimestampProbeMatchesStoredStatistics()
         {
             var schema = SingleColumnSchema(new TimestampType());

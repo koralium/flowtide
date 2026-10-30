@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -42,6 +43,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
                     physicalParsers.Add(field.PhysicalName, parser);
                 }
             }
+        }
+
+        // Physical names win, a renamed field keeps its old name physically
+        private bool TryGetParser(string propertyName, [NotNullWhen(true)] out IStatisticsParser? parser)
+        {
+            return physicalParsers.TryGetValue(propertyName, out parser) || parsers.TryGetValue(propertyName, out parser);
         }
 
         public override DeltaStatistics? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -135,13 +142,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 reader.Read();
 
-                if (!parsers.TryGetValue(propertyName, out var parser))
+                if (!TryGetParser(propertyName, out var parser))
                 {
-                    if (!physicalParsers.TryGetValue(propertyName, out parser))
-                    {
-                        reader.Skip();
-                        continue;
-                    }
+                    reader.Skip();
+                    continue;
                 }
 
                 parser.ReadMinValue(ref reader);
@@ -173,13 +177,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 reader.Read();
 
-                if (!parsers.TryGetValue(propertyName, out var parser))
+                if (!TryGetParser(propertyName, out var parser))
                 {
-                    if (!physicalParsers.TryGetValue(propertyName, out parser))
-                    {
-                        reader.Skip();
-                        continue;
-                    }
+                    reader.Skip();
+                    continue;
                 }
 
                 parser.ReadMaxValue(ref reader);
@@ -211,13 +212,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats
 
                 reader.Read();
 
-                if (!parsers.TryGetValue(propertyName, out var parser))
+                if (!TryGetParser(propertyName, out var parser))
                 {
-                    if (!physicalParsers.TryGetValue(propertyName, out parser))
-                    {
-                        reader.Skip();
-                        continue;
-                    }
+                    reader.Skip();
+                    continue;
                 }
 
                 parser.ReadNullValue(ref reader);
