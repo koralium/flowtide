@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Time.Testing;
 using Stowage;
@@ -332,6 +333,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 options.WriteChangeDataOnNewTables = true;
                 // Small files, so the delete loop and the insert loop both roll their change data over
                 options.MaxFileSizeBytes = 500;
+                // Insert-only versions still write change files
+                options.DeleteLimitsOverride = new DeleteLimits() { InsertChangeData = true };
                 options.SinkCreatedForTests = created => sink = created;
             });
             void Check(string when, IOPath path)
@@ -370,6 +373,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             Assert.Empty(outside);
             Assert.Contains("0 data", writes);
+            Assert.Contains("0 cdc", writes);
             Assert.Contains("0 stage", writes);
             Assert.Contains("1 dv", writes);
             Assert.Contains("2 data", writes);

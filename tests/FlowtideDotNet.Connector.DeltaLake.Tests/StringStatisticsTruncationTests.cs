@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using System.Text;
@@ -22,7 +23,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // The min and max the comparer writes, null when absent
         private static (string? Min, string? Max) Written(string? min, string? max)
         {
-            var comparer = new StringStatisticsComparer(min == null ? null : Encoding.UTF8.GetBytes(min), max == null ? null : Encoding.UTF8.GetBytes(max), 0);
+            return Written(new StringStatisticsComparer(min == null ? null : Encoding.UTF8.GetBytes(min), max == null ? null : Encoding.UTF8.GetBytes(max), 0));
+        }
+
+        private static (string? Min, string? Max) Written(IStatisticsComparer comparer)
+        {
             using var buffer = new MemoryStream();
             using (var writer = new Utf8JsonWriter(buffer))
             {
@@ -40,6 +45,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var comparer = new StringStatisticsComparer(min == null ? null : Encoding.UTF8.GetBytes(min), max == null ? null : Encoding.UTF8.GetBytes(max), 0);
             return comparer.IsInBetween(new StringValue(value));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ExtremesOutliveTheirSourceAndTheWritersGrowth(bool binary)
+        {
+            IParquetWriter writer = binary ? new ParquetBinaryWriter() : new ParquetStringWriter();
+            writer.NewBatch();
+            var sources = new List<byte[]>();
+            void Write(string value)
+            {
+                var bytes = Encoding.UTF8.GetBytes(value);
+                sources.Add(bytes);
+                _ = binary ? writer.WriteValue(new BinaryValue(bytes)) : writer.WriteValue(new StringValue(bytes));
+            }
+            // Each extreme grows, then shrinks, past many appends
+            Write("m");
+            Write(new string('a', 30));
+            Write(new string('z', 30));
+            for (int i = 0; i < 10_000; i++)
+            {
+                Write($"k{i:D5}");
+            }
+            Write("a");
+            Write("{");
+            // The source pages are released and reused
+            foreach (var bytes in sources)
+            {
+                Array.Fill(bytes, (byte)'~');
+            }
+
+            Assert.Equal(("a", "{"), Written(writer.GetStatisticsComparer()!));
         }
 
         [Fact]

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using Stowage;
@@ -66,6 +67,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await using var stream = new DeltaLakeSinkStream(nameof(CreatedFilesMatchWrittenOutputs), storage, options =>
             {
                 options.WriteChangeDataOnNewTables = true;
+                // Insert-only versions still write change files to discard
+                options.DeleteLimitsOverride = new DeleteLimits() { InsertChangeData = true };
                 options.MaxFileSizeBytes = 2_000;
             });
             stream.Generate(200);

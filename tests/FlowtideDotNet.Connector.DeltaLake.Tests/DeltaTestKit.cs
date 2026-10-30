@@ -292,6 +292,37 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return count;
         }
 
+        // A version's change rows as type and first column, sorted
+        public static async Task<List<string>> ChangeKeys(IFileStorage storage, string table, long version)
+        {
+            var rows = new List<string>();
+            foreach (var action in await ReadCommitActions(storage, table, version))
+            {
+                if (action.Cdc == null)
+                {
+                    continue;
+                }
+                using var memory = new MemoryStream(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}"));
+                using var reader = new ParquetSharp.Arrow.FileReader(memory);
+                using var batches = reader.GetRecordBatchReader();
+                Apache.Arrow.RecordBatch batch;
+                while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
+                {
+                    using (batch)
+                    {
+                        var keys = (Apache.Arrow.Int64Array)batch.Column(0);
+                        var changes = (Apache.Arrow.StringArray)batch.Column("_change_type");
+                        for (int i = 0; i < changes.Length; i++)
+                        {
+                            rows.Add($"{changes.GetString(i)} {keys.GetValue(i)}");
+                        }
+                    }
+                }
+            }
+            rows.Sort(StringComparer.Ordinal);
+            return rows;
+        }
+
         // Each version's files by content and deleted rows, not by name
         public static async Task<List<string>> TableHistory(IFileStorage storage, string table, long lastVersion)
         {

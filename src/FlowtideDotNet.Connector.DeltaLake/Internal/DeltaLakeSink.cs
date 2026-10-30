@@ -94,6 +94,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
         // True while the committed temporary tree may hold rows that wait for a publication
         private IObjectState<bool>? _bufferDurable;
+        // The tree may hold a retraction
+        private bool _deletesSeen;
         // The staged bytes and catalog changes of this run's pending commit
         private CommitBytes? _stagedBytes;
         private CatalogOverlay? _stagedOverlay;
@@ -212,6 +214,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
             _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
             _bufferDurable = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("bufferDurable");
+            // Restored rows never pass this run's intake
+            if (_bufferDurable.Value)
+            {
+                _deletesSeen = true;
+            }
 
             // Vertices are reused across restarts
             _stagedBytes = null;
@@ -533,6 +540,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             if (!_bufferDurable.Value)
             {
                 await _temporaryTree.Clear();
+                _deletesSeen = false;
                 return;
             }
 
@@ -573,6 +581,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             TemporaryTreeCommitHookForTests?.Invoke(_tableName);
             await _temporaryTree.Commit();
             _bufferDurable.Value = false;
+            _deletesSeen = false;
         }
 
         public override async Task CommitVersion(long version)
@@ -971,8 +980,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     // Only used to compare deleted rows, never written
                     var deleteWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, countNulls: true);
 
+                    // Without retractions the add actions are the change data
                     ParquetSharpWriter? cdcWriter = default;
-                    if (changeDataEnabled)
+                    if (changeDataEnabled && (_deletesSeen || _limits.InsertChangeData))
                     {
                         cdcWriter = new ParquetSharpWriter(schema, _writeRelation.TableSchema.Names, isCdcWriter: true, writerProperties: codec.WriterProperties);
                         cdcWriter.NewBatch();
@@ -1404,6 +1414,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_intake != null);
+            // Before any intake path, so every path's retractions count
+            if (!_deletesSeen && msg.Data.Weights.Span.IndexOfAnyInRange(int.MinValue, -1) >= 0)
+            {
+                _deletesSeen = true;
+            }
             return _intake.Apply(msg.Data.EventBatchData, msg.Data.Weights);
         }
     }

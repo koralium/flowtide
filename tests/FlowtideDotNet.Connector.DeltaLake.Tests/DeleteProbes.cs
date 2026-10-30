@@ -18,6 +18,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
@@ -344,7 +345,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [InlineData(true, true)]
         public async Task B4InsertOnly(bool stringHeavy, bool changeData)
         {
-            if (!ProbeKit.Enabled)
+            // One case per invocation lets old and new alternate
+            var only = Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_B4");
+            if (!ProbeKit.Enabled || (only != null && only != $"{(stringHeavy ? "strings" : "narrow")}-{(changeData ? "on" : "off")}"))
             {
                 return;
             }
@@ -368,6 +371,42 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
             }
             kit.Report("insert 1M", samples);
+        }
+
+        // The flag's weight scan alone, which no B4 window holds
+        [Fact]
+        public void B4WeightScan()
+        {
+            if (!ProbeKit.Enabled)
+            {
+                return;
+            }
+            var kit = new ProbeKit(_output, "B4 weight scan, 1M positive weights, as OnRecieve checks them");
+            foreach (var batch in new[] { 100, 1_000, 10_000 })
+            {
+                using var weights = new PrimitiveList<int>(GlobalMemoryManager.Instance, batch);
+                for (int i = 0; i < batch; i++)
+                {
+                    weights.Add(1);
+                }
+                var times = new List<double>();
+                var found = 0;
+                for (int run = 0; run <= ProbeKit.Runs; run++)
+                {
+                    var watch = Stopwatch.StartNew();
+                    for (int done = 0; done < 1_000_000; done += batch)
+                    {
+                        found += weights.Span.IndexOfAnyInRange(int.MinValue, -1) >= 0 ? 1 : 0;
+                    }
+                    watch.Stop();
+                    if (run > 0)
+                    {
+                        times.Add(watch.Elapsed.TotalMilliseconds);
+                    }
+                }
+                Assert.Equal(0, found);
+                kit.Write($"batch {batch} | 1M weights {ProbeKit.Spread(times)} ms");
+            }
         }
 
         // Each run deletes from its own copy, then inserts back
