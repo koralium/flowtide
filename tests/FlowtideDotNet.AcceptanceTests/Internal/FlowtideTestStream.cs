@@ -191,6 +191,15 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
         }
 
+        // As EnterDataWriteLock, without blocking an async test
+        public async Task EnterDataWriteLockAsync()
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                await _db.RwLock.WaitAsync();
+            }
+        }
+
         public void ExitDataWriteLock()
         {
             for (int i = 0; i < 10; i++)

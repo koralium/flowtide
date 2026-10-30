@@ -38,6 +38,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         // Every row hashes the same, for tests
         public bool CollideHashes { get; set; }
 
+        // Change rows without a retraction, so tests get discarded files
+        public bool InsertChangeData { get; set; }
+
         // Test the first pruning column before the whole row
         public bool Prefilter { get; set; } = true;
     }

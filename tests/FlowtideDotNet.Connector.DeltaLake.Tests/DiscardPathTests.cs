@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.DeltaLake.Internal;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Stowage;
@@ -32,6 +33,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
             {
                 options.WriteChangeDataOnNewTables = true;
+                // Insert-only versions still write change files to discard
+                options.DeleteLimitsOverride = new DeleteLimits() { InsertChangeData = true };
                 options.MaxFileSizeBytes = 500;
                 options.SinkCreatedForTests = created => sink = created;
             });

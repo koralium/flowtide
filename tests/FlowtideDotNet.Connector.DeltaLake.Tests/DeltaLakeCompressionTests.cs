@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using ParquetSharp;
 using Stowage;
@@ -29,6 +30,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 options.CheckpointInterval = 2;
                 options.WriteChangeDataOnNewTables = true;
+                // Insert-only versions still write change files to discard
+                options.DeleteLimitsOverride = new DeleteLimits() { InsertChangeData = true };
                 sinkOptions = options;
             });
             stream.WaitForUpdateDoesNotRequireDataChange();

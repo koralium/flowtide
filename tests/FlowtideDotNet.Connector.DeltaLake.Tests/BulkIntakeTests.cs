@@ -115,6 +115,54 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(0, off.Intakes.Sum(x => x.BulkRows));
         }
 
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task DeleteCdfOnEveryIntakePath(bool bulk, bool wrapper)
+        {
+            var testName = $"{nameof(DeleteCdfOnEveryIntakePath)}_{bulk}_{wrapper}";
+            var storage = Files.Of.InternalMemory($"./{testName}");
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.WriteChangeDataOnNewTables = true;
+                // A delete rewrites its file, whose survivors are no changes
+                options.EnableDeletionVectorsOnNewTables = false;
+                options.DeleteLimitsOverride = new DeleteLimits() { BulkIntake = bulk };
+            });
+            // Computed columns arrive new, filtered source columns as wrappers
+            var select = wrapper ? "userKey AS userkey, firstName AS name FROM users WHERE visits > 0" : "userKey + 0 AS userkey, firstName || '' AS name FROM users";
+            var users = Enumerable.Range(1, 22).Select(x => new User() { UserKey = x, FirstName = $"First{x}", Visits = x % 4 }).ToList();
+            stream.AddUsers(users.Take(20).ToList());
+            await stream.StartStream($"CREATE TABLE t (userkey INT, name STRING); INSERT INTO t SELECT {select}");
+            await WaitForVersion(storage, "t", stream, 0);
+
+            // One fetch, one checkpoint for the retraction and inserts
+            await stream.EnterDataWriteLockAsync();
+            try
+            {
+                stream.AddUsers(users.Skip(20).ToList());
+                stream.DeleteUsers(new[] { users[1] });
+            }
+            finally
+            {
+                stream.ExitDataWriteLock();
+            }
+            await WaitForVersion(storage, "t", stream, 1);
+
+            // The file was rewritten, no deletion vector hides a survivor
+            var actions = await ReadCommitActions(storage, "t", 1);
+            Assert.Contains(actions, x => x.Remove != null);
+            Assert.All(actions.Where(x => x.Add != null), x => Assert.Null(x.Add!.DeletionVector));
+            Assert.Equal(new[] { "delete 2", "insert 21", "insert 22" }, await ChangeKeys(storage, "t", 1));
+            var intake = stream.Sinks[^1].Intake!;
+            Assert.Equal(bulk, intake.BulkRows > 0);
+            Assert.Equal(!bulk, intake.PerRowRows > 0);
+            // Every batch wraps its columns, or none does
+            Assert.Equal(wrapper ? intake.BulkRows + intake.PerRowRows : 0, intake.WrapperRows);
+        }
+
         private static async Task<(List<string> History, List<TemporaryTreeIntake> Intakes)> RunPipeline(string testName, string pipeline, DeleteLimits limits)
         {
             var sql = pipeline switch

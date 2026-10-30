@@ -211,6 +211,116 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(optOut ? 0 : 1, await ChangeRows(storage, "test", published, "delete"));
         }
 
+        [Fact]
+        public async Task ADeleteThatWaitedInTheBufferWritesChangeDataAfterARestart()
+        {
+            var testName = nameof(ADeleteThatWaitedInTheBufferWritesChangeDataAfterARestart);
+            var stateFiles = new KeepAliveMemoryFileProvider();
+            var inner = Files.Of.InternalMemory($"./{testName}");
+            var storage = new HookFileStorage(inner);
+            DeltaLakeSinkStream Changes(out TestLogCollector logs)
+            {
+                var stream = new DeltaLakeSinkStream(testName, storage, options => options.WriteChangeDataOnNewTables = true, stateFiles: stateFiles);
+                logs = new TestLogCollector();
+                stream.AddLoggerProvider(logs);
+                stream.WaitForUpdateDoesNotRequireDataChange();
+                return stream;
+            }
+
+            await using (var first = Changes(out var logs))
+            {
+                AddUsers(first, 0, 10);
+                await first.StartStream(UserInsert);
+                await WaitForVersion(storage, "test", first, 0);
+
+                // An insert-only stage halts, then a delete waits behind it
+                ForeignCommitBeforePublish(storage, inner, 1);
+                AddUsers(first, 10, 11);
+                await WaitUntil(first, () => logs.Errors.Count >= 1);
+                first.DeleteUser(Users[0]);
+                await first.WaitForUpdate();
+                await first.WaitForUpdate();
+                await first.StopStream();
+            }
+
+            // The restored delete never passes this run's intake
+            await using (var second = Changes(out var logs))
+            {
+                AddUsers(second, 0, 11);
+                second.DeleteUser(Users[0]);
+                await second.StartStream(UserInsert);
+                await WaitUntil(second, () => logs.Errors.Count >= 1);
+                await inner.Rm(CommitPath("test", 1));
+                await WaitForVersionCheckpointing(storage, "test", second, 2);
+                // Only the restored tree held the delete
+                Assert.Equal(0, second.Sinks[^1].Intake!.BulkRows + second.Sinks[^1].Intake!.PerRowRows);
+                await second.StopStream();
+            }
+
+            Assert.Equal(new[] { "delete 1" }, await ChangeKeys(storage, "test", 2));
+        }
+
+        [Fact]
+        public async Task AnInsertOnlyCheckpointAfterADrainedBufferWritesNoChangeData()
+        {
+            var testName = nameof(AnInsertOnlyCheckpointAfterADrainedBufferWritesNoChangeData);
+            var inner = Files.Of.InternalMemory($"./{testName}");
+            var storage = new HookFileStorage(inner);
+            var logs = new TestLogCollector();
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                options.WriteChangeDataOnNewTables = true;
+                // A file per row, so change rows fill files mid-walk
+                options.MaxFileSizeBytes = 1;
+            });
+            stream.AddLoggerProvider(logs);
+            stream.WaitForUpdateDoesNotRequireDataChange();
+            AddUsers(stream, 0, 10);
+            await stream.StartStream(UserInsert);
+            await WaitForVersion(storage, "test", stream, 0);
+
+            // A delete waits in the committed buffer behind a halted stage
+            ForeignCommitBeforePublish(storage, inner, 1);
+            AddUsers(stream, 10, 11);
+            await WaitUntil(stream, () => logs.Errors.Count >= 1);
+            // Catch up, so later waits count new checkpoints
+            await stream.WaitForUpdate();
+            stream.DeleteUser(Users[0]);
+            await WaitUntil(stream, () => stream.Sinks[^1].Intake!.BulkRows + stream.Sinks[^1].Intake!.PerRowRows >= 12);
+            await RunCheckpoints(stream, 2);
+
+            // Keep the next checkpoint from clearing an empty buffer
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var parked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            storage.Before = async (verb, path) =>
+            {
+                if (verb == "OpenWrite" && path.Full.EndsWith(CommitPath("test", 2)))
+                {
+                    parked.TrySetResult();
+                    await gate.Task;
+                }
+            };
+            await inner.Rm(CommitPath("test", 1));
+            var drain = WaitForVersionCheckpointing(storage, "test", stream, 2);
+            try
+            {
+                await parked.Task.WaitAsync(TimeSpan.FromMinutes(2));
+                storage.ClearRequests();
+                AddUsers(stream, 11, 13);
+                await WaitUntil(stream, () => stream.Sinks[^1].Intake!.BulkRows + stream.Sinks[^1].Intake!.PerRowRows >= 14);
+            }
+            finally
+            {
+                gate.TrySetResult();
+                await drain;
+            }
+            await WaitForVersion(storage, "test", stream, 3);
+
+            Assert.DoesNotContain(await ReadCommitActions(storage, "test", 3), x => x.Cdc != null);
+            Assert.DoesNotContain(storage.Requests, x => x.Contains("_change_data"));
+            Assert.Equal(new[] { "delete 1" }, await ChangeKeys(storage, "test", 2));
+        }
+
         private static DeltaLakeSinkStream NewStream(string testName, HookFileStorage storage, KeepAliveMemoryFileProvider stateFiles, out TestLogCollector logs)
         {
             var stream = new DeltaLakeSinkStream(testName, storage, stateFiles: stateFiles);
