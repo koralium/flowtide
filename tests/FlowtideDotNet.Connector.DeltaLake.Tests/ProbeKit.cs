@@ -29,7 +29,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     }
 
     // One measured run, sink time ends at the staged commit
-    internal readonly record struct ProbeSample(double WallMs, double SinkMs, double CpuMs, int Requests, long BytesRead, int DvWrites, long Allocated, long PeakWorkingSet);
+    internal readonly record struct ProbeSample(double WallMs, double SinkMs, double CpuMs, int Requests, long BytesRead, int DvWrites, long Allocated, long PeakWorkingSet, int DvReads = 0, long DvBytesRead = 0);
 
     internal sealed class ProbeKit
     {
@@ -397,7 +397,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             var requests = Storage.Requests;
             var dvWrites = requests.Count(x => x.StartsWith("OpenWrite ", StringComparison.Ordinal) && x.Contains("deletion_vector", StringComparison.Ordinal));
-            return new ProbeSample(wall, sinkMs, (CpuTime() - cpu).TotalMilliseconds, requests.Count, BytesRead(requests), dvWrites, GC.GetTotalAllocatedBytes(true) - allocated, peak);
+            var dvReads = requests.Where(x => x.StartsWith("OpenRead ", StringComparison.Ordinal) && x.Contains("deletion_vector", StringComparison.Ordinal)).ToList();
+            return new ProbeSample(wall, sinkMs, (CpuTime() - cpu).TotalMilliseconds, requests.Count, BytesRead(requests), dvWrites, GC.GetTotalAllocatedBytes(true) - allocated, peak, dvReads.Count, BytesRead(dvReads));
         }
 
         // Finishes the checkpoints in flight, so a clock starts on an idle stream

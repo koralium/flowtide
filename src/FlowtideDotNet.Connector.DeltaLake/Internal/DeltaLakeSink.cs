@@ -1056,7 +1056,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         {
                             throw new InvalidOperationException("Table should not be null when delete is found");
                         }
-                        var output = new DeleteOutput(_options.StorageLocation, _tablePath, _tableName, schema, table.ColumnMappingById, table.DeleteVectorEnabled, codec.WriterProperties, IsFull, rewriter => WriteNewFile(rewriter, actions, currentTime, overlay, created));
+                        var output = new DeleteOutput(_options.StorageLocation, _tablePath, _tableName, schema, table.ColumnMappingById, table.DeleteVectorEnabled, codec.WriterProperties, IsFull, rewriter => WriteNewFile(rewriter, actions, currentTime, overlay, created), _limits);
                         await output.WriteAsync(deletes.Claims, deletes.Records, deletes.FooterRows, actions, currentTime, overlay, created);
                     }
                     if (cdcWriter != null)

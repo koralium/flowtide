@@ -14,7 +14,6 @@ using Apache.Arrow;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Catalog;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Deletes;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
@@ -338,10 +337,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             DeletionVector? vector = null;
             if (existing != null)
             {
-                var bitmap = RoaringBitmapArray.Create(existing);
-                var (vectorPath, z85) = DeletionVectorWriter.GenerateDestination();
-                var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(storage, "/t", vectorPath, bitmap);
-                vector = new DeletionVector() { Cardinality = bitmap.Cardinality, Offset = 1, StorageType = "u", PathOrInlineDv = z85, SizeInBytes = dataSize };
+                vector = await DeltaTestKit.WriteVectorFile(storage, "/t", existing);
             }
             return new DeltaFileRecord() { Path = path, Size = size, PartitionValues = new Dictionary<string, string>(), DeletionVector = vector };
         }

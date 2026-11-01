@@ -23,7 +23,7 @@ using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
-    public class DeltaLakeStagedSweepTests : IDisposable
+    public partial class DeltaLakeStagedSweepTests : IDisposable
     {
         private static readonly DateTimeOffset s_now = new DateTimeOffset(2026, 10, 15, 12, 0, 0, TimeSpan.Zero);
         private static readonly TimeSpan s_wait = TimeSpan.FromSeconds(30);

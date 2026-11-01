@@ -34,8 +34,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         private readonly ParquetSharp.WriterProperties? _writerProperties;
         private readonly Func<ParquetSharpWriter, bool> _isFull;
         private readonly Func<ParquetSharpWriter, Task> _writeFile;
+        private readonly int _vectorFileBytes;
+        private DeletionVectorContainer? _vectors;
 
-        public DeleteOutput(IFileStorage storage, IOPath table, string tableName, StructType schema, bool columnsById, bool deletionVectors, ParquetSharp.WriterProperties? writerProperties, Func<ParquetSharpWriter, bool> isFull, Func<ParquetSharpWriter, Task> writeFile)
+        public DeleteOutput(IFileStorage storage, IOPath table, string tableName, StructType schema, bool columnsById, bool deletionVectors, ParquetSharp.WriterProperties? writerProperties, Func<ParquetSharpWriter, bool> isFull, Func<ParquetSharpWriter, Task> writeFile, DeleteLimits? limits = null)
         {
             _storage = storage;
             _table = table;
@@ -46,6 +48,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
             _writerProperties = writerProperties;
             _isFull = isFull;
             _writeFile = writeFile;
+            _vectorFileBytes = (limits ?? DeleteLimits.Default).DeletionVectorFileBytes;
         }
 
         // Only files with a new claim have a vector, walked in id order
@@ -77,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                 }
                 if (_deletionVectors && (double)count / rows < 0.1)
                 {
-                    await WriteDeletionVector(id, file, deleted, rows, actions, overlay, created);
+                    await AddDeletionVector(id, file, deleted, rows, actions, overlay, created);
                     continue;
                 }
 
@@ -89,7 +92,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                     {
                         throw new InvalidOperationException($"Delta table {_tableName} cannot rewrite {file.Path}: a surviving row holds a timestamp finer than a microsecond. Enable deletion vectors on the table to delete from this file");
                     }
-                    await WriteDeletionVector(id, file, deleted, rows, actions, overlay, created);
+                    await AddDeletionVector(id, file, deleted, rows, actions, overlay, created);
                     continue;
                 }
 
@@ -101,6 +104,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                     await _writeFile(writer);
                 }
                 overlay.Removes.Add(id);
+            }
+
+            // Written last, unless a roll already wrote one
+            if (_vectors != null)
+            {
+                await WriteVectors(created);
             }
         }
 
@@ -129,29 +138,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
             return count;
         }
 
-        private async Task WriteDeletionVector(int id, DeltaFileRecord file, ModifiableDeleteVector deleted, long rows, List<DeltaAction> actions, CatalogOverlay overlay, List<string> created)
+        private async Task AddDeletionVector(int id, DeltaFileRecord file, ModifiableDeleteVector deleted, long rows, List<DeltaAction> actions, CatalogOverlay overlay, List<string> created)
         {
             var roaringBitmap = deleted.ToRoaringBitmapArray();
-            var (deletePath, z85string) = DeletionVectorWriter.GenerateDestination();
+            var frame = DeletionVectorWriter.Frame(roaringBitmap);
 
-            // Owned before the write, a failed write may still leave the file
-            created.Add(deletePath);
-            var (_, dataSize) = await DeletionVectorWriter.WriteDeletionVector(_storage, _table, deletePath, roaringBitmap);
-
-            var reAdded = file.ToAdd().WithDeletionVector(new DeletionVector()
+            // A vector past the limit starts a new file
+            if (_vectors != null && _vectors.Length + frame.Length > _vectorFileBytes)
             {
-                Cardinality = roaringBitmap.Cardinality,
-                Offset = 1,
-                StorageType = "u",
-                PathOrInlineDv = z85string,
-                SizeInBytes = dataSize
-            }, rows);
+                await WriteVectors(created);
+            }
+            _vectors ??= new DeletionVectorContainer();
+
+            var reAdded = file.ToAdd().WithDeletionVector(_vectors.Add(frame, roaringBitmap.Cardinality), rows);
             actions.Add(new DeltaAction()
             {
                 Add = reAdded
             });
             // Same file and bounds, the record takes the footer's count
             overlay.Updates.Add((id, DeltaFileRecord.FromAdd(reAdded, rows)));
+        }
+
+        private async Task WriteVectors(List<string> created)
+        {
+            var vectors = _vectors!;
+            _vectors = null;
+            // Owned before the write, a failed write may still leave the file
+            created.Add(vectors.Path);
+            await vectors.WriteAsync(_storage, _table);
         }
 
         // A survivor holding a timestamp a microsecond copy would change

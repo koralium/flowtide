@@ -12,13 +12,18 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Utils;
-using Stowage;
 using System.Buffers.Binary;
+using System.IO.Hashing;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 {
     internal static class DeletionVectorWriter
     {
+        // An entry's size and checksum around its data
+        public const int FrameOverhead = 8;
+
+        private const int MagicNumber = 1681511377;
+
         public static (string path, string z85string) GenerateDestination()
         {
             var guid = Guid.NewGuid();
@@ -29,60 +34,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             return (path, str);
         }
 
-        public static async Task<(int fileSize, int dataSize)> WriteDeletionVector(IFileStorage storage, IOPath table, string fileName, RoaringBitmapArray array)
+        // One entry: size, magic number and bitmap, checksum
+        public static byte[] Frame(RoaringBitmapArray array)
         {
-            using var stream = await storage.OpenWrite(table.Combine(fileName));
-
-            if (stream == null)
-            {
-                throw new Exception("Failed to open stream");
-            }
-
-            using var writeStream = new DeltaWriteStream(stream);
-
-            using MemoryStream memoryStream = new MemoryStream();
+            using var memoryStream = new MemoryStream();
             using var writer = new BinaryWriter(memoryStream);
 
+            writer.Write(0);
+            writer.Write(MagicNumber);
             array.Serialize(writer);
 
             // dataSize is magic number (4 bytes) + roaring bitmap size
-            var dataSize = 4 + (int)memoryStream.Position;
-            var sizeBytes = new byte[4];
-            BinaryPrimitives.WriteInt32BigEndian(sizeBytes, dataSize);
+            var dataSize = (int)memoryStream.Length - 4;
+            writer.Write(0);
 
-            writeStream.WriteByte(1);
-            // Write data size
-            writeStream.Write(sizeBytes);
-
-            var magicBytes = new byte[4];
-            BinaryPrimitives.WriteInt32LittleEndian(magicBytes, 1681511377);
-            writeStream.Write(magicBytes);
-
-            memoryStream.Position = 0;
-            await memoryStream.CopyToAsync(writeStream);
-
-            // Compute CRC-32 of bitmapData (magic number + serialized bitmap)
-            var crc = new System.IO.Hashing.Crc32();
-            crc.Append(magicBytes);
-            if (memoryStream.TryGetBuffer(out ArraySegment<byte> buffer))
-            {
-                crc.Append(buffer.AsSpan(0, (int)memoryStream.Length));
-            }
-            else
-            {
-                crc.Append(memoryStream.ToArray());
-            }
-
-            var checksumValue = crc.GetCurrentHashAsUInt32();
-            var checksumBytes = new byte[4];
-            BinaryPrimitives.WriteUInt32BigEndian(checksumBytes, checksumValue);
-            writeStream.Write(checksumBytes);
-
-            await writeStream.FlushAsync();
-
-            int fileSize = (int)writeStream.Position;
-
-            return (fileSize, dataSize);
+            var frame = memoryStream.ToArray();
+            BinaryPrimitives.WriteInt32BigEndian(frame, dataSize);
+            BinaryPrimitives.WriteUInt32BigEndian(frame.AsSpan(4 + dataSize), Crc32.HashToUInt32(frame.AsSpan(4, dataSize)));
+            return frame;
         }
     }
 }
