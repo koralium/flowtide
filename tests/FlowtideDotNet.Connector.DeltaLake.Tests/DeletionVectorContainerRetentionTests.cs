@@ -243,7 +243,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task ASinkWrittenContainerStaysUntilItsLastFileGoes()
         {
-            var root = Path.Combine(Path.GetTempPath(), "dvr-" + ScratchOwners.ShortId());
+            var root = Path.Join(Path.GetTempPath(), "dvr-" + ScratchOwners.ShortId());
             Directory.CreateDirectory(root);
             try
             {
@@ -292,7 +292,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 // The planner kit lays a table out below t
                 var table = _kit.Local();
-                CopyDirectory(Path.Combine(root, "test"), table.Native);
+                CopyDirectory(Path.Join(root, "test"), table.Native);
                 await _kit.Build(table, 3);
                 await _kit.Build(table, 6);
                 var read = (await DeltaTransactionReader.ReadTable(table.Local, "t", 3))!;
@@ -334,11 +334,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Directory.CreateDirectory(to);
             foreach (var file in Directory.GetFiles(from))
             {
-                File.Copy(file, Path.Combine(to, Path.GetFileName(file)));
+                File.Copy(file, Path.Join(to, Path.GetFileName(file)));
             }
             foreach (var folder in Directory.GetDirectories(from))
             {
-                CopyDirectory(folder, Path.Combine(to, Path.GetFileName(folder)));
+                CopyDirectory(folder, Path.Join(to, Path.GetFileName(folder)));
             }
         }
     }

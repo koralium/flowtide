@@ -355,9 +355,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var random = new Random(files);
             var first = new List<User>();
             var second = new List<User>();
-            foreach (var file in fixture.Files)
+            foreach (var picked in fixture.Files.Select(file => Sample(file, perFile + 1, random)))
             {
-                var picked = Sample(file, perFile + 1, random);
                 second.Add(picked[0]);
                 first.AddRange(picked.Skip(1));
             }
@@ -399,7 +398,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var delta = await DeltaTransactionReader.ReadTable(table.Storage, name);
             var vectors = delta!.AddFiles.Where(x => x.DeletionVector != null).Select(x => x.DeletionVector!).ToList();
-            var sizes = vectors.Select(x => x.AbsolutePath!).Distinct().Select(x => new FileInfo(Path.Combine(table.Root, name, x)).Length).ToList();
+            var sizes = vectors.Select(x => x.AbsolutePath!).Distinct().Select(x => new FileInfo(Path.Join(table.Root, name, x)).Length).ToList();
             return $"vector files {sizes.Count} | entries {vectors.Count} | largest file {sizes.Max()} B | most entries in a file {vectors.GroupBy(x => x.AbsolutePath).Max(x => x.Count())}" +
                 $" | largest entry {vectors.Max(x => x.SizeInBytes) + 8} B | skipped by reads {vectors.Sum(x => x.Offset!.Value - 1)} B";
         }
