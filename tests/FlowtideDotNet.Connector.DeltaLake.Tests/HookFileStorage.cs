@@ -103,6 +103,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public int Tears;
 
+        // Fails the next write of a path ending with this
+        public string? FaultWriteOf { get; set; }
+
+        // It fails at the flush instead of the write
+        public bool FaultAtFlush { get; set; }
+
         // Writes and flushes of a path ending with this, as "W<count>" and "F"
         public string? RecordWritesOf { get; set; }
 
@@ -180,6 +186,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             if (record != null && path.Full.EndsWith(record))
             {
                 stream = new RecordingStream(stream, WriteEvents);
+            }
+            var fault = FaultWriteOf;
+            if (fault != null && path.Full.EndsWith(fault))
+            {
+                FaultWriteOf = null;
+                return new FaultStream(stream, FaultAtFlush, () => _requests.Enqueue($"Closed {path.Full}"));
             }
             var tear = TearWriteOf;
             if (tear != null && path.Full.EndsWith(tear))
@@ -472,6 +484,89 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public override async ValueTask DisposeAsync()
             {
                 await _inner.DisposeAsync();
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        // Fails a write or flush, the stream stays open
+        private sealed class FaultStream : Stream
+        {
+            private readonly Stream _inner;
+            private readonly bool _atFlush;
+            private readonly Action _closed;
+            private int _disposed;
+
+            public FaultStream(Stream inner, bool atFlush, Action closed)
+            {
+                _inner = inner;
+                _atFlush = atFlush;
+                _closed = closed;
+            }
+
+            public override bool CanRead => false;
+            public override bool CanSeek => false;
+            public override bool CanWrite => true;
+            public override long Length => throw new NotSupportedException();
+            public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+            public override void Flush()
+            {
+                if (_atFlush)
+                {
+                    throw new CrashException();
+                }
+                _inner.Flush();
+            }
+
+            public override Task FlushAsync(CancellationToken cancellationToken)
+            {
+                Flush();
+                return Task.CompletedTask;
+            }
+
+            public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+            public override void SetLength(long value) => throw new NotSupportedException();
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                if (!_atFlush)
+                {
+                    throw new CrashException();
+                }
+                _inner.Write(buffer, offset, count);
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                Write(buffer, offset, count);
+                return Task.CompletedTask;
+            }
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                Write(buffer.ToArray(), 0, buffer.Length);
+                return ValueTask.CompletedTask;
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
+                {
+                    _inner.Dispose();
+                    _closed();
+                }
+            }
+
+            public override async ValueTask DisposeAsync()
+            {
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                {
+                    await _inner.DisposeAsync();
+                    _closed();
+                }
                 GC.SuppressFinalize(this);
             }
         }

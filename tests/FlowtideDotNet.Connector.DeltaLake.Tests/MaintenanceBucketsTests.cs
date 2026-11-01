@@ -245,7 +245,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var stub = new ListingStub(3001);
                 using (var cancellation = new CancellationTokenSource())
                 {
-                    var waiting = list(MeteredFileStorage.Wrap(stub, buckets, ListingPaging.S3), cancellation.Token);
+                    // Start on the pool since xunit's queue can stall
+                    var waiting = await Task.Run<Task>(() => list(MeteredFileStorage.Wrap(stub, buckets, ListingPaging.S3), cancellation.Token));
                     Assert.Equal(1, buckets.Requests.QueueLength);
                     cancellation.Cancel();
                     await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waiting.WaitAsync(s_timeout));
@@ -257,7 +258,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 clock.Advance(s_second);
                 using (var cancellation = new CancellationTokenSource())
                 {
-                    var repaying = list(MeteredFileStorage.Wrap(stub, buckets, ListingPaging.S3), cancellation.Token);
+                    var repaying = await Task.Run<Task>(() => list(MeteredFileStorage.Wrap(stub, buckets, ListingPaging.S3), cancellation.Token));
                     Assert.Equal(3, buckets.Requests.Debt);
                     Assert.False(repaying.IsCompleted, name);
                     cancellation.Cancel();

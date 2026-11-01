@@ -13,7 +13,6 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
-using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Advance;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
@@ -133,9 +132,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // A one-row deletion vector file on the table's storage
         private protected static async Task<DeletionVector> VectorAsync(Cell cell)
         {
-            var (name, id) = DeletionVectorWriter.GenerateDestination();
-            var (_, size) = await DeletionVectorWriter.WriteDeletionVector(cell.Table.Raw, "t", name, RoaringBitmapArray.Create(new long[] { 0 }));
-            return new DeletionVector() { StorageType = "u", PathOrInlineDv = id, Offset = 1, SizeInBytes = size, Cardinality = 1 };
+            return await DeltaTestKit.WriteVectorFile(cell.Table.Raw, "t", 0);
         }
 
         // A one-byte file at a store path
@@ -555,10 +552,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             try
             {
                 // The last data file again with its only row deleted
-                var (name, id) = DeletionVectorWriter.GenerateDestination();
-                var (_, size) = await DeletionVectorWriter.WriteDeletionVector(table.Raw, "t", name, RoaringBitmapArray.Create(new long[] { 0 }));
+                var vector = await DeltaTestKit.WriteVectorFile(table.Raw, "t", 0);
                 var last = (await DeltaTransactionReader.ReadTable(table.Raw, "t", 14))!.AddFiles.Single();
-                var vector = new DeletionVector() { StorageType = "u", PathOrInlineDv = id, Offset = 1, SizeInBytes = size, Cardinality = 1 };
                 await DeltaTestKit.WriteOwnCommit(table.Raw, "t", 15, 0, BoundarySelectorTests.Old(15),
                     DeltaLakeCheckpointBuildTests.Remove(last.Path!, BoundarySelectorTests.Old(15)), new DeltaAction() { Add = last.WithDeletionVector(vector, 1) });
 

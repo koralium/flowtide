@@ -35,6 +35,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         // A file's entries are tested one by one up to this many
         public int SelectorThreshold { get; set; } = 8;
 
+        // Largest shared vector file, reads fetch all of it
+        public int DeletionVectorFileBytes { get; set; } = 1_048_576;
+
         // Every row hashes the same, for tests
         public bool CollideHashes { get; set; }
 

@@ -429,12 +429,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.False(saved.RootElement.GetProperty("tightBounds").GetBoolean());
         }
 
-        private static readonly Delta.StructType Timestamps = new Delta.StructType(new[] { Field("ts", new Delta.TimestampType()) });
+        internal static readonly Delta.StructType Timestamps = new Delta.StructType(new[] { Field("ts", new Delta.TimestampType()) });
 
         private sealed record Output(List<string> Actions, List<(string Path, long Rows)> Written, CatalogOverlay Overlay);
 
         // Row 5 is 500 nanoseconds past a whole microsecond
-        private static byte[] InexactFile(string type, int rows = 10, bool whole = false)
+        internal static byte[] InexactFile(string type, int rows = 10, bool whole = false)
         {
             var nanos = Enumerable.Range(0, rows).Select(i => i * 1_000_000L + (i == 5 && !whole ? 500 : 0)).ToArray();
             return type == "int96"

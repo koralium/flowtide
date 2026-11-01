@@ -15,6 +15,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Logging;
@@ -38,6 +39,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             INSERT INTO test
             SELECT userKey AS userkey, firstName AS name FROM users
         ";
+
+        // One vector alone in a new file
+        internal static async Task<DeletionVector> WriteVectorFile(IFileStorage storage, IOPath table, params long[] positions)
+        {
+            var bitmap = RoaringBitmapArray.Create(positions);
+            var container = new DeletionVectorContainer();
+            var vector = container.Add(DeletionVectorWriter.Frame(bitmap), bitmap.Cardinality);
+            await container.WriteAsync(storage, table);
+            return vector;
+        }
 
         public static string CommitPath(string table, long version) => $"/{table}/_delta_log/{version:D20}.json";
 

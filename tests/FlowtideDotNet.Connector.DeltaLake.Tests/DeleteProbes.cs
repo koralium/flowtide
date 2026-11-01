@@ -326,8 +326,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return;
             }
-            var kit = new ProbeKit(_output, $"B3 50 files, spread, {s_latency.TotalMilliseconds:0} ms per request");
-            using var fixture = await ProbeFixture.Build("b3_50_spread", 50, RowsPerFile, kit);
+            var files = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_FILES"), out var count) ? count : 50;
+            var kit = new ProbeKit(_output, $"B3 {files} files, spread, {s_latency.TotalMilliseconds:0} ms per request");
+            using var fixture = await ProbeFixture.Build($"b3_{files}_spread", files, RowsPerFile, kit);
             var pool = fixture.Files.SelectMany(x => x).ToList();
             foreach (var deletes in new[] { 16, 1_000 })
             {
@@ -336,6 +337,70 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     break;
                 }
             }
+        }
+
+        // A first delete packs, a second reads every file's vector
+        [Theory]
+        [InlineData("sparse", 50, 20)]
+        [InlineData("full", 130, 4_950)]
+        public async Task VectorReads(string density, int files, int perFile)
+        {
+            var only = Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_READS");
+            if (!ProbeKit.Enabled || (only != null && only != density))
+            {
+                return;
+            }
+            var kit = new ProbeKit(_output, $"Vector reads, {density}, {files} files, {perFile} deletes each, {s_latency.TotalMilliseconds:0} ms per request");
+            using var fixture = await ProbeFixture.Build($"reads_{density}", files, RowsPerFile, kit);
+            var random = new Random(files);
+            var first = new List<User>();
+            var second = new List<User>();
+            foreach (var picked in fixture.Files.Select(file => Sample(file, perFile + 1, random)))
+            {
+                second.Add(picked[0]);
+                first.AddRange(picked.Skip(1));
+            }
+            var writes = new List<ProbeSample>();
+            var reads = new List<ProbeSample>();
+            var layout = "";
+            for (int run = 0; run <= ProbeKit.Runs; run++)
+            {
+                await using var table = await fixture.Open(s_latency);
+                var write = await table.Measure(() => table.Stream.DeleteUsers(first));
+                ProbeSample? read = null;
+                if (write != null)
+                {
+                    await ExpectRows(table, fixture.Rows - first.Count);
+                    await table.Settle();
+                    layout = await VectorLayout(table, fixture.Name);
+                    read = await table.Measure(() => table.Stream.DeleteUsers(second));
+                }
+                if (write == null || read == null)
+                {
+                    kit.Write($"{density} | did not finish within {ProbeKit.DidNotFinish.TotalSeconds:0} s");
+                    return;
+                }
+                await ExpectRows(table, fixture.Rows - first.Count - second.Count);
+                if (run > 0)
+                {
+                    writes.Add(write.Value);
+                    reads.Add(read.Value);
+                }
+            }
+            kit.Report("first delete", writes);
+            kit.Report("second delete", reads, $" | dv reads {ProbeKit.Spread(reads, x => x.DvReads)} | dv read {ProbeKit.Spread(reads, x => x.DvBytesRead / 1024.0)} KiB" +
+                $" | modelled {ProbeKit.Spread(reads, x => x.DvReads * s_latency.TotalMilliseconds + x.DvBytesRead * 8e-6)} ms");
+            kit.Write(layout);
+        }
+
+        // The head's vector files and the bytes readers skip
+        private static async Task<string> VectorLayout(ProbeTable table, string name)
+        {
+            var delta = await DeltaTransactionReader.ReadTable(table.Storage, name);
+            var vectors = delta!.AddFiles.Where(x => x.DeletionVector != null).Select(x => x.DeletionVector!).ToList();
+            var sizes = vectors.Select(x => x.AbsolutePath!).Distinct().Select(x => new FileInfo(Path.Join(table.Root, name, x)).Length).ToList();
+            return $"vector files {sizes.Count} | entries {vectors.Count} | largest file {sizes.Max()} B | most entries in a file {vectors.GroupBy(x => x.AbsolutePath).Max(x => x.Count())}" +
+                $" | largest entry {vectors.Max(x => x.SizeInBytes) + 8} B | skipped by reads {vectors.Sum(x => x.Offset!.Value - 1)} B";
         }
 
         [Theory]
