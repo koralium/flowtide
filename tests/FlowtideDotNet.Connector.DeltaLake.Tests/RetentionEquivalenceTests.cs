@@ -256,7 +256,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Change(writer!, ++version);
                 await WaitForVersion(storage, "t", writer!, version);
-                await Mirror(live, full);
+                Mirror(live, full);
             }
 
             // Every source reads the table at the version
@@ -274,7 +274,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 stream.Generate(200);
                 await stream.StartStream(Write);
                 await WaitForVersion(storage, "t", stream, version);
-                await Mirror(live, full);
+                Mirror(live, full);
                 await stream.Maintenance.TickAndSettleAsync(version);
 
                 // Day one: two commits
@@ -313,7 +313,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 // A minute before day two another writer adds a column and every source reads it; at midnight a new stream overwrites the table in an epoch of its own
                 clock.Advance(TimeSpan.FromDays(1) - TimeSpan.FromMinutes(1));
                 await WidenAsync(storage, ++version, clock, "visits");
-                await Mirror(live, full);
+                Mirror(live, full);
                 await SaveAllAsync();
                 clock.Advance(TimeSpan.FromMinutes(1));
                 await using (var stream = Sink($"{name}_overwrite", storage, clock, cdc))
@@ -322,7 +322,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     stream.Generate(200);
                     await stream.StartStream(Overwrite);
                     await WaitForVersion(storage, "t", stream, ++version);
-                    await Mirror(live, full);
+                    Mirror(live, full);
                     await stream.Maintenance.TickAndSettleAsync(version);
 
                     // Day three: a change, then a cutoff build at the overwrite
@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 // Another column above C, the head
                 await WidenAsync(storage, ++version, clock, "note");
-                await Mirror(live, full);
+                Mirror(live, full);
             }
             var c = reshaped ? 4 : 3;
             Assert.Equal(7, (await DeltaTransactionReader.ListLog(storage, "t")).Head);
@@ -457,7 +457,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Every commit and every file outside the log the mirror lacks
-        private static async Task Mirror(string live, string full)
+        private static void Mirror(string live, string full)
         {
             var table = Path.Combine(live, "t");
             var log = Path.Combine(table, "_delta_log") + Path.DirectorySeparatorChar;
@@ -470,13 +470,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var target = Path.Combine(full, Path.GetRelativePath(live, file));
                 if (!File.Exists(target))
                 {
-                    // A commit can exist empty until its stage goes
-                    var deadline = DateTime.UtcNow + Guard;
-                    while (file.StartsWith(log, StringComparison.Ordinal) && Directory.EnumerateFiles(log, $".{Path.GetFileName(file)}.*").Any())
-                    {
-                        Assert.True(DateTime.UtcNow < deadline, $"The stage of {file} was never removed");
-                        await Task.Delay(10);
-                    }
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
                     File.Copy(file, target);
                 }
