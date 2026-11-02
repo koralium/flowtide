@@ -260,7 +260,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             };
             storage.ClearRequests();
             stream.Generate(5);
-            var failure = await Assert.ThrowsAnyAsync<Exception>(() => WaitForVersion(storage, "test", stream, 1));
+            // The retry can publish the version, so wait for the error
+            var failure = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+                while (DateTime.UtcNow < deadline)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(50);
+                }
+            });
 
             // The stage may exist, so the attempt's files are kept
             Assert.Contains("Simulated stage failure", failure.ToString());

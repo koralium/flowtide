@@ -93,7 +93,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             }
             try
             {
-                var result = GetTableMetadata(path).GetAwaiter().GetResult();
+                // Off the caller's context, blocking it could deadlock
+                var result = Task.Run(() => GetTableMetadata(path)).GetAwaiter().GetResult();
                 if (result != null)
                 {
                     tableMetadataLookup.Add(path, result);

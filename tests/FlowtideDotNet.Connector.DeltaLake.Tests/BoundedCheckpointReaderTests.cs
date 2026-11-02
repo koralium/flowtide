@@ -471,7 +471,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             foreach (var presence in new[] { new object?[] { 1L, null, new object?[] { 1L }, null, null }, new object?[] { 1L, null, null, new object?[] { 1L }, null }, new object?[] { 1L, null, null, null, new object?[] { 0L } } })
             {
-                var declined = Assert.Throws<CheckpointDeclinedException>(() => ReadBounded(ParsedRoot(presence).Result));
+                var root = await ParsedRoot(presence);
+                var declined = Assert.Throws<CheckpointDeclinedException>(() => ReadBounded(root));
                 Assert.Equal(MaintenanceReason.ParsedOnlyRoot, declined.Reason);
             }
         }

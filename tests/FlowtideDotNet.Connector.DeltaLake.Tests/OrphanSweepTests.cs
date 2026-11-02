@@ -220,7 +220,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 server.Now = written;
             }
-            await metered.WriteText(reference, "orphan sweep reference");
+            // Stowage's WriteText blocks on dispose, so stay off the worker
+            await Task.Run(() => metered.WriteText(reference, "orphan sweep reference"));
             if (server != null)
             {
                 server.Now = committed;

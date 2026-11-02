@@ -109,6 +109,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // It fails at the flush instead of the write
         public bool FaultAtFlush { get; set; }
 
+        // Requests also list a blocking close, as "SyncDispose path"
+        public bool RecordSyncDisposes { get; set; }
+
         // Writes and flushes of a path ending with this, as "W<count>" and "F"
         public string? RecordWritesOf { get; set; }
 
@@ -181,7 +184,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // The bytes become visible when the stream is disposed, which is when the identity changes
             var deferred = DeferPublication?.Invoke(path);
             var parked = PublicationParked;
-            Stream stream = new SerializedDisposeStream(await _inner.OpenWrite(path, cancellationToken), _lock, () => CountWrite(path), deferred, deferred != null && parked != null ? () => parked(path) : null);
+            Stream stream = new SerializedDisposeStream(await _inner.OpenWrite(path, cancellationToken), _lock, () => CountWrite(path), deferred, deferred != null && parked != null ? () => parked(path) : null, RecordSyncDisposes ? () => _requests.Enqueue($"SyncDispose {path.Full}") : null);
             var record = RecordWritesOf;
             if (record != null && path.Full.EndsWith(record))
             {
@@ -343,10 +346,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             private readonly Action _published;
             private readonly Task? _deferred;
             private readonly Action? _parked;
+            private readonly Action? _syncDispose;
             private int _disposed;
 
-            public SerializedDisposeStream(Stream inner, SemaphoreSlim @lock, Action published, Task? deferred, Action? parked)
+            public SerializedDisposeStream(Stream inner, SemaphoreSlim @lock, Action published, Task? deferred, Action? parked, Action? syncDispose)
             {
+                _syncDispose = syncDispose;
                 _inner = inner;
                 _lock = @lock;
                 _published = published;
@@ -382,6 +387,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
                 {
+                    _syncDispose?.Invoke();
                     _parked?.Invoke();
                     _deferred?.GetAwaiter().GetResult();
                     _lock.Wait();

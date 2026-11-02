@@ -16,6 +16,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Deletion;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References;
 using Microsoft.Extensions.Logging;
 using Stowage;
+using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 {
@@ -454,7 +455,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             IOEntry? entry;
             try
             {
-                await _storage.WriteText(reference, ReferenceBody, null, context.Stop);
+                // Stowage's WriteText blocks on dispose, this does not
+                await using (var stream = await _storage.OpenWrite(reference, context.Stop))
+                {
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(ReferenceBody), context.Stop);
+                }
                 AdvanceJob.StopIfIssuanceStopped(context);
                 entry = await _storage.Stat(reference, context.Stop);
             }
