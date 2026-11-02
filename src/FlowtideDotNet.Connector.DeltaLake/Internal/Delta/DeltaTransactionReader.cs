@@ -187,6 +187,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 }
 
                 var first = true;
+                var empty = true;
                 while (await lines.ReadLineAsync())
                 {
                     var streamed = lines.StreamedHeader;
@@ -206,9 +207,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     {
                         throw new Exception("Failed to deserialize action");
                     }
+                    empty = false;
                     replay.Apply(action, fromCheckpoint: false);
                 }
-                if (first)
+                if (empty)
                 {
                     throw new InvalidDataException($"Delta commit {segment.Listing.Commits[version].IOEntry.Path.Full} is empty");
                 }
@@ -490,9 +492,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     return Classify(await storage.Ls(tableName.Combine(DeltaLogDirName), cancellationToken: cancellationToken));
                 }
-                // Local disk fails if a stage moves while it lists
                 catch (FileNotFoundException) when (attempt < ListAttempts)
                 {
+                    // Local disk fails if a stage moves while it lists
                 }
             }
         }

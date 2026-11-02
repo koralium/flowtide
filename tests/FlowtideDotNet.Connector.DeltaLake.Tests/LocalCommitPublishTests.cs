@@ -96,6 +96,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(foreign, await ReadBytes(_disk, CommitPath("t", 0)));
         }
 
+        // The cached bytes are fine, the file that would move is not
+        [Theory]
+        [InlineData("emptied")]
+        [InlineData("truncated")]
+        [InlineData("removed")]
+        public async Task APublishOnLocalDiskChecksTheStageFile(string damage)
+        {
+            var storage = HookFileStorage.Wrap(_disk);
+            var staged = await DeltaTransactionWriter.StageCommit(storage, "t", 0, Commit("first"));
+            var file = Native($"/t/_delta_log/{staged.FileName}");
+            if (damage == "removed")
+            {
+                File.Delete(file);
+            }
+            else
+            {
+                File.WriteAllBytes(file, damage == "emptied" ? Array.Empty<byte>() : File.ReadAllBytes(file).SkipLast(1).ToArray());
+            }
+
+            var result = await DeltaTransactionWriter.PublishCommit(storage, "t", Pending(staged, 0), staged.Bytes, false);
+
+            Assert.Equal(PublishOutcome.FailedClosed, result.Outcome);
+            Assert.False(File.Exists(Native(CommitPath("t", 0))));
+        }
+
         [Fact]
         public async Task ATornCommitIsRepairedOnLocalDisk()
         {
@@ -152,6 +177,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             await WriteCommit(_disk, "t", 0, Protocol(), Metadata(UserSchema));
             File.Create(Native(CommitPath("t", 1))).Dispose();
+
+            var error = await Assert.ThrowsAsync<InvalidDataException>(() => DeltaTransactionReader.ReadTable(_disk, "t"));
+
+            Assert.Contains("00000000000000000001.json", error.Message);
+        }
+
+        [Fact]
+        public async Task ReadingATableRefusesACommitOfBlankLines()
+        {
+            await WriteCommit(_disk, "t", 0, Protocol(), Metadata(UserSchema));
+            File.WriteAllText(Native(CommitPath("t", 1)), "\n  \n");
 
             var error = await Assert.ThrowsAsync<InvalidDataException>(() => DeltaTransactionReader.ReadTable(_disk, "t"));
 

@@ -64,7 +64,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         /// <summary>
         /// Publishes a staged commit, the target is checked first and is never overwritten unless it is a torn copy of the stage.
-        /// The stage bytes are optional, they save reading the staged file in the run that staged it.
+        /// The stage bytes are optional, they save reading the staged file unless local disk moves it.
         /// With <paramref name="checkSuccessor"/> an absent target is only written while the log holds nothing at its version or later.
         /// </summary>
         public static async Task<PublishResult> PublishCommit(IFileStorage storage, IOPath tablePath, DeltaLakePendingCommit pending, CommitBytes? stageBytes, bool checkSuccessor)
@@ -89,7 +89,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             var prefix = StagePrefix(pending.StageId);
             if (target == null)
             {
-                var (stageState, stage) = await ReadStage(storage, stagedPath, pending, prefix, stageBytes);
+                // Local disk moves the file, so check the file itself
+                var (stageState, stage) = await ReadStage(storage, stagedPath, pending, prefix, storage is ILocalDiskFileStorage ? null : stageBytes);
                 if (stageState != StageState.Valid)
                 {
                     return Failed(pending, "was never published and its staged commit is missing or damaged");
