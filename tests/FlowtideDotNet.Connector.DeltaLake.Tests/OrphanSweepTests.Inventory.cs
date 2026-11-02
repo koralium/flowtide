@@ -121,6 +121,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal("old.parquet", Assert.Single(seen.Frozen).Relative);
         }
 
+        // A blocking close would pin a worker on S3
+        [Fact]
+        public async Task TheReferenceFileClosesWithoutBlocking()
+        {
+            var table = await LocalWithOldAsync(2, "old.parquet");
+            var storage = OwnedHookFileStorage.Over(table.Raw);
+            storage.RecordSyncDisposes = true;
+            var reference = table.Prefix + OrphanSweep.ReferenceName;
+
+            var (result, _) = await RunAsync(Sweep(table.Configuration, storage, counters: new RetentionCounters()), table, OrphanContext(2));
+
+            AssertResult(result, OutcomeKind.Completed, MaintenanceReason.None);
+            Assert.Contains("OpenWrite " + reference, storage.Requests);
+            Assert.DoesNotContain("SyncDispose " + reference, storage.Requests);
+        }
+
         [Fact]
         public async Task RecursiveNamesUseFullPathRatherThanLeaf()
         {

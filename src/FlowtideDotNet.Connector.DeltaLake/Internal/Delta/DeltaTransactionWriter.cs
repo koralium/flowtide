@@ -219,7 +219,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
 
         private static async Task WriteBytes(IFileStorage storage, IOPath path, CommitBytes bytes, int flushAfter)
         {
-            using var stream = await storage.OpenWrite(path);
+            await using var stream = await storage.OpenWrite(path);
             if (stream == null)
             {
                 throw new InvalidOperationException($"Failed to open {path.Full} for writing");
