@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using Stowage;
+using Stowage.Impl;
 using System.Text;
 using System.Text.Json;
 
@@ -93,8 +94,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     return Failed(pending, "was never published and its staged commit is missing or damaged");
                 }
-                await WriteBytes(storage, commitPath, stage!, prefix.Length);
-                await storage.Rm(stagedPath);
+                await PublishStage(storage, stagedPath, commitPath, stage!, prefix.Length);
                 return new PublishResult(PublishOutcome.Published);
             }
 
@@ -142,8 +142,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     return Failed(pending, "was never published and its staged commit is missing");
                 }
-                await WriteBytes(storage, commitPath, stage, 0);
-                await storage.Rm(stagedPath);
+                await PublishStage(storage, stagedPath, commitPath, stage, 0);
                 return new PublishResult(PublishOutcome.Published);
             }
             // The stage is removed right after the copy, the target is the published commit
@@ -157,6 +156,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             }
             await storage.Rm(stagedPath);
             return new PublishResult(PublishOutcome.AlreadyPublished);
+        }
+
+        // A move on local disk, readers never see half a commit
+        private static async Task PublishStage(IFileStorage storage, IOPath stagedPath, IOPath commitPath, CommitBytes stage, int flushAfter)
+        {
+            if (storage is ILocalDiskFileStorage local)
+            {
+                File.Move(local.ToNativeLocalPath(stagedPath), local.ToNativeLocalPath(commitPath));
+                return;
+            }
+            await WriteBytes(storage, commitPath, stage, flushAfter);
+            await storage.Rm(stagedPath);
         }
 
         // Commits, checkpoints and other version files at the version or later are another writer's history

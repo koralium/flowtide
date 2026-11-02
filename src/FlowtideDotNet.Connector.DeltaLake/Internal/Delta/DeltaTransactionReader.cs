@@ -208,6 +208,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                     }
                     replay.Apply(action, fromCheckpoint: false);
                 }
+                if (first)
+                {
+                    throw new InvalidDataException($"Delta commit {segment.Listing.Commits[version].IOEntry.Path.Full} is empty");
+                }
             }
             return headHeader;
         }
@@ -384,8 +388,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             DeltaMetadataAction? metadata = null;
             DeltaCommitInfoAction? commitInfo = null;
 
+            var empty = true;
             while (await lines.ReadLineAsync())
             {
+                empty = false;
                 var line = Encoding.UTF8.GetString(lines.StreamedHeader is { } header ? Residual(header) : lines.Line.Span);
                 var action = JsonSerializer.Deserialize<DeltaAction>(line);
                 if (action == null)
@@ -413,6 +419,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
                 {
                     commitInfo = action.CommitInfo;
                 }
+            }
+
+            // As a version without actions it would be skipped
+            if (empty)
+            {
+                throw new InvalidDataException($"Delta commit {fileName} is empty");
             }
 
             return new DeltaCommit(addedFiles, removedFiles, cdcActions, metadata, commitInfo);
@@ -468,9 +480,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta
             return version;
         }
 
+        private const int ListAttempts = 5;
+
         internal static async Task<LogListing> ListLog(IFileStorage storage, IOPath tableName, CancellationToken cancellationToken = default)
         {
-            return Classify(await storage.Ls(tableName.Combine(DeltaLogDirName), cancellationToken: cancellationToken));
+            for (int attempt = 1; ; attempt++)
+            {
+                try
+                {
+                    return Classify(await storage.Ls(tableName.Combine(DeltaLogDirName), cancellationToken: cancellationToken));
+                }
+                // Local disk fails if a stage moves while it lists
+                catch (FileNotFoundException) when (attempt < ListAttempts)
+                {
+                }
+            }
         }
 
         /// <summary>
