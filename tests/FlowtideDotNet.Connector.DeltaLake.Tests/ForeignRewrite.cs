@@ -35,7 +35,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var head = await DeltaTransactionReader.ReadTable(storage, table);
             var add = Assert.Single(head!.AddFiles);
             var bytes = await DeltaTestKit.ReadBytes(storage, $"/{table}/{add.Path}");
-            using var reader = new ParquetSharp.Arrow.FileReader(new MemoryStream(bytes));
+            using var reader = ParquetFileReaders.Open(new MemoryStream(bytes));
             using var batches = reader.GetRecordBatchReader();
             var batch = await batches.ReadNextRecordBatchAsync();
             Assert.Null(await batches.ReadNextRecordBatchAsync());

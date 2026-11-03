@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using Stowage;
 using System.Globalization;
 using System.Text.Json;
@@ -479,7 +480,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     continue;
                 }
                 using var memory = new MemoryStream(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}"));
-                using var reader = new ParquetSharp.Arrow.FileReader(memory);
+                using var reader = ParquetFileReaders.Open(memory);
                 using var batches = reader.GetRecordBatchReader();
                 Apache.Arrow.RecordBatch batch;
                 while ((batch = await batches.ReadNextRecordBatchAsync()) != null)

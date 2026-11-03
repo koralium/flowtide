@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var arrowRows = 0;
             var arrowError = await Record.ExceptionAsync(async () =>
             {
-                using var arrow = new ParquetSharp.Arrow.FileReader(new MemoryStream(file));
+                using var arrow = ParquetFileReaders.Open(new MemoryStream(file));
                 using var batches = arrow.GetRecordBatchReader();
                 RecordBatch? batch;
                 while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             // Arrow reads past group 0's footer count
             var keys = new List<long?>();
-            using (var arrow = new ParquetSharp.Arrow.FileReader(new MemoryStream(file)))
+            using (var arrow = ParquetFileReaders.Open(new MemoryStream(file)))
             using (var batches = arrow.GetRecordBatchReader())
             {
                 RecordBatch? read;

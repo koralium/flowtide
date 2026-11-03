@@ -16,6 +16,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Actions;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Microsoft.Extensions.Logging;
@@ -282,7 +283,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     continue;
                 }
                 using var memory = new MemoryStream(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}"));
-                using var reader = new ParquetSharp.Arrow.FileReader(memory);
+                using var reader = ParquetFileReaders.Open(memory);
                 using var batches = reader.GetRecordBatchReader();
                 Apache.Arrow.RecordBatch batch;
                 while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
@@ -314,7 +315,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     continue;
                 }
                 using var memory = new MemoryStream(await ReadBytes(storage, $"/{table}/{action.Cdc.Path}"));
-                using var reader = new ParquetSharp.Arrow.FileReader(memory);
+                using var reader = ParquetFileReaders.Open(memory);
                 using var batches = reader.GetRecordBatchReader();
                 Apache.Arrow.RecordBatch batch;
                 while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
