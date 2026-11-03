@@ -300,7 +300,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.Equal(4, fromCheckpoint.Count);
                 foreach (var add in fromCheckpoint)
                 {
-                    Assert.Equal(add.DeletionVector!.Cardinality, (await DeletionVectorReader.ReadDeletionVector(table.Local, "t", add.DeletionVector)).Count());
+                    Assert.Equal(add.DeletionVector!.Cardinality, (await new DeletionVectorReader(table.Local, "t").Read(add.DeletionVector)).Count());
                 }
 
                 Assert.DoesNotContain(Upper(container), (await Plan(table, Boundary(await Log(table), 0, 3))).Emitted);

@@ -125,7 +125,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var rows = new List<(string, long, string)>();
             foreach (var add in head!.AddFiles)
             {
-                IDeleteVector deleted = add.DeletionVector == null ? EmptyDeleteVector.Instance : await DeletionVectorReader.ReadDeletionVector(storage, table, add.DeletionVector);
+                IDeleteVector deleted = add.DeletionVector == null ? EmptyDeleteVector.Instance : await new DeletionVectorReader(storage, table).Read(add.DeletionVector);
                 using var file = await ParquetSharpReader.OpenDataFile(storage, table, add.Path!, forDeletes: true);
                 var binding = FileBinding.Create(head.Schema, file, table, head.ColumnMappingById);
                 long position = 0;

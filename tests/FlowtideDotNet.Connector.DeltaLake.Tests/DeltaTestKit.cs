@@ -366,7 +366,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         private static async Task<string> Deleted(IFileStorage storage, string table, DeletionVector? vector)
         {
-            return vector == null ? "" : string.Join(",", await DeletionVectorReader.ReadDeletionVector(storage, new IOPath(table), vector));
+            return vector == null ? "" : string.Join(",", await new DeletionVectorReader(storage, new IOPath(table)).Read(vector));
         }
 
         public static Task WriteCommit(IFileStorage storage, string table, long version, params DeltaAction[] actions)

@@ -237,7 +237,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await walk.AssertFiles(vectors, 2);
             Assert.Equal(1_045_465, (await ReadBytes(walk.Storage, $"/t/{walk.Created[0]}")).Length);
             // The last vector of the full file, through our reader
-            Assert.Equal(vectors[126], await DeletionVectorReader.ReadDeletionVector(walk.Storage, "/t", walk.Adds[126].DeletionVector!));
+            Assert.Equal(vectors[126], await new DeletionVectorReader(walk.Storage, "/t").Read(walk.Adds[126].DeletionVector!));
         }
 
         // Under a tenth of the rows, a pattern per file
@@ -437,7 +437,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(1, packed.DeletionVector.Cardinality);
 
             // A later delete from the file past the first vector
-            var reread = await DeletionVectorReader.ReadDeletionVector(storage, "/test", packed.DeletionVector);
+            var reread = await new DeletionVectorReader(storage, "/test").Read(packed.DeletionVector);
             Assert.Single(reread);
             stream.DeleteUsers(Users(101));
             await WaitForVersion(storage, "test", stream, 2);
@@ -450,7 +450,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.NotEqual(name, moved.DeletionVector!.AbsolutePath);
             Assert.Equal(1, moved.DeletionVector!.Offset);
             Assert.Equal(2, moved.DeletionVector.Cardinality);
-            var merged = await DeletionVectorReader.ReadDeletionVector(storage, "/test", moved.DeletionVector);
+            var merged = await new DeletionVectorReader(storage, "/test").Read(moved.DeletionVector);
             Assert.Equal(new[] { reread.Single(), reread.Single() + 1 }, merged);
             Assert.True(stream.Sinks[0].DeleteStatisticsForTests!.VectorsRead > 0);
         }
@@ -767,6 +767,73 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await source.AssertPublishedEqual(next, expected(new[] { 0, 100, 101, 200 }));
         }
 
+        private static int Fetches(HookFileStorage storage, string? vectorFile)
+        {
+            return storage.Requests.Count(x => x.StartsWith("OpenRead ", StringComparison.Ordinal) && x.EndsWith(vectorFile!, StringComparison.Ordinal));
+        }
+
+        [Fact]
+        public async Task ALaterDeleteFetchesAPackedFileOnce()
+        {
+            var (storage, stream) = await Start(nameof(ALaterDeleteFetchesAPackedFileOnce));
+            await using var _ = stream;
+            stream.DeleteUsers(Users(0, 100, 200));
+            await WaitForVersion(storage, "test", stream, 1);
+            var written = VectorAdds(await ReadCommitActions(storage, "test", 1)).ToList();
+            Assert.Equal(3, written.Count);
+            var name = written[0].DeletionVector!.AbsolutePath;
+            Assert.All(written, x => Assert.Equal(name, x.DeletionVector!.AbsolutePath));
+            storage.ClearRequests();
+
+            stream.DeleteUsers(Users(1, 101, 201));
+            await WaitForVersion(storage, "test", stream, 2);
+
+            Assert.Equal(1, Fetches(storage, name));
+            var moved = VectorAdds(await ReadCommitActions(storage, "test", 2)).ToList();
+            Assert.Equal(3, moved.Count);
+            foreach (var add in moved)
+            {
+                var old = written.Single(x => x.Path == add.Path);
+                var first = (await new DeletionVectorReader(storage, "/test").Read(old.DeletionVector!)).Single();
+                Assert.Equal(new[] { first, first + 1 }, await new DeletionVectorReader(storage, "/test").Read(add.DeletionVector!));
+            }
+        }
+
+        // One version per checkpoint reads the delete as a change
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public async Task ASourceFetchesAPackedFileOnce(bool oneVersionPerCheckpoint)
+        {
+            var testName = nameof(ASourceFetchesAPackedFileOnce) + oneVersionPerCheckpoint;
+            var (storage, stream) = await Start(testName);
+            await using var _ = stream;
+            stream.DeleteUsers(Users(0, 100, 200));
+            await WaitForVersion(storage, "test", stream, 1);
+            var name = VectorAdds(await ReadCommitActions(storage, "test", 1)).First().DeletionVector!.AbsolutePath;
+            var expected = (int[] deleted) => Enumerable.Range(0, 600).Except(deleted).Select(x => new { userkey = x, name = Fixed(x).FirstName });
+
+            var reads = new HookFileStorage(storage.Inner);
+            await using var source = new DeltaLakeTestStream(testName + "Source", reads, oneVersionPerCheckpoint, recordPublished: true);
+            await source.StartStream("INSERT INTO output SELECT userkey, name FROM test");
+
+            var next = 1;
+            if (oneVersionPerCheckpoint)
+            {
+                await source.AssertPublishedEqual(next++, expected(Array.Empty<int>()));
+            }
+            await source.AssertPublishedEqual(next++, expected(new[] { 0, 100, 200 }));
+            Assert.Equal(1, Fetches(reads, name));
+            reads.ClearRequests();
+
+            stream.DeleteUsers(Users(1, 101, 201));
+            await WaitForVersion(storage, "test", stream, 2);
+            await source.AssertPublishedEqual(next, expected(new[] { 0, 1, 100, 101, 200, 201 }));
+            var replaced = VectorAdds(await ReadCommitActions(storage, "test", 2)).First().DeletionVector!.AbsolutePath;
+            Assert.Equal(1, Fetches(reads, name));
+            Assert.Equal(1, Fetches(reads, replaced));
+        }
+
         // One packed file took the row after its first
         private static async Task AssertMoved(IFileStorage storage, long version, List<DeltaAddAction> written)
         {
@@ -775,8 +842,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var removed = actions.Single(x => x.Remove != null).Remove!;
             var old = written.Single(x => x.Path == moved.Path);
             Assert.Equal(old.DeletionVector!.UniqueId, removed.DeletionVector!.UniqueId);
-            var first = (await DeletionVectorReader.ReadDeletionVector(storage, "/test", old.DeletionVector)).Single();
-            Assert.Equal(new[] { first, first + 1 }, await DeletionVectorReader.ReadDeletionVector(storage, "/test", moved.DeletionVector!));
+            var first = (await new DeletionVectorReader(storage, "/test").Read(old.DeletionVector)).Single();
+            Assert.Equal(new[] { first, first + 1 }, await new DeletionVectorReader(storage, "/test").Read(moved.DeletionVector!));
         }
 
         [Fact]
@@ -849,8 +916,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var replaced = (await ReadCommitActions(storage, "test", 2)).Single(x => x.Add != null).Add!;
                 var fourth = await ReadCommitActions(storage, "test", 4);
                 Assert.Equal(replaced.DeletionVector!.UniqueId, fourth.Single(x => x.Remove != null).Remove!.DeletionVector!.UniqueId);
-                var kept = (await DeletionVectorReader.ReadDeletionVector(storage, "/test", replaced.DeletionVector)).ToList();
-                Assert.Equal(kept.Append(kept[^1] + 1), await DeletionVectorReader.ReadDeletionVector(storage, "/test", fourth.Single(x => x.Add != null).Add!.DeletionVector!));
+                var kept = (await new DeletionVectorReader(storage, "/test").Read(replaced.DeletionVector)).ToList();
+                Assert.Equal(kept.Append(kept[^1] + 1), await new DeletionVectorReader(storage, "/test").Read(fourth.Single(x => x.Add != null).Add!.DeletionVector!));
             }
         }
     }
