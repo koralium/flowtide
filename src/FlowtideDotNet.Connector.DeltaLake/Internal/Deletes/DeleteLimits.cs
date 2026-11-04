@@ -10,6 +10,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using Stowage;
+
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 {
     // Internal knobs for the sink's delete and intake paths
@@ -46,5 +49,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
         // Test the first pruning column before the whole row
         public bool Prefilter { get; set; } = true;
+
+        // Candidates opened ahead of their turn, by store when unset
+        public int? ReadAhead { get; set; }
+
+        // Only pinned Azure clients take concurrent reads here
+        public int ReadAheadOn(IFileStorage storage) => ReadAhead ?? (StoreDescriptor.Of(RawStorage.Unwrap(storage)).Kind == StoreKind.Azure ? 8 : 1);
     }
 }

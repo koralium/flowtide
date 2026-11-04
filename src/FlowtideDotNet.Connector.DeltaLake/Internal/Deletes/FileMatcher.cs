@@ -14,6 +14,7 @@ using Apache.Arrow;
 using Apache.Arrow.Memory;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using Stowage;
 using System.Diagnostics;
 
@@ -43,11 +44,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
             _columns = new IArrowArray[schema.Fields.Count];
         }
 
-        public async Task Scan(int id, DeleteBatch batch, DeleteRun run)
+        public async Task Scan(int id, DeleteBatch batch, DeleteRun run, CommitReadAhead? ahead = null)
         {
             var statistics = run.Statistics;
             var started = Stopwatch.GetTimestamp();
-            using var file = await ParquetSharpReader.OpenDataFile(_storage, _table, run.Records[id].Path, forDeletes: true);
+            var path = run.Records[id].Path;
+            using var file = ahead == null ? await ParquetSharpReader.OpenDataFile(_storage, _table, path, forDeletes: true) : await OpenAhead(ahead, path);
             var binding = FileBinding.Create(_schema, file, _tableName, _columnsById);
             // Claimed positions and raw rows both follow the footer
             file.CheckRowGroups(binding.LeafColumns);
@@ -91,6 +93,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                     batch.Claim(entry);
                 }
             }
+        }
+
+        // The window's next object is this candidate
+        private static async ValueTask<ParquetDataFile> OpenAhead(CommitReadAhead ahead, string path)
+        {
+            using var opened = await ahead.NextAsync();
+            return ParquetSharpReader.OpenDataFile(opened.Stream, path, forDeletes: true);
         }
 
         private void EnsureBuffers(int length)

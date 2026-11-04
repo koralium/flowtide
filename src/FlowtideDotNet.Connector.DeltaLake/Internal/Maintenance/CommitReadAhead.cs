@@ -319,7 +319,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
             // Awaited once, by the consumer or by the window's disposal
             public ValueTask<OpenedCommit> Take() => new ValueTask<OpenedCommit>(this, _core.Version);
 
-            public OpenedCommit GetResult(short token) => _core.GetResult(token);
+            // The taken object leaves the slot, so its stream is not held
+            public OpenedCommit GetResult(short token)
+            {
+                try
+                {
+                    return _core.GetResult(token);
+                }
+                finally
+                {
+                    if (token == _core.Version)
+                    {
+                        _core.Reset();
+                    }
+                }
+            }
 
             public ValueTaskSourceStatus GetStatus(short token) => _core.GetStatus(token);
 
