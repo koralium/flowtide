@@ -247,7 +247,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         // Opens a data file, the caller disposes it
         public static async Task<ParquetDataFile> OpenDataFile(IFileStorage storage, IOPath table, string path, bool forDeletes)
         {
-            var stream = await storage.OpenRead(table.Combine(path));
+            return OpenDataFile(await storage.OpenRead(table.Combine(path)), path, forDeletes);
+        }
+
+        // Opens a data file on a stream it then owns
+        public static ParquetDataFile OpenDataFile(Stream? stream, string path, bool forDeletes)
+        {
             if (stream == null)
             {
                 throw new DeltaFileNotFoundException(path);

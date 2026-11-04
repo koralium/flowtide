@@ -36,6 +36,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Measured runs per case, after one warm-up, one when alternating invocations
         public static readonly int Runs = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_RUNS"), out var runs) ? runs : 5;
 
+        // Candidates opened ahead, unset means by store
+        public static readonly int? ReadAhead = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_READAHEAD"), out var ahead) ? ahead : null;
+
         public static readonly TimeSpan DidNotFinish = TimeSpan.FromSeconds(30);
 
 #if DEBUG
@@ -274,6 +277,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 {
                     limits.SelectorThreshold = threshold;
                 }
+                limits.ReadAhead = ProbeKit.ReadAhead;
                 options.DeleteLimitsOverride = limits;
                 if (int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_PRUNING"), out var pruning))
                 {

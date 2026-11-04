@@ -327,7 +327,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 return;
             }
             var files = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_PROBE_FILES"), out var count) ? count : 50;
-            var kit = new ProbeKit(_output, $"B3 {files} files, spread, {s_latency.TotalMilliseconds:0} ms per request");
+            var kit = new ProbeKit(_output, $"B3 {files} files, spread, {s_latency.TotalMilliseconds:0} ms per request, read-ahead {ProbeKit.ReadAhead ?? 1}");
             using var fixture = await ProbeFixture.Build($"b3_{files}_spread", files, RowsPerFile, kit);
             var pool = fixture.Files.SelectMany(x => x).ToList();
             foreach (var deletes in new[] { 16, 1_000 })
@@ -509,7 +509,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     inserted.Add(insert.Value);
                 }
             }
-            var shares = latency is { } l
+            // The shares assume one request at a time
+            var shares = latency is { } l && (ProbeKit.ReadAhead ?? 1) <= 1
                 ? $" | latency share {ProbeKit.Spread(removed, x => x.Requests * l.TotalMilliseconds * 100 / x.WallMs)} % | dv request latency share {ProbeKit.Spread(removed, x => x.DvWrites * l.TotalMilliseconds * 100 / x.WallMs)} %"
                 : "";
             kit.Report($"D={deletes} delete", removed, shares);

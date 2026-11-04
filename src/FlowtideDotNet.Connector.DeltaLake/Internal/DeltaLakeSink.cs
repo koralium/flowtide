@@ -101,6 +101,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private CatalogOverlay? _stagedOverlay;
         private DeltaSinkCatalog? _catalog;
         private DeleteLimits? _limits;
+        // Stops opening candidates ahead once the run ends
+        private CancellationToken _readAheadStop;
         // This or the last commit's matching, read by the passes gauge
         private DeleteStatistics? _deleteStatistics;
         // Deleted rows no file held, skipped by the opt-out, over every attempt
@@ -210,6 +212,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 UseByteBasedPageSizes = true,
             });
             _limits = _options.DeleteLimitsOverride ?? DeleteLimits.Default;
+            _readAheadStop = CancellationToken;
             _intake = new TemporaryTreeIntake(_temporaryTree, _writeRelation.OutputLength, _limits);
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
             _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
@@ -1265,7 +1268,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     var probes = ProbeBatch.Build(_catalog.ScanLayout, deleteBatch, batch.EntryRows);
                     var candidates = await CandidateSelector.Select(_catalog, probes, _limits.SelectorThreshold);
-                    var matcher = new FileMatcher(_options.StorageLocation, _tablePath, _tableName, schema, table.ColumnMappingById);
+                    // One storage for the matcher, the window and its depth
+                    var storage = _options.StorageLocation;
+                    var depth = _limits.ReadAheadOn(storage);
+                    var matcher = new FileMatcher(storage, _tablePath, _tableName, schema, table.ColumnMappingById);
                     var missing = new List<int>();
                     for (int start = 0; start < candidates.Count && batch.Unresolved > 0; start += _limits.RecordGroup)
                     {
@@ -1282,9 +1288,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         {
                             deletes.Records[id] = record;
                         }
-                        for (int c = start; c < end && batch.Unresolved > 0; c++)
+                        await using (var ahead = depth > 1 ? CandidateReadAhead.Create(storage, _tablePath, candidates, start, end, deletes.Records, depth, _readAheadStop) : null)
                         {
-                            await matcher.Scan(candidates[c], batch, deletes);
+                            for (int c = start; c < end && batch.Unresolved > 0; c++)
+                            {
+                                await matcher.Scan(candidates[c], batch, deletes, ahead);
+                            }
                         }
                         // Records stay only for the files a delete touches
                         for (int c = start; c < end; c++)
