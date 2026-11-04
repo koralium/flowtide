@@ -438,7 +438,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var rows = new List<string>();
             foreach (var add in table.AddFiles)
             {
-                IDeleteVector vector = add.DeletionVector == null ? EmptyDeleteVector.Instance : await DeletionVectorReader.ReadDeletionVector(storage, "t", add.DeletionVector);
+                IDeleteVector vector = add.DeletionVector == null ? EmptyDeleteVector.Instance : await new DeletionVectorReader(storage, "t").Read(add.DeletionVector);
                 await foreach (var batch in reader.ReadDataFile(storage, "t", add.Path!, vector, add.PartitionValues, GlobalMemoryManager.Instance))
                 {
                     try

@@ -13,28 +13,68 @@
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.RoaringBitmap;
 using Stowage;
 using System.Buffers.Binary;
+using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
 {
-    internal static class DeletionVectorReader
+    // Fetches a packed file once per run
+    internal sealed class DeletionVectorReader
     {
-        public static async Task<RoaringBitmapArray> ReadDeletionVector(IFileStorage storage, IOPath table, DeletionVector vector)
+        // Larger foreign files are fetched once per vector
+        private const long KeptBytes = 16L << 20;
+
+        private readonly IFileStorage _storage;
+        private readonly IOPath _table;
+        private readonly Dictionary<string, byte[]> _files = new Dictionary<string, byte[]>();
+        private long _bytes;
+
+        public DeletionVectorReader(IFileStorage storage, IOPath table)
+        {
+            _storage = storage;
+            _table = table;
+        }
+
+        public async Task<RoaringBitmapArray> Read(DeletionVector vector)
         {
             if (vector.StorageType == "u" || vector.StorageType == "p")
             {
-                var deletionVectorStream = await storage.OpenRead(table.Combine(vector.AbsolutePath));
+                var path = vector.AbsolutePath!;
+                if (_files.TryGetValue(path, out var kept))
+                {
+                    return ReadVector(new MemoryStream(kept, false), vector.Offset);
+                }
+                var deletionVectorStream = await _storage.OpenRead(_table.Combine(path));
                 if (deletionVectorStream == null)
                 {
-                    throw new DeltaFileNotFoundException(vector.AbsolutePath!);
+                    throw new DeltaFileNotFoundException(path);
                 }
-                return ReadVector(deletionVectorStream, vector.Offset);
+                byte[] file;
+                await using (deletionVectorStream)
+                {
+                    if (!deletionVectorStream.CanSeek || deletionVectorStream.Length > KeptBytes)
+                    {
+                        return ReadVector(deletionVectorStream, vector.Offset);
+                    }
+                    if (_bytes + deletionVectorStream.Length > KeptBytes)
+                    {
+                        _files.Clear();
+                        _bytes = 0;
+                    }
+                    file = new byte[deletionVectorStream.Length];
+                    await deletionVectorStream.ReadExactlyAsync(file);
+                }
+                var read = ReadVector(new MemoryStream(file, false), vector.Offset);
+                // Kept only once a vector reads from it
+                _files.Add(path, file);
+                _bytes += file.Length;
+                return read;
             }
             throw new NotImplementedException();
         }
 
         private static RoaringBitmapArray ReadVector(Stream stream, long? offset)
         {
-            using var reader = new BinaryReader(stream);
+            using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 
             var version = reader.ReadByte();
 
@@ -45,9 +85,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
                 start = offset.Value - 1;
             }
 
-            for (int i = 0; i < start; i++)
+            if (stream.CanSeek && start > 0)
             {
-                reader.ReadByte();
+                stream.Seek(start, SeekOrigin.Current);
+            }
+            else
+            {
+                for (long i = 0; i < start; i++)
+                {
+                    reader.ReadByte();
+                }
             }
 
             _ = BinaryPrimitives.ReadInt32BigEndian(reader.ReadBytes(4));

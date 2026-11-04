@@ -19,6 +19,8 @@ using Apache.Arrow;
 using Apache.Arrow.Types;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Reflection;
+using System.Reflection.Emit;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Tests
 {
@@ -31,6 +33,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     [Collection(nameof(ArrowPoolCollection))]
     public class ParquetSharpReaderTests
     {
+        private static readonly Dictionary<short, OpCode> s_opCodes = typeof(OpCodes)
+            .GetFields(BindingFlags.Public | BindingFlags.Static)
+            .Select(x => (OpCode)x.GetValue(null)!)
+            .ToDictionary(x => x.Value);
+
         [Fact]
         public async Task TestReadAddRemovedDataFile()
         {
@@ -195,8 +202,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
         }
 
-        [Fact]
-        public async Task ReadsRunOnTheCallingThread()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ReadsRunOnTheCallingThread(bool forDeletes)
         {
             // Reads from Arrow's own threads crashed the test host on Linux
             var schema = new Apache.Arrow.Schema.Builder()
@@ -220,7 +229,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
             var stream = new ThreadRecordingStream(file.ToArray());
             stream.Caller = Environment.CurrentManagedThreadId;
-            using var reader = ParquetFileReaders.Open(stream);
+            using var reader = forDeletes ? ParquetFileReaders.OpenForDeletes(stream) : ParquetFileReaders.Open(stream);
             using var batches = reader.GetRecordBatchReader();
             long rows = 0;
             while (true)
@@ -476,6 +485,94 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Interlocked.Add(ref _outstanding, -size);
             }
+        }
+
+        // Pre-buffered readers call a disposed stream from Arrow's threads
+        [Fact]
+        public void ArrowReadersOverStreamsGoThroughTheFactory()
+        {
+            var factory = 0;
+            var pinned = 0;
+            var bypassing = new List<string>();
+            foreach (var assembly in new[] { typeof(ParquetFileReaders).Assembly, typeof(ParquetSharpReaderTests).Assembly })
+            {
+                foreach (var type in assembly.GetTypes())
+                {
+                    var owner = type;
+                    while (owner.DeclaringType != null)
+                    {
+                        owner = owner.DeclaringType;
+                    }
+                    foreach (var method in DeclaredMethods(type))
+                    {
+                        var count = StreamReaderConstructions(method);
+                        if (count == 0)
+                        {
+                            continue;
+                        }
+                        if (owner == typeof(ParquetFileReaders))
+                        {
+                            factory += count;
+                        }
+                        else if (type == typeof(PinnedParquetQualificationTests) && method.Name == "Open")
+                        {
+                            pinned += count;
+                        }
+                        else
+                        {
+                            bypassing.Add($"{type.FullName}.{method.Name}");
+                        }
+                    }
+                }
+            }
+
+            Assert.Equal(2, factory);
+            Assert.Equal(1, pinned);
+            Assert.True(bypassing.Count == 0, $"Open these with ParquetFileReaders: {string.Join(", ", bypassing)}");
+            var properties = typeof(PinnedParquetQualificationTests).GetField("s_properties", BindingFlags.NonPublic | BindingFlags.Static)!;
+            Assert.False(((ParquetSharp.Arrow.ArrowReaderProperties)properties.GetValue(null)!).PreBuffer);
+        }
+
+        private static IEnumerable<MethodBase> DeclaredMethods(Type type)
+        {
+            const BindingFlags flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+            return type.GetConstructors(flags).Cast<MethodBase>().Concat(type.GetMethods(flags));
+        }
+
+        // Arrow readers built on anything but a path
+        private static int StreamReaderConstructions(MethodBase method)
+        {
+            var il = method.GetMethodBody()?.GetILAsByteArray();
+            if (il == null)
+            {
+                return 0;
+            }
+            var typeArguments = method.DeclaringType is { IsGenericType: true } declaring ? declaring.GetGenericArguments() : null;
+            var methodArguments = method.IsGenericMethod ? method.GetGenericArguments() : null;
+            var count = 0;
+            for (int i = 0; i < il.Length;)
+            {
+                var value = il[i] == 0xFE ? unchecked((short)(0xFE00 | il[i + 1])) : il[i];
+                var code = s_opCodes[value];
+                i += code.Size;
+                if (code == OpCodes.Newobj
+                    && method.Module.ResolveMethod(BitConverter.ToInt32(il, i), typeArguments, methodArguments) is ConstructorInfo constructor
+                    && constructor.DeclaringType == typeof(ParquetSharp.Arrow.FileReader)
+                    && constructor.GetParameters()[0].ParameterType != typeof(string))
+                {
+                    count++;
+                }
+                i += code.OperandType switch
+                {
+                    OperandType.InlineNone => 0,
+                    OperandType.ShortInlineBrTarget or OperandType.ShortInlineI or OperandType.ShortInlineVar => 1,
+                    OperandType.InlineVar => 2,
+                    OperandType.InlineI8 or OperandType.InlineR => 8,
+                    OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(il, i),
+                    _ => 4,
+                };
+            }
+            return count;
         }
 
         // Read streams record their disposal

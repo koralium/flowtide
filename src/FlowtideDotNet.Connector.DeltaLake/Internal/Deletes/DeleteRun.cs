@@ -19,16 +19,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
     // One commit's touched files, their vectors and claims
     internal sealed class DeleteRun
     {
-        private readonly IFileStorage _storage;
-        private readonly IOPath _table;
+        private readonly DeletionVectorReader _vectors;
         // Read on a file's first hit and kept for the commit
         private readonly Dictionary<int, IDeleteVector> _existing = new Dictionary<int, IDeleteVector>();
         private long _claimFreeBytes;
 
         public DeleteRun(IFileStorage storage, IOPath table)
         {
-            _storage = storage;
-            _table = table;
+            _vectors = new DeletionVectorReader(storage, table);
         }
 
         public Dictionary<int, DeltaFileRecord> Records { get; } = new Dictionary<int, DeltaFileRecord>();
@@ -55,7 +53,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                 _existing.Add(id, EmptyDeleteVector.Instance);
                 return;
             }
-            _existing.Add(id, await DeletionVectorReader.ReadDeletionVector(_storage, _table, vector));
+            _existing.Add(id, await _vectors.Read(vector));
             Statistics.VectorsRead++;
             _claimFreeBytes += vector.SizeInBytes;
             Statistics.PeakClaimFreeVectorBytes = Math.Max(Statistics.PeakClaimFreeVectorBytes, _claimFreeBytes);

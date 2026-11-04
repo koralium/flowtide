@@ -41,7 +41,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var values = s_instants.Select(ToInt96).ToArray();
             var file = WriteInt96(values, rowsPerGroup: values.Length);
 
-            using var reader = new FileReader(new MemoryStream(file), null, s_properties);
+            using var reader = Open(file);
             var rows = await ReadRows(reader);
 
             Assert.Equal(s_instants.Select(ExpectedMicros), rows.Select(x => x.Micros));
@@ -53,11 +53,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var values = Enumerable.Range(0, 12).Select(i => ToInt96(s_instants[2].AddDays(i).AddTicks(i))).ToArray();
             var file = WriteInt96(values, rowsPerGroup: 4);
-            using var independent = new FileReader(new MemoryStream(file), null, s_properties);
+            using var independent = Open(file);
             var expected = await ReadRows(independent);
 
             var rows = new List<(long Micros, int Id)>();
-            using var reader = new FileReader(new MemoryStream(file), null, s_properties);
+            using var reader = Open(file);
             using var batches = reader.GetRecordBatchReader();
             AddRows(await batches.ReadNextRecordBatchAsync(), rows);
             AddRows(await batches.ReadNextRecordBatchAsync(), rows);
@@ -96,7 +96,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             using var written = new RecordBatch(schema, new IArrowArray[] { wideArray, narrowArray }, 3);
             var file = WriteArrow(written);
 
-            using var reader = new FileReader(new MemoryStream(file), null, s_properties);
+            using var reader = Open(file);
             using var batches = reader.GetRecordBatchReader();
             using var batch = await batches.ReadNextRecordBatchAsync();
             var read = (Decimal128Array)batch.Column(0);
@@ -125,6 +125,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 using var logicalType = metadata.Schema.Column(i).LogicalType;
                 Assert.True(Assert.IsType<TimestampLogicalType>(logicalType).IsAdjustedToUtc, schema.FieldsList[i].Name);
             }
+        }
+
+        // Arrow readers here use the pinned properties
+        private static FileReader Open(byte[] file)
+        {
+            return new FileReader(new MemoryStream(file), null, s_properties);
         }
 
         private static ArrowReaderProperties CreateProperties()

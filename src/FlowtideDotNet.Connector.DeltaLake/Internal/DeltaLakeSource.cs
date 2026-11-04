@@ -254,6 +254,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             Debug.Assert(_reader != null);
             Debug.Assert(_changesTree != null);
 
+            var vectors = new DeletionVectorReader(_options.StorageLocation, _tableLoc);
             var deletionVectorFiles = deltaCommit.RemovedFiles.Select(x => x.Path).Intersect(deltaCommit.AddedFiles.Select(x => x.Path)).ToList();
 
             var addedFiles = deltaCommit.AddedFiles.Where(x => !deletionVectorFiles.Contains(x.Path)).ToList();
@@ -269,7 +270,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 IDeleteVector? deleteVector;
                 if (file.DeletionVector != null)
                 {
-                    deleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, file.DeletionVector);
+                    deleteVector = await vectors.Read(file.DeletionVector);
                 }
                 else
                 {
@@ -315,7 +316,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 IDeleteVector? deleteVector;
                 if (file.DeletionVector != null)
                 {
-                    deleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, file.DeletionVector);
+                    deleteVector = await vectors.Read(file.DeletionVector);
                 }
                 else
                 {
@@ -365,7 +366,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 IDeleteVector? addedFileDeleteVector;
                 if (addedFile.DeletionVector != null)
                 {
-                    addedFileDeleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, addedFile.DeletionVector);
+                    addedFileDeleteVector = await vectors.Read(addedFile.DeletionVector);
                 }
                 else
                 {
@@ -374,7 +375,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 IDeleteVector? removedFileDeleteVector;
                 if (removedFile.DeletionVector != null)
                 {
-                    removedFileDeleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, removedFile.DeletionVector);
+                    removedFileDeleteVector = await vectors.Read(removedFile.DeletionVector);
                 }
                 else
                 {
@@ -652,13 +653,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 Debug.Assert(_reader != null);
                 await output.EnterCheckpointLock();
                 var snapshotTime = _history.Enabled ? await SnapshotTime(_table) : null;
+                var vectors = new DeletionVectorReader(_options.StorageLocation, _tableLoc);
                 foreach (var file in _table.AddFiles)
                 {
                     Debug.Assert(file.Path != null);
                     IDeleteVector? deleteVector;
                     if (file.DeletionVector != null)
                     {
-                        deleteVector = await DeletionVectorReader.ReadDeletionVector(_options.StorageLocation, _tableLoc, file.DeletionVector);
+                        deleteVector = await vectors.Read(file.DeletionVector);
                     }
                     else
                     {

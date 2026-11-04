@@ -446,7 +446,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         internal static async Task<List<T>> ReadRows<T>(byte[] file, Func<RecordBatch, IEnumerable<T>> read)
         {
             var rows = new List<T>();
-            using var reader = new ParquetSharp.Arrow.FileReader(new MemoryStream(file));
+            using var reader = ParquetFileReaders.Open(new MemoryStream(file));
             using var batches = reader.GetRecordBatchReader();
             RecordBatch? batch;
             while ((batch = await batches.ReadNextRecordBatchAsync()) != null)
