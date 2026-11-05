@@ -12425,6 +12425,16 @@
       "version": ""
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "docs/connectors/catalogs.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/connectors/catalogs.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "docs/connectors/catalogs.md",
       "output": {
@@ -12434,16 +12444,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "docs/connectors/catalogs.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/connectors/catalogs.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "Resource",
@@ -12509,17 +12509,6 @@
       "version": ""
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/connectors/deltalake.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/connectors/deltalake.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/connectors/deltalake.md",
       "output": {
@@ -12530,14 +12519,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/connectors/elasticsearch.md",
+      "type": "Resource",
+      "source_relative_path": "docs/connectors/deltalake.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/connectors/elasticsearch.html"
+        "resource": {
+          "relative_path": "./docs/connectors/deltalake.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -12552,10 +12542,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/connectors/files.md",
+      "source_relative_path": "docs/connectors/elasticsearch.md",
       "output": {
         ".html": {
-          "relative_path": "docs/connectors/files.html"
+          "relative_path": "docs/connectors/elasticsearch.html"
         }
       },
       "version": ""
@@ -12572,15 +12562,14 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/connectors/kafka.md",
+      "type": "Conceptual",
+      "source_relative_path": "docs/connectors/files.md",
       "output": {
-        "resource": {
-          "relative_path": "./docs/connectors/kafka.md"
+        ".html": {
+          "relative_path": "docs/connectors/files.html"
         }
       },
-      "version": "markdown",
-      "group": "markdown"
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -12594,10 +12583,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/connectors/mongodb.md",
+      "source_relative_path": "docs/connectors/kafka.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/connectors/mongodb.md"
+          "relative_path": "./docs/connectors/kafka.md"
         }
       },
       "version": "markdown",
@@ -12614,14 +12603,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/connectors/openfga.md",
+      "type": "Resource",
+      "source_relative_path": "docs/connectors/mongodb.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/connectors/openfga.html"
+        "resource": {
+          "relative_path": "./docs/connectors/mongodb.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -12633,6 +12623,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/connectors/openfga.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/connectors/openfga.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Resource",
@@ -12677,16 +12677,6 @@
       "group": "markdown"
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/connectors/sharepoint.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/connectors/sharepoint.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/connectors/sharepoint.md",
       "output": {
@@ -12699,10 +12689,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/connectors/spicedb.md",
+      "source_relative_path": "docs/connectors/sharepoint.md",
       "output": {
         ".html": {
-          "relative_path": "docs/connectors/spicedb.html"
+          "relative_path": "docs/connectors/sharepoint.html"
         }
       },
       "version": ""
@@ -12717,6 +12707,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/connectors/spicedb.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/connectors/spicedb.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Resource",
@@ -12740,6 +12740,16 @@
       "version": ""
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "docs/connectors/starrocks.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/connectors/starrocks.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "docs/connectors/starrocks.md",
       "output": {
@@ -12749,16 +12759,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "docs/connectors/starrocks.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/connectors/starrocks.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "Resource",
@@ -12782,16 +12782,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/distributed/automaticdistribution.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/distributed/automaticdistribution.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/distributed/automaticdistribution.md",
       "output": {
@@ -12801,6 +12791,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/distributed/automaticdistribution.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/distributed/automaticdistribution.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Resource",
@@ -12887,6 +12887,16 @@
       "version": ""
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "docs/expressions/aggregatefunctions/arithmetic.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/aggregatefunctions/arithmetic.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "docs/expressions/aggregatefunctions/arithmetic.md",
       "output": {
@@ -12896,16 +12906,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "docs/expressions/aggregatefunctions/arithmetic.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/expressions/aggregatefunctions/arithmetic.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "Resource",
@@ -12950,17 +12950,6 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/expressions/aggregatefunctions/string.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/expressions/aggregatefunctions/string.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/expressions/aggregatefunctions/string.md",
       "output": {
@@ -12972,10 +12961,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/expressions/functions-reference.md",
+      "source_relative_path": "docs/expressions/aggregatefunctions/string.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/expressions/functions-reference.md"
+          "relative_path": "./docs/expressions/aggregatefunctions/string.md"
         }
       },
       "version": "markdown",
@@ -12992,14 +12981,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/arithmetic.md",
+      "type": "Resource",
+      "source_relative_path": "docs/expressions/functions-reference.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/arithmetic.html"
+        "resource": {
+          "relative_path": "./docs/expressions/functions-reference.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13013,15 +13003,14 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/expressions/scalarfunctions/boolean.md",
+      "type": "Conceptual",
+      "source_relative_path": "docs/expressions/scalarfunctions/arithmetic.md",
       "output": {
-        "resource": {
-          "relative_path": "./docs/expressions/scalarfunctions/boolean.md"
+        ".html": {
+          "relative_path": "docs/expressions/scalarfunctions/arithmetic.html"
         }
       },
-      "version": "markdown",
-      "group": "markdown"
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13034,14 +13023,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/check.md",
+      "type": "Resource",
+      "source_relative_path": "docs/expressions/scalarfunctions/boolean.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/check.html"
+        "resource": {
+          "relative_path": "./docs/expressions/scalarfunctions/boolean.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13056,10 +13046,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/comparison.md",
+      "source_relative_path": "docs/expressions/scalarfunctions/check.md",
       "output": {
         ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/comparison.html"
+          "relative_path": "docs/expressions/scalarfunctions/check.html"
         }
       },
       "version": ""
@@ -13077,10 +13067,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/datetime.md",
+      "source_relative_path": "docs/expressions/scalarfunctions/comparison.md",
       "output": {
         ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/datetime.html"
+          "relative_path": "docs/expressions/scalarfunctions/comparison.html"
         }
       },
       "version": ""
@@ -13098,10 +13088,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/hash.md",
+      "source_relative_path": "docs/expressions/scalarfunctions/datetime.md",
       "output": {
         ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/hash.html"
+          "relative_path": "docs/expressions/scalarfunctions/datetime.html"
         }
       },
       "version": ""
@@ -13116,6 +13106,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/expressions/scalarfunctions/hash.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/scalarfunctions/hash.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Resource",
@@ -13139,17 +13139,6 @@
       "version": ""
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/expressions/scalarfunctions/logarithmic.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/expressions/scalarfunctions/logarithmic.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/expressions/scalarfunctions/logarithmic.md",
       "output": {
@@ -13161,10 +13150,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/expressions/scalarfunctions/rounding.md",
+      "source_relative_path": "docs/expressions/scalarfunctions/logarithmic.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/expressions/scalarfunctions/rounding.md"
+          "relative_path": "./docs/expressions/scalarfunctions/logarithmic.md"
         }
       },
       "version": "markdown",
@@ -13181,14 +13170,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/expressions/scalarfunctions/string.md",
+      "type": "Resource",
+      "source_relative_path": "docs/expressions/scalarfunctions/rounding.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/expressions/scalarfunctions/string.html"
+        "resource": {
+          "relative_path": "./docs/expressions/scalarfunctions/rounding.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13200,6 +13190,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/expressions/scalarfunctions/string.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/scalarfunctions/string.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13244,17 +13244,6 @@
       "version": ""
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/expressions/tablefunctions/generic.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/expressions/tablefunctions/generic.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/expressions/tablefunctions/generic.md",
       "output": {
@@ -13266,10 +13255,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/expressions/tablefunctions/index.md",
+      "source_relative_path": "docs/expressions/tablefunctions/generic.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/expressions/tablefunctions/index.md"
+          "relative_path": "./docs/expressions/tablefunctions/generic.md"
         }
       },
       "version": "markdown",
@@ -13284,6 +13273,17 @@
         }
       },
       "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "docs/expressions/tablefunctions/index.md",
+      "output": {
+        "resource": {
+          "relative_path": "./docs/expressions/tablefunctions/index.md"
+        }
+      },
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Conceptual",
@@ -13328,16 +13328,6 @@
       "group": "markdown"
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/expressions/windowfunctions/generic.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/expressions/windowfunctions/generic.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/expressions/windowfunctions/generic.md",
       "output": {
@@ -13350,10 +13340,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/expressions/windowfunctions/index.md",
+      "source_relative_path": "docs/expressions/windowfunctions/generic.md",
       "output": {
         ".html": {
-          "relative_path": "docs/expressions/windowfunctions/index.html"
+          "relative_path": "docs/expressions/windowfunctions/generic.html"
         }
       },
       "version": ""
@@ -13368,6 +13358,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/expressions/windowfunctions/index.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/expressions/windowfunctions/index.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13412,16 +13412,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/internal/projectstructure.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/internal/projectstructure.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/internal/projectstructure.md",
       "output": {
@@ -13434,10 +13424,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/internal/reservoir/index.md",
+      "source_relative_path": "docs/internal/projectstructure.md",
       "output": {
         ".html": {
-          "relative_path": "docs/internal/reservoir/index.html"
+          "relative_path": "docs/internal/projectstructure.html"
         }
       },
       "version": ""
@@ -13454,15 +13444,14 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/internal/storage/bplustree.md",
+      "type": "Conceptual",
+      "source_relative_path": "docs/internal/reservoir/index.md",
       "output": {
-        "resource": {
-          "relative_path": "./docs/internal/storage/bplustree.md"
+        ".html": {
+          "relative_path": "docs/internal/reservoir/index.html"
         }
       },
-      "version": "markdown",
-      "group": "markdown"
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13473,6 +13462,17 @@
         }
       },
       "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "docs/internal/storage/bplustree.md",
+      "output": {
+        "resource": {
+          "relative_path": "./docs/internal/storage/bplustree.md"
+        }
+      },
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13496,16 +13496,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/internal/storage/objectstate.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/internal/storage/objectstate.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/internal/storage/objectstate.md",
       "output": {
@@ -13518,10 +13508,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/internal/storage/persistentrules.md",
+      "source_relative_path": "docs/internal/storage/objectstate.md",
       "output": {
         ".html": {
-          "relative_path": "docs/internal/storage/persistentrules.html"
+          "relative_path": "docs/internal/storage/objectstate.html"
         }
       },
       "version": ""
@@ -13539,10 +13529,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/monitoring/azuremonitor.md",
+      "source_relative_path": "docs/internal/storage/persistentrules.md",
       "output": {
         ".html": {
-          "relative_path": "docs/monitoring/azuremonitor.html"
+          "relative_path": "docs/internal/storage/persistentrules.html"
         }
       },
       "version": ""
@@ -13559,15 +13549,14 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/monitoring/datahub.md",
+      "type": "Conceptual",
+      "source_relative_path": "docs/monitoring/azuremonitor.md",
       "output": {
-        "resource": {
-          "relative_path": "./docs/monitoring/datahub.md"
+        ".html": {
+          "relative_path": "docs/monitoring/azuremonitor.html"
         }
       },
-      "version": "markdown",
-      "group": "markdown"
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13581,10 +13570,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/monitoring/generalmetrics.md",
+      "source_relative_path": "docs/monitoring/datahub.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/monitoring/generalmetrics.md"
+          "relative_path": "./docs/monitoring/datahub.md"
         }
       },
       "version": "markdown",
@@ -13599,6 +13588,17 @@
         }
       },
       "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "docs/monitoring/generalmetrics.md",
+      "output": {
+        "resource": {
+          "relative_path": "./docs/monitoring/generalmetrics.md"
+        }
+      },
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13622,16 +13622,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/monitoring/openlineage.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/monitoring/openlineage.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/monitoring/openlineage.md",
       "output": {
@@ -13641,6 +13631,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/monitoring/openlineage.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/monitoring/openlineage.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13664,17 +13664,6 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/operators/aggregate.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/operators/aggregate.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/operators/aggregate.md",
       "output": {
@@ -13685,14 +13674,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/operators/buffer.md",
+      "type": "Resource",
+      "source_relative_path": "docs/operators/aggregate.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/operators/buffer.html"
+        "resource": {
+          "relative_path": "./docs/operators/aggregate.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -13707,10 +13697,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/operators/check.md",
+      "source_relative_path": "docs/operators/buffer.md",
       "output": {
         ".html": {
-          "relative_path": "docs/operators/check.html"
+          "relative_path": "docs/operators/buffer.html"
         }
       },
       "version": ""
@@ -13728,10 +13718,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/operators/filter.md",
+      "source_relative_path": "docs/operators/check.md",
       "output": {
         ".html": {
-          "relative_path": "docs/operators/filter.html"
+          "relative_path": "docs/operators/check.html"
         }
       },
       "version": ""
@@ -13746,6 +13736,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/operators/filter.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/operators/filter.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13769,6 +13769,16 @@
       "group": "markdown"
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "docs/operators/join.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/operators/join.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "docs/operators/join.md",
       "output": {
@@ -13778,16 +13788,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "docs/operators/join.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/operators/join.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13811,6 +13811,16 @@
       "group": "markdown"
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "docs/operators/projection.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/operators/projection.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "docs/operators/projection.md",
       "output": {
@@ -13820,16 +13830,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "docs/operators/projection.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/operators/projection.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "Resource",
@@ -13895,16 +13895,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/operators/window.md",
-      "output": {
-        ".html": {
-          "relative_path": "docs/operators/window.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "docs/operators/window.md",
       "output": {
@@ -13914,6 +13904,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/operators/window.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/operators/window.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -13958,17 +13958,6 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/sql/createview.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/sql/createview.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/sql/createview.md",
       "output": {
@@ -13980,10 +13969,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/sql/index.md",
+      "source_relative_path": "docs/sql/createview.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/sql/index.md"
+          "relative_path": "./docs/sql/createview.md"
         }
       },
       "version": "markdown",
@@ -13998,6 +13987,17 @@
         }
       },
       "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "docs/sql/index.md",
+      "output": {
+        "resource": {
+          "relative_path": "./docs/sql/index.md"
+        }
+      },
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Conceptual",
@@ -14042,17 +14042,6 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "docs/sql/select/except.md",
-      "output": {
-        "resource": {
-          "relative_path": "./docs/sql/select/except.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "docs/sql/select/except.md",
       "output": {
@@ -14064,10 +14053,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "docs/sql/select/index.md",
+      "source_relative_path": "docs/sql/select/except.md",
       "output": {
         "resource": {
-          "relative_path": "./docs/sql/select/index.md"
+          "relative_path": "./docs/sql/select/except.md"
         }
       },
       "version": "markdown",
@@ -14084,14 +14073,15 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "docs/sql/select/intersect.md",
+      "type": "Resource",
+      "source_relative_path": "docs/sql/select/index.md",
       "output": {
-        ".html": {
-          "relative_path": "docs/sql/select/intersect.html"
+        "resource": {
+          "relative_path": "./docs/sql/select/index.md"
         }
       },
-      "version": ""
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Resource",
@@ -14106,10 +14096,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/sql/select/topn.md",
+      "source_relative_path": "docs/sql/select/intersect.md",
       "output": {
         ".html": {
-          "relative_path": "docs/sql/select/topn.html"
+          "relative_path": "docs/sql/select/intersect.html"
         }
       },
       "version": ""
@@ -14127,10 +14117,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/sql/select/union.md",
+      "source_relative_path": "docs/sql/select/topn.md",
       "output": {
         ".html": {
-          "relative_path": "docs/sql/select/union.html"
+          "relative_path": "docs/sql/select/topn.html"
         }
       },
       "version": ""
@@ -14148,10 +14138,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/sql/tableprovider.md",
+      "source_relative_path": "docs/sql/select/union.md",
       "output": {
         ".html": {
-          "relative_path": "docs/sql/tableprovider.html"
+          "relative_path": "docs/sql/select/union.html"
         }
       },
       "version": ""
@@ -14169,10 +14159,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "docs/statepersistence.md",
+      "source_relative_path": "docs/sql/tableprovider.md",
       "output": {
         ".html": {
-          "relative_path": "docs/statepersistence.html"
+          "relative_path": "docs/sql/tableprovider.html"
         }
       },
       "version": ""
@@ -14187,6 +14177,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "docs/statepersistence.md",
+      "output": {
+        ".html": {
+          "relative_path": "docs/statepersistence.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -14285,6 +14285,16 @@
       "version": ""
     },
     {
+      "type": "Conceptual",
+      "source_relative_path": "index.md",
+      "output": {
+        ".html": {
+          "relative_path": "index.html"
+        }
+      },
+      "version": ""
+    },
+    {
       "type": "Resource",
       "source_relative_path": "index.md",
       "output": {
@@ -14294,16 +14304,6 @@
       },
       "version": "markdown",
       "group": "markdown"
-    },
-    {
-      "type": "Conceptual",
-      "source_relative_path": "index.md",
-      "output": {
-        ".html": {
-          "relative_path": "index.html"
-        }
-      },
-      "version": ""
     },
     {
       "type": "FlowtideLlmBundle",
@@ -14397,16 +14397,6 @@
       "version": ""
     },
     {
-      "type": "Conceptual",
-      "source_relative_path": "releasenotes/release-0-11-0.md",
-      "output": {
-        ".html": {
-          "relative_path": "releasenotes/release-0-11-0.html"
-        }
-      },
-      "version": ""
-    },
-    {
       "type": "Resource",
       "source_relative_path": "releasenotes/release-0-11-0.md",
       "output": {
@@ -14419,10 +14409,10 @@
     },
     {
       "type": "Conceptual",
-      "source_relative_path": "releasenotes/release-0-12-0.md",
+      "source_relative_path": "releasenotes/release-0-11-0.md",
       "output": {
         ".html": {
-          "relative_path": "releasenotes/release-0-12-0.html"
+          "relative_path": "releasenotes/release-0-11-0.html"
         }
       },
       "version": ""
@@ -14437,6 +14427,16 @@
       },
       "version": "markdown",
       "group": "markdown"
+    },
+    {
+      "type": "Conceptual",
+      "source_relative_path": "releasenotes/release-0-12-0.md",
+      "output": {
+        ".html": {
+          "relative_path": "releasenotes/release-0-12-0.html"
+        }
+      },
+      "version": ""
     },
     {
       "type": "Conceptual",
@@ -14460,17 +14460,6 @@
       "group": "markdown"
     },
     {
-      "type": "Resource",
-      "source_relative_path": "releasenotes/release-0-14-0.md",
-      "output": {
-        "resource": {
-          "relative_path": "./releasenotes/release-0-14-0.md"
-        }
-      },
-      "version": "markdown",
-      "group": "markdown"
-    },
-    {
       "type": "Conceptual",
       "source_relative_path": "releasenotes/release-0-14-0.md",
       "output": {
@@ -14482,10 +14471,10 @@
     },
     {
       "type": "Resource",
-      "source_relative_path": "releasenotes/release-0-15-0.md",
+      "source_relative_path": "releasenotes/release-0-14-0.md",
       "output": {
         "resource": {
-          "relative_path": "./releasenotes/release-0-15-0.md"
+          "relative_path": "./releasenotes/release-0-14-0.md"
         }
       },
       "version": "markdown",
@@ -14500,6 +14489,17 @@
         }
       },
       "version": ""
+    },
+    {
+      "type": "Resource",
+      "source_relative_path": "releasenotes/release-0-15-0.md",
+      "output": {
+        "resource": {
+          "relative_path": "./releasenotes/release-0-15-0.md"
+        }
+      },
+      "version": "markdown",
+      "group": "markdown"
     },
     {
       "type": "Toc",
