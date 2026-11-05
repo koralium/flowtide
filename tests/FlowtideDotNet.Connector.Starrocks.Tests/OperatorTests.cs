@@ -17,6 +17,9 @@ using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Tests;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using NSubstitute;
@@ -27,8 +30,28 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    public class OperatorTests : OperatorTestBase
+    public class OperatorTests : OperatorTestBase, IDisposable
     {
+        // Default storage is shared, tests would restore each other's checkpoints
+        private readonly string _directory = $"./data/starrocksOperatorTests/{Guid.NewGuid():N}";
+        private FileCachePersistentStorage? _storage;
+
+        protected override StateManagerOptions CreateStateManagerOptions()
+        {
+            _storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = $"{_directory}/persistent" });
+            return new StateManagerOptions()
+            {
+                PersistentStorage = _storage,
+                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"{_directory}/tmp" }
+            };
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose();
+            _storage?.Dispose();
+        }
+
         [Fact]
         public void IncorrectTableNameThrowsException()
         {
@@ -473,7 +496,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             {
                 started.Add(await NextLoad(loads));
             }
-            // Upload waits on the oldest load, nothing else starts
+            // Upload waits for a free slot, nothing else starts
             Assert.False(loads.Reader.TryRead(out _));
 
             started[0].Done.SetResult();
@@ -492,6 +515,102 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
 
             await SendCheckpoint(op, 1);
             await EgressWaitForCheckpointDone().WaitAsync(WaitTimeout);
+        }
+
+        [Fact]
+        public async Task OutOfOrderCompletionFreesSlotForNextLoad()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: 3);
+
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 4).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            var second = await NextLoad(loads);
+            var third = await NextLoad(loads);
+            Assert.False(loads.Reader.TryRead(out _));
+
+            // Slow first load must not hold the slot
+            second.Done.SetResult();
+            var fourth = await NextLoad(loads);
+            Assert.False(first.Done.Task.IsCompleted);
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            first.Done.SetResult();
+            third.Done.SetResult();
+            fourth.Done.SetResult();
+            await SendCheckpoint(op, 1);
+            await EgressWaitForCheckpointDone().WaitAsync(WaitTimeout);
+        }
+
+        [Fact]
+        public async Task PartialTailWaitsForSlotAndCheckpointWaitsForTail()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 2, maxParallelLoads: 2);
+
+            // Two full batches fill both slots, one row left
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 5).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            var second = await NextLoad(loads);
+
+            // Tail waits in the background, operator is free
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            await SendCheckpoint(op, 1);
+            var checkpointDone = EgressWaitForCheckpointDone();
+
+            second.Done.SetResult();
+            var tail = await NextLoad(loads);
+            Assert.Contains("\"value4\"", tail.Body);
+            Assert.DoesNotContain("\"value3\"", tail.Body);
+            Assert.False(checkpointDone.IsCompleted);
+
+            first.Done.SetResult();
+            Assert.False(checkpointDone.IsCompleted);
+            tail.Done.SetResult();
+            await checkpointDone.WaitAsync(WaitTimeout);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task FailedPredecessorFaultsOperatorWithoutStartingTail(bool canceled)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Single predecessor, only its failure can free the slot
+            var op = await CreateWatermarkSink(loads, batchSize: 2, maxParallelLoads: 1);
+
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 3).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            if (canceled)
+            {
+                first.Done.SetCanceled();
+            }
+            else
+            {
+                first.Done.SetException(new Exception("Load failed"));
+            }
+
+            // A started tail would never finish, the fault proves it was skipped
+            if (canceled)
+            {
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+                Assert.IsType<TaskCanceledException>(ex.InnerException);
+            }
+            else
+            {
+                var ex = await Assert.ThrowsAsync<Exception>(() => op.Completion.WaitAsync(WaitTimeout));
+                Assert.Equal("Load failed", ex.Message);
+            }
+            Assert.False(loads.Reader.TryRead(out _));
         }
 
         [Fact]

@@ -262,7 +262,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             }
 
             // Keys are unique per upload, batches may land in any order
-            var inFlight = new Queue<(Task Load, ArrayBufferWriter<byte> Buffer)>();
+            var inFlight = new List<(Task Load, ArrayBufferWriter<byte> Buffer)>();
             var freeBuffers = new Stack<ArrayBufferWriter<byte>>();
             var buffer = new ArrayBufferWriter<byte>();
             try
@@ -289,13 +289,16 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                         jsonWriter.Flush();
                         if (inFlight.Count >= _options.MaxParallelLoads)
                         {
-                            // At the limit, oldest load must land first
-                            var oldest = inFlight.Dequeue();
-                            await oldest.Load;
-                            oldest.Buffer.Clear();
-                            freeBuffers.Push(oldest.Buffer);
+                            // At the limit, first finished load frees its slot
+                            var finished = await Task.WhenAny(inFlight.Select(x => x.Load));
+                            var index = inFlight.FindIndex(x => x.Load == finished);
+                            var freed = inFlight[index];
+                            inFlight.RemoveAt(index);
+                            await freed.Load;
+                            freed.Buffer.Clear();
+                            freeBuffers.Push(freed.Buffer);
                         }
-                        inFlight.Enqueue((_httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, buffer.WrittenMemory)), buffer));
+                        inFlight.Add((_httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, buffer.WrittenMemory)), buffer));
                         buffer = freeBuffers.Count > 0 ? freeBuffers.Pop() : new ArrayBufferWriter<byte>();
                         jsonWriter.Reset(buffer);
                         jsonWriter.WriteStartArray();
@@ -307,9 +310,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 {
                     jsonWriter.WriteEndArray();
                     jsonWriter.Flush();
-                    // Tail chains in the background instead of blocking
-                    Task after = inFlight.Count >= _options.MaxParallelLoads ? inFlight.Dequeue().Load : Task.CompletedTask;
-                    inFlight.Enqueue((StreamLoadAfter(after, buffer.WrittenMemory), buffer));
+                    // At the limit, tail waits for a slot in the background
+                    var tail = inFlight.Count >= _options.MaxParallelLoads
+                        ? StreamLoadWhenSlotFree(inFlight.Select(x => x.Load).ToArray(), buffer.WrittenMemory)
+                        : _httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, buffer.WrittenMemory));
+                    inFlight.Add((tail, buffer));
                 }
             }
             catch
@@ -329,7 +334,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             {
                 return;
             }
-            var sending = inFlight.Count == 1 ? inFlight.Peek().Load : Task.WhenAll(inFlight.Select(x => x.Load));
+            var sending = inFlight.Count == 1 ? inFlight[0].Load : Task.WhenAll(inFlight.Select(x => x.Load));
             if (sending.IsCompleted)
             {
                 await sending;
@@ -339,9 +344,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             SendInBackground(sending);
         }
 
-        private async Task StreamLoadAfter(Task previous, ReadOnlyMemory<byte> data)
+        private async Task StreamLoadWhenSlotFree(Task[] running, ReadOnlyMemory<byte> data)
         {
-            await previous;
+            var finished = await Task.WhenAny(running);
+            // Failed or canceled predecessor, tail never starts
+            await finished;
             await _httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, data));
         }
 
