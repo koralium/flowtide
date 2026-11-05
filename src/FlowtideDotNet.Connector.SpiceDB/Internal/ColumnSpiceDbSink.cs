@@ -77,6 +77,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             m_subjectRelationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_relation", StringComparison.OrdinalIgnoreCase));
 
             m_primaryKeys = new List<int>() { m_resourceObjectTypeIndex, m_resourceObjectIdIndex, m_relationIndex, m_subjectObjectTypeIndex, m_subjectObjectIdIndex };
+            // Part of relationship identity, deletes need it
+            if (m_subjectRelationIndex >= 0)
+            {
+                m_primaryKeys.Add(m_subjectRelationIndex);
+            }
             this.m_spiceDbSinkOptions = spiceDbSinkOptions;
             this.m_writeRelation = writeRelation;
             if (m_spiceDbSinkOptions.DeleteExistingDataFilter != null)
@@ -244,7 +249,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             if (m_subjectRelationIndex >= 0)
             {
                 row.EventBatchData.Columns[m_subjectRelationIndex].GetValueAt(row.Index, m_dataValueContainer, default);
-                subjectOptionalRelation = ColumnToString(m_dataValueContainer);
+                // Null subject relation means a direct subject
+                if (m_dataValueContainer.Type != ArrowTypeId.Null)
+                {
+                    subjectOptionalRelation = ColumnToString(m_dataValueContainer);
+                }
             }
 
             var resource = new ObjectReference()
@@ -275,6 +284,20 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             };
         }
 
+        // Null key rows arrive as deletes
+        private bool HasNullKey(ColumnWriteOperation row)
+        {
+            for (int i = 0; i < m_primaryKeys.Count; i++)
+            {
+                row.EventBatchData.Columns[m_primaryKeys[i]].GetValueAt(row.Index, m_dataValueContainer, default);
+                if (m_dataValueContainer.Type == ArrowTypeId.Null)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
         {
             Debug.Assert(m_client != null);
@@ -284,8 +307,20 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             var watch = Stopwatch.StartNew();
             string? lastToken = default;
             List<Task<string>> uploadTasks = new List<Task<string>>();
+            int skippedNullKeys = 0;
+            string? skippedExample = null;
             await foreach (var row in rows)
             {
+                if (HasNullKey(row))
+                {
+                    skippedNullKeys++;
+                    if (skippedExample == null)
+                    {
+                        var r = GetRelationship(row);
+                        skippedExample = $"{r.Resource.ObjectType}:{r.Resource.ObjectId}#{r.Relation}@{r.Subject.Object.ObjectType}:{r.Subject.Object.ObjectId}";
+                    }
+                    continue;
+                }
 
                 var relationship = GetRelationship(row);
 
@@ -366,6 +401,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         }
                     }
                 }
+            }
+
+            if (skippedNullKeys > 0)
+            {
+                Logger.SkippedRowsWithNullKey(skippedNullKeys, skippedExample!, StreamName, Name);
             }
 
             await Task.WhenAll(uploadTasks);

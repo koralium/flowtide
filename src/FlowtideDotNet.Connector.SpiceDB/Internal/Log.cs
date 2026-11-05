@@ -39,5 +39,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
            Level = LogLevel.Warning,
            Message = "Failed to write relationships, retrying in {delay}, for `{stream}`, operator: `{operatorId}`")]
         public static partial void FailedToWriteRelationships(this ILogger logger, Exception e, TimeSpan delay, string stream, string operatorId);
+
+        [LoggerMessage(
+           EventId = 5,
+           Level = LogLevel.Warning,
+           Message = "Skipped {count} rows with a null key column, example: `{example}`, for `{stream}`, operator: `{operatorId}`")]
+        public static partial void SkippedRowsWithNullKey(this ILogger logger, int count, string example, string stream, string operatorId);
     }
 }
