@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Connector.StarRocks.Exceptions;
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
@@ -23,7 +24,8 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
         private readonly string _backendUrl;
         private readonly HttpClient _httpClient;
         private readonly StarRocksSinkOptions _options;
-        private Dictionary<string, string> _redirectUris;
+        // Parallel loads share this cache
+        private readonly ConcurrentDictionary<string, string> _redirectUris;
 
         public StarRocksHttpClient(StarRocksSinkOptions options)
         {
@@ -34,7 +36,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             {
                 _backendUrl = options.BackendHttpUrl;
             }
-            _redirectUris = new Dictionary<string, string>();
+            _redirectUris = new ConcurrentDictionary<string, string>();
             _httpClient = new HttpClient(new StarRocksHttpClientHandler() { AllowAutoRedirect = false })
             {
             };

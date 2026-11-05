@@ -93,6 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            await DrainBackgroundSendFromLastRun();
             m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
 
             m_primaryKeyColumns = await GetPrimaryKeyColumns();
@@ -190,6 +191,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 throw new InvalidOperationException("A background send is already running.");
             }
+            send = FailOnCancel(send);
             m_backgroundSend = send;
             // Fire and forget, a full input queue must not block the send
             _ = send.ContinueWith(
@@ -198,6 +200,19 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
+        }
+
+        // Dataflow drops canceled tasks, rows would be lost
+        private static async Task FailOnCancel(Task send)
+        {
+            try
+            {
+                await send;
+            }
+            catch (OperationCanceledException e)
+            {
+                throw new InvalidOperationException("A background send was canceled before it completed.", e);
+            }
         }
 
         // False while a send runs, rethrows a failed send
@@ -215,6 +230,33 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             m_backgroundSend = null;
             send.GetAwaiter().GetResult();
             return true;
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            await DrainBackgroundSendFromLastRun();
+            await base.DisposeAsync();
+        }
+
+        // Old load lands before a restart sends newer rows
+        private async Task DrainBackgroundSendFromLastRun()
+        {
+            var send = m_backgroundSend;
+            m_backgroundSend = null;
+            m_hasDeferredWatermark = false;
+            m_hasRowsSinceWatermark = false;
+            if (send == null)
+            {
+                return;
+            }
+            try
+            {
+                await send;
+            }
+            catch
+            {
+                // Run already torn down, rows replay from the checkpoint
+            }
         }
 
         private async Task WaitForBackgroundSend()

@@ -418,6 +418,41 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             Assert.Equal("Load failed", ex.Message);
         }
 
+        [Fact]
+        public async Task CanceledBackgroundStreamLoadFailsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            // Same as an HttpClient timeout
+            first.Done.SetCanceled();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+        }
+
+        [Fact]
+        public async Task DisposeWaitsForInFlightLoadAndDropsItsFailure()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+
+            var dispose = op.DisposeAsync().AsTask();
+            Assert.False(dispose.IsCompleted);
+
+            first.Done.SetException(new Exception("Old run failure"));
+            await dispose.WaitAsync(WaitTimeout);
+
+            // Late completion signal must not fail a later run
+            await WaitForHandled(op, "trigger");
+            Assert.False(op.Completion.IsCompleted);
+        }
+
         private sealed record PendingLoad(string Body, TaskCompletionSource Done);
 
         [Theory]
