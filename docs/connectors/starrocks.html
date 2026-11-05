@@ -122,6 +122,9 @@ FROM orders o
 <li>This mode offers <strong>low latency</strong> and <strong>high throughput</strong>, as data is flushed frequently.</li>
 <li>However, in the event of a <strong>stream failure or restart</strong>, already inserted data is <strong>not rolled back</strong>, which may result in duplicates or partial inserts.</li>
 <li>Recommended for <strong>at-least-once</strong> delivery semantics when latency is more important than strict consistency.</li>
+<li>Loads run in the background, so the sink keeps receiving data while a load is in flight.
+Watermarks that arrive meanwhile are merged into the next load.</li>
+<li>A checkpoint waits until all pending data has been loaded into StarRocks.</li>
 </ul>
 <h4 id="oncheckpoint"><strong>OnCheckpoint</strong></h4>
 <ul>
@@ -130,6 +133,31 @@ FROM orders o
 <li>Slightly higher latency compared to <code>OnWatermark</code>, due to the transactional guarantees.</li>
 <li>Recommended for <strong>production</strong> or <strong>critical pipelines</strong> where correctness and consistency are prioritized.</li>
 </ul>
+<h3 id="batching-and-parallel-loads">Batching and parallel loads</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BatchSize</code></td>
+<td>1000</td>
+<td>Rows per Stream Load request.</td>
+</tr>
+<tr>
+<td><code>MaxParallelLoads</code></td>
+<td>1</td>
+<td>Stream Load requests in flight at once within one upload. Only used in <code>OnWatermark</code> and <code>Hybrid</code> mode.</td>
+</tr>
+</tbody>
+</table>
+<p>Each Stream Load request is its own StarRocks transaction and creates a new version of the table.
+Raising <code>BatchSize</code> reduces the number of transactions. Raising <code>MaxParallelLoads</code> helps when uploads span several batches,
+but more concurrent loads increase the risk of StarRocks <em>too many versions</em> errors.</p>
 
 </article>
 

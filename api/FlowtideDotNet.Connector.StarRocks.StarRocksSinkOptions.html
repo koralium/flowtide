@@ -253,7 +253,7 @@ This allows insertions even when using random ports.</p>
 
   <h3 id="FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_ExecutionMode" data-uid="FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ExecutionMode">
   ExecutionMode
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.Starrocks/StarrocksSinkOptions.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.Starrocks/StarrocksSinkOptions.cs/#L47"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>When the connector should commit data to starrocks
@@ -304,6 +304,40 @@ On checkpoint allows exactly-once semantics but may have higher latency</p>
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_MaxParallelLoads_" data-uid="FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads*"></a>
+
+  <h3 id="FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_MaxParallelLoads" data-uid="FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads">
+  MaxParallelLoads
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Connector.Starrocks/StarrocksSinkOptions.cs/#L39"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Max stream loads in flight within one upload, OnWatermark and Hybrid only.
+Each load is its own StarRocks transaction.</p>
+<p>Default: 1</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int MaxParallelLoads { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
     <dd></dd>
   </dl>
 

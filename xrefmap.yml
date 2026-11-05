@@ -15789,6 +15789,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.HttpUrl
   nameWithType: StarRocksSinkOptions.HttpUrl
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
+  name: MaxParallelLoads
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_MaxParallelLoads
+  commentId: P:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
+  nameWithType: StarRocksSinkOptions.MaxParallelLoads
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads*
+  name: MaxParallelLoads
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_MaxParallelLoads_
+  commentId: Overload:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
+  nameWithType: StarRocksSinkOptions.MaxParallelLoads
 - uid: FlowtideDotNet.Connector.StarRocks.StarRocksUsernamePassword
   name: StarRocksUsernamePassword
   href: api/FlowtideDotNet.Connector.StarRocks.StarRocksUsernamePassword.html
@@ -34948,6 +34961,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DeleteAsync
   nameWithType: ColumnGroupedWriteOperator.DeleteAsync
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync
+  name: DisposeAsync()
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_DisposeAsync
+  commentId: M:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync()
+  nameWithType: ColumnGroupedWriteOperator.DisposeAsync()
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync*
+  name: DisposeAsync
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_DisposeAsync_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync
+  nameWithType: ColumnGroupedWriteOperator.DisposeAsync
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.ExistingRowComparer
   name: ExistingRowComparer
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_ExistingRowComparer
@@ -34961,6 +34987,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.ExistingRowComparer
   nameWithType: ColumnGroupedWriteOperator.ExistingRowComparer
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
+  name: FailOnCancel(Task)
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FailOnCancel_System_Threading_Tasks_Task_
+  commentId: M:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
+  nameWithType: ColumnGroupedWriteOperator.FailOnCancel(Task)
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel*
+  name: FailOnCancel
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FailOnCancel_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel
+  nameWithType: ColumnGroupedWriteOperator.FailOnCancel
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FetchExistingData
   name: FetchExistingData
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FetchExistingData
@@ -35074,6 +35113,22 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnRecieve
   nameWithType: ColumnGroupedWriteOperator.OnRecieve
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger(System.String,System.Object)
+  name: OnTrigger(string, object?)
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnTrigger_System_String_System_Object_
+  commentId: M:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger(System.String,System.Object)
+  name.vb: OnTrigger(String, Object)
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger(string, object?)
+  fullName.vb: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger(String, Object)
+  nameWithType: ColumnGroupedWriteOperator.OnTrigger(string, object?)
+  nameWithType.vb: ColumnGroupedWriteOperator.OnTrigger(String, Object)
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger*
+  name: OnTrigger
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnTrigger_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger
+  nameWithType: ColumnGroupedWriteOperator.OnTrigger
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnWatermark(FlowtideDotNet.Base.Watermark)
   name: OnWatermark(Watermark)
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnWatermark_FlowtideDotNet_Base_Watermark_
@@ -35100,6 +35155,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.PrimaryKeyColumns
   nameWithType: ColumnGroupedWriteOperator.PrimaryKeyColumns
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground(System.Threading.Tasks.Task)
+  name: SendInBackground(Task)
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_SendInBackground_System_Threading_Tasks_Task_
+  commentId: M:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground(System.Threading.Tasks.Task)
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground(System.Threading.Tasks.Task)
+  nameWithType: ColumnGroupedWriteOperator.SendInBackground(Task)
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground*
+  name: SendInBackground
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_SendInBackground_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground
+  nameWithType: ColumnGroupedWriteOperator.SendInBackground
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UploadChanges(System.Collections.Generic.IAsyncEnumerable{FlowtideDotNet.Core.Operators.Write.Column.ColumnWriteOperation},FlowtideDotNet.Base.Watermark,System.Boolean,System.Threading.CancellationToken)
   name: UploadChanges(IAsyncEnumerable<ColumnWriteOperation>, Watermark, bool, CancellationToken)
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_UploadChanges_System_Collections_Generic_IAsyncEnumerable_FlowtideDotNet_Core_Operators_Write_Column_ColumnWriteOperation__FlowtideDotNet_Base_Watermark_System_Boolean_System_Threading_CancellationToken_
@@ -35116,6 +35184,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UploadChanges
   nameWithType: ColumnGroupedWriteOperator.UploadChanges
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend
+  name: UsesBackgroundSend
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_UsesBackgroundSend
+  commentId: P:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend
+  nameWithType: ColumnGroupedWriteOperator.UsesBackgroundSend
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend*
+  name: UsesBackgroundSend
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_UsesBackgroundSend_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend
+  nameWithType: ColumnGroupedWriteOperator.UsesBackgroundSend
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnWriteOperation
   name: ColumnWriteOperation
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnWriteOperation.html
