@@ -15,6 +15,8 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Lineage;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using System.Threading.Tasks.Dataflow;
@@ -40,10 +42,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             List<Expression> expressions = new List<Expression>();
             List<int> emit = new List<int>();
             var emitStart = writeRelation.Input.OutputLength;
+            var subjectRelationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_relation", StringComparison.OrdinalIgnoreCase));
             for (int i = 0; i < writeRelation.TableSchema.Names.Count; i++)
             {
                 emit.Add(emitStart + i);
-                expressions.Add(new CastExpression()
+                Expression expression = new CastExpression()
                 {
                     Expression = new DirectFieldReference()
                     {
@@ -53,7 +56,22 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
                         }
                     },
                     Type = new StringType()
-                });
+                };
+                if (i == subjectRelationIndex)
+                {
+                    // Key column, null means direct subject
+                    expression = new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsComparison.Urn,
+                        ExtensionName = FunctionsComparison.Coalesce,
+                        Arguments = new List<Expression>()
+                        {
+                            expression,
+                            new StringLiteral() { Value = "" }
+                        }
+                    };
+                }
+                expressions.Add(expression);
             }
 
             writeRelation.Input = new ProjectRelation()

@@ -77,6 +77,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             m_subjectRelationIndex = writeRelation.TableSchema.Names.FindIndex(x => x.Equals("subject_relation", StringComparison.OrdinalIgnoreCase));
 
             m_primaryKeys = new List<int>() { m_resourceObjectTypeIndex, m_resourceObjectIdIndex, m_relationIndex, m_subjectObjectTypeIndex, m_subjectObjectIdIndex };
+            // Part of relationship identity, deletes need it
+            if (m_subjectRelationIndex >= 0)
+            {
+                m_primaryKeys.Add(m_subjectRelationIndex);
+            }
             this.m_spiceDbSinkOptions = spiceDbSinkOptions;
             this.m_writeRelation = writeRelation;
             if (m_spiceDbSinkOptions.DeleteExistingDataFilter != null)
@@ -244,7 +249,11 @@ namespace FlowtideDotNet.Connector.SpiceDB.Internal
             if (m_subjectRelationIndex >= 0)
             {
                 row.EventBatchData.Columns[m_subjectRelationIndex].GetValueAt(row.Index, m_dataValueContainer, default);
-                subjectOptionalRelation = ColumnToString(m_dataValueContainer);
+                // Null subject relation means a direct subject
+                if (m_dataValueContainer.Type != ArrowTypeId.Null)
+                {
+                    subjectOptionalRelation = ColumnToString(m_dataValueContainer);
+                }
             }
 
             var resource = new ObjectReference()

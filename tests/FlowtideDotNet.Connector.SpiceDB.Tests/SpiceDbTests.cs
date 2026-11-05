@@ -11,8 +11,11 @@
 // limitations under the License.
 
 using Authzed.Api.V1;
+using FlowtideDotNet.AcceptanceTests.Entities;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace FlowtideDotNet.Connector.SpiceDB.Tests
 {
@@ -165,6 +168,239 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                 await Task.Delay(10);
             }
             Assert.Equal(999, existing.Count);
+        }
+
+        [Fact]
+        public async Task TestNullKeyRowsSkippedWithWarning()
+        {
+            var schemaText = File.ReadAllText("schema.txt");
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata();
+            metadata.Add("Authorization", $"Bearer {nameof(TestNullKeyRowsSkippedWithWarning)}");
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = schemaText
+            }, metadata);
+
+            var logs = new TestLogCollector();
+            var stream = new SpiceDbTestStream(nameof(TestNullKeyRowsSkippedWithWarning), spiceDbFixture.GetChannel(), true, false);
+            stream.AddLoggerProvider(logs);
+            stream.Generate(20);
+
+            // One null per required key column
+            var nullKeyOrders = stream.Orders.Take(5).Select(x => x.OrderKey).ToList();
+            var becomesNull = stream.Orders[5];
+
+            // Null subject_relation must write a direct subject
+            await stream.StartStream($@"
+                INSERT INTO spicedb
+                SELECT
+                CASE WHEN orderkey = {nullKeyOrders[0]} THEN null ELSE 'user' END as subject_type,
+                CASE WHEN orderkey = {nullKeyOrders[1]} OR userkey = -1 THEN null ELSE userkey END as subject_id,
+                null as subject_relation,
+                CASE WHEN orderkey = {nullKeyOrders[2]} THEN null ELSE 'reader' END as relation,
+                CASE WHEN orderkey = {nullKeyOrders[3]} THEN null ELSE 'document' END as resource_type,
+                CASE WHEN orderkey = {nullKeyOrders[4]} THEN null ELSE orderkey END as resource_id
+                FROM orders
+            ");
+
+            var permissionService = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            async Task<HashSet<string>> ReadAll()
+            {
+                var relationships = await permissionService.ReadRelationships(new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "document"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
+                return relationships
+                    .Select(x => $"{x.Relationship.Resource.ObjectId}#{x.Relationship.Relation}@{x.Relationship.Subject.Object.ObjectType}:{x.Relationship.Subject.Object.ObjectId}#{x.Relationship.Subject.OptionalRelation}")
+                    .ToHashSet();
+            }
+
+            int TotalSkipped()
+            {
+                return logs.Lines(LogLevel.Warning, "rows with a null key column")
+                    .Sum(x => int.Parse(Regex.Match(x, @"Skipped (\d+) rows").Groups[1].Value));
+            }
+
+            var expected = stream.Orders.Skip(5).Select(x => $"{x.OrderKey}#reader@user:{x.UserKey}#").ToHashSet();
+
+            var stopwatch = Stopwatch.StartNew();
+            HashSet<string> actual;
+            while (true)
+            {
+                actual = await ReadAll();
+                if (actual.SetEquals(expected))
+                {
+                    break;
+                }
+                if (stopwatch.ElapsedMilliseconds > 10000)
+                {
+                    Assert.Fail($"Initial relationships did not match, current count: {actual.Count}");
+                }
+                await Task.Delay(10);
+            }
+
+            // Mixed initial batch gives one warning
+            var initialWarning = Assert.Single(logs.Lines(LogLevel.Warning, "rows with a null key column"));
+            Assert.Contains("Skipped 5 rows", initialWarning);
+            Assert.Matches(@"example: `[^`]*null[^`]*`", initialWarning);
+
+            // Valid row turns null, null key row deleted
+            stream.AddOrUpdateOrder(new Order()
+            {
+                OrderKey = becomesNull.OrderKey,
+                UserKey = -1,
+                Orderdate = becomesNull.Orderdate,
+                GuidVal = becomesNull.GuidVal,
+                Money = becomesNull.Money
+            });
+            stream.DeleteOrder(stream.Orders.First(x => x.OrderKey == nullKeyOrders[0]));
+            expected.Remove($"{becomesNull.OrderKey}#reader@user:{becomesNull.UserKey}#");
+
+            stopwatch.Restart();
+            while (true)
+            {
+                await stream.SchedulerTick();
+                actual = await ReadAll();
+                if (actual.SetEquals(expected) && TotalSkipped() == 7)
+                {
+                    break;
+                }
+                if (stopwatch.ElapsedMilliseconds > 10000)
+                {
+                    Assert.Fail($"Update did not apply, relationship count: {actual.Count}, skipped: {TotalSkipped()}");
+                }
+                await Task.Delay(10);
+            }
+
+            Assert.Empty(logs.Lines(LogLevel.Warning, "Failed to write relationships"));
+        }
+
+        [Fact]
+        public async Task TestSubjectRelationWriteAndDelete()
+        {
+            SchemaService.SchemaServiceClient schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+
+            var metadata = new Metadata();
+            metadata.Add("Authorization", $"Bearer {nameof(TestSubjectRelationWriteAndDelete)}");
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = @"
+                    definition user {}
+
+                    definition group {
+                        relation member: user
+                        relation admin: user
+                    }
+
+                    definition folder {
+                        relation viewer: user | group#member | group#admin
+                    }"
+            }, metadata);
+
+            var logs = new TestLogCollector();
+            var stream = new SpiceDbTestStream(nameof(TestSubjectRelationWriteAndDelete), spiceDbFixture.GetChannel(), true, false);
+            stream.AddLoggerProvider(logs);
+            stream.Generate(20);
+
+            // Rows differ only by subject_relation
+            await stream.StartStream(@"
+                INSERT INTO spicedb
+                SELECT 'group' as subject_type, userkey as subject_id, 'member' as subject_relation, 'viewer' as relation, 'folder' as resource_type, orderkey as resource_id
+                FROM orders
+                UNION ALL
+                SELECT 'group' as subject_type, userkey as subject_id, 'admin' as subject_relation, 'viewer' as relation, 'folder' as resource_type, orderkey as resource_id
+                FROM orders
+            ");
+
+            var permissionService = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+
+            async Task<HashSet<string>> ReadAll()
+            {
+                var relationships = await permissionService.ReadRelationships(new ReadRelationshipsRequest()
+                {
+                    RelationshipFilter = new RelationshipFilter()
+                    {
+                        ResourceType = "folder"
+                    },
+                    Consistency = new Consistency()
+                    {
+                        FullyConsistent = true
+                    }
+                }, metadata).ResponseStream.ReadAllAsync().ToListAsync();
+                return relationships
+                    .Select(x => $"{x.Relationship.Resource.ObjectId}#{x.Relationship.Relation}@{x.Relationship.Subject.Object.ObjectType}:{x.Relationship.Subject.Object.ObjectId}#{x.Relationship.Subject.OptionalRelation}")
+                    .ToHashSet();
+            }
+
+            static IEnumerable<string> Both(int orderKey, int userKey)
+            {
+                yield return $"{orderKey}#viewer@group:{userKey}#member";
+                yield return $"{orderKey}#viewer@group:{userKey}#admin";
+            }
+
+            var expected = stream.Orders.SelectMany(x => Both(x.OrderKey, x.UserKey)).ToHashSet();
+
+            var stopwatch = Stopwatch.StartNew();
+            HashSet<string> actual;
+            while (true)
+            {
+                actual = await ReadAll();
+                if (actual.SetEquals(expected))
+                {
+                    break;
+                }
+                if (stopwatch.ElapsedMilliseconds > 10000)
+                {
+                    Assert.Fail($"Initial relationships did not match, expected: {expected.Count}, current count: {actual.Count}");
+                }
+                await Task.Delay(10);
+            }
+
+            // Deletes must target the userset relationships
+            var deleted = stream.Orders[0];
+            var moved = stream.Orders[1];
+            var movedToUser = moved.UserKey + 100000;
+            stream.DeleteOrder(deleted);
+            stream.AddOrUpdateOrder(new Order()
+            {
+                OrderKey = moved.OrderKey,
+                UserKey = movedToUser,
+                Orderdate = moved.Orderdate,
+                GuidVal = moved.GuidVal,
+                Money = moved.Money
+            });
+            expected.ExceptWith(Both(deleted.OrderKey, deleted.UserKey));
+            expected.ExceptWith(Both(moved.OrderKey, moved.UserKey));
+            expected.UnionWith(Both(moved.OrderKey, movedToUser));
+
+            stopwatch.Restart();
+            while (true)
+            {
+                await stream.SchedulerTick();
+                actual = await ReadAll();
+                if (actual.SetEquals(expected))
+                {
+                    break;
+                }
+                if (stopwatch.ElapsedMilliseconds > 10000)
+                {
+                    Assert.Fail($"Update did not apply, expected: {expected.Count}, current count: {actual.Count}");
+                }
+                await Task.Delay(10);
+            }
+
+            Assert.Empty(logs.Lines(LogLevel.Warning, "Failed to write relationships"));
+            Assert.Empty(logs.Lines(LogLevel.Warning, "rows with a null key column"));
         }
 
         [Fact]
