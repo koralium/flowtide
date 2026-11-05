@@ -55,6 +55,10 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             {
                 throw new StarRocksConfigurationException("Starrocks table name must be in the format 'database.table'");
             }
+            if (options.MaxParallelLoads < 1)
+            {
+                throw new StarRocksConfigurationException("MaxParallelLoads must be at least 1.");
+            }
 
             _tableName = writeRelation.NamedObject.Names[1];
             _databaseName = writeRelation.NamedObject.Names[0];
@@ -62,6 +66,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
         }
 
         public override string DisplayName => "Starrocks";
+
+        // Checkpoint mode keeps its synchronous transaction
+        protected override bool UsesBackgroundSend => executionMode != ExecutionMode.OnCheckpoint;
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
@@ -253,41 +260,89 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 await UploadChangesOnCheckpoint(rows, watermark, isInitialData, cancellationToken);
                 return;
             }
-            ArrayBufferWriter<byte> bufferWriter = new ArrayBufferWriter<byte>();
-            Utf8JsonWriter jsonWriter = new Utf8JsonWriter(bufferWriter);
-            int rowCount = 0;
-            jsonWriter.WriteStartArray();
-            await foreach(var row in rows)
+
+            // Keys are unique per upload, batches may land in any order
+            var inFlight = new Queue<(Task Load, ArrayBufferWriter<byte> Buffer)>();
+            var freeBuffers = new Stack<ArrayBufferWriter<byte>>();
+            var buffer = new ArrayBufferWriter<byte>();
+            try
             {
-                for (int i = 0; i < _primaryKeyOrdinals.Count; i++)
+                using Utf8JsonWriter jsonWriter = new Utf8JsonWriter(buffer);
+                int rowCount = 0;
+                jsonWriter.WriteStartArray();
+                await foreach (var row in rows)
                 {
-                    var keyType = row.EventBatchData.Columns[_primaryKeyOrdinals[i]].GetTypeAt(row.Index, default);
-                    if (keyType == Core.ColumnStore.ArrowTypeId.Null)
+                    for (int i = 0; i < _primaryKeyOrdinals.Count; i++)
                     {
-                        throw new StarRocksInvalidDataException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
+                        var keyType = row.EventBatchData.Columns[_primaryKeyOrdinals[i]].GetTypeAt(row.Index, default);
+                        if (keyType == Core.ColumnStore.ArrowTypeId.Null)
+                        {
+                            throw new StarRocksInvalidDataException($"Received a row with primary key '{_primaryKeyColumnNames[i]}' set to 'null'");
+                        }
+                    }
+                    _jsonWriter.WriteObject(in jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
+                    rowCount++;
+
+                    if (rowCount >= _options.BatchSize)
+                    {
+                        jsonWriter.WriteEndArray();
+                        jsonWriter.Flush();
+                        if (inFlight.Count >= _options.MaxParallelLoads)
+                        {
+                            // At the limit, oldest load must land first
+                            var oldest = inFlight.Dequeue();
+                            await oldest.Load;
+                            oldest.Buffer.Clear();
+                            freeBuffers.Push(oldest.Buffer);
+                        }
+                        inFlight.Enqueue((_httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, buffer.WrittenMemory)), buffer));
+                        buffer = freeBuffers.Count > 0 ? freeBuffers.Pop() : new ArrayBufferWriter<byte>();
+                        jsonWriter.Reset(buffer);
+                        jsonWriter.WriteStartArray();
+                        rowCount = 0;
                     }
                 }
-                _jsonWriter.WriteObject(ref jsonWriter, row.EventBatchData, row.Index, row.IsDeleted);
-                rowCount++;
 
-                if(rowCount >= _options.BatchSize)
+                if (rowCount > 0)
                 {
                     jsonWriter.WriteEndArray();
                     jsonWriter.Flush();
-                    await _httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, bufferWriter.WrittenMemory));
-                    jsonWriter.Reset();
-                    bufferWriter.Clear();
-                    jsonWriter.WriteStartArray();
-                    rowCount = 0;
+                    // Tail chains in the background instead of blocking
+                    Task after = inFlight.Count >= _options.MaxParallelLoads ? inFlight.Dequeue().Load : Task.CompletedTask;
+                    inFlight.Enqueue((StreamLoadAfter(after, buffer.WrittenMemory), buffer));
                 }
             }
-            jsonWriter.WriteEndArray();
-            jsonWriter.Flush();
-
-            if (rowCount > 0)
+            catch
             {
-                await _httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, bufferWriter.WrittenMemory));
+                // Do not leave a batch unobserved
+                try
+                {
+                    await Task.WhenAll(inFlight.Select(x => x.Load));
+                }
+                catch
+                {
+                }
+                throw;
             }
+
+            if (inFlight.Count == 0)
+            {
+                return;
+            }
+            var sending = inFlight.Count == 1 ? inFlight.Peek().Load : Task.WhenAll(inFlight.Select(x => x.Load));
+            if (sending.IsCompleted)
+            {
+                await sending;
+                return;
+            }
+            // Base waits for this before the next send or checkpoint
+            SendInBackground(sending);
+        }
+
+        private async Task StreamLoadAfter(Task previous, ReadOnlyMemory<byte> data)
+        {
+            await previous;
+            await _httpClient.StreamLoad(new StarRocksStreamLoadInfo(_databaseName, _tableName, data));
         }
 
         protected override void Checkpoint(long checkpointTime)

@@ -48,6 +48,9 @@ The StarRocks connector supports two execution modes that control when and how d
 - This mode offers **low latency** and **high throughput**, as data is flushed frequently.  
 - However, in the event of a **stream failure or restart**, already inserted data is **not rolled back**, which may result in duplicates or partial inserts.  
 - Recommended for **at-least-once** delivery semantics when latency is more important than strict consistency.
+- Loads run in the background, so the sink keeps receiving data while a load is in flight.
+  Watermarks that arrive meanwhile are merged into the next load.
+- A checkpoint waits until all pending data has been loaded into StarRocks.
 
 #### **OnCheckpoint**
 
@@ -55,6 +58,17 @@ The StarRocks connector supports two execution modes that control when and how d
 - This mode provides **exactly-once** delivery semantics — ensuring that no duplicate or partial inserts occur, even in case of failures.  
 - Slightly higher latency compared to `OnWatermark`, due to the transactional guarantees.  
 - Recommended for **production** or **critical pipelines** where correctness and consistency are prioritized.
+
+### Batching and parallel loads
+
+| Option | Default | Description |
+| ------ | ------- | ----------- |
+| `BatchSize` | 1000 | Rows per Stream Load request. |
+| `MaxParallelLoads` | 1 | Stream Load requests in flight at once within one upload. Only used in `OnWatermark` and `Hybrid` mode. |
+
+Each Stream Load request is its own StarRocks transaction and creates a new version of the table.
+Raising `BatchSize` reduces the number of transactions. Raising `MaxParallelLoads` helps when uploads span several batches,
+but more concurrent loads increase the risk of StarRocks *too many versions* errors.
 
 
 
