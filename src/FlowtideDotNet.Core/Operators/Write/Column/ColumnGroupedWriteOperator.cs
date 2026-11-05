@@ -202,8 +202,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 TaskScheduler.Default);
         }
 
-        // Dataflow drops canceled tasks, rows would be lost
-        private static async Task FailOnCancel(Task send)
+        /// <summary>
+        /// Awaits a send, cancellation becomes a failure.
+        /// Dataflow drops canceled handlers, rows or checkpoints would be lost.
+        /// </summary>
+        protected static async Task FailOnCancel(Task send)
         {
             try
             {
@@ -211,7 +214,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             }
             catch (OperationCanceledException e)
             {
-                throw new InvalidOperationException("A background send was canceled before it completed.", e);
+                throw new InvalidOperationException("A send was canceled before it completed.", e);
             }
         }
 

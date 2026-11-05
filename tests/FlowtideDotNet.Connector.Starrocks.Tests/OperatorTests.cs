@@ -299,6 +299,44 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             await client.ReceivedWithAnyArgs().TransactionCommit(default);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CanceledTransactionCallFailsCheckpointModeOperator(bool cancelLoad)
+        {
+            var client = Substitute.For<IStarrocksClient>();
+            client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
+            {
+                ColumnNames = ["a"],
+                PrimaryKeys = ["a"]
+            }));
+            var ok = new Internal.HttpApi.TransactionInfo()
+            {
+                Message = "ok",
+                Status = StarRocksStatus.Ok
+            };
+            // Same as an HttpClient timeout
+            if (cancelLoad)
+            {
+                client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(ok));
+                client.TransactionLoad(default).ReturnsForAnyArgs(Task.FromCanceled(new CancellationToken(true)));
+                client.TransactionRollback(default).ReturnsForAnyArgs(Task.FromResult(ok));
+            }
+            else
+            {
+                client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromCanceled<Internal.HttpApi.TransactionInfo>(new CancellationToken(true)));
+            }
+
+            var op = await SendOneRowAndSendCheckpoint(client);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+            if (cancelLoad)
+            {
+                await client.ReceivedWithAnyArgs().TransactionRollback(default);
+            }
+        }
+
         private async Task<StarRocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)
         {
             var factory = new StarRocksMockClientFactory(client);
@@ -653,7 +691,48 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             Assert.Equal("MaxParallelLoads must be at least 1.", ex.Message);
         }
 
-        private async Task<ObservedSink> CreateWatermarkSink(Channel<PendingLoad> loads, int batchSize = 1000, int maxParallelLoads = 1)
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CanceledLoadAwaitedInUploadFaultsOperator(bool fromCheckpoint)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Two full batches, second waits on the first in the upload
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: 1);
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }, new { a = "value2" }]);
+            if (fromCheckpoint)
+            {
+                await SendCheckpoint(op, 1);
+            }
+            else
+            {
+                await SendWatermark(op, WatermarkValues(1));
+            }
+            var first = await NextLoad(loads);
+            first.Done.SetCanceled();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+            Assert.False(loads.Reader.TryRead(out _));
+        }
+
+        [Fact]
+        public async Task AlreadyCanceledLoadFaultsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Load is canceled before the upload checks it
+            var op = await CreateWatermarkSink(loads, onLoad: done => done.SetCanceled());
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }]);
+            await SendWatermark(op, WatermarkValues(1));
+            await NextLoad(loads);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+        }
+
+        private async Task<ObservedSink> CreateWatermarkSink(Channel<PendingLoad> loads, int batchSize = 1000, int maxParallelLoads = 1, Action<TaskCompletionSource>? onLoad = null)
         {
             var client = Substitute.For<IStarrocksClient>();
             client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
@@ -666,6 +745,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 var info = call.Arg<StarRocksStreamLoadInfo>();
                 var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 loads.Writer.TryWrite(new PendingLoad(Encoding.UTF8.GetString(info.data.Span), done));
+                onLoad?.Invoke(done);
                 return done.Task;
             });
 
