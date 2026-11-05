@@ -48,6 +48,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private readonly EventBatchData _deleteEventBatch;
         private bool m_hasExistingData;
 
+        private const string BackgroundSendDoneTrigger = "__column_write_background_send_done";
+        private Task? m_backgroundSend;
+        private bool m_hasDeferredWatermark;
+        private bool m_hasRowsSinceWatermark;
+
         public ColumnGroupedWriteOperator(ExecutionMode executionMode, WriteRelation writeRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.m_executionMode = executionMode;
@@ -64,6 +69,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         }
 
         protected virtual bool FetchExistingData => false;
+
+        /// <summary>
+        /// Sink hands sends to <see cref="SendInBackground"/>.
+        /// </summary>
+        protected virtual bool UsesBackgroundSend => false;
 
         public IReadOnlyList<int> PrimaryKeyColumns => m_primaryKeyColumns ?? throw new InvalidOperationException("Must be called after initialize and restore");
 
@@ -83,6 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            await DrainBackgroundSendFromLastRun();
             m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
 
             m_primaryKeyColumns = await GetPrimaryKeyColumns();
@@ -149,26 +160,153 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             }
         }
 
-        protected override Task OnWatermark(Watermark watermark)
+        protected override async Task OnWatermark(Watermark watermark)
         {
             Debug.Assert(m_hasSentInitialData != null);
             m_latestWatermark = watermark;
+            m_hasRowsSinceWatermark = false;
             bool shouldWait = !m_hasSentInitialData.Value && FetchExistingData && m_hasExistingData;
             if ((m_executionMode == ExecutionMode.OnWatermark && !shouldWait) ||
                 (m_executionMode == ExecutionMode.Hybrid && m_hasSentInitialData.Value))
             {
-                return SendData();
+                if (UsesBackgroundSend && !TryCompleteBackgroundSend())
+                {
+                    // Send in flight, next send includes this watermark
+                    m_hasDeferredWatermark = true;
+                    return;
+                }
+                await SendData();
+                return;
             }
-            return base.OnWatermark(watermark);
+            await base.OnWatermark(watermark);
+        }
+
+        /// <summary>
+        /// Runs the network part of an upload off the operator loop.
+        /// </summary>
+        protected void SendInBackground(Task send)
+        {
+            Debug.Assert(UsesBackgroundSend);
+            if (m_backgroundSend != null)
+            {
+                throw new InvalidOperationException("A background send is already running.");
+            }
+            send = FailOnCancel(send);
+            m_backgroundSend = send;
+            // Fire and forget, a full input queue must not block the send
+            _ = send.ContinueWith(
+                static (_, state) => ((ColumnGroupedWriteOperator)state!).QueueTrigger(new TriggerEvent(BackgroundSendDoneTrigger, null)),
+                this,
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
+
+        /// <summary>
+        /// Awaits a send, cancellation becomes a failure.
+        /// Dataflow drops canceled handlers, rows or checkpoints would be lost.
+        /// </summary>
+        protected static async Task FailOnCancel(Task send)
+        {
+            try
+            {
+                await send;
+            }
+            catch (OperationCanceledException e)
+            {
+                throw new InvalidOperationException("A send was canceled before it completed.", e);
+            }
+        }
+
+        // False while a send runs, rethrows a failed send
+        private bool TryCompleteBackgroundSend()
+        {
+            var send = m_backgroundSend;
+            if (send == null)
+            {
+                return true;
+            }
+            if (!send.IsCompleted)
+            {
+                return false;
+            }
+            m_backgroundSend = null;
+            send.GetAwaiter().GetResult();
+            return true;
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            await DrainBackgroundSendFromLastRun();
+            await base.DisposeAsync();
+        }
+
+        // Old load lands before a restart sends newer rows
+        private async Task DrainBackgroundSendFromLastRun()
+        {
+            var send = m_backgroundSend;
+            m_backgroundSend = null;
+            m_hasDeferredWatermark = false;
+            m_hasRowsSinceWatermark = false;
+            if (send == null)
+            {
+                return;
+            }
+            try
+            {
+                await send;
+            }
+            catch
+            {
+                // Run already torn down, rows replay from the checkpoint
+            }
+        }
+
+        private async Task WaitForBackgroundSend()
+        {
+            var send = m_backgroundSend;
+            if (send == null)
+            {
+                return;
+            }
+            m_backgroundSend = null;
+            await send;
+        }
+
+        public override Task OnTrigger(string name, object? state)
+        {
+            if (name == BackgroundSendDoneTrigger)
+            {
+                return OnBackgroundSendDone();
+            }
+            return base.OnTrigger(name, state);
+        }
+
+        private async Task OnBackgroundSendDone()
+        {
+            // Only flush on a watermark boundary, newer rows wait for theirs
+            if (TryCompleteBackgroundSend() && m_hasDeferredWatermark && !m_hasRowsSinceWatermark)
+            {
+                await SendData();
+            }
         }
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
             Debug.Assert(m_hasSentInitialData != null);
             Debug.Assert(m_tree != null);
-            if (m_executionMode == ExecutionMode.OnCheckpoint || (!m_hasSentInitialData.Value))
+            if (UsesBackgroundSend)
+            {
+                await WaitForBackgroundSend();
+            }
+            // Background senders flush everything pending before the checkpoint
+            if (m_executionMode == ExecutionMode.OnCheckpoint || (!m_hasSentInitialData.Value) || (UsesBackgroundSend && m_hasModified))
             {
                 await SendData();
+            }
+            if (UsesBackgroundSend)
+            {
+                await WaitForBackgroundSend();
             }
             Checkpoint(checkpointTime);
             await m_hasSentInitialData.Commit();
@@ -386,6 +524,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             Debug.Assert(m_modified != null);
             Debug.Assert(m_hasSentInitialData != null);
+            m_hasDeferredWatermark = false;
             if (m_hasModified || !m_hasSentInitialData.Value)
             {
                 var watermark = m_latestWatermark;
@@ -424,6 +563,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
 
             var batch = msg.Data.EventBatchData;
             var weights = msg.Data.Weights;
+            m_hasRowsSinceWatermark = true;
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
                 m_hasModified = true;

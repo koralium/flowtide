@@ -31,6 +31,14 @@ namespace FlowtideDotNet.Connector.StarRocks
         public int BatchSize { get; set; } = 1000;
 
         /// <summary>
+        /// Max stream loads in flight within one upload, OnWatermark and Hybrid only.
+        /// Each load is its own StarRocks transaction.
+        ///
+        /// Default: 1
+        /// </summary>
+        public int MaxParallelLoads { get; set; } = 1;
+
+        /// <summary>
         /// When the connector should commit data to starrocks
         /// On checkpoint allows exactly-once semantics but may have higher latency
         /// 

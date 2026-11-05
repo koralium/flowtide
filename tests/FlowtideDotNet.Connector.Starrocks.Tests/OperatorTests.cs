@@ -14,16 +14,44 @@ using FlowtideDotNet.Base;
 using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using FlowtideDotNet.Connector.StarRocks.Internal;
+using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Tests;
+using FlowtideDotNet.Storage;
+using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using System.Text;
+using System.Threading.Channels;
+using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
-    public class OperatorTests : OperatorTestBase
+    public class OperatorTests : OperatorTestBase, IDisposable
     {
+        // Default storage is shared, tests would restore each other's checkpoints
+        private readonly string _directory = $"./data/starrocksOperatorTests/{Guid.NewGuid():N}";
+        private FileCachePersistentStorage? _storage;
+
+        protected override StateManagerOptions CreateStateManagerOptions()
+        {
+            _storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = $"{_directory}/persistent" });
+            return new StateManagerOptions()
+            {
+                PersistentStorage = _storage,
+                TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"{_directory}/tmp" }
+            };
+        }
+
+        void IDisposable.Dispose()
+        {
+            Dispose();
+            _storage?.Dispose();
+        }
+
         [Fact]
         public void IncorrectTableNameThrowsException()
         {
@@ -271,16 +299,54 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             await client.ReceivedWithAnyArgs().TransactionCommit(default);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CanceledTransactionCallFailsCheckpointModeOperator(bool cancelLoad)
+        {
+            var client = Substitute.For<IStarrocksClient>();
+            client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
+            {
+                ColumnNames = ["a"],
+                PrimaryKeys = ["a"]
+            }));
+            var ok = new Internal.HttpApi.TransactionInfo()
+            {
+                Message = "ok",
+                Status = StarRocksStatus.Ok
+            };
+            // Same as an HttpClient timeout
+            if (cancelLoad)
+            {
+                client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromResult(ok));
+                client.TransactionLoad(default).ReturnsForAnyArgs(Task.FromCanceled(new CancellationToken(true)));
+                client.TransactionRollback(default).ReturnsForAnyArgs(Task.FromResult(ok));
+            }
+            else
+            {
+                client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromCanceled<Internal.HttpApi.TransactionInfo>(new CancellationToken(true)));
+            }
+
+            var op = await SendOneRowAndSendCheckpoint(client);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+            if (cancelLoad)
+            {
+                await client.ReceivedWithAnyArgs().TransactionRollback(default);
+            }
+        }
+
         private async Task<StarRocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)
         {
             var factory = new StarRocksMockClientFactory(client);
 
-            var op = new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
+            var op = new ObservedSink(new StarRocksSinkOptions()
             {
                 HttpUrl = "http://",
                 Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ClientFactory = factory
-            }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel, new System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions());
+            }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel);
 
             await InitializeOperator(op);
 
@@ -292,6 +358,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             {
                 {"table", LongWatermarkValue.Create(1) }
             });
+
+            // Init event also signals checkpoint done, let it pass first
+            await WaitForHandled(op, "watermark");
 
             await SendCheckpoint(op, 1);
 
@@ -322,6 +391,434 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 await InitializeOperator(op);
             });
             Assert.Equal("The target Starrocks table does not have a primary key defined.", ex.Message);
+        }
+
+        private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(10);
+
+        [Fact]
+        public async Task WatermarksMergeWhileStreamLoadInFlight()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            Assert.Contains("value1", first.Body);
+
+            // Both arrive while the first load is in flight
+            await SendRowAndWatermark(op, "value2", 2);
+            await SendRowAndWatermark(op, "value3", 3);
+            Assert.False(loads.Reader.TryRead(out _));
+
+            first.Done.SetResult();
+            var merged = await NextLoad(loads);
+            Assert.Contains("value2", merged.Body);
+            Assert.Contains("value3", merged.Body);
+            Assert.DoesNotContain("value1", merged.Body);
+            merged.Done.SetResult();
+        }
+
+        [Fact]
+        public async Task CheckpointWaitsForAllStreamLoads()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            await SendRowAndWatermark(op, "value2", 2);
+
+            await SendCheckpoint(op, 1);
+            var checkpointDone = EgressWaitForCheckpointDone();
+
+            first.Done.SetResult();
+            // Deferred watermark is sent before the checkpoint completes
+            var second = await NextLoad(loads);
+            Assert.Contains("value2", second.Body);
+            Assert.False(checkpointDone.IsCompleted);
+
+            second.Done.SetResult();
+            await checkpointDone.WaitAsync(WaitTimeout);
+        }
+
+        [Fact]
+        public async Task RowsAfterWatermarkWaitForTheirWatermark()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            await SendRowAndWatermark(op, "value2", 2);
+            await SendDataBatchWithWeightOne(op, [new { a = "value3" }]);
+            await WaitForHandled(op, "rows");
+
+            // Send done mid watermark, nothing flushes yet
+            first.Done.SetResult();
+            await WaitForHandled(op, "trigger");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            await SendWatermark(op, WatermarkValues(3));
+            var second = await NextLoad(loads);
+            Assert.Contains("value2", second.Body);
+            Assert.Contains("value3", second.Body);
+            second.Done.SetResult();
+        }
+
+        [Fact]
+        public async Task FailedBackgroundStreamLoadFailsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            first.Done.SetException(new Exception("Load failed"));
+
+            var ex = await Assert.ThrowsAsync<Exception>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.Equal("Load failed", ex.Message);
+        }
+
+        [Fact]
+        public async Task CanceledBackgroundStreamLoadFailsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+            // Same as an HttpClient timeout
+            first.Done.SetCanceled();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+        }
+
+        [Fact]
+        public async Task DisposeWaitsForInFlightLoadAndDropsItsFailure()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads);
+
+            await SendRowAndWatermark(op, "value1", 1);
+            var first = await NextLoad(loads);
+
+            var dispose = op.DisposeAsync().AsTask();
+            Assert.False(dispose.IsCompleted);
+
+            first.Done.SetException(new Exception("Old run failure"));
+            await dispose.WaitAsync(WaitTimeout);
+
+            // Late completion signal must not fail a later run
+            await WaitForHandled(op, "trigger");
+            Assert.False(op.Completion.IsCompleted);
+        }
+
+        private sealed record PendingLoad(string Body, TaskCompletionSource Done);
+
+        [Theory]
+        [InlineData(1)]
+        [InlineData(3)]
+        public async Task StreamLoadsInFlightNeverExceedMaxParallelLoads(int maxParallelLoads)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: maxParallelLoads);
+
+            // One row per load, one more than the limit
+            var rows = Enumerable.Range(0, maxParallelLoads + 1).Select(i => new { a = $"value{i}" }).ToList();
+            await SendDataBatchWithWeightOne(op, rows);
+            await SendWatermark(op, WatermarkValues(1));
+
+            var started = new List<PendingLoad>();
+            for (int i = 0; i < maxParallelLoads; i++)
+            {
+                started.Add(await NextLoad(loads));
+            }
+            // Upload waits for a free slot, nothing else starts
+            Assert.False(loads.Reader.TryRead(out _));
+
+            started[0].Done.SetResult();
+            var last = await NextLoad(loads);
+            await WaitForHandled(op, "watermark");
+            foreach (var load in started.Skip(1).Append(last))
+            {
+                load.Done.SetResult();
+            }
+
+            var bodies = started.Append(last).Select(x => x.Body).ToList();
+            foreach (var row in rows)
+            {
+                Assert.Single(bodies, body => body.Contains($"\"{row.a}\""));
+            }
+
+            await SendCheckpoint(op, 1);
+            await EgressWaitForCheckpointDone().WaitAsync(WaitTimeout);
+        }
+
+        [Fact]
+        public async Task OutOfOrderCompletionFreesSlotForNextLoad()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: 3);
+
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 4).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            var second = await NextLoad(loads);
+            var third = await NextLoad(loads);
+            Assert.False(loads.Reader.TryRead(out _));
+
+            // Slow first load must not hold the slot
+            second.Done.SetResult();
+            var fourth = await NextLoad(loads);
+            Assert.False(first.Done.Task.IsCompleted);
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            first.Done.SetResult();
+            third.Done.SetResult();
+            fourth.Done.SetResult();
+            await SendCheckpoint(op, 1);
+            await EgressWaitForCheckpointDone().WaitAsync(WaitTimeout);
+        }
+
+        [Fact]
+        public async Task PartialTailWaitsForSlotAndCheckpointWaitsForTail()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 2, maxParallelLoads: 2);
+
+            // Two full batches fill both slots, one row left
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 5).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            var second = await NextLoad(loads);
+
+            // Tail waits in the background, operator is free
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            await SendCheckpoint(op, 1);
+            var checkpointDone = EgressWaitForCheckpointDone();
+
+            second.Done.SetResult();
+            var tail = await NextLoad(loads);
+            Assert.Contains("\"value4\"", tail.Body);
+            Assert.DoesNotContain("\"value3\"", tail.Body);
+            Assert.False(checkpointDone.IsCompleted);
+
+            first.Done.SetResult();
+            Assert.False(checkpointDone.IsCompleted);
+            tail.Done.SetResult();
+            await checkpointDone.WaitAsync(WaitTimeout);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task FailedPredecessorFaultsOperatorWithoutStartingTail(bool canceled)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Single predecessor, only its failure can free the slot
+            var op = await CreateWatermarkSink(loads, batchSize: 2, maxParallelLoads: 1);
+
+            await SendDataBatchWithWeightOne(op, Enumerable.Range(0, 3).Select(i => new { a = $"value{i}" }).ToList());
+            await SendWatermark(op, WatermarkValues(1));
+            var first = await NextLoad(loads);
+            await WaitForHandled(op, "watermark");
+            Assert.False(loads.Reader.TryRead(out _));
+
+            if (canceled)
+            {
+                first.Done.SetCanceled();
+            }
+            else
+            {
+                first.Done.SetException(new Exception("Load failed"));
+            }
+
+            // A started tail would never finish, the fault proves it was skipped
+            if (canceled)
+            {
+                var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+                Assert.IsType<TaskCanceledException>(ex.InnerException);
+            }
+            else
+            {
+                var ex = await Assert.ThrowsAsync<Exception>(() => op.Completion.WaitAsync(WaitTimeout));
+                Assert.Equal("Load failed", ex.Message);
+            }
+            Assert.False(loads.Reader.TryRead(out _));
+        }
+
+        [Fact]
+        public async Task NextUploadWaitsForAllParallelLoads()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: 2);
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }, new { a = "value2" }]);
+            await SendWatermark(op, WatermarkValues(1));
+            await WaitForHandled(op, "watermark");
+            var first = await NextLoad(loads);
+            var second = await NextLoad(loads);
+
+            await SendRowAndWatermark(op, "value3", 2);
+
+            // One load still in flight, next upload must wait
+            first.Done.SetResult();
+            Assert.False(loads.Reader.TryRead(out _));
+
+            second.Done.SetResult();
+            var third = await NextLoad(loads);
+            Assert.Contains("value3", third.Body);
+            third.Done.SetResult();
+        }
+
+        [Fact]
+        public void MaxParallelLoadsBelowOneThrowsException()
+        {
+            var ex = Assert.Throws<StarRocksConfigurationException>(() =>
+            {
+                new StarRocksPrimaryKeySink(new StarRocksSinkOptions()
+                {
+                    HttpUrl = "http://",
+                    Credentials = () => new StarRocksUsernamePassword("root", ""),
+                    MaxParallelLoads = 0
+                }, ExecutionMode.OnWatermark, _writeRel, new ExecutionDataflowBlockOptions());
+            });
+
+            Assert.Equal("MaxParallelLoads must be at least 1.", ex.Message);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task CanceledLoadAwaitedInUploadFaultsOperator(bool fromCheckpoint)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Two full batches, second waits on the first in the upload
+            var op = await CreateWatermarkSink(loads, batchSize: 1, maxParallelLoads: 1);
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }, new { a = "value2" }]);
+            if (fromCheckpoint)
+            {
+                await SendCheckpoint(op, 1);
+            }
+            else
+            {
+                await SendWatermark(op, WatermarkValues(1));
+            }
+            var first = await NextLoad(loads);
+            first.Done.SetCanceled();
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+            Assert.False(loads.Reader.TryRead(out _));
+        }
+
+        [Fact]
+        public async Task AlreadyCanceledLoadFaultsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            // Load is canceled before the upload checks it
+            var op = await CreateWatermarkSink(loads, onLoad: done => done.SetCanceled());
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }]);
+            await SendWatermark(op, WatermarkValues(1));
+            await NextLoad(loads);
+
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.IsType<TaskCanceledException>(ex.InnerException);
+        }
+
+        private async Task<ObservedSink> CreateWatermarkSink(Channel<PendingLoad> loads, int batchSize = 1000, int maxParallelLoads = 1, Action<TaskCompletionSource>? onLoad = null)
+        {
+            var client = Substitute.For<IStarrocksClient>();
+            client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
+            {
+                ColumnNames = ["a"],
+                PrimaryKeys = ["a"]
+            }));
+            client.StreamLoad(default).ReturnsForAnyArgs(call =>
+            {
+                var info = call.Arg<StarRocksStreamLoadInfo>();
+                var done = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                loads.Writer.TryWrite(new PendingLoad(Encoding.UTF8.GetString(info.data.Span), done));
+                onLoad?.Invoke(done);
+                return done.Task;
+            });
+
+            var op = new ObservedSink(new StarRocksSinkOptions()
+            {
+                HttpUrl = "http://",
+                Credentials = () => new StarRocksUsernamePassword("root", ""),
+                ClientFactory = new StarRocksMockClientFactory(client),
+                BatchSize = batchSize,
+                MaxParallelLoads = maxParallelLoads
+            }, ExecutionMode.OnWatermark, _writeRel);
+
+            await InitializeOperator(op);
+            await SendWatermarkInitialize(op, new HashSet<string>() { "table" });
+            return op;
+        }
+
+        private async Task SendRowAndWatermark(ObservedSink op, string value, long watermark)
+        {
+            await SendDataBatchWithWeightOne(op, [new { a = value }]);
+            await SendWatermark(op, WatermarkValues(watermark));
+            await WaitForHandled(op, "watermark");
+        }
+
+        private static Dictionary<string, AbstractWatermarkValue> WatermarkValues(long value)
+        {
+            return new Dictionary<string, AbstractWatermarkValue>()
+            {
+                { "table", LongWatermarkValue.Create(value) }
+            };
+        }
+
+        private static async Task<PendingLoad> NextLoad(Channel<PendingLoad> loads)
+        {
+            return await loads.Reader.ReadAsync().AsTask().WaitAsync(WaitTimeout);
+        }
+
+        private static async Task WaitForHandled(ObservedSink op, string kind)
+        {
+            while (await op.Handled.Reader.ReadAsync().AsTask().WaitAsync(WaitTimeout) != kind)
+            {
+            }
+        }
+
+        /// <summary>
+        /// Reports each handled event, gives tests a sync point.
+        /// </summary>
+        private sealed class ObservedSink : StarRocksPrimaryKeySink
+        {
+            public Channel<string> Handled { get; } = Channel.CreateUnbounded<string>();
+
+            public ObservedSink(StarRocksSinkOptions options, ExecutionMode executionMode, WriteRelation writeRelation)
+                : base(options, executionMode, writeRelation, new ExecutionDataflowBlockOptions())
+            {
+            }
+
+            protected override async Task OnRecieve(StreamEventBatch msg, long time)
+            {
+                await base.OnRecieve(msg, time);
+                Handled.Writer.TryWrite("rows");
+            }
+
+            protected override async Task OnWatermark(Watermark watermark)
+            {
+                await base.OnWatermark(watermark);
+                Handled.Writer.TryWrite("watermark");
+            }
+
+            public override async Task OnTrigger(string name, object? state)
+            {
+                await base.OnTrigger(name, state);
+                Handled.Writer.TryWrite("trigger");
+            }
         }
 
         private readonly WriteRelation _writeRel = new WriteRelation()
