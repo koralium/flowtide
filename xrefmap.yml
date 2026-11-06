@@ -15724,6 +15724,25 @@ references:
   commentId: T:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions
   fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions
   nameWithType: StarRocksSinkOptions
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.#ctor
+  name: StarRocksSinkOptions()
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions__ctor
+  commentId: M:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.StarRocksSinkOptions()
+  fullName.vb: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.New()
+  nameWithType: StarRocksSinkOptions.StarRocksSinkOptions()
+  nameWithType.vb: StarRocksSinkOptions.New()
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.#ctor*
+  name: StarRocksSinkOptions
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions__ctor_
+  commentId: Overload:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.StarRocksSinkOptions
+  fullName.vb: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.New
+  nameWithType: StarRocksSinkOptions.StarRocksSinkOptions
+  nameWithType.vb: StarRocksSinkOptions.New
 - uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.BackendHttpUrl
   name: BackendHttpUrl
   href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_BackendHttpUrl
@@ -15802,6 +15821,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.MaxParallelLoads
   nameWithType: StarRocksSinkOptions.MaxParallelLoads
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline
+  name: ResiliencePipeline
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_ResiliencePipeline
+  commentId: P:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline
+  nameWithType: StarRocksSinkOptions.ResiliencePipeline
+- uid: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline*
+  name: ResiliencePipeline
+  href: api/FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.html#FlowtideDotNet_Connector_StarRocks_StarRocksSinkOptions_ResiliencePipeline_
+  commentId: Overload:FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline
+  isSpec: "True"
+  fullName: FlowtideDotNet.Connector.StarRocks.StarRocksSinkOptions.ResiliencePipeline
+  nameWithType: StarRocksSinkOptions.ResiliencePipeline
 - uid: FlowtideDotNet.Connector.StarRocks.StarRocksUsernamePassword
   name: StarRocksUsernamePassword
   href: api/FlowtideDotNet.Connector.StarRocks.StarRocksUsernamePassword.html
