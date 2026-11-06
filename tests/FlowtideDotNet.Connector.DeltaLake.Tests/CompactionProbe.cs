@@ -400,9 +400,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 deletedRows += deleted;
                 bytes += add.Size;
                 var share = physical == 0 ? 0 : (double)deleted / physical;
-                debt[share == 0 ? 0 : share <= 0.025 ? 1 : share <= 0.05 ? 2 : share <= 0.075 ? 3 : share < 0.10 ? 4 : 5]++;
+                debt[deleted == 0 ? 0 : share <= 0.025 ? 1 : share <= 0.05 ? 2 : share <= 0.075 ? 3 : share < 0.10 ? 4 : 5]++;
             }
-            var rewrites = records.Select(x => ((double)x.RewriteRows, x.CheckpointMs)).ToList();
+            var rewrites = records.Select(x => (x.RewriteRows, x.CheckpointMs)).ToList();
             long netFiles = records.Sum(x => x.AddedFiles - x.RemovedFiles);
             long rewriteFiles = records.Sum(x => x.RewriteFiles);
             var (scanMs, scanRows) = DuckDbScan(dir);
@@ -466,12 +466,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Milliseconds per rewritten row, null when rows never vary
-        internal static double? Slope(List<(double Rows, double Ms)> points)
+        internal static double? Slope(List<(long Rows, double Ms)> points)
         {
+            if (points.Select(x => x.Rows).Distinct().Count() < 2)
+            {
+                return null;
+            }
             var meanRows = points.Average(x => x.Rows);
             var meanMs = points.Average(x => x.Ms);
             var spread = points.Sum(x => (x.Rows - meanRows) * (x.Rows - meanRows));
-            return spread == 0 ? null : points.Sum(x => (x.Rows - meanRows) * (x.Ms - meanMs)) / spread;
+            return points.Sum(x => (x.Rows - meanRows) * (x.Ms - meanMs)) / spread;
         }
 
         // Only the cached extension, a run never downloads one
@@ -576,12 +580,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static async Task Publish(string dir, Func<string, Task> build)
         {
             var partial = dir + ".partial";
-            foreach (var stale in new[] { partial, dir })
+            foreach (var stale in new[] { partial, dir }.Where(Directory.Exists))
             {
-                if (Directory.Exists(stale))
-                {
-                    Directory.Delete(stale, true);
-                }
+                Directory.Delete(stale, true);
             }
             Directory.CreateDirectory(partial);
             await build(partial);

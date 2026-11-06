@@ -187,8 +187,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // The base and earlier commits, without making their rows
         public void Skip(int commits)
         {
-            foreach (var _ in KeyBase())
+            for (int rows = 0; rows < _fixture.BaseRows; rows += _fixture.Inserts)
             {
+                Insert(Math.Min(_fixture.Inserts, _fixture.BaseRows - rows));
             }
             for (int i = 0; i < commits; i++)
             {
@@ -200,15 +201,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var (first, deletes) = NextKeys();
             return (ProbeRows.Create(Enumerable.Range(first, _fixture.Inserts)), ProbeRows.Create(deletes));
-        }
-
-        private IEnumerable<int> KeyBase()
-        {
-            for (int rows = 0; rows < _fixture.BaseRows; rows += _fixture.Inserts)
-            {
-                Insert(Math.Min(_fixture.Inserts, _fixture.BaseRows - rows));
-                yield return rows;
-            }
         }
 
         // Deletes come first, so they never meet this commit's rows

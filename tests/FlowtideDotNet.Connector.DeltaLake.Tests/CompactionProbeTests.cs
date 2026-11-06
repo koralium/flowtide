@@ -37,16 +37,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var second = Rows(new CompactionWorkload(s_tiny));
 
             Assert.Equal(first, second);
-            Assert.Equal(4_000 + 25 * 200, first.Count(x => x.Deleted == false));
+            Assert.Equal(4_000 + 25 * 200, first.Count(x => !x.Deleted));
         }
 
         [Fact]
         public void SkippedCommitsLeaveTheSameNextCommit()
         {
             var played = new CompactionWorkload(s_tiny);
-            foreach (var _ in played.Base())
-            {
-            }
+            played.Base().ToList();
             for (int i = 0; i < 7; i++)
             {
                 played.Next();
@@ -65,9 +63,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public void RecentDeletesStayInTheNewestTenth()
         {
             var workload = new CompactionWorkload(s_tiny with { Place = DeletePlace.Recent });
-            foreach (var _ in workload.Base())
-            {
-            }
+            workload.Skip(0);
+            Assert.Equal(4_000, workload.LiveRows);
 
             var (_, deletes) = workload.Next();
 
@@ -131,8 +128,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void SlopeIsNullWhenRowsNeverVary()
         {
-            Assert.Null(CompactionProbe.Slope(new List<(double, double)> { (0, 5), (0, 7) }));
-            Assert.Equal(2.0, CompactionProbe.Slope(new List<(double, double)> { (1, 3), (2, 5), (3, 7) }));
+            Assert.Null(CompactionProbe.Slope(new List<(long, double)> { (0, 5), (0, 7) }));
+            Assert.Equal(2.0, CompactionProbe.Slope(new List<(long, double)> { (1, 3), (2, 5), (3, 7) }));
+            Assert.Equal(2.0, CompactionProbe.Slope(new List<(long, double)> { (0, 5), (2, 9) }));
         }
 
         [Fact]
@@ -209,9 +207,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public void RecentDeletesNeverTakeRowsOfTheSameCommit()
         {
             var workload = new CompactionWorkload(s_tiny with { BaseRows = 400, Place = DeletePlace.Recent });
-            foreach (var _ in workload.Base())
-            {
-            }
+            workload.Skip(0);
 
             var (inserts, deletes) = workload.Next();
 
