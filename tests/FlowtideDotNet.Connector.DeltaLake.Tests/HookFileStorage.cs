@@ -120,6 +120,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Runs before a request, with the verb and the path
         public Func<string, IOPath, Task>? Before { get; set; }
 
+        // Read and write speed in bytes per second, zero is free
+        public long BytesPerSecond { get; set; }
+
+        // How a charge waits, tests record it instead
+        public Func<TimeSpan, CancellationToken, Task> Wait { get; set; } = Task.Delay;
+
+        internal static TimeSpan Transfer(long bytes, long bytesPerSecond)
+        {
+            return TimeSpan.FromTicks(bytes * TimeSpan.TicksPerSecond / bytesPerSecond);
+        }
+
         // Paths this wrapper does not show, as if they were not written yet
         public Func<IOPath, bool>? Hidden { get; set; }
 
@@ -185,6 +196,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var deferred = DeferPublication?.Invoke(path);
             var parked = PublicationParked;
             Stream stream = new SerializedDisposeStream(await _inner.OpenWrite(path, cancellationToken), _lock, () => CountWrite(path), deferred, deferred != null && parked != null ? () => parked(path) : null, RecordSyncDisposes ? () => _requests.Enqueue($"SyncDispose {path.Full}") : null);
+            if (BytesPerSecond > 0)
+            {
+                stream = new ChargedStream(stream, BytesPerSecond, Wait);
+            }
             var record = RecordWritesOf;
             if (record != null && path.Full.EndsWith(record))
             {
@@ -253,7 +268,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return null;
             }
-            return await ReadCopy(path, cancellationToken);
+            var copy = await ReadCopy(path, cancellationToken);
+            // Pay outside the lock, so reads overlap
+            if (copy != null && BytesPerSecond > 0)
+            {
+                await Wait(Transfer(copy.Length, BytesPerSecond), cancellationToken);
+            }
+            return copy;
         }
 
         private async Task<MemoryStream?> ReadCopy(IOPath path, CancellationToken cancellationToken)
@@ -422,6 +443,82 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     {
                         _lock.Release();
                     }
+                }
+                GC.SuppressFinalize(this);
+            }
+        }
+
+        // Counts written bytes and pays for them on dispose
+        private sealed class ChargedStream : Stream
+        {
+            private readonly Stream _inner;
+            private readonly long _bytesPerSecond;
+            private readonly Func<TimeSpan, CancellationToken, Task> _wait;
+            private long _written;
+            private int _disposed;
+
+            public ChargedStream(Stream inner, long bytesPerSecond, Func<TimeSpan, CancellationToken, Task> wait)
+            {
+                _inner = inner;
+                _bytesPerSecond = bytesPerSecond;
+                _wait = wait;
+            }
+
+            public override bool CanRead => _inner.CanRead;
+            public override bool CanSeek => _inner.CanSeek;
+            public override bool CanWrite => _inner.CanWrite;
+            public override long Length => _inner.Length;
+            public override long Position { get => _inner.Position; set => _inner.Position = value; }
+
+            public override void Flush() => _inner.Flush();
+
+            public override Task FlushAsync(CancellationToken cancellationToken) => _inner.FlushAsync(cancellationToken);
+
+            public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+
+            public override long Seek(long offset, SeekOrigin origin) => _inner.Seek(offset, origin);
+
+            public override void SetLength(long value) => _inner.SetLength(value);
+
+            public override void Write(byte[] buffer, int offset, int count)
+            {
+                _written += count;
+                _inner.Write(buffer, offset, count);
+            }
+
+            public override void Write(ReadOnlySpan<byte> buffer)
+            {
+                _written += buffer.Length;
+                _inner.Write(buffer);
+            }
+
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            {
+                _written += count;
+                return _inner.WriteAsync(buffer, offset, count, cancellationToken);
+            }
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+            {
+                _written += buffer.Length;
+                return _inner.WriteAsync(buffer, cancellationToken);
+            }
+
+            protected override void Dispose(bool disposing)
+            {
+                if (disposing && Interlocked.Exchange(ref _disposed, 1) == 0)
+                {
+                    _wait(Transfer(_written, _bytesPerSecond), CancellationToken.None).GetAwaiter().GetResult();
+                    _inner.Dispose();
+                }
+            }
+
+            public override async ValueTask DisposeAsync()
+            {
+                if (Interlocked.Exchange(ref _disposed, 1) == 0)
+                {
+                    await _wait(Transfer(_written, _bytesPerSecond), CancellationToken.None);
+                    await _inner.DisposeAsync();
                 }
                 GC.SuppressFinalize(this);
             }

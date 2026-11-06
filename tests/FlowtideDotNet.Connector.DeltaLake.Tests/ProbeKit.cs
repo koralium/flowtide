@@ -93,6 +93,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var middle = sorted.Length / 2;
             return sorted.Length % 2 == 1 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
         }
+
+        // Linear between the two nearest ranks
+        public static double Percentile(IReadOnlyList<double> values, double p)
+        {
+            var sorted = values.Order().ToArray();
+            var rank = p * (sorted.Length - 1);
+            var low = (int)Math.Floor(rank);
+            var high = Math.Min(low + 1, sorted.Length - 1);
+            return sorted[low] + (sorted[high] - sorted[low]) * (rank - low);
+        }
+
+        // A seeded 90 % bootstrap interval of a percentile
+        public static (double Low, double High) Bootstrap(IReadOnlyList<double> values, double p, int seed)
+        {
+            var random = new Random(seed);
+            var sample = new double[values.Count];
+            var estimates = new double[1_000];
+            for (int i = 0; i < estimates.Length; i++)
+            {
+                for (int j = 0; j < sample.Length; j++)
+                {
+                    sample[j] = values[random.Next(values.Count)];
+                }
+                estimates[i] = Percentile(sample, p);
+            }
+            return (Percentile(estimates, 0.05), Percentile(estimates, 0.95));
+        }
     }
 
     // Peak working set above the start, sampled during a run
@@ -262,12 +289,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private volatile bool _ready;
         private bool _disposed;
 
-        public ProbeTable(string name, string root, Action<DeltaLakeOptions>? configure, bool keepFiles)
+        public ProbeTable(string name, string root, Action<DeltaLakeOptions>? configure, bool keepFiles, bool objectStore = false, Action<TimeSpan, TimeSpan>? timed = null)
         {
             _name = name;
             _keepFiles = keepFiles;
             Root = root;
-            Storage = HookFileStorage.Wrap(Files.Of.LocalDisk(root));
+            // An object store hides the local disk path from the sink
+            Storage = objectStore ? new HookFileStorage(Files.Of.LocalDisk(root)) : HookFileStorage.Wrap(Files.Of.LocalDisk(root));
             Stream = new DeltaLakeSinkStream(name, Storage, options =>
             {
                 // The prefilter off, another threshold, or blind pruning, for the baselines
@@ -294,7 +322,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                         _published.TrySetResult();
                     }
                 };
-            });
+            }, sinkFactory: timed != null ? options => new TimedSinkFactory(options, timed) : null);
             Stream.WaitForUpdateDoesNotRequireDataChange();
             // Without normalization deletes reach the sink on a new stream
             Stream.SourceImmutable();

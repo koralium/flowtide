@@ -43,7 +43,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 };
                 return await ManualRun.RunAsync(args, describe, output => AdvancePlannerKit.RunFixtureAsync(args[1], versions, output), Console.Out);
             }
-            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>]");
+            // Compaction fixtures and measured runs, one per process
+            if (args.Length >= 1 && (args[0] == "compaction-fixture" || args[0] == "compaction-probe"))
+            {
+                var options = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 1; i + 1 < args.Length; i += 2)
+                {
+                    options[args[i].TrimStart('-')] = args[i + 1];
+                }
+                var describe = new Dictionary<string, string>()
+                {
+                    ["scratch"] = args[0] == "compaction-fixture" ? options.GetValueOrDefault("root", "") : options.GetValueOrDefault("scratch", Path.GetTempPath()),
+                    ["profile"] = options.GetValueOrDefault("store", "local") + ", probe clock"
+                };
+                // Knobs that change a probe table, kept with the run
+                foreach (var name in new[] { "FLOWTIDE_PROBE_READAHEAD", "FLOWTIDE_PROBE_PREFILTER", "FLOWTIDE_PROBE_THRESHOLD", "FLOWTIDE_PROBE_PRUNING" })
+                {
+                    describe[name] = Environment.GetEnvironmentVariable(name) ?? "unset";
+                }
+                return await ManualRun.RunAsync(args, describe, output => args[0] == "compaction-fixture" ? CompactionProbe.BuildAsync(options, output) : CompactionProbe.RunAsync(options, output), Console.Out);
+            }
+            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>] | compaction-fixture --root <dir> --fixture <name> | compaction-probe --root <dir> --fixture <name> [--commits n] [--discard n] [--pace s] [--variant off] [--rep n] [--store local|azure-like] [--source on|off] [--scratch <dir>]");
             return ManualRun.HarnessError;
         }
     }

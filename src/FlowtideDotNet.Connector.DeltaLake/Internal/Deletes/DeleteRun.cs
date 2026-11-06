@@ -84,6 +84,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
     {
         public int Passes { get; set; }
 
+        // Files the bounds selected, before any early stop
+        public long Candidates { get; set; }
+
         public long FilesScanned { get; set; }
 
         public long RowsScanned { get; set; }

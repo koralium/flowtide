@@ -14,6 +14,7 @@ using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
@@ -116,21 +117,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly Action<DeltaLakeOptions>? configureOptions;
         private readonly KeepAliveMemoryFileProvider? stateFiles;
         private readonly Func<IPersistentStorage, IPersistentStorage>? wrapState;
+        private readonly Func<DeltaLakeOptions, IConnectorSinkFactory>? sinkFactory;
         private readonly List<DeltaLakeSink> sinks = new List<DeltaLakeSink>();
 
         /// <param name="stateFiles">Shared state files, a new stream over the same files restores the last checkpoint.</param>
         /// <param name="wrapState">Wraps the persistent storage, for example to observe page writes.</param>
+        /// <param name="sinkFactory">Makes the sinks instead of the connector, for example timed ones.</param>
         public DeltaLakeSinkStream(
             string testName,
             IFileStorage storage,
             Action<DeltaLakeOptions>? configureOptions = null,
             KeepAliveMemoryFileProvider? stateFiles = null,
-            Func<IPersistentStorage, IPersistentStorage>? wrapState = null) : base(testName)
+            Func<IPersistentStorage, IPersistentStorage>? wrapState = null,
+            Func<DeltaLakeOptions, IConnectorSinkFactory>? sinkFactory = null) : base(testName)
         {
             this.storage = storage;
             this.configureOptions = configureOptions;
             this.stateFiles = stateFiles;
             this.wrapState = wrapState;
+            this.sinkFactory = sinkFactory;
             Maintenance = new MaintenanceKit();
         }
 
@@ -165,7 +170,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 created?.Invoke(sink);
             };
-            connectorManger.AddDeltaLakeSink(options);
+            if (sinkFactory != null)
+            {
+                connectorManger.AddSink(sinkFactory(options));
+            }
+            else
+            {
+                connectorManger.AddDeltaLakeSink(options);
+            }
         }
 
         // The stream, then the maintenance kit's scratch folder
