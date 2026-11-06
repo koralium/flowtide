@@ -70,6 +70,28 @@ Each Stream Load request is its own StarRocks transaction and creates a new vers
 Raising `BatchSize` reduces the number of transactions. Raising `MaxParallelLoads` helps when uploads span several batches,
 but more concurrent loads increase the risk of StarRocks *too many versions* errors.
 
+### Retries
+
+Every request to StarRocks runs through `ResiliencePipeline`, a [Polly](https://www.pollydocs.org/) pipeline.
+By default a failed request is retried 5 times with exponential backoff starting at 1 second, with jitter.
+Any error is retried, including HTTP timeouts, except when the stream itself is stopping.
+Each failed attempt is logged as a warning. If the last retry also fails, the stream fails and restarts from its latest checkpoint.
+
+```csharp
+connectorManager.AddStarRocksSink("*", new StarRocksSinkOptions()
+{
+    HttpUrl = "http://starrocks-fe-host:8030",
+    Credentials = () => new StarRocksUsernamePassword("username", "password"),
+    // Custom retry policy, or ResiliencePipeline.Empty to disable retries
+    ResiliencePipeline = new ResiliencePipelineBuilder()
+        .AddRetry(new RetryStrategyOptions { MaxRetryAttempts = 10, Delay = TimeSpan.FromSeconds(2) })
+        .Build()
+});
+```
+
+A retried Stream Load can be applied twice if the first attempt reached StarRocks before it failed.
+This is safe for primary key tables, upserts and deletes give the same result when repeated.
+
 
 
 

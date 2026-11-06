@@ -12,11 +12,18 @@
 
 using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Operators.Write;
+using Polly;
+using Polly.Retry;
 
 namespace FlowtideDotNet.Connector.StarRocks
 {
     public class StarRocksSinkOptions
     {
+        public StarRocksSinkOptions()
+        {
+            ResiliencePipeline = CreateDefaultResiliencePipeline(TimeSpan.FromSeconds(1));
+        }
+
         public required string HttpUrl { get; set; }
 
         /// <summary>
@@ -46,6 +53,33 @@ namespace FlowtideDotNet.Connector.StarRocks
         /// </summary>
         public ExecutionMode ExecutionMode { get; set; } = ExecutionMode.OnCheckpoint;
 
+        /// <summary>
+        /// Resilience pipeline for every request to StarRocks.
+        /// Each failed attempt is logged as a warning.
+        ///
+        /// Default: 5 retries, exponential backoff from 1 second with jitter,
+        /// any error except the stream shutting down.
+        /// Use <see cref="ResiliencePipeline.Empty"/> to disable retries.
+        /// </summary>
+        public ResiliencePipeline ResiliencePipeline { get; set; }
+
         internal IStarRocksClientFactory ClientFactory { get; set; } = new DefaultStarRocksClientFactory();
+
+        internal static ResiliencePipeline CreateDefaultResiliencePipeline(TimeSpan baseDelay)
+        {
+            return new ResiliencePipelineBuilder()
+                .AddRetry(new RetryStrategyOptions
+                {
+                    MaxRetryAttempts = 5,
+                    BackoffType = DelayBackoffType.Exponential,
+                    Delay = baseDelay,
+                    UseJitter = true,
+                    // HttpClient timeouts are cancellations too, only a stopping stream is final
+                    ShouldHandle = args => ValueTask.FromResult(
+                        args.Outcome.Exception != null &&
+                        !(args.Outcome.Exception is OperationCanceledException && args.Context.CancellationToken.IsCancellationRequested))
+                })
+                .Build();
+        }
     }
 }
