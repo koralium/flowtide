@@ -29,7 +29,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
         private readonly StarRocksSinkOptions _options;
         private readonly ExecutionMode executionMode;
         private readonly WriteRelation _writeRelation;
-        private readonly IStarrocksClient _httpClient;
+        private readonly IStarrocksClient _innerClient;
+        // Wrapped with retries per run, needs that run's logger and token
+        private IStarrocksClient _httpClient;
         private StarRocksJsonWriter _jsonWriter;
 
         private IReadOnlyList<int>? _primaryKeyOrdinals;
@@ -62,7 +64,8 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             _tableName = writeRelation.NamedObject.Names[1];
             _databaseName = writeRelation.NamedObject.Names[0];
-            _httpClient = _options.ClientFactory.CreateClient(_options);
+            _innerClient = _options.ClientFactory.CreateClient(_options);
+            _httpClient = _innerClient;
         }
 
         public override string DisplayName => "Starrocks";
@@ -72,6 +75,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
         protected override async Task InitializeOrRestore(long restoreTime, IStateManagerClient stateManagerClient)
         {
+            _httpClient = new ResilientStarRocksClient(_innerClient, _options.ResiliencePipeline, Logger, StreamName, Name, CancellationToken);
             _labelId = await stateManagerClient.GetOrCreateObjectStateAsync<long>("labelIdCounter");
 
             if (executionMode == ExecutionMode.OnCheckpoint)

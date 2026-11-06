@@ -24,6 +24,7 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Polly;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks.Dataflow;
@@ -345,7 +346,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             {
                 HttpUrl = "http://",
                 Credentials = () => new StarRocksUsernamePassword("root", ""),
-                ClientFactory = factory
+                ClientFactory = factory,
+                // Failures here must reach the sink as is
+                ResiliencePipeline = ResiliencePipeline.Empty
             }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel);
 
             await InitializeOperator(op);
@@ -732,7 +735,66 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             Assert.IsType<TaskCanceledException>(ex.InnerException);
         }
 
-        private async Task<ObservedSink> CreateWatermarkSink(Channel<PendingLoad> loads, int batchSize = 1000, int maxParallelLoads = 1, Action<TaskCompletionSource>? onLoad = null)
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task FailedStreamLoadIsRetriedUntilItLands(bool timeout)
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            int calls = 0;
+            var op = await CreateWatermarkSink(loads,
+                onLoad: done =>
+                {
+                    if (Interlocked.Increment(ref calls) > 2)
+                    {
+                        done.SetResult();
+                    }
+                    else if (timeout)
+                    {
+                        done.SetCanceled();
+                    }
+                    else
+                    {
+                        done.SetException(new HttpRequestException("Connection reset"));
+                    }
+                },
+                resiliencePipeline: StarRocksSinkOptions.CreateDefaultResiliencePipeline(TimeSpan.Zero));
+
+            await SendRowAndWatermark(op, "value1", 1);
+            for (int i = 0; i < 3; i++)
+            {
+                Assert.Contains("\"value1\"", (await NextLoad(loads)).Body);
+            }
+
+            await SendCheckpoint(op, 1);
+            await EgressWaitForCheckpointDone().WaitAsync(WaitTimeout);
+            Assert.False(op.Completion.IsCompleted);
+            Assert.False(loads.Reader.TryRead(out _));
+        }
+
+        [Fact]
+        public async Task StreamLoadFailingEveryRetryFaultsOperator()
+        {
+            var loads = Channel.CreateUnbounded<PendingLoad>();
+            var op = await CreateWatermarkSink(loads,
+                onLoad: done => done.SetException(new HttpRequestException("Connection refused")),
+                resiliencePipeline: StarRocksSinkOptions.CreateDefaultResiliencePipeline(TimeSpan.Zero));
+
+            await SendDataBatchWithWeightOne(op, [new { a = "value1" }]);
+            await SendWatermark(op, WatermarkValues(1));
+
+            var ex = await Assert.ThrowsAsync<HttpRequestException>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.Equal("Connection refused", ex.Message);
+            // First attempt plus five retries
+            int attempts = 0;
+            while (loads.Reader.TryRead(out _))
+            {
+                attempts++;
+            }
+            Assert.Equal(6, attempts);
+        }
+
+        private async Task<ObservedSink> CreateWatermarkSink(Channel<PendingLoad> loads, int batchSize = 1000, int maxParallelLoads = 1, Action<TaskCompletionSource>? onLoad = null, ResiliencePipeline? resiliencePipeline = null)
         {
             var client = Substitute.For<IStarrocksClient>();
             client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
@@ -755,7 +817,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ClientFactory = new StarRocksMockClientFactory(client),
                 BatchSize = batchSize,
-                MaxParallelLoads = maxParallelLoads
+                MaxParallelLoads = maxParallelLoads,
+                // No retries unless a test asks, failures must reach the sink
+                ResiliencePipeline = resiliencePipeline ?? ResiliencePipeline.Empty
             }, ExecutionMode.OnWatermark, _writeRel);
 
             await InitializeOperator(op);
