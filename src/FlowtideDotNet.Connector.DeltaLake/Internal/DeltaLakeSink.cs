@@ -1268,6 +1268,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                 {
                     var probes = ProbeBatch.Build(_catalog.ScanLayout, deleteBatch, batch.EntryRows);
                     var candidates = await CandidateSelector.Select(_catalog, probes, _limits.SelectorThreshold);
+                    deletes.Statistics.Candidates += candidates.Count;
                     // One storage for the matcher, the window and its depth
                     var storage = _options.StorageLocation;
                     var depth = _limits.ReadAheadOn(storage);
