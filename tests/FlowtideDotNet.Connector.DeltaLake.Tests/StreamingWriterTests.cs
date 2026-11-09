@@ -433,7 +433,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     f32.Append(i * 1.5f - 7);
                     f64.Append(i * -2.25 + 3);
                     bo.Append(i % 3 == 0);
-                    da.Append(new DateTime(2020, 1, 1).AddDays(i * 3 - 40));
+                    da.Append(new DateTime(2020, 1, 1).AddDays(i * 3d - 40));
                     ts.Append(DateTimeOffset.UnixEpoch.AddTicks(i * 12_345_670L - 99_990L));
                     de.Append(i * 1.25m - 9);
                     st.Append($"s{i * 37 % 23}");

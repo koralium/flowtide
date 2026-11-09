@@ -660,6 +660,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Theory]
+        [InlineData(1_179_652.25, true)]
+        [InlineData(1_179_652.75, false)]
+        public async Task AnOddOvershootKeepsItsFractionalHalf(double projectedBytes, bool copiesBoth)
+        {
+            var table = Table(Field("id", new Delta.LongType()), Field("s", new Delta.StringType()));
+            var inputs = new[] { await Input("a.parquet", Strings(100, 4)), await Input("b.parquet", Strings(100, 4, salt: 1)) };
+            var expansion = projectedBytes / inputs.Sum(x => x.Size);
+
+            var result = await Run(Bin(table, inputs, (1L << 20) + 4, expansion));
+
+            Assert.Equal(copiesBoth ? 2 : 1, result.Copied.Count);
+            Assert.Equal(copiesBoth ? CompactionStatus.Copied : CompactionStatus.Abandoned, result.Status);
+            if (copiesBoth)
+            {
+                Assert.Equal(200, await ReadCount(Path.Join(_root, "store", "t", result.Output!.Path)));
+            }
+            else
+            {
+                Assert.Null(result.Output);
+                Assert.Equal(2, Directory.GetFiles(Path.Join(_root, "store", "t")).Length);
+            }
+        }
+
+        [Theory]
         [InlineData(2.0, "stop")]
         [InlineData(0.5, "cap")]
         public async Task OutputsStopEarlyOrAbandonOverTheCap(double expansion, string expected)
@@ -864,12 +888,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var path = Path.Join(Path.GetTempPath(), $"cc-{Guid.NewGuid():N}.parquet");
             try
             {
-                var fields = new ParquetSharp.Schema.Node[]
-                {
-                    new ParquetSharp.Schema.PrimitiveNode("id", Repetition.Optional, LogicalType.None(), PhysicalType.Int64),
-                    new ParquetSharp.Schema.PrimitiveNode("t1", Repetition.Optional, LogicalType.None(), PhysicalType.Int96),
-                    new ParquetSharp.Schema.PrimitiveNode("t2", Repetition.Optional, LogicalType.Timestamp(true, ParquetSharp.TimeUnit.Millis), PhysicalType.Int64)
-                };
+                using var idNode = new ParquetSharp.Schema.PrimitiveNode("id", Repetition.Optional, LogicalType.None(), PhysicalType.Int64);
+                using var t1Node = new ParquetSharp.Schema.PrimitiveNode("t1", Repetition.Optional, LogicalType.None(), PhysicalType.Int96);
+                using var t2Node = new ParquetSharp.Schema.PrimitiveNode("t2", Repetition.Optional, LogicalType.Timestamp(true, ParquetSharp.TimeUnit.Millis), PhysicalType.Int64);
+                var fields = new ParquetSharp.Schema.Node[] { idNode, t1Node, t2Node };
                 var definitions = Enumerable.Repeat((short)1, rows).ToArray();
                 using (var root = new ParquetSharp.Schema.GroupNode("schema", Repetition.Required, fields))
                 using (var builder = new WriterPropertiesBuilder())

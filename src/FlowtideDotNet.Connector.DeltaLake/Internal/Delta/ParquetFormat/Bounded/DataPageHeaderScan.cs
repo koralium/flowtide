@@ -363,14 +363,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     for (int i = 0; i < readLeaves.Length; i++)
                     {
                         var node = schema.Leaves[readLeaves[i]];
+                        // DataFileSchema makes leaves only from typed elements
+                        var type = node.Element.Type!.Value;
                         var chunk = footer.Chunks[g][readLeaves[i]]!;
                         if (chunk.Codec is Lzo or Brotli || chunk.Codec < 0 || chunk.Codec > Lz4Raw)
                         {
                             throw new PageScanException($"Leaf {node.Path} uses codec {chunk.Codec}", CompactionReason.UnsupportedCodec);
                         }
-                        if (chunk.PhysicalType != (int)node.Element.Type!.Value)
+                        if (chunk.PhysicalType != (int)type)
                         {
-                            throw new PageScanException($"Leaf {node.Path} has type {chunk.PhysicalType} in its chunk and {node.Element.Type} in the schema");
+                            throw new PageScanException($"Leaf {node.Path} has type {chunk.PhysicalType} in its chunk and {type} in the schema");
                         }
                         // Arrow reads to the value count, and every row has a level
                         if (node.Repeated ? chunk.NumValues < rows : chunk.NumValues != rows)
@@ -383,7 +385,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                             throw new PageScanException($"Leaf {node.Path} has a chunk outside the data region");
                         }
                         extents.Add((start, start + chunk.TotalCompressedSize));
-                        var leaf = new ScanLeaf(node.Path, node.Element.Type.Value, node.MaxDefinition, node.MaxRepetition, node.Element.TypeLength);
+                        var leaf = new ScanLeaf(node.Path, type, node.MaxDefinition, node.MaxRepetition, node.Element.TypeLength);
                         var terms = CheckpointPageScan.ScanChunk(file, leaf, chunk, start, limits, header);
                         var compressed = chunk.Codec != 0;
                         // Arrow reads an uncompressed page by its compressed size

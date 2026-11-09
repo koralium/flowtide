@@ -570,7 +570,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction
                     var input = admitted.Input;
                     var liveShare = input.Rows == 0 ? 0 : 1 - (double)(input.DeletionVector?.Cardinality ?? 0) / input.Rows;
                     // R15: stop at an input boundary before the output passes T_eff + A/2 or 64 groups
-                    if (_result.Copied.Count > 0 && (writer.RowGroups >= _context.Limits.SoftGroups || (liveBytes + input.Size * liveShare) * _bin.Expansion > _bin.TargetBytes + _bin.Overshoot / 2))
+                    if (_result.Copied.Count > 0 && (writer.RowGroups >= _context.Limits.SoftGroups || (liveBytes + input.Size * liveShare) * _bin.Expansion > _bin.TargetBytes + _bin.Overshoot / 2.0))
                     {
                         break;
                     }
