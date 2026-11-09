@@ -178,7 +178,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         }
 
         // Null when the volume cannot be queried, such as a UNC share: the check is skipped, while the reservation and the failure cleanup still hold
-        private static long? FreeSpaceOf(string directory)
+        internal static long? FreeSpaceOf(string directory)
         {
             try
             {

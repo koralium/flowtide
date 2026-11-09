@@ -85,7 +85,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         public IArrowArray GetArray()
         {
             Debug.Assert(_values != null && _validity != null);
-            return new TimestampArray(new TimestampType(_unit, "UTC"), _values.Build(), _validity.Build(), _validity.Length, _nullCount, 0);
+            return new TimestampArray(new TimestampType(_unit, "UTC"), _values.Build(), _validity.Build(), _validity.Length, _validity.UnsetBitCount, 0);
         }
 
         public IStatisticsComparer GetStatisticsComparer()
@@ -110,11 +110,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _values = new ArrowBuffer.Builder<long>();
-            _validity = new ArrowBuffer.BitmapBuilder();
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
+        }
+
+        public void NewGroup()
+        {
+            _values = new ArrowBuffer.Builder<long>();
+            _validity = new ArrowBuffer.BitmapBuilder();
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_values != null && _validity != null);
+            sizes.AddLeaf(_values.Length, _values, _validity);
         }
 
         public void WriteNull()

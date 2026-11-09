@@ -25,7 +25,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         private readonly IParquetWriter _valueWriter;
         private ArrowBuffer.BitmapBuilder? _nullBitmap;
         private ArrowBuffer.Builder<int>? _offsetBuilder;
-        private int _nullCount;
 
         public ParquetMapWriter(IParquetWriter keyWriter, IParquetWriter valueWriter)
         {
@@ -78,7 +77,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             var valueArray = _valueWriter.GetArray();
             var mapType = new MapType(keyArray.Data.DataType, valueArray.Data.DataType, keySorted: false);
             var structArray = new StructArray(mapType.KeyValueType, keyArray.Length, [keyArray, valueArray], ArrowBuffer.Empty, 0, 0);
-            return new MapArray(mapType, _offsetBuilder.Length - 1, _offsetBuilder.Build(), structArray, _nullBitmap.Build(), _nullCount);
+            return new MapArray(mapType, _offsetBuilder.Length - 1, _offsetBuilder.Build(), structArray, _nullBitmap.Build(), _nullBitmap.UnsetBitCount);
         }
 
         public IStatisticsComparer? GetStatisticsComparer()
@@ -90,10 +89,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
         {
             _keyWriter.NewBatch();
             _valueWriter.NewBatch();
+            NewOwnBuffers();
+        }
+
+        public void NewGroup()
+        {
+            _keyWriter.NewGroup();
+            _valueWriter.NewGroup();
+            NewOwnBuffers();
+        }
+
+        private void NewOwnBuffers()
+        {
             _nullBitmap = new ArrowBuffer.BitmapBuilder();
             _offsetBuilder = new ArrowBuffer.Builder<int>();
             _offsetBuilder.Append(0);
-            _nullCount = 0;
+        }
+
+        // The entries struct has no buffers of its own
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_nullBitmap != null);
+            Debug.Assert(_offsetBuilder != null);
+            sizes.Add(_offsetBuilder);
+            sizes.Add(_nullBitmap);
+            sizes.Enter(_offsetBuilder, _nullBitmap.Length);
+            _keyWriter.Measure(sizes);
+            _valueWriter.Measure(sizes);
+            sizes.Exit(_nullBitmap.Length);
         }
 
         public void WriteNull()
@@ -102,7 +125,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_offsetBuilder != null);
             _nullBitmap.Append(false);
             _offsetBuilder.Append(_offsetBuilder.Span[_offsetBuilder.Length - 1]);
-            _nullCount++;
         }
 
         public long WriteValue<T>(T value) where T : IDataValue

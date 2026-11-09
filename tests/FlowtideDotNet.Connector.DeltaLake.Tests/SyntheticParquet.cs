@@ -121,7 +121,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     // A Parquet file assembled from schema elements, column chunks of raw pages, and a hand-built footer
     internal sealed class SyntheticParquet
     {
-        public sealed record Element(string Name, int? Type = null, int Repetition = 1, int Children = 0, int? Converted = null);
+        // Logical is a union member written empty, 0 for no member
+        public sealed record Element(string Name, int? Type = null, int Repetition = 1, int Children = 0, int? Converted = null, int? Logical = null, int? TypeLength = null);
 
         public sealed class Chunk
         {
@@ -172,6 +173,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         // Leaves out FileMetaData's required version
         public bool OmitVersion { get; set; }
+
+        // Column orders: empty structs, or bools with no bytes
+        public int? ColumnOrders { get; set; }
+
+        public bool ColumnOrdersAsBools { get; set; }
 
         // A page: header bytes then a body of the given length
         public static byte[] Page(int type, int compressed, int uncompressed, Action<ThriftWriter> subHeader, short subHeaderId)
@@ -245,6 +251,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 {
                     w.I32(1, element.Type.Value);
                 }
+                if (element.TypeLength != null)
+                {
+                    w.I32(2, element.TypeLength.Value);
+                }
                 w.I32(3, element.Repetition);
                 w.String(4, element.Name);
                 if (element.Children > 0)
@@ -254,6 +264,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 if (element.Converted != null)
                 {
                     w.I32(6, element.Converted.Value);
+                }
+                if (element.Logical != null)
+                {
+                    w.BeginStruct(10);
+                    if (element.Logical > 0)
+                    {
+                        w.BeginStruct((short)element.Logical.Value).End();
+                    }
+                    w.End();
                 }
                 w.End();
             }
@@ -312,6 +331,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 foreach (var (key, value) in KeyValues)
                 {
                     w.BeginElement().String(1, key).String(2, value).End();
+                }
+            }
+            if (ColumnOrders != null)
+            {
+                w.List(7, ColumnOrdersAsBools ? (byte)1 : (byte)12, ColumnOrders.Value);
+                for (int i = 0; i < ColumnOrders.Value && !ColumnOrdersAsBools; i++)
+                {
+                    w.BeginElement().BeginStruct(1).End().End();
                 }
             }
             w.End();

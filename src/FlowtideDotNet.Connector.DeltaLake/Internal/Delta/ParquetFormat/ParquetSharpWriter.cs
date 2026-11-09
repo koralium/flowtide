@@ -17,6 +17,7 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.ParquetWriters;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Stats.Comparers;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -25,7 +26,7 @@ using System.Diagnostics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
-    internal class ParquetSharpWriter : IDeltaFormatWriter
+    internal class ParquetSharpWriter : IDeltaFormatWriter, IDisposable
     {
         private readonly StructType schema;
         private List<IParquetWriter> writers;
@@ -39,6 +40,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         private readonly bool _isCdcWriter;
         private readonly IParquetWriter? _cdcWriter;
         private readonly ParquetSharp.WriterProperties? _writerProperties;
+        // Compaction's streaming output, one row group per flush
+        private ParquetSharp.Arrow.FileWriter? _fileWriter;
+        private string? _path;
+        private GroupBudget? _budget;
+        private BuilderSizes? _sizes;
+        private long _flushedRows;
+        // Held past admission, later groups' metadata and builder growth
+        private long _extraNative;
+        private long _extraManaged;
+
+        // Our bounded readers refuse more groups than this
+        public const int MaxRowGroups = 1024;
 
         // countNulls counts null slots, for the delete batch's cap
         public ParquetSharpWriter(StructType schema, List<string> columnNames, bool isCdcWriter = false, ParquetSharp.WriterProperties? writerProperties = null, IReadOnlyList<TimeUnit>? units = null, bool countNulls = false)
@@ -147,8 +160,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         // Every table column, timestamps in the file's unit or microseconds
         public static ParquetSharpWriter ForRewrite(StructType table, FileBinding binding, ParquetSharp.WriterProperties? writerProperties)
         {
-            var units = binding.TimestampUnits.Select(x => x == TimeUnit.Second || x == TimeUnit.Millisecond ? TimeUnit.Millisecond : TimeUnit.Microsecond).ToList();
+            var units = FoldUnits(new[] { binding.TimestampUnits });
             return new ParquetSharpWriter(table, table.Fields.Select(x => x.Name).ToList(), writerProperties: writerProperties, units: units);
+        }
+
+        // ms where every input has s or ms, else µs
+        public static TimeUnit[] FoldUnits(IReadOnlyList<IReadOnlyList<TimeUnit>> inputs)
+        {
+            var units = new TimeUnit[inputs[0].Count];
+            for (int i = 0; i < units.Length; i++)
+            {
+                units[i] = inputs.All(x => x[i] == TimeUnit.Second || x[i] == TimeUnit.Millisecond) ? TimeUnit.Millisecond : TimeUnit.Microsecond;
+            }
+            return units;
         }
 
         /// <summary>
@@ -175,12 +199,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                         mask.Add(deleted.Current);
                         hasDeleted = deleted.MoveNext();
                     }
-                    for (int i = 0; i < writers.Count; i++)
-                    {
-                        _writtenBytes += writers[i].CopyArray(rebound.Column(i), globalIndex, mask, 0, rebound.Length);
-                    }
-                    // Counted per batch, a roll can happen between batches
-                    rowCount += rebound.Length - (int)mask.Cardinality;
+                    CopyRows(rebound, globalIndex, mask);
                     globalIndex += rebound.Length;
                 }
                 if (isFull(this))
@@ -190,7 +209,187 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
+        // Counted per batch, a roll can happen between batches
+        private void CopyRows(ReboundBatch rebound, long globalIndex, BatchDeleteMask mask)
+        {
+            for (int i = 0; i < writers.Count; i++)
+            {
+                _writtenBytes += writers[i].CopyArray(rebound.Column(i), globalIndex, mask, 0, rebound.Length);
+            }
+            rowCount += rebound.Length - (int)mask.Cardinality;
+        }
+
+        // Copies the survivors and returns the bytes the builders grew
+        public long CopyBatch(ReboundBatch rebound, long globalIndex, BatchDeleteMask mask)
+        {
+            var before = Measure().Length;
+            CopyRows(rebound, globalIndex, mask);
+            return Measure().Length - before;
+        }
+
         public int WrittenCount => rowCount;
+
+        // Rows of the flushed groups and the open one
+        public long FileRows => _flushedRows + rowCount;
+
+        public int RowGroups { get; private set; }
+
+        // Why the last refusal happened, for a debug log
+        public string? RefusalDetail { get; private set; }
+
+        // The open group's builder buffers; windows also measure rows and write batches
+        public BuilderSizes Measure(bool windows = false)
+        {
+            _sizes ??= new BuilderSizes();
+            _sizes.Clear();
+            _sizes.Windows = windows;
+            foreach (var writer in writers)
+            {
+                writer.Measure(_sizes);
+            }
+            return _sizes;
+        }
+
+        // Opens a local file written one row group per flush
+        public void OpenStreaming(string path, GroupBudget budget)
+        {
+            if (_fileWriter != null)
+            {
+                throw new InvalidOperationException("The writer is already streaming");
+            }
+            // Each flush must stay one row group
+            if (_writerProperties == null || _writerProperties.MaxRowGroupLength < int.MaxValue)
+            {
+                throw new InvalidOperationException("Streaming needs the output writer properties");
+            }
+            _fileWriter = new ParquetSharp.Arrow.FileWriter(path, _schema, _writerProperties);
+            _path = path;
+            _budget = budget;
+        }
+
+        // Writes the open group, checking its native bytes before Build()
+        public CompactionReason? FlushRowGroup()
+        {
+            Debug.Assert(_fileWriter != null && _budget != null);
+            if (rowCount == 0)
+            {
+                return null;
+            }
+            if (RowGroups >= MaxRowGroups)
+            {
+                RefusalDetail = $"The output already has {RowGroups} row groups";
+                return CompactionReason.GroupCap;
+            }
+            var sizes = Measure(windows: true);
+            var excess = Math.Max(0, checked(sizes.Built + _budget.WriterBytes(sizes, rowCount) - _budget.Allowance));
+            // Groups past the charged ones hold their metadata until close
+            var metadata = RowGroups >= _budget.ChargedGroups ? _budget.GroupMetadata : 0;
+            if (!_budget.Memory.TryReserveNative(checked(excess + metadata)))
+            {
+                RefusalDetail = $"Row group {RowGroups} is {excess} bytes over its allowance with {metadata} bytes of metadata, leaves (built, levels): {string.Join(", ", sizes.Leaves.Select(x => $"({x.Built}, {x.Levels})"))}";
+                return CompactionReason.WriterBound;
+            }
+            _extraNative += metadata;
+            try
+            {
+                _budget.CoverDisk?.Invoke(sizes, rowCount, RowGroups + 1);
+                using var batch = GetRecordBatch();
+                _fileWriter.WriteRecordBatch(batch, long.MaxValue);
+            }
+            finally
+            {
+                _budget.Memory.ReleaseNative(excess);
+            }
+            RowGroups++;
+            _flushedRows += rowCount;
+            rowCount = 0;
+            foreach (var writer in writers)
+            {
+                writer.NewGroup();
+            }
+            // The group's buffers are freed, so return them to the OS
+            NativeHeap.Trim();
+            // Fresh builders are tiny, so release the extra growth
+            _budget.Memory.Release(_extraManaged);
+            _extraManaged = 0;
+            return null;
+        }
+
+        // Call before reading the next batch, so a flush has no batch beside it
+        public CompactionReason? ReserveGrowth(long bound)
+        {
+            if (TryGrow(bound))
+            {
+                return null;
+            }
+            // Flush first and retry once
+            if (rowCount > 0)
+            {
+                var flushed = FlushRowGroup();
+                if (flushed != null)
+                {
+                    return flushed;
+                }
+                if (TryGrow(bound))
+                {
+                    return null;
+                }
+            }
+            RefusalDetail = $"A batch of {bound} bytes does not fit the builders' managed memory";
+            return CompactionReason.ManagedBound;
+        }
+
+        // Doubling keeps capacity under 2 × length, and an old copy adds half
+        private bool TryGrow(long bound)
+        {
+            Debug.Assert(_budget != null);
+            var sizes = Measure();
+            var over = checked(3 * (sizes.Length + bound) + 96L * sizes.Buffers - _budget.Pool - _extraManaged);
+            if (over <= 0)
+            {
+                return true;
+            }
+            if (!_budget.Memory.TryReserve(over))
+            {
+                return false;
+            }
+            _extraManaged += over;
+            return true;
+        }
+
+        // Flush the last group and close while the copy reservation is held
+        public long CloseStreaming()
+        {
+            Debug.Assert(_fileWriter != null && _path != null);
+            if (rowCount != 0)
+            {
+                throw new InvalidOperationException($"{rowCount} rows are not flushed");
+            }
+            _fileWriter.Close();
+            using (var file = new FileStream(_path, FileMode.Open, FileAccess.Write, FileShare.ReadWrite | FileShare.Delete))
+            {
+                file.Flush(true);
+            }
+            return new FileInfo(_path).Length;
+        }
+
+        public void Dispose()
+        {
+            try
+            {
+                _fileWriter?.Dispose();
+                _fileWriter = null;
+            }
+            finally
+            {
+                var native = _extraNative;
+                _extraNative = 0;
+                _budget?.Memory.ReleaseNative(native);
+                var managed = _extraManaged;
+                _extraManaged = 0;
+                _budget?.Memory.Release(managed);
+            }
+        }
 
         public long WrittenBytes => _writtenBytes;
 
@@ -262,7 +461,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public void NewBatch()
         {
             rowCount = 0;
+            _flushedRows = 0;
             _writtenBytes = 0;
+            RowGroups = 0;
+            RefusalDetail = null;
             foreach (var writer in writers)
             {
                 writer.NewBatch();
@@ -272,10 +474,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public RecordBatch GetRecordBatch()
         {
             List<IArrowArray> arrays = new List<IArrowArray>();
-            for (int i = 0; i < writers.Count; i++)
+            try
             {
-                var array = writers[i].GetArray();
-                arrays.Add(array);
+                for (int i = 0; i < writers.Count; i++)
+                {
+                    var array = writers[i].GetArray();
+                    arrays.Add(array);
+                }
+            }
+            catch
+            {
+                // Built columns are native, free them now
+                foreach (var array in arrays)
+                {
+                    array.Dispose();
+                }
+                throw;
             }
 
             var batch = new RecordBatch(_schema, arrays, rowCount);
@@ -303,7 +517,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             var obj = new DeltaStatistics()
             {
-                NumRecords = rowCount,
+                NumRecords = FileRows,
                 TightBounds = true,
                 ValueComparers = statistics
             };

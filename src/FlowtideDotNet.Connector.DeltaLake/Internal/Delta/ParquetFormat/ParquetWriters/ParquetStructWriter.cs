@@ -66,6 +66,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             Debug.Assert(_nullBitmap != null);
             if (array is StructArray arr)
             {
+                // Fields are not sliced, so an offset would misalign them
+                Debug.Assert(arr.Offset == 0, "Struct arrays are copied unsliced");
                 int addedCount = 0;
                 long addedBytes = 0;
                 for (int j = 0; j < propertyWriters.Count; j++)
@@ -110,7 +112,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
             var structType = new Apache.Arrow.Types.StructType(fields);
 
-            return new StructArray(structType, arrays[0].Length, arrays, _nullBitmap.Build(), _nullCount);
+            return new StructArray(structType, arrays[0].Length, arrays, _nullBitmap.Build(), _nullBitmap.UnsetBitCount);
         }
 
         public IStatisticsComparer? GetStatisticsComparer()
@@ -134,6 +136,27 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
             foreach (var writer in propertyWriters)
             {
                 writer.Value.NewBatch();
+            }
+        }
+
+        public void NewGroup()
+        {
+            _nullBitmap = new ArrowBuffer.BitmapBuilder();
+            foreach (var writer in propertyWriters)
+            {
+                writer.Value.NewGroup();
+            }
+        }
+
+        // Leaves in output order, as GetArray builds them
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_nullBitmap != null);
+            sizes.Add(_nullBitmap);
+            sizes.EndNode();
+            foreach (var index in order)
+            {
+                propertyWriters[index].Value.Measure(sizes);
             }
         }
 

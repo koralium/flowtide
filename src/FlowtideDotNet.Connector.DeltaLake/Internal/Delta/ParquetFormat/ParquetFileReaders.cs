@@ -10,6 +10,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded;
+using ParquetSharp;
 using ParquetSharp.Arrow;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
@@ -29,6 +31,36 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public static FileReader OpenForDeletes(Stream stream)
         {
             return new FileReader(stream, null, s_deleteProperties);
+        }
+
+        // A local file read a row group at a time, in audited native bounds
+        public static FileReader OpenLocal(string path, int batchRows, long footerLength)
+        {
+            using var properties = LocalProperties(footerLength);
+            using var arrowProperties = ArrowReaderProperties.GetDefault();
+            arrowProperties.PreBuffer = false;
+            arrowProperties.UseThreads = false;
+            arrowProperties.BatchSize = batchRows;
+            arrowProperties.CoerceInt96TimestampUnit = Apache.Arrow.Types.TimeUnit.Microsecond;
+            return new FileReader(path, properties, arrowProperties);
+        }
+
+        // The precision pass's own reader, with the same bounds
+        public static ParquetFileReader OpenLowLevel(string path, long footerLength)
+        {
+            using var properties = LocalProperties(footerLength);
+            return new ParquetFileReader(path, properties);
+        }
+
+        private static ReaderProperties LocalProperties(long footerLength)
+        {
+            var properties = ReaderProperties.WithMemoryPool(MemoryPool.SystemMemoryPool());
+            properties.EnableBufferedStream();
+            properties.BufferSize = CheckpointPageScan.ReaderBufferSize;
+            // Page headers share the limit, admission allows them up to HeaderMax
+            properties.SetThriftStringSizeLimit((int)Math.Clamp(footerLength, ScanLimits.Default.HeaderMax, int.MaxValue));
+            properties.SetThriftContainerSizeLimit((int)ThriftBudget.DefaultMaxEntries);
+            return properties;
         }
 
         private static ArrowReaderProperties CreateProperties(bool forDeletes)

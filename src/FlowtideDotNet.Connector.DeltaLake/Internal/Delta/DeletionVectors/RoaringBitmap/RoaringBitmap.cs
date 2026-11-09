@@ -28,6 +28,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
 
         public long Cardinality => m_HighLowContainer.Cardinality;
 
+        // The containers in key order, for tests
+        internal IEnumerable<Container> Containers => m_HighLowContainer.Containers;
+
         public bool Contains(int x)
         {
             return m_HighLowContainer.Contains(x);

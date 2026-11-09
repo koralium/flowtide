@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction;
 using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded
@@ -36,9 +37,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
     /// </summary>
     internal sealed class ThriftFormatException : Exception
     {
-        public ThriftFormatException(string message) : base(message)
+        public ThriftFormatException(string message, CompactionReason reason = CompactionReason.Malformed) : base(message)
         {
+            Reason = reason;
         }
+
+        // The decline a data file gets, checkpoints ignore it
+        public CompactionReason Reason { get; }
     }
 
     /// <summary>
@@ -119,7 +124,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         {
             if (++_depth > _budget.MaxDepth)
             {
-                throw new ThriftFormatException($"Thrift nesting is deeper than {_budget.MaxDepth}");
+                throw new ThriftFormatException($"Thrift nesting is deeper than {_budget.MaxDepth}", CompactionReason.MetadataBound);
             }
         }
 
@@ -185,6 +190,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 throw new ThriftFormatException("A Thrift i32 is out of range");
             }
             return (int)value;
+        }
+
+        public int ReadI8(ThriftType type)
+        {
+            if (type != ThriftType.Byte)
+            {
+                throw new ThriftFormatException($"Expected a byte, found Thrift type {type}");
+            }
+            return (sbyte)ReadByte();
         }
 
         public long ReadI64(ThriftType type)
@@ -259,7 +273,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             _budget.Entries += entries;
             if (_budget.Entries > _budget.MaxEntries)
             {
-                throw new ThriftFormatException($"More than {_budget.MaxEntries} Thrift container entries");
+                throw new ThriftFormatException($"More than {_budget.MaxEntries} Thrift container entries", CompactionReason.MetadataBound);
             }
             // Every entry takes at least one byte, so a size past the remaining data is a lie
             if (entries > _data.Length - _position)

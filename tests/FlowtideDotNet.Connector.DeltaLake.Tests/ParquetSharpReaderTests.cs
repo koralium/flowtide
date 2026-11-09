@@ -492,6 +492,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public void ArrowReadersOverStreamsGoThroughTheFactory()
         {
             var factory = 0;
+            var local = 0;
             var pinned = 0;
             var bypassing = new List<string>();
             foreach (var assembly in new[] { typeof(ParquetFileReaders).Assembly, typeof(ParquetSharpReaderTests).Assembly })
@@ -505,7 +506,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     }
                     foreach (var method in DeclaredMethods(type))
                     {
-                        var count = StreamReaderConstructions(method);
+                        var paths = ReaderConstructions(method, onPath: true);
+                        if (paths > 0 && owner == typeof(ParquetFileReaders))
+                        {
+                            local += paths;
+                        }
+                        else if (paths > 0 && assembly == typeof(ParquetFileReaders).Assembly)
+                        {
+                            bypassing.Add($"{type.FullName}.{method.Name}");
+                        }
+                        var count = ReaderConstructions(method, onPath: false);
                         if (count == 0)
                         {
                             continue;
@@ -527,6 +537,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
 
             Assert.Equal(2, factory);
+            Assert.Equal(1, local);
             Assert.Equal(1, pinned);
             Assert.True(bypassing.Count == 0, $"Open these with ParquetFileReaders: {string.Join(", ", bypassing)}");
             var properties = typeof(PinnedParquetQualificationTests).GetField("s_properties", BindingFlags.NonPublic | BindingFlags.Static)!;
@@ -539,8 +550,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             return type.GetConstructors(flags).Cast<MethodBase>().Concat(type.GetMethods(flags));
         }
 
-        // Arrow readers built on anything but a path
-        private static int StreamReaderConstructions(MethodBase method)
+        // Arrow readers built on a path, or on anything else
+        private static int ReaderConstructions(MethodBase method, bool onPath)
         {
             var il = method.GetMethodBody()?.GetILAsByteArray();
             if (il == null)
@@ -558,7 +569,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 if (code == OpCodes.Newobj
                     && method.Module.ResolveMethod(BitConverter.ToInt32(il, i), typeArguments, methodArguments) is ConstructorInfo constructor
                     && constructor.DeclaringType == typeof(ParquetSharp.Arrow.FileReader)
-                    && constructor.GetParameters()[0].ParameterType != typeof(string))
+                    && (constructor.GetParameters()[0].ParameterType == typeof(string)) == onPath)
                 {
                     count++;
                 }

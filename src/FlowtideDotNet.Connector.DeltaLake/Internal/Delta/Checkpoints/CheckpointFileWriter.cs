@@ -331,29 +331,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         public long ProjectedWriter()
         {
             var rows = _groupRowCount + _batch.Rows;
-            long total = 0;
+            long held = 0;
             long sinks = 0;
             long overlap = 0;
             long batchLevels = 0;
             for (int l = 0; l < Leaves; l++)
             {
                 var (f, levels, batchMax, rowMax, streams) = LeafWithBatch(l);
-                var pageValues = Math.Min(f, CheckpointWriterSettings.DataPageSize + batchMax);
-                var pageLevels = Math.Min(levels, 20_000 * Math.Max(1, rowMax));
-                var rle = streams * (pageLevels / 2 + 128);
-                var page = pageValues + rle;
-                var scratch = NativeConstants.HasScratch(_compression) ? NativeConstants.Compressed(_compression, page) : 0;
-                var pages = (f + CheckpointWriterSettings.DataPageSize - 1) / CheckpointWriterSettings.DataPageSize + (rows + 19_999) / 20_000;
-                var sink = NativeConstants.Compressed(_compression, f + streams * levels / 2) + 1024 * pages;
-                total += 4 * streams * pageLevels + rle + 3 * pageValues + page + scratch;
-                sinks += sink;
-                // Every grow-only buffer's content, the largest is the one block a reallocation can overlap
-                overlap = Math.Max(overlap, Math.Max(Math.Max(2 * pageLevels, rle), Math.Max(Math.Max(pageValues, page), Math.Max(scratch, sink))));
+                var leaf = WriterTerms.Leaf(_compression, CheckpointWriterSettings.DataPageSize, f, levels, batchMax, rowMax, streams, rows);
+                held += leaf.Held;
+                sinks += leaf.Sink;
+                overlap = Math.Max(overlap, leaf.Overlap);
                 batchLevels = Math.Max(batchLevels, _batch.Levels[l]);
             }
-            var path = 8 * batchLevels + _batch.Rows;
-            overlap = Math.Max(overlap, path);
-            return total + 2 * sinks + overlap + path
+            return WriterTerms.Group(held, sinks, overlap, 8 * batchLevels + _batch.Rows)
                 + (long)_groupRows.Count * Leaves * NativeConstants.WriterChunkMetadata
                 + NativeConstants.WriterCodec + NativeConstants.WriterFixed;
         }

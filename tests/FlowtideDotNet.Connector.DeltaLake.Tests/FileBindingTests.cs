@@ -305,7 +305,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 Assert.IsType<TimestampArray>(st.Fields[0]);
                 Assert.Equal((0, 0), (li.Values.Length, mp.KeyValues.Length));
                 Assert.Equal(new[] { 0, 0, 0 }, li.ValueOffsets.ToArray());
+                Assert.Equal(allocator.Bytes + 64 * allocator.Allocated, rebound.OwnedBytes);
             }
+
+            Assert.Equal(new[] { "st", "li", "mp", "bo", "bi", "ts" }, binding.MissingPaths);
 
             // Missing timestamps keep the default unit
             Assert.Equal(Enumerable.Repeat(TimeUnit.Millisecond, 4), binding.TimestampUnits);
@@ -576,6 +579,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             private readonly int _failOn;
             public int Allocated;
+            public long Bytes;
             public int Released;
             public int Twice;
 
@@ -592,6 +596,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 bytesAllocated = length;
                 Allocated++;
+                Bytes += length;
                 return new Owner(this, length);
             }
 

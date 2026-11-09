@@ -27,6 +27,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
         private readonly int m_Size;
         private readonly Container[] m_Values;
 
+        internal IEnumerable<Container> Containers => m_Values.Take(m_Size);
 
         // ReSharper disable once SuggestBaseTypeForParameter
         /// <summary>
@@ -554,6 +555,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                         var nbrruns = binaryReader.ReadUInt16();
                         var values = new List<ushort>(nbrruns * 2); // probably more
                         var count = 0;
+                        var next = 0;
                         var specialCase = false;
                         for (var j = 0; j < nbrruns; ++j)
                         {
@@ -563,20 +565,38 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors.Roar
                             if (nbrruns == 1 && value == 0 && length == Container.MaxCapacity - 1) // special one scenario
                             {
                                 containers[k] = BitmapContainer.One;
+                                count = Container.MaxCapacity;
                                 specialCase = true;
                                 break;
                             }
                             if (nbrruns == 1 && value == 0 && length == Container.MaxSize - 1) // special one scenario
                             {
                                 containers[k] = ArrayContainer.One;
+                                count = Container.MaxSize;
                                 specialCase = true;
                                 break;
                             }
+                            // A run past the container's last value would wrap
+                            if (value + length > ushort.MaxValue)
+                            {
+                                throw new InvalidDataException($"Run at {value} of length {length} passes the container's end");
+                            }
+                            // Runs are ascending and apart, so values stay sorted and unique
+                            if (value < next)
+                            {
+                                throw new InvalidDataException($"Run at {value} starts before {next}, where the previous run ended");
+                            }
+                            next = value + length + 1;
                             for (int i = value; i < value + length + 1; i++)
                             {
                                 values.Add((ushort)i);
                             }
-                            count += length;
+                            // A run of length L holds L + 1 values
+                            count += length + 1;
+                        }
+                        if (count != cardinalities[k])
+                        {
+                            throw new InvalidDataException($"Runs hold {count} values, the header says {cardinalities[k]}");
                         }
                         if (!specialCase)
                         {

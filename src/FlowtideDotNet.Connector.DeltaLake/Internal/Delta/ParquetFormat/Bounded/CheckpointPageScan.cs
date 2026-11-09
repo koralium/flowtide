@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded
 {
@@ -34,6 +35,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
 
         public long BufferSize { get; init; } = CheckpointPageScan.ReaderBufferSize;
     }
+
+    // A page the scan refuses, with the decline a data file gets
+    internal sealed class PageScanException : Exception
+    {
+        public PageScanException(string message, CompactionReason reason = CompactionReason.Malformed) : base(message)
+        {
+            Reason = reason;
+        }
+
+        public CompactionReason Reason { get; }
+    }
+
+    // A leaf as the page scan sees it
+    internal readonly record struct ScanLeaf(string Path, ParquetPhysicalType Type, int MaxDefinition, int MaxRepetition, int TypeLength);
 
     /// <summary>
     /// An admitted root: its footer model and projection, and the native terms the reader reserves before opening it.
@@ -69,35 +84,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 throw new InvalidOperationException($"The reader buffer must stay above {FirstHeaderPeek} bytes");
             }
             using var file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 1, FileOptions.RandomAccess);
-            var length = file.Length;
-            if (length < 12)
-            {
-                throw Out("The file is too short for Parquet");
-            }
-            Span<byte> tail = stackalloc byte[8];
-            file.Position = length - 8;
-            file.ReadExactly(tail);
-            if (tail[4] == 'P' && tail[5] == 'A' && tail[6] == 'R' && tail[7] == 'E')
-            {
-                throw Out("The file is encrypted");
-            }
-            if (tail[4] != 'P' || tail[5] != 'A' || tail[6] != 'R' || tail[7] != '1')
-            {
-                throw Out("The footer magic is missing");
-            }
-            Span<byte> head = stackalloc byte[4];
-            file.Position = 0;
-            file.ReadExactly(head);
-            if (head[0] != 'P' || head[1] != 'A' || head[2] != 'R' || head[3] != '1')
-            {
-                throw Out("The leading magic is missing");
-            }
-            long footerLength = ThriftCompactReader.ReadInt32LittleEndian(tail);
-            if (footerLength <= 0 || footerLength > limits.FooterMax || footerLength > length - 12)
-            {
-                throw Out($"A footer of {footerLength} bytes");
-            }
-            var dataEnd = length - 8 - footerLength;
+            var (footerLength, dataEnd) = ReadFrame(file, limits, (detail, _) => Out(detail));
 
             // The raw footer is held only while it is parsed; the model is charged as it is built
             ParquetFooterModel footer;
@@ -138,7 +125,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             {
                 return ScanPages(file, footer, projection!, limits, memory, dataEnd, modelBytes, select != null);
             }
-            catch (Exception e) when (IsMalformed(e))
+            catch (Exception e) when (e is PageScanException || IsMalformed(e))
             {
                 memory.Release(modelBytes);
                 throw Out(e.Message);
@@ -150,38 +137,76 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             }
         }
 
+        // The magics and the footer's length; fail gets the data-file decline too
+        internal static (long FooterLength, long DataEnd) ReadFrame(FileStream file, ScanLimits limits, Func<string, CompactionReason, Exception> fail)
+        {
+            var length = file.Length;
+            if (length < 12)
+            {
+                throw fail("The file is too short for Parquet", CompactionReason.Malformed);
+            }
+            Span<byte> tail = stackalloc byte[8];
+            file.Position = length - 8;
+            file.ReadExactly(tail);
+            if (tail[4] == 'P' && tail[5] == 'A' && tail[6] == 'R' && tail[7] == 'E')
+            {
+                throw fail("The file is encrypted", CompactionReason.Encrypted);
+            }
+            if (tail[4] != 'P' || tail[5] != 'A' || tail[6] != 'R' || tail[7] != '1')
+            {
+                throw fail("The footer magic is missing", CompactionReason.Malformed);
+            }
+            Span<byte> head = stackalloc byte[4];
+            file.Position = 0;
+            file.ReadExactly(head);
+            if (head[0] != 'P' || head[1] != 'A' || head[2] != 'R' || head[3] != '1')
+            {
+                throw fail("The leading magic is missing", CompactionReason.Malformed);
+            }
+            long footerLength = ThriftCompactReader.ReadInt32LittleEndian(tail);
+            if (footerLength <= 0 || footerLength > length - 12)
+            {
+                throw fail($"A footer of {footerLength} bytes", CompactionReason.Malformed);
+            }
+            if (footerLength > limits.FooterMax)
+            {
+                throw fail($"A footer of {footerLength} bytes", CompactionReason.MetadataBound);
+            }
+            return (footerLength, length - 8 - footerLength);
+        }
+
         private static int BitWidth(int maxLevel) => maxLevel == 0 ? 0 : 32 - System.Numerics.BitOperations.LeadingZeroCount((uint)maxLevel);
 
-        private static void CheckV2Levels(FileStream file, long body, PageHeader page, ProjectedLeaf leaf, byte[] buffer)
+        private static void CheckV2Levels(FileStream file, long body, PageHeader page, ScanLeaf leaf, byte[] buffer)
         {
             long rows = page.Values;
             long nulls = 0;
             if (leaf.MaxRepetition > 0)
             {
-                rows = CountLevels(file, body, page.RepetitionLength, BitWidth(leaf.MaxRepetition), page.Values, 0, buffer, leaf);
+                rows = CountLevels(file, body, page.RepetitionLength, BitWidth(leaf.MaxRepetition), page.Values, 0, leaf.MaxRepetition, buffer, leaf);
             }
             else if (page.RepetitionLength != 0)
             {
-                throw Out($"Leaf {leaf.LogicalPath}: repetition levels on a leaf without repetition");
+                throw new PageScanException($"Leaf {leaf.Path}: repetition levels on a leaf without repetition");
             }
             if (leaf.MaxDefinition > 0)
             {
                 // Levels below the maximum are the nulls; counting the maximum gives the defined values
-                var defined = CountLevels(file, body + page.RepetitionLength, page.DefinitionLength, BitWidth(leaf.MaxDefinition), page.Values, leaf.MaxDefinition, buffer, leaf);
+                var defined = CountLevels(file, body + page.RepetitionLength, page.DefinitionLength, BitWidth(leaf.MaxDefinition), page.Values, leaf.MaxDefinition, leaf.MaxDefinition, buffer, leaf);
                 nulls = page.Values - defined;
             }
             else if (page.DefinitionLength != 0)
             {
-                throw Out($"Leaf {leaf.LogicalPath}: definition levels on a required leaf");
+                throw new PageScanException($"Leaf {leaf.Path}: definition levels on a required leaf");
             }
             if (rows != page.Rows || nulls != page.Nulls)
             {
-                throw Out($"Leaf {leaf.LogicalPath}: a V2 page declares {page.Rows} rows and {page.Nulls} nulls, its levels hold {rows} and {nulls}");
+                throw new PageScanException($"Leaf {leaf.Path}: a V2 page declares {page.Rows} rows and {page.Nulls} nulls, its levels hold {rows} and {nulls}");
             }
         }
 
         // Decodes exactly count levels of the RLE and bit-packed hybrid and counts those equal to the value; an early end is refused
-        private static long CountLevels(FileStream file, long offset, int length, int bitWidth, int count, int value, byte[] buffer, ProjectedLeaf leaf)
+        private static long CountLevels(FileStream file, long offset, int length, int bitWidth, int count, int value, int max, byte[] buffer, ScanLeaf leaf)
         {
             var source = new RegionReader(file, offset, length, buffer);
             long matched = 0;
@@ -194,7 +219,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 {
                     if (shift > 28)
                     {
-                        throw Out($"Leaf {leaf.LogicalPath}: a level run header is too long");
+                        throw new PageScanException($"Leaf {leaf.Path}: a level run header is too long");
                     }
                     var b = source.Next(leaf);
                     header |= (long)(b & 0x7F) << shift;
@@ -212,6 +237,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         level |= source.Next(leaf) << (8 * i);
                     }
                     var taken = Math.Min(run, count - decoded);
+                    CheckLevel(level, max, leaf);
                     if (level == value)
                     {
                         matched += taken;
@@ -219,7 +245,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     decoded += taken;
                     if (run == 0)
                     {
-                        throw Out($"Leaf {leaf.LogicalPath}: an empty level run");
+                        throw new PageScanException($"Leaf {leaf.Path}: an empty level run");
                     }
                 }
                 else
@@ -228,7 +254,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     var groups = header >> 1;
                     if (groups == 0)
                     {
-                        throw Out($"Leaf {leaf.LogicalPath}: an empty bit-packed run");
+                        throw new PageScanException($"Leaf {leaf.Path}: an empty bit-packed run");
                     }
                     long bits = 0;
                     var held = 0;
@@ -242,12 +268,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         var level = (int)(bits & ((1L << bitWidth) - 1));
                         bits >>= bitWidth;
                         held -= bitWidth;
+                        CheckLevel(level, max, leaf);
                         matched += level == value ? 1 : 0;
                         decoded++;
                     }
                 }
             }
             return matched;
+        }
+
+        // Arrow refuses a level above the leaf's maximum
+        private static void CheckLevel(int level, int max, ScanLeaf leaf)
+        {
+            if (level > max)
+            {
+                throw new PageScanException($"Leaf {leaf.Path}: a level of {level} above its maximum {max}");
+            }
         }
 
         // The bytes of a region of the file, read through the scan's header buffer
@@ -268,13 +304,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 _remaining = length;
             }
 
-            public int Next(ProjectedLeaf leaf)
+            public int Next(ScanLeaf leaf)
             {
                 if (_start == _end)
                 {
                     if (_remaining == 0)
                     {
-                        throw Out($"Leaf {leaf.LogicalPath}: a V2 level section ends before its levels");
+                        throw new PageScanException($"Leaf {leaf.Path}: a V2 level section ends before its levels");
                     }
                     var count = (int)Math.Min(_buffer.Length, _remaining);
                     _file.Position = _position;
@@ -337,13 +373,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             return type == ParquetPhysicalType.Boolean ? encoding is Plain or Rle : encoding is Plain or PlainDictionary or RleDictionary;
         }
 
-        private sealed class ChunkTerms
+        internal sealed class ChunkTerms
         {
             public long Stream;
             public long LargestUncompressed;
             public long LargestCompressed;
             public long Dictionary;
+            // The dictionary page itself, no value is larger
+            public long DictionaryPage;
+            public long DictionaryCompressed;
             public long LargestHeader;
+            // The most values one data page holds
+            public long PageValues;
         }
 
         private static ScanResult ScanPages(FileStream file, ParquetFooterModel footer, CheckpointProjection projection, ScanLimits limits, JobMemory memory, long dataEnd, long modelBytes, bool selected)
@@ -385,7 +426,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                             throw Out($"Leaf {leaf.LogicalPath} has a chunk outside the data region");
                         }
                         extents.Add((start, start + chunk.TotalCompressedSize));
-                        var terms = ScanChunk(file, leaf, chunk, start, limits, header);
+                        var terms = ScanChunk(file, new ScanLeaf(leaf.LogicalPath, leaf.Type, leaf.MaxDefinition, leaf.MaxRepetition, 0), chunk, start, limits, header);
                         var compressed = chunk.Codec != Uncompressed;
                         // An uncompressed body is the page itself and counted once
                         var uncompressedBuffer = compressed ? terms.LargestUncompressed : terms.LargestCompressed;
@@ -434,7 +475,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             }
         }
 
-        private static ChunkTerms ScanChunk(FileStream file, ProjectedLeaf leaf, FooterChunk chunk, long start, ScanLimits limits, byte[] header)
+        // Every page header of one chunk, checked against the footer
+        internal static ChunkTerms ScanChunk(FileStream file, ScanLeaf leaf, FooterChunk chunk, long start, ScanLimits limits, byte[] header)
         {
             var terms = new ChunkTerms();
             var stream = new StreamReplay(chunk.TotalCompressedSize, limits.BufferSize);
@@ -445,7 +487,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             {
                 if (encoding is not (Plain or PlainDictionary or Rle or BitPacked or RleDictionary))
                 {
-                    throw Out($"Leaf {leaf.LogicalPath} lists encoding {encoding}");
+                    throw new PageScanException($"Leaf {leaf.Path} lists encoding {encoding}", CompactionReason.UnsupportedEncoding);
                 }
             }
             while (consumed < chunk.TotalCompressedSize)
@@ -463,56 +505,81 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 }
                 catch (ThriftFormatException e)
                 {
-                    throw Out($"Leaf {leaf.LogicalPath}: a page header is malformed or over {limits.HeaderMax} bytes ({e.Message})");
+                    throw new PageScanException($"Leaf {leaf.Path}: a page header is malformed or over {limits.HeaderMax} bytes ({e.Message})", e.Reason);
                 }
                 if (page.Compressed < 0 || page.Uncompressed < 0 || page.Compressed > limits.PageMax || page.Uncompressed > limits.PageMax)
                 {
-                    throw Out($"Leaf {leaf.LogicalPath}: a page of {page.Compressed} compressed and {page.Uncompressed} uncompressed bytes");
+                    throw new PageScanException($"Leaf {leaf.Path}: a page of {page.Compressed} compressed and {page.Uncompressed} uncompressed bytes");
                 }
                 if (consumed + headerLength + page.Compressed > chunk.TotalCompressedSize)
                 {
-                    throw Out($"Leaf {leaf.LogicalPath}: page sizes disagree with the footer");
+                    throw new PageScanException($"Leaf {leaf.Path}: page sizes disagree with the footer");
                 }
                 stream.Page(headerLength, page.Compressed);
                 switch (page.Type)
                 {
                     case DictionaryPage:
-                        if (pages > 0 || dictionaryPages > 0 || leaf.Type == ParquetPhysicalType.Boolean || page.Encoding is not (Plain or PlainDictionary))
+                        if (pages > 0 || dictionaryPages > 0 || leaf.Type == ParquetPhysicalType.Boolean)
                         {
-                            throw Out($"Leaf {leaf.LogicalPath}: a dictionary page out of place or with encoding {page.Encoding}");
+                            throw new PageScanException($"Leaf {leaf.Path}: a dictionary page out of place");
                         }
-                        var width = leaf.Type == ParquetPhysicalType.Int64 ? 8L : 4L;
+                        if (page.Encoding is not (Plain or PlainDictionary))
+                        {
+                            throw new PageScanException($"Leaf {leaf.Path}: a dictionary page with encoding {page.Encoding}", CompactionReason.UnsupportedEncoding);
+                        }
+                        // 4 B per byte-array length; checkpoints don't read FLBA lengths
+                        var width = leaf.Type switch
+                        {
+                            ParquetPhysicalType.Int64 or ParquetPhysicalType.Double => 8L,
+                            ParquetPhysicalType.Int96 => 12L,
+                            ParquetPhysicalType.FixedLenByteArray when leaf.TypeLength > 0 => leaf.TypeLength,
+                            _ => 4L
+                        };
                         if (page.Values < 0 || page.Values * width > page.Uncompressed)
                         {
-                            throw Out($"Leaf {leaf.LogicalPath}: a dictionary of {page.Values} entries in {page.Uncompressed} bytes");
+                            throw new PageScanException($"Leaf {leaf.Path}: a dictionary of {page.Values} entries in {page.Uncompressed} bytes");
                         }
-                        terms.Dictionary = (leaf.Type == ParquetPhysicalType.ByteArray ? 16 * page.Values + page.Uncompressed + 4 * (page.Values + 1) : page.Values * width) + 4 * 1024;
+                        // Arrow keeps 16 B per byte-array entry, 8 B per FLBA entry
+                        terms.Dictionary = leaf.Type switch
+                        {
+                            ParquetPhysicalType.ByteArray => 16 * page.Values + page.Uncompressed + 4 * (page.Values + 1),
+                            ParquetPhysicalType.FixedLenByteArray => page.Values * (width + 8),
+                            _ => page.Values * width
+                        } + 4 * 1024;
+                        terms.DictionaryPage = page.Uncompressed;
+                        terms.DictionaryCompressed = page.Compressed;
                         dictionaryPages++;
                         break;
                     case DataPage:
                         if (!ValueEncodingAllowed(leaf.Type, page.Encoding) || page.DefinitionEncoding is not (Rle or BitPacked) || page.RepetitionEncoding is not (Rle or BitPacked))
                         {
-                            throw Out($"Leaf {leaf.LogicalPath}: a data page with encodings {page.Encoding}, {page.DefinitionEncoding}, {page.RepetitionEncoding}");
+                            throw new PageScanException($"Leaf {leaf.Path}: a data page with encodings {page.Encoding}, {page.DefinitionEncoding}, {page.RepetitionEncoding}", CompactionReason.UnsupportedEncoding);
                         }
                         values += page.Values;
+                        terms.PageValues = Math.Max(terms.PageValues, page.Values);
                         break;
                     case DataPageV2:
-                        if (!ValueEncodingAllowed(leaf.Type, page.Encoding) || page.Nulls < 0 || page.Rows < 0 || page.Nulls > page.Values || page.Rows > page.Values
-                            || page.DefinitionLength < 0 || page.RepetitionLength < 0 || (long)page.DefinitionLength + page.RepetitionLength > page.Compressed
+                        if (!ValueEncodingAllowed(leaf.Type, page.Encoding))
+                        {
+                            throw new PageScanException($"Leaf {leaf.Path}: a V2 page with encoding {page.Encoding}", CompactionReason.UnsupportedEncoding);
+                        }
+                        if (page.Nulls < 0 || page.Rows < 0 || page.Nulls > page.Values || page.Rows > page.Values
+                            || page.DefinitionLength < 0 || page.RepetitionLength < 0 || (long)page.DefinitionLength + page.RepetitionLength > Math.Min(page.Compressed, page.Uncompressed)
                             || (!page.IsCompressed && page.Compressed != page.Uncompressed))
                         {
-                            throw Out($"Leaf {leaf.LogicalPath}: an invalid V2 page header");
+                            throw new PageScanException($"Leaf {leaf.Path}: an invalid V2 page header");
                         }
                         values += page.Values;
+                        terms.PageValues = Math.Max(terms.PageValues, page.Values);
                         // A V2 page's levels are stored uncompressed, so its row and null counts are checked here, page by page
                         CheckV2Levels(file, start + consumed + headerLength, page, leaf, header);
                         break;
                     default:
-                        throw Out($"Leaf {leaf.LogicalPath}: page type {page.Type}");
+                        throw new PageScanException($"Leaf {leaf.Path}: page type {page.Type}");
                 }
                 if (page.Values < 0)
                 {
-                    throw Out($"Leaf {leaf.LogicalPath}: a page with {page.Values} values");
+                    throw new PageScanException($"Leaf {leaf.Path}: a page with {page.Values} values");
                 }
                 pages++;
                 consumed += headerLength + page.Compressed;
@@ -523,7 +590,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             }
             if (consumed != chunk.TotalCompressedSize || uncompressedTotal != chunk.TotalUncompressedSize || values != chunk.NumValues)
             {
-                throw Out($"Leaf {leaf.LogicalPath}: page sizes or value counts disagree with the footer");
+                throw new PageScanException($"Leaf {leaf.Path}: page sizes or value counts disagree with the footer");
             }
 
             terms.Stream = stream.Peak;
@@ -565,7 +632,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 allowed *= 2;
                 if (view == 0 || allowed > CheckpointPageScan.MaxHeaderPeek)
                 {
-                    throw new CheckpointDeclinedException(MaintenanceReason.OutOfEnvelope, DeclineDependency.Root, "The page reader could not read a header");
+                    throw new PageScanException("The page reader could not read a header");
                 }
             }
             Read(header);
@@ -589,7 +656,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 // GH-48311: the read would run past the buffer's end
                 if (_position + _buffered + additional > _bufferSize)
                 {
-                    throw new CheckpointDeclinedException(MaintenanceReason.OutOfEnvelope, DeclineDependency.Root, "The page reader would overflow its stream buffer (GH-48311)");
+                    throw new PageScanException("The page reader would overflow its stream buffer (GH-48311)");
                 }
                 _buffered += additional;
                 _rawTotal += additional;
@@ -602,7 +669,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         {
             if (_position + _buffered >= size)
             {
-                throw new CheckpointDeclinedException(MaintenanceReason.OutOfEnvelope, DeclineDependency.Root, "The page reader's stream buffer cannot shrink");
+                throw new PageScanException("The page reader's stream buffer cannot shrink");
             }
             size = _buffered == 0 ? Math.Min(size, _bound - _rawTotal) : Math.Min(size, _position + _buffered + (_bound - _rawTotal));
             _bufferSize = size;
@@ -784,6 +851,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     }
                 }
                 reader.LeaveStruct();
+                // Arrow's required fields: V1 1-4, dictionary 1-2, V2 1-6
+                var required = which switch { 5 => 0b1_1110UL, 7 => 0b110UL, _ => 0b111_1110UL };
+                if ((seen & required) != required)
+                {
+                    throw new ThriftFormatException($"A page sub-header {which} misses a required field", CompactionReason.MissingField);
+                }
                 return header;
             }
         }
