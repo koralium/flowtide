@@ -35019,19 +35019,6 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.ExistingRowComparer
   nameWithType: ColumnGroupedWriteOperator.ExistingRowComparer
-- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
-  name: FailOnCancel(Task)
-  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FailOnCancel_System_Threading_Tasks_Task_
-  commentId: M:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
-  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel(System.Threading.Tasks.Task)
-  nameWithType: ColumnGroupedWriteOperator.FailOnCancel(Task)
-- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel*
-  name: FailOnCancel
-  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FailOnCancel_
-  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel
-  isSpec: "True"
-  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FailOnCancel
-  nameWithType: ColumnGroupedWriteOperator.FailOnCancel
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FetchExistingData
   name: FetchExistingData
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FetchExistingData
@@ -42701,6 +42688,31 @@ references:
   commentId: N:FlowtideDotNet.Storage.Exceptions
   fullName: FlowtideDotNet.Storage.Exceptions
   nameWithType: FlowtideDotNet.Storage.Exceptions
+- uid: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException
+  name: FlowtideCommitStoppedException
+  href: api/FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.html
+  commentId: T:FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException
+  fullName: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException
+  nameWithType: FlowtideCommitStoppedException
+- uid: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.#ctor(System.String)
+  name: FlowtideCommitStoppedException(string)
+  href: api/FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.html#FlowtideDotNet_Storage_Exceptions_FlowtideCommitStoppedException__ctor_System_String_
+  commentId: M:FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.#ctor(System.String)
+  name.vb: New(String)
+  fullName: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.FlowtideCommitStoppedException(string)
+  fullName.vb: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.New(String)
+  nameWithType: FlowtideCommitStoppedException.FlowtideCommitStoppedException(string)
+  nameWithType.vb: FlowtideCommitStoppedException.New(String)
+- uid: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.#ctor*
+  name: FlowtideCommitStoppedException
+  href: api/FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.html#FlowtideDotNet_Storage_Exceptions_FlowtideCommitStoppedException__ctor_
+  commentId: Overload:FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.FlowtideCommitStoppedException
+  fullName.vb: FlowtideDotNet.Storage.Exceptions.FlowtideCommitStoppedException.New
+  nameWithType: FlowtideCommitStoppedException.FlowtideCommitStoppedException
+  nameWithType.vb: FlowtideCommitStoppedException.New
 - uid: FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException
   name: FlowtidePersistentStorageException
   href: api/FlowtideDotNet.Storage.Exceptions.FlowtidePersistentStorageException.html
