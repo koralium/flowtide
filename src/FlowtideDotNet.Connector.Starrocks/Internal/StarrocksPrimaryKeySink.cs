@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 starrocksColumnNames.Add(starrocksName);
             }
 
-            _jsonWriter = new StarRocksJsonWriter(starrocksColumnNames);
+            _jsonWriter = new StarRocksJsonWriter(starrocksColumnNames, tableInfo.NotNullColumnTypes);
             await base.InitializeOrRestore(restoreTime, stateManagerClient);
         }
 

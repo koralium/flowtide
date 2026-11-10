@@ -212,6 +212,85 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             Assert.Contains("NULL value in non-nullable column 'id'", starRocksException.Message);
         }
 
+        [Theory]
+        [InlineData(ExecutionMode.OnWatermark)]
+        [InlineData(ExecutionMode.OnCheckpoint)]
+        public async Task DeleteWithNotNullColumn(ExecutionMode executionMode)
+        {
+            var tableName = $"deletenotnull_{executionMode.ToString().ToLowerInvariant()}";
+            await fixture.RunQuery($@"
+                CREATE TABLE {tableName} (
+                    id int NOT NULL,
+                    name VARCHAR(255) NOT NULL,
+                    c_bigint bigint NOT NULL,
+                    c_double double NOT NULL,
+                    c_decimal decimal(10,2) NOT NULL,
+                    c_bool boolean NOT NULL,
+                    c_date date NOT NULL,
+                    c_datetime datetime NOT NULL,
+                    c_json json NOT NULL,
+                    c_array array<int> NOT NULL,
+                    c_map map<varchar(20), int> NOT NULL,
+                    c_struct struct<a int> NOT NULL,
+                    c_default varchar(20) NOT NULL DEFAULT 'x',
+                    c_nullable varchar(20)
+                )
+                PRIMARY KEY (id);
+            ", "test");
+
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, $"{nameof(DeleteWithNotNullColumn)}_{executionMode}", executionMode);
+
+            stream.Generate(10);
+            await stream.StartStream($@"
+                INSERT INTO test.{tableName}
+                SELECT
+                    UserKey AS id,
+                    'testname' AS name,
+                    UserKey AS c_bigint,
+                    1.5 AS c_double,
+                    1.5 AS c_decimal,
+                    true AS c_bool,
+                    '2024-01-01' AS c_date,
+                    '2024-01-01 12:00:00' AS c_datetime,
+                    map('a', 1) AS c_json,
+                    list(1, 2) AS c_array,
+                    map('a', 1) AS c_map,
+                    named_struct('a', 1) AS c_struct,
+                    'y' AS c_default,
+                    null AS c_nullable
+                FROM users;
+            ");
+
+            while (true)
+            {
+                await stream.SchedulerTick();
+                var count = await fixture.GetTableCount("test", tableName);
+
+                if (count == 10)
+                {
+                    break;
+                }
+
+                await Task.Delay(100);
+            }
+
+            // Delete only carries the key, name is null
+            stream.DeleteUser(stream.Users[0]);
+
+            while (true)
+            {
+                await stream.SchedulerTick();
+                var count = await fixture.GetTableCount("test", tableName);
+
+                if (count == 9)
+                {
+                    break;
+                }
+
+                await Task.Delay(100);
+            }
+        }
+
         private static StarRocksException? FindStarRocksException(Exception? exception)
         {
             while (exception != null)
