@@ -172,8 +172,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var paths = (await ForeignRewrite.LiveRows(storage, "test")).ToDictionary(x => x.Row.Split(' ')[0], x => x.Path);
                 removed = (await Internal.Delta.DeltaTransactionReader.ReadTable(storage, "test"))!.AddFiles.Single(x => x.Path == paths[Users[0].UserKey.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
                 await WriteCommit(storage, "test", 1, new DeltaAction() { Remove = new DeltaRemoveFileAction() { Path = removed.Path, DataChange = true, DeletionTimestamp = 0 } });
-                AddUsers(first, 10, 15);
-                first.DeleteUser(Users[0]);
+                await WriteAtOnce(first, () =>
+                {
+                    AddUsers(first, 10, 15);
+                    first.DeleteUser(Users[0]);
+                });
                 var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, "test", first, 2, TimeSpan.FromSeconds(30)));
                 Assert.Contains("Could not find any data file that contains the row", failure.ToString());
                 await first.StopStream();
@@ -358,6 +361,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException("Condition was not reached in time");
                 }
                 await stream.SchedulerTick();

@@ -20,7 +20,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 {
     internal class ParquetBoolWriter : IParquetWriter
     {
-        private BooleanArray.Builder? _builder;
+        // Raw bitmaps, BooleanArray.Builder keeps its buffers private
+        private ArrowBuffer.BitmapBuilder? _values;
+        private ArrowBuffer.BitmapBuilder? _validity;
         private bool? _minValue;
         private bool? _maxValue;
         private int _nullCount;
@@ -55,8 +57,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IArrowArray GetArray()
         {
-            Debug.Assert(_builder != null);
-            return _builder.Build();
+            Debug.Assert(_values != null && _validity != null);
+            // Without nulls skip validity, as BooleanArray.Builder did
+            var validity = _validity.UnsetBitCount > 0 ? _validity.Build() : ArrowBuffer.Empty;
+            return new BooleanArray(_values.Build(), validity, _values.Length, _validity.UnsetBitCount, 0);
         }
 
         public IStatisticsComparer GetStatisticsComparer()
@@ -66,23 +70,39 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _builder = new BooleanArray.Builder();
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
         }
 
+        public void NewGroup()
+        {
+            _values = new ArrowBuffer.BitmapBuilder();
+            _validity = new ArrowBuffer.BitmapBuilder();
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_values != null && _validity != null);
+            sizes.Add(_values);
+            sizes.Add(_validity);
+            sizes.EndLeaf(_values.Length);
+        }
+
         public void WriteNull()
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_values != null && _validity != null);
             _nullCount++;
-            _builder.AppendNull();
+            _values.Append(false);
+            _validity.Append(false);
         }
 
         private void WriteValue(bool boolValue)
         {
-            Debug.Assert(_builder != null);
-            _builder.Append(boolValue);
+            Debug.Assert(_values != null && _validity != null);
+            _values.Append(boolValue);
+            _validity.Append(true);
             if (_minValue == null || _minValue.Value.CompareTo(boolValue) > 0)
             {
                 _minValue = boolValue;
@@ -95,11 +115,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public long WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
-                _nullCount++;
-                _builder.AppendNull();
+                WriteNull();
                 return 1;
             }
             var boolValue = value.AsBool;

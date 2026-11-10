@@ -215,8 +215,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Exception? error = null;
             while (error == null)
             {
-                Assert.True(DateTime.UtcNow < deadline, "The source did not fail on the empty commit");
                 error = await Record.ExceptionAsync(() => source.SchedulerTick());
+                Assert.True(error != null || DateTime.UtcNow < deadline, "The source did not fail on the empty commit");
                 await Task.Delay(50);
             }
             Assert.Contains("00000000000000000001.json", error.ToString());

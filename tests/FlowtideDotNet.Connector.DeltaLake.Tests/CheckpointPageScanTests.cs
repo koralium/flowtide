@@ -459,6 +459,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         [Fact]
+        public void ASubHeaderWithoutItsLevelEncodingDeclines()
+        {
+            var page = SyntheticParquet.Page(0, 100, 100, h => h.I32(1, 10).I32(2, 0).I32(3, 3), 5);
+
+            Assert.Contains("misses a required field", Declines(WriteSynthetic(OneLeaf(PathChunk(page)))).Message);
+        }
+
+        [Fact]
+        public void V2LevelsAboveTheMaximumDecline()
+        {
+            var chunk = new SyntheticParquet.Chunk() { Path = new[] { "add", "path" }, NumValues = 1, Pages = { V2(new byte[] { 2, 3, 1, 0, 0, 0, (byte)'a' }, nulls: 1, rows: 1) } };
+
+            Assert.Contains("above its maximum", Declines(WriteSynthetic(OneLeaf(chunk))).Message);
+        }
+
+        [Fact]
         public void V2NullsOverValuesDecline()
         {
             var page = SyntheticParquet.Page(3, 100, 100, h => h.I32(1, 10).I32(2, 11).I32(3, 10).I32(4, 0).I32(5, 2).I32(6, 0), 8);
@@ -617,7 +633,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             // With a 16 KiB buffer emptied at position 16 KiB, a 16 KiB peek with 20 KiB left in the chunk grows the buffer only to 20 KiB
             var replay = new StreamReplay(36 << 10, 16 << 10);
             replay.Page(20, (16 << 10) - 20);
-            var declined = Assert.Throws<CheckpointDeclinedException>(() => replay.Page(20, 1000));
+            var declined = Assert.Throws<PageScanException>(() => replay.Page(20, 1000));
             Assert.Contains("GH-48311", declined.Message);
 
             // The same sequence with the 64 KiB buffer stays clear

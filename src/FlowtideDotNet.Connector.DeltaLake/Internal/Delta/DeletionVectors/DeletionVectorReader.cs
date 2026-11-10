@@ -72,7 +72,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors
             throw new NotImplementedException();
         }
 
-        private static RoaringBitmapArray ReadVector(Stream stream, long? offset)
+        internal static RoaringBitmapArray ReadVector(Stream stream, long? offset)
         {
             using var reader = new BinaryReader(stream, Encoding.UTF8, leaveOpen: true);
 

@@ -50,17 +50,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public void OnFailure(StreamFailureNotification notification)
         {
+            if (!IsCrashException(notification.Exception))
+            {
+                // Set before the count; a null failure keeps the last exception
+                if (notification.Exception != null)
+                {
+                    Volatile.Write(ref _exception, notification.Exception);
+                }
+                Volatile.Write(ref _error, true);
+            }
             // Counted for every failure, including intentional CrashExceptions, so a wait
             // for a crash can latch on this notification instead of polling the transient
             // failure state, which recovery erases within RecoveryRestartDelay. See
             // FlowtideTestStream.Crash.
             Interlocked.Increment(ref _failureNotifications);
-            if (IsCrashException(notification.Exception))
-            {
-                return;
-            }
-            _error = true;
-            _exception = notification.Exception;
         }
 
         public void OnStreamStateChange(StreamStateChangeNotification notification)

@@ -828,6 +828,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"Key {roundMaxKey} of {table} was not published in time");
                 }
                 await RunCheckpoints(stream, 0);
@@ -895,6 +897,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException("Condition was not reached in time");
                 }
                 await stream.SchedulerTick();

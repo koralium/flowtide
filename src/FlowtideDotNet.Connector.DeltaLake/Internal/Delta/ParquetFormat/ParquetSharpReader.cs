@@ -257,18 +257,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             {
                 throw new DeltaFileNotFoundException(path);
             }
-            FileReader? reader = null;
+            FileReader reader;
             try
             {
                 reader = forDeletes ? ParquetFileReaders.OpenForDeletes(stream) : ParquetFileReaders.Open(stream);
-                return new ParquetDataFile(path, stream, reader);
             }
             catch
             {
-                reader?.Dispose();
                 stream.Dispose();
                 throw;
             }
+            // The file disposes both if it fails
+            return new ParquetDataFile(path, stream, reader);
         }
 
         public async IAsyncEnumerable<BatchResultWithWeights> ReadAddRemovedDataFile(

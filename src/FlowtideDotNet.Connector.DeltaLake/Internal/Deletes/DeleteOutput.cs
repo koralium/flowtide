@@ -16,7 +16,6 @@ using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Schema.Types;
 using Stowage;
-using System.Numerics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 {
@@ -86,7 +85,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
                 using var source = await ParquetSharpReader.OpenDataFile(_storage, _table, file.Path, forDeletes: true);
                 var binding = FileBinding.Create(_schema, source, _tableName, _columnsById);
-                if (HasInexactSurvivor(source, binding, deleted))
+                if (TimestampPrecision.HasInexactSurvivor(source.LowLevel, source.Path, source.RowGroupStarts, binding.PrecisionLeaves, deleted))
                 {
                     if (!_deletionVectors)
                     {
@@ -114,7 +113,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         }
 
         // Ascending positions inside the footer's rows, as many as the vector counts
-        private static long CountPositions(string path, IDeleteVector deleted, long rows)
+        internal static long CountPositions(string path, IDeleteVector deleted, long rows)
         {
             long count = 0;
             long last = -1;
@@ -168,33 +167,5 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
             await vectors.WriteAsync(_storage, _table);
         }
 
-        // A survivor holding a timestamp a microsecond copy would change
-        private static bool HasInexactSurvivor(ParquetDataFile source, FileBinding binding, IDeleteVector deleted)
-        {
-            if (binding.PrecisionLeaves.Count == 0)
-            {
-                return false;
-            }
-            for (int group = 0; group < source.RowGroupStarts.Length; group++)
-            {
-                var flags = TimestampPrecision.FlagRowGroup(source.LowLevel, source.Path, group, binding.PrecisionLeaves);
-                if (flags == null)
-                {
-                    continue;
-                }
-                var start = source.RowGroupStarts[group];
-                for (int word = 0; word < flags.Length; word++)
-                {
-                    for (var bits = flags[word]; bits != 0; bits &= bits - 1)
-                    {
-                        if (!deleted.Contains(start + word * 64L + BitOperations.TrailingZeroCount(bits)))
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
     }
 }

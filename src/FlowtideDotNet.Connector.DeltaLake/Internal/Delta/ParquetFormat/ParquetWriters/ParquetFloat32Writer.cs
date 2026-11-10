@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 {
     internal class ParquetFloat32Writer : IParquetWriter
     {
-        private FloatArray.Builder? _builder;
+        private SizedFloatBuilder? _builder;
         private double? _minValue;
         private double? _maxValue;
         private int _nullCount;
@@ -78,11 +78,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _builder = new FloatArray.Builder();
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
             _hasNonFinite = false;
+        }
+
+        public void NewGroup()
+        {
+            _builder = new SizedFloatBuilder();
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_builder != null);
+            _builder.Measure(sizes);
         }
 
         public void WriteNull()

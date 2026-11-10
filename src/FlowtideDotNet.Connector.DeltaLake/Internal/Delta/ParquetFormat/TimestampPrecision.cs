@@ -10,8 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.DeletionVectors;
 using ParquetSharp;
 using System.Buffers;
+using System.Numerics;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 {
@@ -30,6 +32,34 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         internal static LevelsHook? LevelsHookForTests { get; set; }
 
         internal delegate void LevelsHook(string path, PrecisionLeaf leaf, Span<short> definitions, Span<short> repetitions, ref long levels, ref long valuesRead);
+
+        // A survivor holding a timestamp a microsecond copy would change
+        public static bool HasInexactSurvivor(ParquetFileReader reader, string path, long[] groupStarts, IReadOnlyList<PrecisionLeaf> leaves, IDeleteVector deleted)
+        {
+            if (leaves.Count == 0)
+            {
+                return false;
+            }
+            for (int group = 0; group < groupStarts.Length; group++)
+            {
+                var flags = FlagRowGroup(reader, path, group, leaves);
+                if (flags == null)
+                {
+                    continue;
+                }
+                for (int word = 0; word < flags.Length; word++)
+                {
+                    for (var bits = flags[word]; bits != 0; bits &= bits - 1)
+                    {
+                        if (!deleted.Contains(groupStarts[group] + word * 64L + BitOperations.TrailingZeroCount(bits)))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
 
         // A bitmap of flagged rows, null when no row is flagged
         public static ulong[]? FlagRowGroup(ParquetFileReader reader, string path, int rowGroup, IReadOnlyList<PrecisionLeaf> leaves)

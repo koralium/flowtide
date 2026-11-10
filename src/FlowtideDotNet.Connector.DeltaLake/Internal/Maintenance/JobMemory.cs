@@ -39,6 +39,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         public long Native => _native;
 
+        public long NativePeak { get; private set; }
+
         // Native readers this job opened, so tests can tell a scan refused a file before any native open
         public long NativeOpens { get; private set; }
 
@@ -50,12 +52,25 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
         public void Reserve(long bytes)
         {
             BeforeReserveForTests?.Invoke(bytes);
-            if (bytes < 0 || _managed + bytes > ManagedCap)
+            if (bytes < 0 || bytes > ManagedCap - _managed)
             {
                 throw new CheckpointDeclinedException(MaintenanceReason.ManagedMemoryCap, DeclineDependency.None, $"{bytes} bytes over the {ManagedCap} byte managed cap with {_managed} reserved");
             }
             _managed += bytes;
             ManagedPeak = Math.Max(ManagedPeak, _managed);
+        }
+
+        // False instead of a decline when over the cap
+        public bool TryReserve(long bytes)
+        {
+            BeforeReserveForTests?.Invoke(bytes);
+            if (bytes < 0 || bytes > ManagedCap - _managed)
+            {
+                return false;
+            }
+            _managed += bytes;
+            ManagedPeak = Math.Max(ManagedPeak, _managed);
+            return true;
         }
 
         public void Release(long bytes)
@@ -81,16 +96,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance
 
         public NativeReservation ReserveNative(long bytes)
         {
-            if (bytes < 0 || _native + bytes > NativeCap)
+            if (bytes < 0 || bytes > NativeCap - _native)
             {
                 throw new CheckpointDeclinedException(MaintenanceReason.NativeMemoryCap, DeclineDependency.None, $"{bytes} bytes over the {NativeCap} byte native cap with {_native} reserved");
             }
             _native += bytes;
+            NativePeak = Math.Max(NativePeak, _native);
             return new NativeReservation(this, bytes);
+        }
+
+        // False instead of a decline when over the cap
+        public bool TryReserveNative(long bytes)
+        {
+            if (bytes < 0 || bytes > NativeCap - _native)
+            {
+                return false;
+            }
+            _native += bytes;
+            NativePeak = Math.Max(NativePeak, _native);
+            return true;
         }
 
         internal void ReleaseNative(long bytes)
         {
+            if (bytes < 0 || bytes > _native)
+            {
+                throw new InvalidOperationException("Released more native memory than was reserved");
+            }
             _native -= bytes;
         }
     }

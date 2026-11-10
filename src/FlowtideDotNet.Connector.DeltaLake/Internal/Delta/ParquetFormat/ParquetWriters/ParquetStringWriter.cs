@@ -20,7 +20,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 {
     internal class ParquetStringWriter : IParquetWriter
     {
-        private StringArray.Builder? _arrayBuilder;
+        private SizedStringBuilder? _arrayBuilder;
         private byte[]? _minValue;
         private byte[]? _maxValue;
         private int _nullCount;
@@ -67,10 +67,21 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _arrayBuilder = new StringArray.Builder();
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
+        }
+
+        public void NewGroup()
+        {
+            _arrayBuilder = new SizedStringBuilder();
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_arrayBuilder != null);
+            _arrayBuilder.Measure(sizes);
         }
 
         public void WriteNull()

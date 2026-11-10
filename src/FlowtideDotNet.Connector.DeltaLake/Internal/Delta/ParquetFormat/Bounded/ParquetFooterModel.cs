@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints;
 using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance;
+using FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction;
 using System.Text;
 
 namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounded
@@ -35,6 +36,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         Repeated = 2
     }
 
+    // The LogicalType union's members, by meaning
+    internal enum LogicalKind : byte
+    {
+        None,
+        String,
+        Map,
+        List,
+        Enum,
+        Decimal,
+        Date,
+        Time,
+        Timestamp,
+        Integer,
+        Unknown,
+        Json,
+        Bson,
+        Uuid,
+        Float16,
+        Other,
+        // Present with no member, Arrow then ignores the converted type
+        Empty
+    }
+
+    // Unit is 1 for ms, 2 for µs and 3 for ns
+    internal readonly record struct LogicalTypeInfo(LogicalKind Kind, int Scale = 0, int Precision = 0, int Unit = 0, bool Utc = false, int Bits = 0, bool Signed = false);
+
     internal sealed class FooterSchemaElement
     {
         public ParquetPhysicalType? Type { get; init; }
@@ -47,6 +74,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
 
         // ConvertedType MAP, MAP_KEY_VALUE or LIST, or the matching logical type
         public bool IsMapOrList { get; init; }
+
+        // Kept for data files only
+        public int TypeLength { get; init; }
+
+        public int? Converted { get; init; }
+
+        public int Scale { get; init; }
+
+        public int Precision { get; init; }
+
+        public int? FieldId { get; init; }
+
+        public LogicalTypeInfo Logical { get; init; }
     }
 
     /// <summary>
@@ -70,6 +110,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
 
         // Whether the chunk names an offset or column index, which our own output never writes
         public bool HasPageIndex { get; set; }
+
+        // Data files only: the chunk's type and SizeStatistics' unencoded byte-array bytes
+        public int PhysicalType { get; init; } = -1;
+
+        public long? UnencodedBytes { get; init; }
     }
 
     /// <summary>
@@ -101,13 +146,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         public const int MaxRowGroups = 1024;
         public const int MaxSchemaElements = 4096;
         public const string MarkerKey = "flowtide.checkpoint";
+        public const string ArrowSchemaKey = "ARROW:schema";
 
         // Longer values are not kept: a marker past this many UTF-8 bytes is unmarked anyway, created_by is informational
         public const int MaxMarkerBytes = 4 * CoverageMarker.MaxLength;
         public const int MaxCreatedByBytes = 256;
 
         // The managed charge per object: a model element, a projected chunk, and what the projection keeps per schema element
-        private const long ElementBytes = 96;
+        // An element holds its logical type and ids on both paths
+        private const long ElementBytes = 192;
         private const long ChunkBytes = 160;
         private const long ProjectionBytesPerElement = 2048;
 
@@ -132,10 +179,15 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
 
         public long KeyValueBytes { get; init; }
 
+        // Data files only
+        public long NumRows { get; init; } = -1;
+
+        public bool HasArrowSchema { get; init; }
+
         /// <summary>
         /// Parses a footer within its limits; once the schema is read, project tells which leaf indices (in file order) keep their chunk fields.
         /// </summary>
-        public static ParquetFooterModel Parse(ReadOnlySpan<byte> footer, Func<IReadOnlyList<FooterSchemaElement>, bool[]> project, ModelCharge? charge = null)
+        public static ParquetFooterModel Parse(ReadOnlySpan<byte> footer, Func<IReadOnlyList<FooterSchemaElement>, bool[]> project, ModelCharge? charge = null, bool dataFile = false)
         {
             charge ??= new ModelCharge(null);
             charge.Add(4096);
@@ -149,6 +201,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             string? marker = null;
             long totalChunks = 0;
             long keyValueBytes = 0;
+            long numRows = -1;
+            var arrowSchema = false;
+            var version = false;
+            var columnOrders = -1;
             var seen = 0;
 
             reader.EnterStruct();
@@ -163,15 +219,22 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                             var count = reader.ReadListHeader(type, out var element);
                             if (count > MaxSchemaElements)
                             {
-                                throw new ThriftFormatException($"{count} schema elements");
+                                throw new ThriftFormatException($"{count} schema elements", CompactionReason.MetadataBound);
                             }
                             for (int i = 0; i < count; i++)
                             {
-                                schema.Add(ReadSchemaElement(ref reader, element, charge));
+                                schema.Add(ReadSchemaElement(ref reader, element, charge, dataFile));
                             }
                             seen |= 1;
                             break;
                         }
+                    case 1 when dataFile:
+                        reader.ReadI32(type);
+                        version = true;
+                        break;
+                    case 3 when dataFile:
+                        numRows = reader.ReadI64(type);
+                        break;
                     case 4:
                         {
                             if ((seen & 1) == 0)
@@ -188,12 +251,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                             var count = reader.ReadListHeader(type, out var element);
                             if (count > MaxRowGroups)
                             {
-                                throw new ThriftFormatException($"{count} row groups");
+                                throw new ThriftFormatException($"{count} row groups", CompactionReason.MetadataBound);
                             }
                             for (int i = 0; i < count; i++)
                             {
                                 ExpectStruct(element);
-                                rowGroupRows.Add(ReadRowGroup(ref reader, keep, out var rowGroupChunks, ref totalChunks, charge));
+                                rowGroupRows.Add(ReadRowGroup(ref reader, keep, out var rowGroupChunks, ref totalChunks, charge, dataFile));
                                 chunks.Add(rowGroupChunks);
                             }
                             seen |= 2;
@@ -211,6 +274,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                                 {
                                     marker = value;
                                 }
+                                arrowSchema |= key == ArrowSchemaKey;
                             }
                             break;
                         }
@@ -222,8 +286,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                             createdBy = Encoding.UTF8.GetString(raw);
                         }
                         break;
+                    case 7 when dataFile:
+                        {
+                            columnOrders = reader.ReadListHeader(type, out var element);
+                            // Arrow reads each as a struct, whatever the list says
+                            ExpectStruct(element);
+                            if (columnOrders > MaxSchemaElements)
+                            {
+                                throw new ThriftFormatException($"{columnOrders} column orders", CompactionReason.MetadataBound);
+                            }
+                            for (int i = 0; i < columnOrders; i++)
+                            {
+                                reader.Skip(ThriftType.Struct);
+                            }
+                            break;
+                        }
                     case 8:
-                        throw new ThriftFormatException("The file is encrypted");
+                        throw new ThriftFormatException("The file is encrypted", CompactionReason.Encrypted);
                     default:
                         reader.Skip(type);
                         break;
@@ -232,7 +311,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             reader.LeaveStruct();
             if (seen != 3)
             {
-                throw new ThriftFormatException("The footer has no schema or row groups");
+                throw new ThriftFormatException("The footer has no schema or row groups", CompactionReason.MissingField);
+            }
+            // Arrow refuses a footer without its version or an order per leaf
+            if (dataFile && !version)
+            {
+                throw new ThriftFormatException("The footer has no version", CompactionReason.MissingField);
+            }
+            if (columnOrders >= 0 && columnOrders != schema.Count(x => x.Type != null))
+            {
+                throw new ThriftFormatException($"The footer has {columnOrders} column orders for {schema.Count(x => x.Type != null)} leaves");
             }
             return new ParquetFooterModel()
             {
@@ -245,7 +333,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 TotalChunks = totalChunks,
                 StringBytes = budget.StringBytes,
                 ListEntries = budget.ListEntries,
-                KeyValueBytes = keyValueBytes
+                KeyValueBytes = keyValueBytes,
+                NumRows = numRows,
+                HasArrowSchema = arrowSchema
             };
         }
 
@@ -257,7 +347,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             }
         }
 
-        private static FooterSchemaElement ReadSchemaElement(ref ThriftCompactReader reader, ThriftType element, ModelCharge charge)
+        private static FooterSchemaElement ReadSchemaElement(ref ThriftCompactReader reader, ThriftType element, ModelCharge charge, bool dataFile)
         {
             ExpectStruct(element);
             reader.EnterStruct();
@@ -266,6 +356,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             string? name = null;
             var children = 0;
             var mapOrList = false;
+            int typeLength = 0, scale = 0, precision = 0;
+            int? converted = null, fieldId = null;
+            var logical = default(LogicalTypeInfo);
             short last = 0;
             ulong seen = 0;
             while (reader.ReadField(ref last, ref seen, out var id, out var type))
@@ -288,6 +381,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         }
                         repetition = (ParquetRepetition)rep;
                         break;
+                    case 2 when dataFile:
+                        typeLength = reader.ReadI32(type);
+                        break;
                     case 4:
                         var raw = reader.ReadBinary(type);
                         // An element and its list slot, its name at two bytes per UTF-8 byte at most
@@ -303,8 +399,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         break;
                     case 6:
                         // MAP = 1, MAP_KEY_VALUE = 2, LIST = 3
-                        var converted = reader.ReadI32(type);
+                        converted = reader.ReadI32(type);
                         mapOrList |= converted is 1 or 2 or 3;
+                        break;
+                    case 7 when dataFile:
+                        scale = reader.ReadI32(type);
+                        break;
+                    case 8 when dataFile:
+                        precision = reader.ReadI32(type);
+                        break;
+                    case 9 when dataFile:
+                        // Arrow drops negative field ids
+                        var storedId = reader.ReadI32(type);
+                        fieldId = storedId >= 0 ? storedId : null;
+                        break;
+                    case 10 when dataFile:
+                        logical = ReadLogicalType(ref reader, type);
+                        mapOrList |= logical.Kind is LogicalKind.Map or LogicalKind.List;
                         break;
                     case 10:
                         mapOrList |= ReadLogicalTypeIsMapOrList(ref reader, type);
@@ -315,7 +426,178 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 }
             }
             reader.LeaveStruct();
-            return new FooterSchemaElement() { Type = physical, Repetition = repetition, Name = name ?? throw new ThriftFormatException("A schema element has no name"), Children = children, IsMapOrList = mapOrList };
+            return new FooterSchemaElement()
+            {
+                Type = physical,
+                Repetition = repetition,
+                Name = name ?? throw new ThriftFormatException("A schema element has no name", CompactionReason.MissingField),
+                Children = children,
+                IsMapOrList = mapOrList,
+                TypeLength = typeLength,
+                Converted = dataFile ? converted : null,
+                Scale = scale,
+                Precision = precision,
+                FieldId = fieldId,
+                Logical = logical
+            };
+        }
+
+        // The union's member and its parameters; an unknown member is Other
+        private static LogicalTypeInfo ReadLogicalType(ref ThriftCompactReader reader, ThriftType type)
+        {
+            if (type != ThriftType.Struct)
+            {
+                throw new ThriftFormatException("A logical type is not a struct");
+            }
+            reader.EnterStruct();
+            var result = new LogicalTypeInfo(LogicalKind.None);
+            short last = 0;
+            ulong seen = 0;
+            while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
+            {
+                // Thrift skips a member of another wire type
+                if (fieldType != ThriftType.Struct)
+                {
+                    reader.Skip(fieldType);
+                    continue;
+                }
+                if (result.Kind != LogicalKind.None)
+                {
+                    throw new ThriftFormatException("A logical type sets more than one member");
+                }
+                result = id switch
+                {
+                    1 => Empty(ref reader, fieldType, LogicalKind.String),
+                    2 => Empty(ref reader, fieldType, LogicalKind.Map),
+                    3 => Empty(ref reader, fieldType, LogicalKind.List),
+                    4 => Empty(ref reader, fieldType, LogicalKind.Enum),
+                    5 => ReadDecimal(ref reader, fieldType),
+                    6 => Empty(ref reader, fieldType, LogicalKind.Date),
+                    7 => ReadTime(ref reader, fieldType, LogicalKind.Time),
+                    8 => ReadTime(ref reader, fieldType, LogicalKind.Timestamp),
+                    10 => ReadInteger(ref reader, fieldType),
+                    11 => Empty(ref reader, fieldType, LogicalKind.Unknown),
+                    12 => Empty(ref reader, fieldType, LogicalKind.Json),
+                    13 => Empty(ref reader, fieldType, LogicalKind.Bson),
+                    14 => Empty(ref reader, fieldType, LogicalKind.Uuid),
+                    15 => Empty(ref reader, fieldType, LogicalKind.Float16),
+                    _ => Empty(ref reader, fieldType, LogicalKind.Other)
+                };
+            }
+            reader.LeaveStruct();
+            return result.Kind == LogicalKind.None ? new LogicalTypeInfo(LogicalKind.Empty) : result;
+        }
+
+        private static LogicalTypeInfo Empty(ref ThriftCompactReader reader, ThriftType type, LogicalKind kind)
+        {
+            reader.Skip(type);
+            return new LogicalTypeInfo(kind);
+        }
+
+        private static LogicalTypeInfo ReadDecimal(ref ThriftCompactReader reader, ThriftType type)
+        {
+            ExpectStruct(type);
+            reader.EnterStruct();
+            int scale = -1, precision = -1;
+            short last = 0;
+            ulong seen = 0;
+            while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
+            {
+                switch (id)
+                {
+                    case 1:
+                        scale = reader.ReadI32(fieldType);
+                        break;
+                    case 2:
+                        precision = reader.ReadI32(fieldType);
+                        break;
+                    default:
+                        reader.Skip(fieldType);
+                        break;
+                }
+            }
+            reader.LeaveStruct();
+            if (scale < 0 || precision < 1)
+            {
+                throw new ThriftFormatException("A decimal type misses its scale or precision", CompactionReason.MissingField);
+            }
+            return new LogicalTypeInfo(LogicalKind.Decimal, Scale: scale, Precision: precision);
+        }
+
+        // TIME and TIMESTAMP: isAdjustedToUTC and a unit union of empty members
+        private static LogicalTypeInfo ReadTime(ref ThriftCompactReader reader, ThriftType type, LogicalKind kind)
+        {
+            ExpectStruct(type);
+            reader.EnterStruct();
+            bool? utc = null;
+            var unit = 0;
+            short last = 0;
+            ulong seen = 0;
+            while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
+            {
+                switch (id)
+                {
+                    case 1:
+                        utc = ThriftCompactReader.ReadBool(fieldType);
+                        break;
+                    case 2:
+                        ExpectStruct(fieldType);
+                        reader.EnterStruct();
+                        short unitLast = 0;
+                        ulong unitSeen = 0;
+                        while (reader.ReadField(ref unitLast, ref unitSeen, out var unitId, out var unitType))
+                        {
+                            // Thrift skips a unit member of another wire type
+                            if (unitType == ThriftType.Struct)
+                            {
+                                unit = unit == 0 && unitId is >= 1 and <= 3 ? unitId : -1;
+                            }
+                            reader.Skip(unitType);
+                        }
+                        reader.LeaveStruct();
+                        break;
+                    default:
+                        reader.Skip(fieldType);
+                        break;
+                }
+            }
+            reader.LeaveStruct();
+            if (utc == null || unit <= 0)
+            {
+                throw new ThriftFormatException($"A {kind} type misses its unit or UTC flag", CompactionReason.MissingField);
+            }
+            return new LogicalTypeInfo(kind, Unit: unit, Utc: utc.Value);
+        }
+
+        private static LogicalTypeInfo ReadInteger(ref ThriftCompactReader reader, ThriftType type)
+        {
+            ExpectStruct(type);
+            reader.EnterStruct();
+            var bits = 0;
+            bool? signed = null;
+            short last = 0;
+            ulong seen = 0;
+            while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
+            {
+                switch (id)
+                {
+                    case 1:
+                        bits = reader.ReadI8(fieldType);
+                        break;
+                    case 2:
+                        signed = ThriftCompactReader.ReadBool(fieldType);
+                        break;
+                    default:
+                        reader.Skip(fieldType);
+                        break;
+                }
+            }
+            reader.LeaveStruct();
+            if (bits is not (8 or 16 or 32 or 64) || signed == null)
+            {
+                throw new ThriftFormatException($"An integer type of {bits} bits or no sign", CompactionReason.Malformed);
+            }
+            return new LogicalTypeInfo(LogicalKind.Integer, Bits: bits, Signed: signed.Value);
         }
 
         // LogicalType is a union: MAP is field 2, LIST is field 3
@@ -338,10 +620,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             return result;
         }
 
-        private static long ReadRowGroup(ref ThriftCompactReader reader, bool[] projected, out FooterChunk?[] chunks, ref long totalChunks, ModelCharge charge)
+        private static long ReadRowGroup(ref ThriftCompactReader reader, bool[] projected, out FooterChunk?[] chunks, ref long totalChunks, ModelCharge charge, bool dataFile)
         {
             reader.EnterStruct();
             long rows = -1;
+            var totalBytes = false;
             chunks = Array.Empty<FooterChunk?>();
             short last = 0;
             ulong seen = 0;
@@ -361,9 +644,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         chunks = new FooterChunk?[count];
                         for (int c = 0; c < count; c++)
                         {
-                            chunks[c] = ReadColumnChunk(ref reader, projected[c], charge);
+                            chunks[c] = ReadColumnChunk(ref reader, projected[c], charge, dataFile);
                         }
                         totalChunks += count;
+                        break;
+                    case 2 when dataFile:
+                        reader.ReadI64(type);
+                        totalBytes = true;
                         break;
                     case 3:
                         rows = reader.ReadI64(type);
@@ -374,22 +661,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 }
             }
             reader.LeaveStruct();
-            if (rows < 0)
+            if (rows < 0 || (dataFile && !totalBytes))
             {
-                throw new ThriftFormatException("A row group has no row count");
+                throw new ThriftFormatException("A row group has no row count or byte size", CompactionReason.MissingField);
             }
             if (chunks.Length != projected.Length)
             {
-                throw new ThriftFormatException("A row group has no column chunks");
+                throw new ThriftFormatException("A row group has no column chunks", CompactionReason.MissingField);
             }
             return rows;
         }
 
-        private static FooterChunk? ReadColumnChunk(ref ThriftCompactReader reader, bool keep, ModelCharge charge)
+        private static FooterChunk? ReadColumnChunk(ref ThriftCompactReader reader, bool keep, ModelCharge charge, bool dataFile)
         {
             reader.EnterStruct();
             FooterChunk? chunk = null;
             var pageIndex = false;
+            var fileOffset = false;
             short last = 0;
             ulong seen = 0;
             while (reader.ReadField(ref last, ref seen, out var id, out var type))
@@ -399,8 +687,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     case 1:
                         reader.ReadBinary(type);
                         throw new ThriftFormatException("A column chunk is in another file");
+                    case 2 when dataFile:
+                        reader.ReadI64(type);
+                        fileOffset = true;
+                        break;
                     case 3:
-                        chunk = ReadColumnMetaData(ref reader, type, keep, charge);
+                        chunk = ReadColumnMetaData(ref reader, type, keep, charge, dataFile);
                         break;
                     case 4:
                     case 6:
@@ -409,16 +701,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                         break;
                     case 8:
                     case 9:
-                        throw new ThriftFormatException("A column chunk is encrypted");
+                        throw new ThriftFormatException("A column chunk is encrypted", CompactionReason.Encrypted);
                     default:
                         reader.Skip(type);
                         break;
                 }
             }
             reader.LeaveStruct();
-            if (keep && chunk == null)
+            if ((keep && chunk == null) || (dataFile && !fileOffset))
             {
-                throw new ThriftFormatException("A projected column chunk has no metadata");
+                throw new ThriftFormatException("A projected column chunk has no metadata or offset", CompactionReason.MissingField);
             }
             if (chunk != null)
             {
@@ -427,9 +719,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             return keep ? chunk : null;
         }
 
-        private static FooterChunk? ReadColumnMetaData(ref ThriftCompactReader reader, ThriftType type, bool keep, ModelCharge charge)
+        private static FooterChunk? ReadColumnMetaData(ref ThriftCompactReader reader, ThriftType type, bool keep, ModelCharge charge, bool dataFile)
         {
-            if (!keep)
+            // Arrow parses every chunk, so data files check unread ones too
+            if (!keep && !dataFile)
             {
                 reader.Skip(type);
                 return null;
@@ -441,22 +734,45 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
             reader.EnterStruct();
             var codec = -1;
             int[]? encodings = null;
+            var path = !dataFile;
             long numValues = -1, uncompressed = -1, compressed = -1, dataPage = -1;
-            long? dictionaryPage = null;
+            long? dictionaryPage = null, unencoded = null;
+            var physical = -1;
             short last = 0;
             ulong seen = 0;
             while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
             {
                 switch (id)
                 {
+                    case 1 when dataFile:
+                        physical = reader.ReadI32(fieldType);
+                        break;
+                    case 16 when dataFile:
+                        unencoded = ReadUnencodedBytes(ref reader, fieldType);
+                        break;
                     case 2:
                         var count = reader.ReadListHeader(fieldType, out var element);
-                        charge.Add(ChunkBytes + 4L * count);
-                        encodings = new int[count];
+                        if (keep)
+                        {
+                            charge.Add(ChunkBytes + 4L * count);
+                        }
+                        encodings = keep ? new int[count] : Array.Empty<int>();
                         for (int i = 0; i < count; i++)
                         {
-                            encodings[i] = reader.ReadI32(element);
+                            var encoding = reader.ReadI32(element);
+                            if (keep)
+                            {
+                                encodings[i] = encoding;
+                            }
                         }
+                        break;
+                    case 3 when dataFile:
+                        var parts = reader.ReadListHeader(fieldType, out var part);
+                        for (int i = 0; i < parts; i++)
+                        {
+                            reader.ReadBinary(part);
+                        }
+                        path = true;
                         break;
                     case 4:
                         codec = reader.ReadI32(fieldType);
@@ -482,9 +798,17 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 }
             }
             reader.LeaveStruct();
-            if (codec < 0 || encodings == null || numValues < 0 || uncompressed < 0 || compressed < 0 || dataPage < 0)
+            if (codec < 0 || encodings == null || !path || numValues < 0 || uncompressed < 0 || compressed < 0 || dataPage < 0 || (dataFile && physical < 0))
             {
-                throw new ThriftFormatException("Column metadata misses a required field or holds a negative size");
+                throw new ThriftFormatException("Column metadata misses a required field or holds a negative size", CompactionReason.MissingField);
+            }
+            if (unencoded < 0)
+            {
+                throw new ThriftFormatException("Size statistics hold a negative byte count");
+            }
+            if (!keep)
+            {
+                return null;
             }
             return new FooterChunk()
             {
@@ -494,8 +818,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                 TotalUncompressedSize = uncompressed,
                 TotalCompressedSize = compressed,
                 DataPageOffset = dataPage,
-                DictionaryPageOffset = dictionaryPage
+                DictionaryPageOffset = dictionaryPage,
+                PhysicalType = physical,
+                UnencodedBytes = unencoded
             };
+        }
+
+        // SizeStatistics field 1, the byte-array bytes without length prefixes
+        private static long? ReadUnencodedBytes(ref ThriftCompactReader reader, ThriftType type)
+        {
+            ExpectStruct(type);
+            reader.EnterStruct();
+            long? bytes = null;
+            short last = 0;
+            ulong seen = 0;
+            while (reader.ReadField(ref last, ref seen, out var id, out var fieldType))
+            {
+                if (id == 1)
+                {
+                    bytes = reader.ReadI64(fieldType);
+                }
+                else
+                {
+                    reader.Skip(fieldType);
+                }
+            }
+            reader.LeaveStruct();
+            return bytes;
         }
 
         private static (string Key, string? Value, long Bytes) ReadKeyValue(ref ThriftCompactReader reader, ModelCharge charge)
@@ -515,7 +864,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
                     // Only our own key is materialized
                     if (id == 1)
                     {
-                        key = raw.SequenceEqual(MarkerKeyBytes) ? MarkerKey : "";
+                        key = raw.SequenceEqual(MarkerKeyBytes) ? MarkerKey : raw.SequenceEqual(ArrowSchemaKeyBytes) ? ArrowSchemaKey : "";
                     }
                     else if (key == MarkerKey && raw.Length <= MaxMarkerBytes)
                     {
@@ -533,5 +882,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         }
 
         private static readonly byte[] MarkerKeyBytes = Encoding.UTF8.GetBytes(MarkerKey);
+        private static readonly byte[] ArrowSchemaKeyBytes = Encoding.UTF8.GetBytes(ArrowSchemaKey);
     }
 }

@@ -377,6 +377,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             var (storage, stream, files) = await StartSpread(name, new DeleteLimits() { ReadAhead = depth });
             await using var _ = stream;
+            // A restart scans again, only the failing attempt counts
+            storage.Attempt = () => stream.FailureNotificationCount;
             var failing = files[2];
             if (fault == "corrupt")
             {
@@ -391,6 +393,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var parks = 0;
             storage.Park = file => files.IndexOf(file) is >= 3 and <= 7 && Interlocked.Increment(ref parks) <= 5 ? parked.Task : null;
             var failures = stream.FailureNotificationCount;
+            var retryReturned = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            storage.Returning = file =>
+            {
+                if (file == files[3] && stream.FailureNotificationCount > failures)
+                {
+                    retryReturned.TrySetResult();
+                }
+            };
             Exception? error;
             try
             {
@@ -402,6 +412,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 storage.Release();
             }
 
+            // The retry's opens must be in, so the filter is tested
+            if (depth > 1)
+            {
+                await retryReturned.Task.WaitAsync(TimeSpan.FromMinutes(2));
+            }
+
             Assert.NotNull(error);
             Assert.False(await storage.Exists(CommitPath("test", 2)));
             var description = Describe(error);
@@ -409,9 +425,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 Assert.Contains(failing, description);
             }
-            var first = storage.Returned.GroupBy(x => x.File).Select(x => x.First()).ToList();
+            var first = storage.Returned.Where(x => x.Attempt == failures).ToList();
             Assert.All(first, x => Assert.True(x.Disposed, x.File));
-            var cancelled = storage.Events.Count(x => x.StartsWith("cancelled ", StringComparison.Ordinal));
+            var cancelled = storage.Cancelled.Count(x => x == failures);
             return new Failure(description.Replace(failing, "<failing>"), cancelled, first.Select(x => files.IndexOf(x.File)).Order().ToList());
         }
 
@@ -616,6 +632,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public int MostOpen => Volatile.Read(ref _mostOpen);
 
+        // Tags each data open, a test passes the stream's failure count
+        public Func<int>? Attempt { get; set; }
+
+        private readonly ConcurrentQueue<int> _cancelled = new ConcurrentQueue<int>();
+
+        // The attempt of each cancelled park
+        public IReadOnlyList<int> Cancelled => _cancelled.ToArray();
+
         private readonly ConcurrentQueue<TaskCompletionSource> _gates = new ConcurrentQueue<TaskCompletionSource>();
 
         // A park the test releases, or the cleanup does
@@ -641,6 +665,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         {
             _events.Clear();
             _returned.Clear();
+            _cancelled.Clear();
             Volatile.Write(ref _mostOpen, 0);
             ClearRequests();
         }
@@ -657,6 +682,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 return await base.OpenRead(path, cancellationToken);
             }
             var file = System.IO.Path.GetFileName(path.Full);
+            var attempt = Attempt?.Invoke() ?? -1;
             _events.Enqueue($"open {file}");
             Opening?.Invoke(file);
             if (Park?.Invoke(file) is { } parked)
@@ -668,6 +694,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 catch (OperationCanceledException)
                 {
                     _events.Enqueue($"cancelled {file}");
+                    _cancelled.Enqueue(attempt);
                     throw;
                 }
             }
@@ -690,7 +717,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return null;
             }
-            var tracked = new TrackedData(file, stream, () => _events.Enqueue($"closed {file}"));
+            var tracked = new TrackedData(file, attempt, stream, () => _events.Enqueue($"closed {file}"));
             _returned.Enqueue(tracked);
             var open = _returned.Count(x => !x.Disposed);
             int most;
@@ -722,14 +749,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private readonly Action _closed;
         private int _disposed;
 
-        public TrackedData(string file, Stream inner, Action closed)
+        public TrackedData(string file, int attempt, Stream inner, Action closed)
         {
             File = file;
+            Attempt = attempt;
             _inner = inner;
             _closed = closed;
         }
 
         public string File { get; }
+
+        // The stream's failure count when it was opened
+        public int Attempt { get; }
 
         public bool Disposed => Volatile.Read(ref _disposed) == 1;
 

@@ -177,6 +177,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException("The sink did not publish version 0");
                 }
                 await stream.SchedulerTick();
