@@ -46,6 +46,9 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
         public required List<string> ColumnNames { get; set; }
 
         public required List<string> PrimaryKeys { get; set; }
+
+        // NOT NULL column name to data type
+        public Dictionary<string, string> NotNullColumnTypes { get; set; } = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     }
     internal static class StarRocksUtils
     {
@@ -171,13 +174,16 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
         {
             GetCatalogSchemaTable(names, out var catalog, out var schema, out var table);
             var client = new StarRocksHttpClient(options);
-            var result = await client.Query($"SELECT column_name, column_key FROM information_schema.columns WHERE table_name = '{table}' AND table_schema = '{schema}';");
+            var result = await client.Query($"SELECT column_name, column_key, data_type, is_nullable FROM information_schema.columns WHERE table_name = '{table}' AND table_schema = '{schema}';");
 
             var columnNameIndex = result.FieldIndex("column_name");
             var columnKeyIndex = result.FieldIndex("column_key");
+            var dataTypeIndex = result.FieldIndex("data_type");
+            var isNullableIndex = result.FieldIndex("is_nullable");
 
             List<string> columnNames = new List<string>();
             List<string> primaryKeyColumns = new List<string>();
+            Dictionary<string, string> notNullColumnTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             await foreach (var row in result.Rows)
             {
                 string? columnName = default;
@@ -194,12 +200,17 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 {
                     primaryKeyColumns.Add(columnName);
                 }
+                if (row[isNullableIndex] is string isNullable && isNullable == "NO" && row[dataTypeIndex] is string dataType)
+                {
+                    notNullColumnTypes[columnName] = dataType;
+                }
             }
 
             return new TableInfo()
             {
                 ColumnNames = columnNames,
-                PrimaryKeys = primaryKeyColumns
+                PrimaryKeys = primaryKeyColumns,
+                NotNullColumnTypes = notNullColumnTypes
             };
         }
 

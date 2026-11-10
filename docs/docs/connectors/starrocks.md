@@ -74,8 +74,15 @@ but more concurrent loads increase the risk of StarRocks *too many versions* err
 
 Every request to StarRocks runs through `ResiliencePipeline`, a [Polly](https://www.pollydocs.org/) pipeline.
 By default a failed request is retried 5 times with exponential backoff starting at 1 second, with jitter.
-Any error is retried, including HTTP timeouts, except when the stream itself is stopping.
+Any error is retried, including HTTP timeouts, except when the stream itself is stopping
+or when StarRocks rejects rows, since the same rows would be rejected again.
 Each failed attempt is logged as a warning. If the last retry also fails, the stream fails and restarts from its latest checkpoint.
+
+### Rejected rows
+
+When StarRocks rejects rows, for example with *too many filtered rows*, the connector throws a `StarRocksInvalidDataException`.
+The message contains the row counts and the first rejected rows from the StarRocks error log, such as
+`NULL value in non-nullable column 'id'`. If the error log cannot be fetched, the message contains its URL instead.
 
 ```csharp
 connectorManager.AddStarRocksSink("*", new StarRocksSinkOptions()
