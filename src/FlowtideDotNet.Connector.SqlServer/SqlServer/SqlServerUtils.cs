@@ -625,10 +625,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
             {
                 throw new FlowtideException("Struct must be defined in the base schema for SQL Server.");
             }
+
+            string? firstPrimaryKeyColumn = default;
             for (int i = 0; i < readRelation.BaseSchema.Struct.Types.Count; i++)
             {
                 if (primaryKeys.Contains(readRelation.BaseSchema.Names[i], StringComparer.OrdinalIgnoreCase))
                 {
+                    if (firstPrimaryKeyColumn == null)
+                    {
+                        firstPrimaryKeyColumn = readRelation.BaseSchema.Names[i];
+                    }
                     columnSelects.Add($"c.[{readRelation.BaseSchema.Names[i]}]");
                     primaryKeyEquals.Add($"c.{readRelation.BaseSchema.Names[i]} = t.{readRelation.BaseSchema.Names[i]}");
                 }
@@ -644,7 +650,16 @@ namespace FlowtideDotNet.Substrait.Tests.SqlServer
 
             stringBuilder.Append(string.Join(", ", columnSelects));
 
-            stringBuilder.Append(", c.SYS_CHANGE_VERSION, c.SYS_CHANGE_OPERATION from CHANGETABLE(CHANGES ");
+            stringBuilder.Append(", c.SYS_CHANGE_VERSION, CASE WHEN t.");
+
+            if (firstPrimaryKeyColumn == null)
+            {
+                throw new InvalidOperationException("No primary key column");
+            }
+
+            stringBuilder.Append(firstPrimaryKeyColumn);
+            stringBuilder.Append(" IS NULL THEN 'D' ELSE 'U' END AS SYS_CHANGE_OPERATION");
+            stringBuilder.Append(" from CHANGETABLE(CHANGES ");
             stringBuilder.Append(string.Join(".", readRelation.NamedTable.Names.Select(x => $"[{x}]")));
             stringBuilder.AppendLine(", @ChangeVersion) as c");
             stringBuilder.Append("LEFT JOIN ");
