@@ -967,8 +967,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static (byte[], long) Lists(Schema schema, int elements)
         {
             var element = (StructType)((ListType)schema.FieldsList[0].DataType).ValueDataType;
-            var values = new StructArray(element, elements, new[] { new Int32Array.Builder().AppendRange(Enumerable.Range(0, elements)).Build() }, ArrowBuffer.Empty, 0);
-            var list = new ListArray(schema.FieldsList[0].DataType, 1, new ArrowBuffer.Builder<int>().Append(0).Append(elements).Build(), values, ArrowBuffer.Empty, 0);
+            using var values = new StructArray(element, elements, new[] { new Int32Array.Builder().AppendRange(Enumerable.Range(0, elements)).Build() }, ArrowBuffer.Empty, 0);
+            using var list = new ListArray(schema.FieldsList[0].DataType, 1, new ArrowBuffer.Builder<int>().Append(0).Append(elements).Build(), values, ArrowBuffer.Empty, 0);
             return (Write(schema, new IArrowArray[] { list }, 1, b => b), 1);
         }
 
@@ -976,9 +976,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         private static (byte[], long) MixedLists(Schema schema, int rows, int salt)
         {
             var offsets = new ArrowBuffer.Builder<int>().AppendRange(Enumerable.Range(0, rows + 1).Select(x => x * 40)).Build();
-            var dense = new ListArray(schema.FieldsList[1].DataType, rows, offsets, new BooleanArray.Builder().AppendRange(Enumerable.Range(0, rows * 40).Select(x => (x + salt) % 3 == 0)).Build(), ArrowBuffer.Empty, 0);
+            using var dense = new ListArray(schema.FieldsList[1].DataType, rows, offsets, new BooleanArray.Builder().AppendRange(Enumerable.Range(0, rows * 40).Select(x => (x + salt) % 3 == 0)).Build(), ArrowBuffer.Empty, 0);
             var single = new ArrowBuffer.Builder<int>().AppendRange(Enumerable.Range(0, rows + 1)).Build();
-            var sparse = new ListArray(schema.FieldsList[2].DataType, rows, single, new Int32Array.Builder().AppendRange(Enumerable.Range(0, rows).Select(x => x + salt)).Build(), ArrowBuffer.Empty, 0);
+            using var sparse = new ListArray(schema.FieldsList[2].DataType, rows, single, new Int32Array.Builder().AppendRange(Enumerable.Range(0, rows).Select(x => x + salt)).Build(), ArrowBuffer.Empty, 0);
             var ids = new Int64Array.Builder().AppendRange(Enumerable.Range(0, rows).Select(x => (long)x + salt * rows)).Build();
             return (Write(schema, new IArrowArray[] { ids, dense, sparse }, rows, b => b), rows);
         }
@@ -989,7 +989,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             var schema = new Schema.Builder().Field(new Field("l", new ListType(new Field("element", Int8Type.Default, true)), true)).Build();
             var values = new Int8Array.Builder().AppendRange(Enumerable.Range(0, rows * elements).Select(x => (sbyte)(x % 4))).Build();
             var offsets = new ArrowBuffer.Builder<int>().AppendRange(Enumerable.Range(0, rows + 1).Select(x => x * elements)).Build();
-            var list = new ListArray(schema.FieldsList[0].DataType, rows, offsets, values, ArrowBuffer.Empty, 0);
+            using var list = new ListArray(schema.FieldsList[0].DataType, rows, offsets, values, ArrowBuffer.Empty, 0);
             return (Write(schema, new IArrowArray[] { list }, rows, b => b), rows);
         }
 

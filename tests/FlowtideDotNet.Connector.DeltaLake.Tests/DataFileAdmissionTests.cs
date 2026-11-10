@@ -384,7 +384,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var path = Path.Join(_directory, Name());
                 var columns = new IArrowArray[] { Column(Int64Type.Default, rows, 0, 0), new StringArray.Builder().AppendRange(Enumerable.Range(0, rows).Select(x => x < skewed ? new string('x', 100) : "a")).Build() };
                 using var batch = new RecordBatch(schema, columns, rows);
-                using var properties = new WriterPropertiesBuilder().MaxRowGroupLength(10_000).Build();
+                using var builder = new WriterPropertiesBuilder();
+                using var properties = builder.MaxRowGroupLength(10_000).Build();
                 using var writer = new ParquetSharp.Arrow.FileWriter(path, schema, properties);
                 writer.WriteRecordBatch(batch);
                 writer.Close();
@@ -404,14 +405,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task TheAuditCountsDeclinedFiles()
         {
-            var schema = Schema(new Field("v", Int64Type.Default, true));
-            using (var batch = new RecordBatch(schema, new[] { Column(Int64Type.Default, 1, 0, 0) }, 1))
-            using (var arrowProperties = new ParquetSharp.Arrow.ArrowWriterPropertiesBuilder().StoreSchema().Build())
-            using (var writer = new ParquetSharp.Arrow.FileWriter(Path.Join(_directory, "stored.parquet"), schema, new WriterPropertiesBuilder().Build(), arrowProperties))
-            {
-                writer.WriteRecordBatch(batch);
-                writer.Close();
-            }
+            WriteWithStoredSchema(Path.Join(_directory, "stored.parquet"), 1);
             using var output = new StringWriter();
 
             await AdmissionAudit.RunAsync(new Dictionary<string, string>() { ["path"] = _directory }, output);
@@ -422,15 +416,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public void AStoredArrowSchemaIsDeclined()
         {
-            var schema = Schema(new Field("v", Int64Type.Default, true));
             var path = Path.Join(_directory, Name());
-            using (var batch = new RecordBatch(schema, new[] { Column(Int64Type.Default, 10, 0, 0) }, 10))
-            using (var arrowProperties = new ParquetSharp.Arrow.ArrowWriterPropertiesBuilder().StoreSchema().Build())
-            using (var writer = new ParquetSharp.Arrow.FileWriter(path, schema, new WriterPropertiesBuilder().Build(), arrowProperties))
-            {
-                writer.WriteRecordBatch(batch);
-                writer.Close();
-            }
+            WriteWithStoredSchema(path, 10);
             var memory = new JobMemory();
 
             var declined = Assert.Throws<DataFileDeclinedException>(() => DataFileAdmission.Preflight(path, Table(Field("v", new Delta.LongType())), false, memory));
@@ -635,6 +622,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             writer.WriteRecordBatch(batch);
             writer.Close();
             return path;
+        }
+
+        // Counting int64 rows in v, the Arrow schema kept in the file
+        private static void WriteWithStoredSchema(string path, int rows)
+        {
+            var schema = Schema(new Field("v", Int64Type.Default, true));
+            using var batch = new RecordBatch(schema, new[] { Column(Int64Type.Default, rows, 0, 0) }, rows);
+            using var arrowBuilder = new ParquetSharp.Arrow.ArrowWriterPropertiesBuilder();
+            using var arrowProperties = arrowBuilder.StoreSchema().Build();
+            using var builder = new WriterPropertiesBuilder();
+            using var properties = builder.Build();
+            using var writer = new ParquetSharp.Arrow.FileWriter(path, schema, properties, arrowProperties);
+            writer.WriteRecordBatch(batch);
+            writer.Close();
         }
 
         private static IArrowArray Column(IArrowType type, int rows, int elements, int giant)
