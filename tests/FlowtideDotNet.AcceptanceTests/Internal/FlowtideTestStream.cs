@@ -662,11 +662,12 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         private void CheckForErrors()
         {
-            if (_notificationReciever != null && _notificationReciever._error)
+            if (_notificationReciever != null && Volatile.Read(ref _notificationReciever._error))
             {
-                if (_notificationReciever._exception != null)
+                var exception = Volatile.Read(ref _notificationReciever._exception);
+                if (exception != null)
                 {
-                    throw _notificationReciever._exception;
+                    throw exception;
                 }
                 else if (!AllowFailureAndRecover)
                 {

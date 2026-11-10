@@ -135,16 +135,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     d DECIMAL(10, 2)
                 );
 
+                CREATE VIEW u AS SELECT userkey FROM users;
+
                 INSERT INTO test
-                SELECT userkey, CAST(1.001 AS DECIMAL) AS d FROM users
+                SELECT userkey, CAST(1.001 AS DECIMAL) AS d FROM u
                 UNION ALL
-                SELECT userkey, CAST(1.004 AS DECIMAL) AS d FROM users
+                SELECT userkey, CAST(1.004 AS DECIMAL) AS d FROM u
             ");
+            AssertOneSource(stream);
             await WaitForVersion(storage, "test", stream, 0);
 
             var first = stream.Users[2];
             var second = stream.Users[7];
-            // One fetch, so both deletes reach one checkpoint
+            // One source and one fetch, so one checkpoint
             stream.DeleteUsers(new[] { first, second });
             await WaitForVersion(storage, "test", stream, 1);
 
@@ -271,8 +274,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 // New rows beside the delete, so the failed attempt writes data and change files first
                 user = stream.Users[0];
                 storage.ClearRequests();
-                stream.Generate(20);
-                stream.DeleteUser(user);
+                await WriteAtOnce(stream, () =>
+                {
+                    stream.GenerateUsers(20);
+                    stream.DeleteUser(user);
+                });
                 failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, table, stream, version + 2, TimeSpan.FromSeconds(30)));
             }
 
@@ -312,9 +318,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WriteCommit(storage, table, snapshot.Version + 1, removes);
 
             var user = stream.Users[0];
-            stream.Generate(5);
-            var added = stream.Users.Skip(20).Select(x => (long)x.UserKey).Order().ToList();
-            stream.DeleteUser(user);
+            var added = new List<long>();
+            await WriteAtOnce(stream, () =>
+            {
+                stream.GenerateUsers(5);
+                added.AddRange(stream.Users.Skip(20).Select(x => (long)x.UserKey).Order());
+                stream.DeleteUser(user);
+            });
             await WaitForVersion(storage, table, stream, snapshot.Version + 2);
 
             // The commit holds the new rows only, the missing one is counted
@@ -462,6 +472,61 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             await WaitForVersion(storage, table, stream, 0);
             Assert.Equal(stream.Users.Select(x => (long)x.UserKey).Order(), await LiveKeys(storage, table));
             Assert.Equal(new[] { 1L }, ReadGauge(stream, "flowtide_delta_delete_unmatched_rows"));
+        }
+
+        [Fact]
+        public async Task ARecordedFailureWinsOverAPassedDeadline()
+        {
+            var table = "unmatched_recorded";
+            var storage = Files.Of.InternalMemory($"./{table}");
+            await using var stream = new DeltaLakeSinkStream(table, storage);
+            stream.SourceImmutable();
+            stream.Generate(10);
+            var ghost = new AcceptanceTests.Entities.User() { UserKey = -1, FirstName = "ghost" };
+            stream.MockDatabaseForTests.GetOrCreateTable<AcceptanceTests.Entities.User>("users").Delete(new[] { ghost });
+            await stream.StartStream($@"
+                CREATE TABLE {table} (
+                    userkey INT,
+                    name STRING
+                );
+
+                INSERT INTO {table}
+                SELECT userkey, firstName as name FROM users
+            ");
+            var deadline = DateTime.UtcNow + TimeSpan.FromMinutes(2);
+            while (stream.FailureNotificationCount == 0 && DateTime.UtcNow < deadline)
+            {
+                await Record.ExceptionAsync(() => stream.SchedulerTick());
+                await Task.Delay(10);
+            }
+
+            var failure = await Assert.ThrowsAnyAsync<Exception>(async () => await WaitForVersion(storage, table, stream, 0, TimeSpan.FromSeconds(-1)));
+
+            Assert.Contains("Could not find any data file that contains the row {-1,ghost}", failure.ToString());
+        }
+
+        [Fact]
+        public async Task AWaitForAVersionNeverWrittenStillTimesOut()
+        {
+            var table = "never_written";
+            var storage = Files.Of.InternalMemory($"./{table}");
+            await using var stream = new DeltaLakeSinkStream(table, storage);
+            stream.Generate(10);
+            await stream.StartStream($@"
+                CREATE TABLE {table} (
+                    userkey INT,
+                    name STRING
+                );
+
+                INSERT INTO {table}
+                SELECT userkey, firstName as name FROM users
+            ");
+            await WaitForVersion(storage, table, stream, 0);
+
+            var failure = await Record.ExceptionAsync(() => WaitForVersion(storage, table, stream, 99, TimeSpan.FromSeconds(1)).WaitAsync(TimeSpan.FromMinutes(3)));
+
+            Assert.IsType<TimeoutException>(failure);
+            Assert.Contains("Version 99 of never_written was not written in time", failure.Message);
         }
 
         private static async Task<List<long>> LiveKeys(IFileStorage storage, string table)

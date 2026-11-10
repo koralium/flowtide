@@ -3130,6 +3130,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await Stream.SchedulerTick();
                     throw new TimeoutException($"No worker reached version {version}");
                 }
                 await Stream.SchedulerTick();
@@ -3151,6 +3153,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException("The sink did not restart");
                 }
                 await stream.SchedulerTick();
