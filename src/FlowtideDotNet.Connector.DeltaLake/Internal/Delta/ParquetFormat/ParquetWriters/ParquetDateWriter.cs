@@ -20,7 +20,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 {
     internal class ParquetDateWriter : IParquetWriter
     {
-        private Date32Array.Builder? _builder;
+        // Raw buffers, Date32Array.Builder keeps its buffers private
+        private ArrowBuffer.Builder<int>? _values;
+        private ArrowBuffer.BitmapBuilder? _validity;
         private DateTime? _minValue;
         private DateTime? _maxValue;
         private int _nullCount;
@@ -54,8 +56,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public IArrowArray GetArray()
         {
-            Debug.Assert(_builder != null);
-            return _builder.Build();
+            Debug.Assert(_values != null && _validity != null);
+            // Without nulls skip validity, as Date32Array.Builder did
+            var validity = _validity.UnsetBitCount > 0 ? _validity.Build() : ArrowBuffer.Empty;
+            return new Date32Array(_values.Build(), validity, _values.Length, _validity.UnsetBitCount, 0);
         }
 
         public IStatisticsComparer GetStatisticsComparer()
@@ -65,22 +69,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _builder = new Date32Array.Builder();
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
         }
 
+        public void NewGroup()
+        {
+            _values = new ArrowBuffer.Builder<int>();
+            _validity = new ArrowBuffer.BitmapBuilder();
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_values != null && _validity != null);
+            sizes.AddLeaf(_values.Length, _values, _validity);
+        }
+
         public void WriteNull()
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_values != null && _validity != null);
             _nullCount++;
-            _builder.AppendNull();
+            _values.Append(0);
+            _validity.Append(false);
         }
 
         private void WriteValue(DateTime dateValue)
         {
-            Debug.Assert(_builder != null);
+            Debug.Assert(_values != null && _validity != null);
             if (_minValue == null || dateValue < _minValue)
             {
                 _minValue = dateValue;
@@ -90,16 +107,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
                 _maxValue = dateValue;
             }
 
-            _builder.Append(dateValue);
+            // Days since the epoch, as Date32Array.Builder stores them
+            _values.Append((int)((dateValue.Date.Ticks - DateTime.UnixEpoch.Ticks) / TimeSpan.TicksPerDay));
+            _validity.Append(true);
         }
 
         public long WriteValue<T>(T value) where T : IDataValue
         {
-            Debug.Assert(_builder != null);
             if (value.IsNull)
             {
-                _nullCount++;
-                _builder.AppendNull();
+                WriteNull();
                 return 4;
             }
             var dateValue = new DateTime(value.AsTimestamp.ticks);

@@ -23,7 +23,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     internal class ParquetDecimalWriter : IParquetWriter
     {
         private readonly Decimal128Type _type;
-        private Decimal128Array.Builder? _builder;
+        private SizedDecimal128Builder? _builder;
         private decimal? _minValue;
         private decimal? _maxValue;
         private int _nullCount;
@@ -116,12 +116,23 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
 
         public void NewBatch()
         {
-            _builder = new Decimal128Array.Builder(_type);
+            NewGroup();
             _minValue = null;
             _maxValue = null;
             _nullCount = 0;
             _minCopied = null;
             _maxCopied = null;
+        }
+
+        public void NewGroup()
+        {
+            _builder = new SizedDecimal128Builder(_type);
+        }
+
+        public void Measure(BuilderSizes sizes)
+        {
+            Debug.Assert(_builder != null);
+            _builder.Measure(sizes);
         }
 
         public void WriteNull()

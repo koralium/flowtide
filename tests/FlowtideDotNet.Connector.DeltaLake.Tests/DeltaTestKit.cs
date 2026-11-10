@@ -53,6 +53,35 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
         public static string CommitPath(string table, long version) => $"/{table}/_delta_log/{version:D20}.json";
 
+        // Two sources could see one change in different versions
+        public static void AssertOneSource(FlowtideTestStream stream)
+        {
+            Assert.Single(stream.GetDiagnosticsGraph().Nodes.Values, x => x.DisplayName == "Mock data source");
+        }
+
+        // Writes one fetch sees together; Generate would wait on this lock
+        public static async Task WriteAtOnce(FlowtideTestStream stream, Action writes)
+        {
+            await stream.EnterDataWriteLockAsync();
+            try
+            {
+                writes();
+            }
+            finally
+            {
+                stream.ExitDataWriteLock();
+            }
+        }
+
+        // A stall past the pause moves the deadline, so only polling counts
+        private static async Task<DateTime> Pause(DateTime deadline)
+        {
+            var started = DateTime.UtcNow;
+            await Task.Delay(50);
+            var stalled = DateTime.UtcNow - started - TimeSpan.FromSeconds(1);
+            return stalled > TimeSpan.Zero ? deadline + stalled : deadline;
+        }
+
         public static async Task WaitForVersion(IFileStorage storage, string table, FlowtideTestStream stream, long version, TimeSpan? timeout = null)
         {
             var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromMinutes(2));
@@ -60,10 +89,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"Version {version} of {table} was not written in time");
                 }
                 await stream.SchedulerTick();
-                await Task.Delay(50);
+                deadline = await Pause(deadline);
             }
         }
 
@@ -120,11 +151,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"Version {version} of {table} was not written in time");
                 }
                 await stream.SchedulerTick();
                 await stream.TriggerCheckpoint();
-                await Task.Delay(50);
+                deadline = await Pause(deadline);
             }
         }
 
@@ -171,6 +204,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"No checkpoint at or above {minVersion} of {table} was written in time");
                 }
                 // Checkpoints are built in the background, which the stream's manual budget runs only when ticked
@@ -179,7 +214,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     await delta.Maintenance.TickOnceAsync();
                 }
                 await stream.SchedulerTick();
-                await Task.Delay(50);
+                deadline = await Pause(deadline);
             }
         }
 

@@ -37,7 +37,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
         string? NativePath(IOPath path);
 
         // Copies the object into a charged scratch stream and returns its length; -1 when it is gone
-        Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken cancellationToken);
+        // Reads stop at a limit, so an object that reaches it may hold more
+        Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken cancellationToken, long limit = long.MaxValue);
 
         // Uploads in chunks; on failure or cancellation the upload is abandoned, so nothing partial is committed
         Task UploadAsync(string local, IOPath destination, JobMemory memory, CancellationToken cancellationToken);
@@ -151,7 +152,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
 
         public ValueTask ChargeNativeAsync(long requests, long bytes, CancellationToken cancellationToken) => MeteredFileStorage.ChargeNativeAsync(Storage, requests, bytes, cancellationToken);
 
-        public async Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken cancellationToken)
+        public async Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken cancellationToken, long limit = long.MaxValue)
         {
             await using var source = await Storage.OpenRead(path, cancellationToken);
             if (source == null)
@@ -163,7 +164,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.Checkpoints
             {
                 long total = 0;
                 int read;
-                while ((read = await source.ReadAsync(buffer, cancellationToken)) > 0)
+                while (total < limit && (read = await source.ReadAsync(buffer.AsMemory(0, limit - total >= buffer.Length ? buffer.Length : (int)(limit - total)), cancellationToken)) > 0)
                 {
                     await target.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
                     total += read;

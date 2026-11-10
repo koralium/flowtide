@@ -1411,6 +1411,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"Version {version} of {tableName} was not written within {VersionWaitTimeout}");
                 }
                 await stream.SchedulerTick();

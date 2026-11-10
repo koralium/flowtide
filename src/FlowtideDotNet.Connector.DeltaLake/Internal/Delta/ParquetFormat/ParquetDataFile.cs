@@ -20,19 +20,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     // An open data file, owning its stream and readers
     internal sealed class ParquetDataFile : IDisposable
     {
-        private readonly Stream _stream;
+        private readonly Stream? _stream;
         private readonly FileReader _reader;
         private readonly List<IArrowArrayStream> _batchReaders = new List<IArrowArrayStream>();
 
-        public ParquetDataFile(string path, Stream stream, FileReader reader)
+        // No stream when the reader opened a local path
+        public ParquetDataFile(string path, Stream? stream, FileReader reader)
         {
             Path = path;
             _stream = stream;
             _reader = reader;
-            // Each access makes a new reader, so keep one
-            LowLevel = reader.ParquetReader;
             try
             {
+                // Each access makes a new reader, so keep one
+                LowLevel = reader.ParquetReader;
                 var metadata = LowLevel.FileMetaData;
                 NumRows = metadata.NumRows;
                 RowGroupStarts = new long[metadata.NumRowGroups];
@@ -50,7 +51,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
             catch
             {
-                LowLevel.Dispose();
+                LowLevel?.Dispose();
+                _reader.Dispose();
+                _stream?.Dispose();
                 throw;
             }
         }
@@ -83,12 +86,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                 foreach (var column in leafColumns)
                 {
                     var descriptor = schema.Column(column);
-                    if (descriptor.MaxRepetitionLevel != 0)
-                    {
-                        continue;
-                    }
                     using var chunk = rowGroup.MetaData.GetColumnChunkMetaData(column);
-                    if (chunk.NumValues != rows)
+                    // Every row gives a repeated leaf at least one level
+                    if (descriptor.MaxRepetitionLevel != 0 ? chunk.NumValues < rows : chunk.NumValues != rows)
                     {
                         using var path = descriptor.Path;
                         throw new InvalidDataException($"Delta file {Path} cannot be decoded: leaf {path.ToDotString()} holds {chunk.NumValues} values in row group {group} of {rows} rows");
@@ -116,6 +116,30 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
         }
 
+        // One row group's batches, so no batch crosses a group
+        public async IAsyncEnumerable<RecordBatch> ReadRowGroup(int group, int[] leafColumns)
+        {
+            // No leaves would read every column
+            if (leafColumns.Length == 0)
+            {
+                throw new InvalidOperationException($"Delta file {Path}: a row group read needs at least one leaf");
+            }
+            using var batchReader = _reader.GetRecordBatchReader(new[] { group }, leafColumns);
+            _batchReaders.Add(batchReader);
+            try
+            {
+                RecordBatch batch;
+                while ((batch = await batchReader.ReadNextRecordBatchAsync()) != null)
+                {
+                    yield return batch;
+                }
+            }
+            finally
+            {
+                _batchReaders.Remove(batchReader);
+            }
+        }
+
         // Batch readers, the footer, the file reader, then the stream
         public void Dispose()
         {
@@ -126,7 +150,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             _batchReaders.Clear();
             LowLevel.Dispose();
             _reader.Dispose();
-            _stream.Dispose();
+            _stream?.Dispose();
         }
     }
 }

@@ -202,6 +202,33 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
     public class DeltaLakeHostWriterDefaultsTests
     {
         [Fact]
+        public void OutputsPinTheSettingsTheirTermsAssume()
+        {
+            var previous = (DefaultWriterProperties.MaxRowGroupLength, DefaultWriterProperties.DataPagesize, DefaultWriterProperties.DictionaryPagesizeLimit, DefaultWriterProperties.WriteBatchSize, DefaultWriterProperties.WritePageIndex, DefaultWriterProperties.Version);
+            DefaultWriterProperties.MaxRowGroupLength = 1_000;
+            DefaultWriterProperties.DataPagesize = 64L << 20;
+            DefaultWriterProperties.DictionaryPagesizeLimit = 64L << 20;
+            DefaultWriterProperties.WriteBatchSize = 64;
+            DefaultWriterProperties.WritePageIndex = false;
+            DefaultWriterProperties.Version = ParquetVersion.PARQUET_1_0;
+            DeltaParquetCompression.ResetCacheForTests();
+            try
+            {
+                var output = DeltaParquetCompression.GetOutputWriterProperties(Compression.Zstd);
+
+                Assert.Equal(SizeStatisticsLevel.PageAndColumnChunk, DeltaParquetCompression.GetWriterProperties(Compression.Zstd).SizeStatisticsLevel);
+                Assert.Equal(SizeStatisticsLevel.PageAndColumnChunk, output.SizeStatisticsLevel);
+                Assert.Equal((1L << 40, 1L << 20, 1L << 20, 1_024L, true, ParquetVersion.PARQUET_2_6), (output.MaxRowGroupLength, output.DataPageSize, output.DictionaryPagesizeLimit, output.WriteBatchSize, output.WritePageIndex, output.Version));
+                Assert.Equal("system", output.MemoryPool.BackendName);
+            }
+            finally
+            {
+                (DefaultWriterProperties.MaxRowGroupLength, DefaultWriterProperties.DataPagesize, DefaultWriterProperties.DictionaryPagesizeLimit, DefaultWriterProperties.WriteBatchSize, DefaultWriterProperties.WritePageIndex, DefaultWriterProperties.Version) = previous;
+                DeltaParquetCompression.ResetCacheForTests();
+            }
+        }
+
+        [Fact]
         public async Task HostCompressionLevelDoesNotBreakCodecsWithoutLevels()
         {
             var testName = nameof(HostCompressionLevelDoesNotBreakCodecsWithoutLevels);

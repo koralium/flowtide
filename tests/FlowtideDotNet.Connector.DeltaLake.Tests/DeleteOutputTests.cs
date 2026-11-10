@@ -269,6 +269,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     await stream.SchedulerTick();
                     await Task.Delay(50);
                 }
+                await stream.SchedulerTick();
             });
 
             // The stage may exist, so the attempt's files are kept

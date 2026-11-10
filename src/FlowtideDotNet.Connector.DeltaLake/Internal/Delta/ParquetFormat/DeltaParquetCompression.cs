@@ -23,6 +23,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     {
         public const string CodecProperty = "delta.parquet.compression.codec";
 
+        // Compaction outputs pin what their writer terms assume
+        public const long OutputPageSize = 1L << 20;
+        public const long OutputDictionaryPageSize = 1L << 20;
+        public const long OutputWriteBatch = 1024;
+
         private static readonly DeltaParquetCodec Uncompressed = new DeltaParquetCodec(Compression.Uncompressed, ".parquet");
         private static readonly DeltaParquetCodec Snappy = new DeltaParquetCodec(Compression.Snappy, ".snappy.parquet");
         private static readonly DeltaParquetCodec Gzip = new DeltaParquetCodec(Compression.Gzip, ".gz.parquet");
@@ -33,6 +38,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         private static readonly object s_lock = new object();
         private static WriterProperties?[] s_writerProperties = new WriterProperties?[Enum.GetValues<Compression>().Length];
+        private static WriterProperties?[] s_outputProperties = new WriterProperties?[Enum.GetValues<Compression>().Length];
 
         /// <summary>
         /// The codec for new files, the option wins over the table property and zstd is the default (spec).
@@ -87,12 +93,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             }
             lock (s_lock)
             {
-                return s_writerProperties[(int)compression] ??= Build(compression);
+                return s_writerProperties[(int)compression] ??= Build(compression, output: false);
             }
         }
 
-        // Every setting is explicit, so host wide ParquetSharp defaults cannot change Delta files
-        private static WriterProperties Build(Compression compression)
+        // Compaction outputs: the sink's settings, the copier ends each group
+        public static WriterProperties GetOutputWriterProperties(Compression compression)
+        {
+            var properties = Volatile.Read(ref s_outputProperties)[(int)compression];
+            if (properties != null)
+            {
+                return properties;
+            }
+            lock (s_lock)
+            {
+                return s_outputProperties[(int)compression] ??= Build(compression, output: true);
+            }
+        }
+
+        // The settings Delta files rely on are set explicitly
+        private static WriterProperties Build(Compression compression, bool output)
         {
             using var builder = new WriterPropertiesBuilder();
             builder.Compression(compression);
@@ -100,6 +120,20 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             builder.DataPageVersion(ParquetDataPageVersion.V1);
             builder.EnableDictionary();
             builder.EnableStatistics();
+            // Compaction admission bounds byte arrays with these
+            builder.SetSizeStatisticsLevel(SizeStatisticsLevel.PageAndColumnChunk);
+            if (output)
+            {
+                // ParquetSharp's defaults, pinned so host settings can't move the terms
+                builder.MemoryPool(MemoryPool.SystemMemoryPool());
+                builder.MaxRowGroupLength(1L << 40);
+                builder.DataPagesize(OutputPageSize);
+                builder.DictionaryPagesizeLimit(OutputDictionaryPageSize);
+                builder.WriteBatchSize(OutputWriteBatch);
+                builder.Encoding(Encoding.Plain);
+                builder.EnableWritePageIndex();
+                builder.Version(ParquetVersion.PARQUET_2_6);
+            }
             return builder.Build();
         }
 
@@ -117,6 +151,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             lock (s_lock)
             {
                 Volatile.Write(ref s_writerProperties, new WriterProperties?[s_writerProperties.Length]);
+                Volatile.Write(ref s_outputProperties, new WriterProperties?[s_outputProperties.Length]);
             }
         }
     }

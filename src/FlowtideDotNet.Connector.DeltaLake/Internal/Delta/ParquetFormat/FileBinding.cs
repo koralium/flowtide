@@ -29,12 +29,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
     {
         private readonly Node[] _columns;
 
-        private FileBinding(Node[] columns, int[] leafColumns, IReadOnlyList<TimeUnit> timestampUnits, IReadOnlyList<PrecisionLeaf> precisionLeaves)
+        private FileBinding(Node[] columns, int[] leafColumns, IReadOnlyList<TimeUnit> timestampUnits, IReadOnlyList<PrecisionLeaf> precisionLeaves, IReadOnlyList<string> missingPaths)
         {
             _columns = columns;
             LeafColumns = leafColumns;
             TimestampUnits = timestampUnits;
             PrecisionLeaves = precisionLeaves;
+            MissingPaths = missingPaths;
         }
 
         // The leaves to read, every leaf of each bound column
@@ -45,6 +46,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
         // INT96 and nanosecond leaves the copy must check
         public IReadOnlyList<PrecisionLeaf> PrecisionLeaves { get; }
+
+        // Table fields the file lacks, read as nulls
+        public IReadOnlyList<string> MissingPaths { get; }
 
         // In id mode a field's id under another name is an error
         public static FileBinding Create(DeltaStructType table, ParquetDataFile file, string tableName, bool byId = false)
@@ -76,7 +80,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
             {
                 AddLeaves(fileFields[index], leaves);
             }
-            return new FileBinding(columns, leaves.ToArray(), context.Units, context.Precision);
+            return new FileBinding(columns, leaves.ToArray(), context.Units, context.Precision, context.MissingPaths);
         }
 
         // Views in table order over the batch, the caller disposes both
@@ -279,6 +283,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
 
             public List<PrecisionLeaf> Precision { get; } = new List<PrecisionLeaf>();
 
+            public List<string> MissingPaths { get; } = new List<string>();
+
             public Node Bind(SchemaBaseType type, FileField file, string name, string path, bool nullable)
             {
                 var fileType = file.DataType;
@@ -352,6 +358,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
                     throw new InvalidOperationException($"Delta table {_table} cannot bind file {_file.Path}: the file has no column {path}, which is not nullable");
                 }
                 AddMissingUnits(field.Type);
+                MissingPaths.Add(path);
                 var kind = field.Type.Type;
                 return new Node(_types.Visit(field.Type), field.Name, true, kind, null);
             }
@@ -508,6 +515,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat
         public int Length { get; }
 
         public IArrowArray Column(int index) => _arrays[index];
+
+        // Native bytes the binding made, with the allocator's 64 B
+        public long OwnedBytes => _owned.Sum(x => (x.Length + 63L) / 64 * 64 + 64);
 
         // Releases only the buffers the binding made
         public void Dispose()

@@ -63,7 +63,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
                 return await ManualRun.RunAsync(args, describe, output => args[0] == "compaction-fixture" ? CompactionProbe.BuildAsync(options, output) : CompactionProbe.RunAsync(options, output), Console.Out);
             }
-            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>] | compaction-fixture --root <dir> --fixture <name> | compaction-probe --root <dir> --fixture <name> [--commits n] [--discard n] [--pace s] [--variant off] [--rep n] [--store local|azure-like] [--source on|off] [--scratch <dir>]");
+            // A10's group-at-a-time read audit, one process per run
+            if (args.Length >= 1 && args[0] == "admission-audit")
+            {
+                var options = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 1; i + 1 < args.Length; i += 2)
+                {
+                    options[args[i].TrimStart('-')] = args[i + 1];
+                }
+                var describe = new Dictionary<string, string>() { ["scratch"] = options.GetValueOrDefault("scratch", Path.GetTempPath()), ["profile"] = "local disk, system pool" };
+                return await ManualRun.RunAsync(args, describe, output => AdmissionAudit.RunAsync(options, output), Console.Out);
+            }
+            // P-admit: bins copied in a fresh process, memory and copy time
+            if (args.Length >= 1 && args[0] == "compaction-audit")
+            {
+                var options = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 1; i + 1 < args.Length; i += 2)
+                {
+                    options[args[i].TrimStart('-')] = args[i + 1];
+                }
+                var describe = new Dictionary<string, string>() { ["scratch"] = options["scratch"], ["profile"] = "local disk, system pool" };
+                return await ManualRun.RunAsync(args, describe, output => CompactionAudit.RunAsync(options, output), Console.Out);
+            }
+            // Pass 1's admission over fixture files, for the positive gate
+            if (args.Length >= 1 && args[0] == "admission-gate")
+            {
+                var options = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 1; i + 1 < args.Length; i += 2)
+                {
+                    options[args[i].TrimStart('-')] = args[i + 1];
+                }
+                var describe = new Dictionary<string, string>() { ["scratch"] = options.GetValueOrDefault("scratch", Path.GetTempPath()), ["profile"] = "managed admission only" };
+                return await ManualRun.RunAsync(args, describe, output => AdmissionAudit.GateAsync(options, output), Console.Out);
+            }
+            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>] | compaction-fixture --root <dir> --fixture <name> | compaction-probe --root <dir> --fixture <name> [--commits n] [--discard n] [--pace s] [--variant off] [--rep n] [--store local|azure-like] [--source on|off] [--scratch <dir>] | admission-audit (--path <dir|file> [--largest n] | --groups n --rows r --scratch <dir>) [--batch rows] | compaction-audit --scratch <dir> (--table <fixture dir> [--dvs on|off] | --shape <name>) [--target MiB] [--codec zstd|snappy] [--skip n] [--bins n] [--keep <dir>]");
             return ManualRun.HarnessError;
         }
     }

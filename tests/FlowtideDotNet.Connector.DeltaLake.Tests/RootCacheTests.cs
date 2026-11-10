@@ -337,7 +337,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             public Task<LastCheckpointInfo?> ReadHintAsync(CancellationToken ct) => _inner.ReadHintAsync(ct);
             public Task WriteHintAsync(LastCheckpointInfo hint, CancellationToken ct) => _inner.WriteHintAsync(hint, ct);
             public string? NativePath(IOPath path) => null;
-            public Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken ct) => _inner.DownloadAsync(path, target, memory, ct);
+            public Task<long> DownloadAsync(IOPath path, Stream target, JobMemory memory, CancellationToken ct, long limit = long.MaxValue) => _inner.DownloadAsync(path, target, memory, ct, limit);
             public Task UploadAsync(string local, IOPath destination, JobMemory memory, CancellationToken ct) => _inner.UploadAsync(local, destination, memory, ct);
             public ValueTask ChargeNativeAsync(long requests, long bytes, CancellationToken ct) => _inner.ChargeNativeAsync(requests, bytes, ct);
 

@@ -21,6 +21,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Parque
     {
         void NewBatch();
 
+        // New builders, the statistics carry on
+        void NewGroup();
+
+        // Adds this node's buffers, and its leaves in output order
+        void Measure(BuilderSizes sizes);
+
         long WriteValue<T>(T value)
             where T : IDataValue;
 

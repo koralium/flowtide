@@ -90,14 +90,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Delta.ParquetFormat.Bounde
         /// <summary>
         /// The codec's worst-case compressed size of n bytes, and whether it needs a compression scratch buffer.
         /// </summary>
-        public static long Compressed(Compression compression, long bytes) => compression switch
+        public static long Compressed(Compression compression, long bytes) => checked(compression switch
         {
             Compression.Uncompressed => bytes,
             Compression.Snappy => bytes + bytes / 6 + 32,
             // zlib's conservative deflateBound, which applies when the level reaches zlib as another parameter; not checked in the pinned source
             Compression.Gzip => bytes + (bytes + 7) / 8 + (bytes + 63) / 64 + 1024,
             _ => bytes + bytes / 100 + 1024
-        };
+        });
 
         public static bool HasScratch(Compression compression) => compression != Compression.Uncompressed;
     }

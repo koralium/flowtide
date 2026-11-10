@@ -54,11 +54,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     Name STRING
                 );
 
+                CREATE VIEW u AS SELECT userKey, firstName FROM users;
+
                 INSERT INTO test
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
                 UNION ALL
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
             ");
+            DeltaTestKit.AssertOneSource(stream);
 
             await WaitForVersion(storage, "test", stream, 0);
 
@@ -90,11 +93,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     ts TIMESTAMP
                 );
 
+                CREATE VIEW u AS SELECT userKey, birthdate FROM users;
+
                 INSERT INTO test
-                SELECT userKey, timestamp_add('MICROSECOND', 100, birthdate) as ts FROM users
+                SELECT userKey, timestamp_add('MICROSECOND', 100, birthdate) as ts FROM u
                 UNION ALL
-                SELECT userKey, timestamp_add('MICROSECOND', 200, birthdate) as ts FROM users
+                SELECT userKey, timestamp_add('MICROSECOND', 200, birthdate) as ts FROM u
             ");
+            DeltaTestKit.AssertOneSource(stream);
 
             await WaitForVersion(storage, "test", stream, 0);
 
@@ -122,11 +128,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     Name STRING
                 );
 
+                CREATE VIEW u AS SELECT userKey, firstName FROM users;
+
                 INSERT INTO test
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
                 UNION ALL
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
             ");
+            DeltaTestKit.AssertOneSource(stream);
 
             await WaitForVersion(storage, "test", stream, 0);
 
@@ -931,11 +940,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     Name STRING
                 );
 
+                CREATE VIEW u AS SELECT userKey, firstName FROM users;
+
                 INSERT INTO test
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
                 UNION ALL
-                SELECT userKey, firstName as Name FROM users
+                SELECT userKey, firstName as Name FROM u
             ");
+            DeltaTestKit.AssertOneSource(stream);
 
             await WaitForVersion(storage, "test", stream, 0);
 
@@ -1551,6 +1563,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 if (DateTime.UtcNow > deadline)
                 {
+                    // A recorded failure wins over the timeout
+                    await stream.SchedulerTick();
                     throw new TimeoutException($"Version {version} of {tableName} was not written within {VersionWaitTimeout}");
                 }
                 await stream.SchedulerTick();
