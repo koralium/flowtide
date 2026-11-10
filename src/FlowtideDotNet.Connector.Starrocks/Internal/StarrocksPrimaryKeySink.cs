@@ -265,8 +265,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
 
             if (executionMode == ExecutionMode.OnCheckpoint)
             {
-                // A timeout would leave the checkpoint unacknowledged
-                await FailOnCancel(UploadChangesOnCheckpoint(rows, watermark, isInitialData, cancellationToken));
+                await UploadChangesOnCheckpoint(rows, watermark, isInitialData, cancellationToken);
                 return;
             }
 
@@ -303,7 +302,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                             var index = inFlight.FindIndex(x => x.Load == finished);
                             var freed = inFlight[index];
                             inFlight.RemoveAt(index);
-                            await FailOnCancel(freed.Load);
+                            await freed.Load;
                             freed.Buffer.Clear();
                             freeBuffers.Push(freed.Buffer);
                         }
@@ -346,7 +345,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
             var sending = inFlight.Count == 1 ? inFlight[0].Load : Task.WhenAll(inFlight.Select(x => x.Load));
             if (sending.IsCompleted)
             {
-                await FailOnCancel(sending);
+                await sending;
                 return;
             }
             // Base waits for this before the next send or checkpoint

@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// target blocks based on predefined logic. It ensures that control events (watermarks, checkpoints) are multiplexed 
     /// accurately to all downstream targets keeping the pipeline synchronized.
     /// </remarks>
-    public abstract class PartitionVertex<T> : ITargetBlock<IStreamEvent>, IStreamVertex
+    public abstract class PartitionVertex<T> : ITargetBlock<IStreamEvent>, IStreamVertex, IStreamVertexCancellation
     {
         private TransformManyBlock<IStreamEvent, KeyValuePair<int, IStreamEvent>>? _inputBlock;
         private FixedPointSource[] _sources;
@@ -46,6 +46,7 @@ namespace FlowtideDotNet.Base.Vertices
         private bool _isHealthy = true;
         private IVertexHandler? _vertexHandler;
         private IMemoryAllocator? _memoryAllocator;
+        private CancellationTokenSource _cancelToken = new CancellationTokenSource();
 
         /// <summary>
         /// The streams stop drain timeout.
@@ -129,7 +130,8 @@ namespace FlowtideDotNet.Base.Vertices
         /// </summary>
         public void CreateBlock()
         {
-            _inputBlock = new TransformManyBlock<IStreamEvent, KeyValuePair<int, IStreamEvent>>(x =>
+            _cancelToken = new CancellationTokenSource();
+            _inputBlock = new TransformManyBlock<IStreamEvent, KeyValuePair<int, IStreamEvent>>(CancellationFault.Wrap<IStreamEvent, KeyValuePair<int, IStreamEvent>>(this, _cancelToken.Token, x =>
             {
                 if (x is ILockingEvent ev)
                 {
@@ -186,7 +188,7 @@ namespace FlowtideDotNet.Base.Vertices
                     return HandleInitialDataDone(initialDataDoneEvent);
                 }
                 throw new NotSupportedException();
-            }, _executionDataflowBlockOptions);
+            }), _executionDataflowBlockOptions);
             _inputTargetBlock = _inputBlock;
 
             for (int i = 0; i < _sources.Length; i++)
@@ -321,8 +323,11 @@ namespace FlowtideDotNet.Base.Vertices
                 // storage initialization) has nothing to fault.
                 return;
             }
+            _cancelToken.Cancel();
             _inputTargetBlock.Fault(exception);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() => _cancelToken.CancelAsync();
 
         /// <summary>
         /// Connects operator identity properties dynamically ahead of structural linking sequences.

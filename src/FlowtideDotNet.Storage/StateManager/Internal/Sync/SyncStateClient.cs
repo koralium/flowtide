@@ -793,7 +793,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             // Faulted, not returned, a checkpoint waiting on this walk must not take it as landed.
             if (Volatile.Read(ref m_stopRequested))
             {
-                throw new OperationCanceledException("The commit was given up on a stop request.");
+                throw new FlowtideCommitStoppedException("The commit was given up on a stop request.");
             }
         }
 

@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Base.Vertices
             }
             else
             {
-                _targetBlock = new NonParallelEgressVertex<T>(_executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
+                _targetBlock = new NonParallelEgressVertex<T>(this, _cancellationTokenSource.Token, _executionDataflowBlockOptions, HandleRecieve, HandleLockingEvent, HandleCheckpointDone, OnTrigger, HandleWatermark);
             }
         }
 
