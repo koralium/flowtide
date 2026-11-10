@@ -44,7 +44,7 @@ namespace FlowtideDotNet.Base.Vertices
     /// read source exists in the loop, allowing the checkpoint to complete without waiting for an upstream acknowledgement.
     /// </para>
     /// </remarks>
-    public abstract class FixedPointVertex<T> : IStreamVertex
+    public abstract class FixedPointVertex<T> : IStreamVertex, IStreamVertexCancellation
     {
         private readonly MultipleInputTargetHolder _ingressTarget;
         private readonly MultipleInputTargetHolder _feedbackTarget;
@@ -87,6 +87,7 @@ namespace FlowtideDotNet.Base.Vertices
         private readonly PauseGate _pauseGate = new PauseGate();
         private IMemoryAllocator? _memoryAllocator;
         private bool _receivedInitialLoadDoneEvent;
+        private CancellationTokenSource _cancelToken = new CancellationTokenSource();
 
         /// <summary>
         /// Gets the memory allocator for managing native memory allocations within this vertex.
@@ -279,8 +280,9 @@ namespace FlowtideDotNet.Base.Vertices
         {
             singleReadSource = false;
             _receivedInitialLoadDoneEvent = false;
+            _cancelToken = new CancellationTokenSource();
 
-            _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>((r) =>
+            _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>(CancellationFault.Wrap<KeyValuePair<int, IStreamEvent>, KeyValuePair<int, IStreamEvent>>(this, _cancelToken.Token, (r) =>
             {
                 if (r.Value is ILockingEvent ev)
                 {
@@ -426,7 +428,7 @@ namespace FlowtideDotNet.Base.Vertices
                     return EmptyAsyncEnumerable<KeyValuePair<int, IStreamEvent>>.Instance;
                 }
                 throw new NotSupportedException();
-            }, new ExecutionDataflowBlockOptions()
+            }), new ExecutionDataflowBlockOptions()
             {
                 MaxDegreeOfParallelism = 1
             });
@@ -531,8 +533,11 @@ namespace FlowtideDotNet.Base.Vertices
                 // storage initialization) has nothing to fault.
                 return;
             }
+            _cancelToken.Cancel();
             (_transformBlock as IDataflowBlock).Fault(exception);
         }
+
+        Task IStreamVertexCancellation.CancelPendingOperations() => _cancelToken.CancelAsync();
 
         /// <summary>
         /// Returns all downstream <see cref="ITargetBlock{IStreamEvent}"/> linked to the egress and loop sources.

@@ -338,7 +338,40 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             }
         }
 
-        private async Task<StarRocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client)
+        [Fact]
+        public async Task AFaultDuringARetryOnlyFaultsWithItsOwnException()
+        {
+            var client = Substitute.For<IStarrocksClient>();
+            client.GetTableInfo(default!).ReturnsForAnyArgs(Task.FromResult(new TableInfo()
+            {
+                ColumnNames = ["a"],
+                PrimaryKeys = ["a"]
+            }));
+            client.CreateTransaction(default).ReturnsForAnyArgs(Task.FromException<Internal.HttpApi.TransactionInfo>(new HttpRequestException("Connection refused")));
+            var retrying = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var pipeline = new ResiliencePipelineBuilder()
+                .AddRetry(new Polly.Retry.RetryStrategyOptions
+                {
+                    Delay = TimeSpan.FromMinutes(1),
+                    OnRetry = _ =>
+                    {
+                        retrying.TrySetResult();
+                        return default;
+                    }
+                })
+                .Build();
+
+            var op = await SendOneRowAndSendCheckpoint(client, pipeline);
+            await retrying.Task.WaitAsync(WaitTimeout);
+
+            var stop = new InvalidOperationException("stop");
+            op.Fault(stop);
+
+            await Assert.ThrowsAnyAsync<Exception>(() => op.Completion.WaitAsync(WaitTimeout));
+            Assert.Same(stop, Assert.Single(op.Completion.Exception!.InnerExceptions));
+        }
+
+        private async Task<StarRocksPrimaryKeySink> SendOneRowAndSendCheckpoint(IStarrocksClient client, ResiliencePipeline? resiliencePipeline = null)
         {
             var factory = new StarRocksMockClientFactory(client);
 
@@ -348,7 +381,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 Credentials = () => new StarRocksUsernamePassword("root", ""),
                 ClientFactory = factory,
                 // Failures here must reach the sink as is
-                ResiliencePipeline = ResiliencePipeline.Empty
+                ResiliencePipeline = resiliencePipeline ?? ResiliencePipeline.Empty
             }, Core.Operators.Write.ExecutionMode.OnCheckpoint, _writeRel);
 
             await InitializeOperator(op);

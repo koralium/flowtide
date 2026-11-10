@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.AppendTree;
 using FlowtideDotNet.Storage.Comparers;
+using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
@@ -2269,7 +2270,7 @@ namespace FlowtideDotNet.Storage.Tests
             var failure = await Record.ExceptionAsync(() => walk.WaitAsync(Timeout));
 
             // A stop is a cancellation, the torn-down table throws disposed, so the two stay apart.
-            Assert.IsType<OperationCanceledException>(failure);
+            Assert.IsType<FlowtideCommitStoppedException>(failure);
             Assert.Equal(0, session.WriteCount(keys[0]));
         }
 

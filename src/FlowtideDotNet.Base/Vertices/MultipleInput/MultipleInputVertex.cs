@@ -135,7 +135,7 @@ namespace FlowtideDotNet.Base.Vertices
         {
             tokenSource = new CancellationTokenSource();
             executionDataflowBlockOptions.CancellationToken = tokenSource.Token;
-            _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>((r) =>
+            _transformBlock = new TransformManyBlock<KeyValuePair<int, IStreamEvent>, IStreamEvent>(CancellationFault.Wrap<KeyValuePair<int, IStreamEvent>, IStreamEvent>(this, tokenSource.Token, (r) =>
             {
                 if (r.Value is ILockingEvent ev)
                 {
@@ -217,7 +217,7 @@ namespace FlowtideDotNet.Base.Vertices
                     return HandleInitialDataDoneEvent(r.Key, initialDataDone);
                 }
                 throw new NotSupportedException();
-            }, executionDataflowBlockOptions);
+            }), executionDataflowBlockOptions);
 
             if (executionDataflowBlockOptions.GetSupportsParallelExecution())
             {

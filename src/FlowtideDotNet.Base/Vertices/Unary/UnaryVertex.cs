@@ -100,7 +100,7 @@ namespace FlowtideDotNet.Base.Vertices
         private void InitializeBlocks()
         {
             _cancelToken = new CancellationTokenSource();
-            _transformBlock = new TransformManyBlock<IStreamEvent, IStreamEvent>((streamEvent) =>
+            _transformBlock = new TransformManyBlock<IStreamEvent, IStreamEvent>(CancellationFault.Wrap<IStreamEvent, IStreamEvent>(this, _cancelToken.Token, (streamEvent) =>
             {
                 // Check if it is a checkpoint event
                 if (streamEvent is ILockingEvent ev)
@@ -175,7 +175,7 @@ namespace FlowtideDotNet.Base.Vertices
                 }
 
                 throw new NotSupportedException();
-            }, executionDataflowBlockOptions);
+            }), executionDataflowBlockOptions);
 
             if (executionDataflowBlockOptions.GetSupportsParallelExecution())
             {

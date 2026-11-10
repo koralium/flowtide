@@ -24,9 +24,13 @@ namespace FlowtideDotNet.Base.Vertices.Internal
         private readonly Action<ILockingEvent> _checkpointDone;
         private readonly Func<string, object?, Task> _onTrigger;
         private readonly Func<Watermark, Task> _onWatermark;
+        private readonly IStreamVertex _vertex;
+        private readonly CancellationToken _cancellationToken;
 
-        public NonParallelEgressVertex(ExecutionDataflowBlockOptions executionDataflowBlockOptions, Func<T, long, Task> recieveFunc, Func<ILockingEvent, Task> doCheckpoint, Action<ILockingEvent> checkpointDone, Func<string, object?, Task> onTrigger, Func<Watermark, Task> onWatermark)
+        public NonParallelEgressVertex(IStreamVertex vertex, CancellationToken cancellationToken, ExecutionDataflowBlockOptions executionDataflowBlockOptions, Func<T, long, Task> recieveFunc, Func<ILockingEvent, Task> doCheckpoint, Action<ILockingEvent> checkpointDone, Func<string, object?, Task> onTrigger, Func<Watermark, Task> onWatermark)
         {
+            _vertex = vertex;
+            _cancellationToken = cancellationToken;
             _executionDataflowBlockOptions = executionDataflowBlockOptions;
             _recieveFunc = recieveFunc;
             _doCheckpoint = doCheckpoint;
@@ -39,7 +43,7 @@ namespace FlowtideDotNet.Base.Vertices.Internal
         [MemberNotNull(nameof(_block))]
         internal void Initialize()
         {
-            _block = new ActionBlock<IStreamEvent>((e) =>
+            _block = new ActionBlock<IStreamEvent>(CancellationFault.Wrap<IStreamEvent>(_vertex, _cancellationToken, (e) =>
             {
                 if (e is ILockingEvent lockingEvent)
                 {
@@ -58,7 +62,7 @@ namespace FlowtideDotNet.Base.Vertices.Internal
                     return _onWatermark(watermark);
                 }
                 return Task.CompletedTask;
-            }, _executionDataflowBlockOptions);
+            }), _executionDataflowBlockOptions);
         }
 
         private async Task HandleLockingEvent(ILockingEvent lockingEvent)

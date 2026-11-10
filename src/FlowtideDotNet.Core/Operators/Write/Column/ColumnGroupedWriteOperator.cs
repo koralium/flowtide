@@ -191,7 +191,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 throw new InvalidOperationException("A background send is already running.");
             }
-            send = FailOnCancel(send);
             m_backgroundSend = send;
             // Fire and forget, a full input queue must not block the send
             _ = send.ContinueWith(
@@ -200,22 +199,6 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 CancellationToken.None,
                 TaskContinuationOptions.ExecuteSynchronously,
                 TaskScheduler.Default);
-        }
-
-        /// <summary>
-        /// Awaits a send, cancellation becomes a failure.
-        /// Dataflow drops canceled handlers, rows or checkpoints would be lost.
-        /// </summary>
-        protected static async Task FailOnCancel(Task send)
-        {
-            try
-            {
-                await send;
-            }
-            catch (OperationCanceledException e)
-            {
-                throw new InvalidOperationException("A send was canceled before it completed.", e);
-            }
         }
 
         // False while a send runs, rethrows a failed send
