@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal;
+using FlowtideDotNet.Core.Operators.Write;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
@@ -169,6 +170,59 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             });
             Assert.NotNull(exception.InnerException);
             Assert.Equal("Received a row with primary key 'id' set to 'null'", exception.InnerException.Message);
+        }
+
+        [Theory]
+        [InlineData(ExecutionMode.OnWatermark)]
+        [InlineData(ExecutionMode.OnCheckpoint)]
+        public async Task FilteredRowsErrorContainsRejectedRows(ExecutionMode executionMode)
+        {
+            var tableName = $"filteredrows_{executionMode.ToString().ToLowerInvariant()}";
+            await fixture.RunQuery($@"
+                CREATE TABLE {tableName} (
+                    id int NOT NULL,
+                    name VARCHAR(255)
+                )
+                PRIMARY KEY (id);
+            ", "test");
+
+            // Default retries, rejected rows must fail on first attempt
+            StarRocksTestStream stream = new StarRocksTestStream(fixture, $"{nameof(FilteredRowsErrorContainsRejectedRows)}_{executionMode}", executionMode);
+
+            stream.Generate(1);
+            await stream.StartStream($@"
+                INSERT INTO test.{tableName}
+                SELECT 'notanumber' AS id, 'testname' AS name
+                FROM users;
+            ");
+
+            var exception = await Assert.ThrowsAnyAsync<Exception>(async () =>
+            {
+                while (true)
+                {
+                    await stream.SchedulerTick();
+                    await Task.Delay(10);
+                }
+            });
+
+            var starRocksException = FindStarRocksException(exception);
+            Assert.IsType<StarRocksInvalidDataException>(starRocksException);
+            Assert.Contains("too many filtered rows", starRocksException.Message);
+            Assert.Contains("Rejected rows:", starRocksException.Message);
+            Assert.Contains("NULL value in non-nullable column 'id'", starRocksException.Message);
+        }
+
+        private static StarRocksException? FindStarRocksException(Exception? exception)
+        {
+            while (exception != null)
+            {
+                if (exception is StarRocksException starRocksException)
+                {
+                    return starRocksException;
+                }
+                exception = exception.InnerException;
+            }
+            return null;
         }
     }
 }

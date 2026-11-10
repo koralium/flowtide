@@ -14,32 +14,13 @@ using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
-    internal class StreamLoadInfo
+    internal class StreamLoadInfo : LoadResponse
     {
         [JsonPropertyName("TxnId")]
         public long? TxnId { get; set; }
 
         [JsonPropertyName("Label")]
         public string? Label { get; set; }
-
-        [JsonPropertyName("Status")]
-        [JsonConverter(typeof(StarRocksStatusConverter))]
-        public StarRocksStatus Status { get; set; }
-
-        [JsonPropertyName("Message")]
-        public string? Message { get; set; }
-
-        [JsonPropertyName("NumberTotalRows")]
-        public long? NumberTotalRows { get; set; }
-
-        [JsonPropertyName("NumberLoadedRows")]
-        public long? NumberLoadedRows { get; set; }
-
-        [JsonPropertyName("NumberFilteredRows")]
-        public long? NumberFilteredRows { get; set; }
-
-        [JsonPropertyName("NumberUnselectedRows")]
-        public long? NumberUnselectedRows { get; set; }
 
         [JsonPropertyName("LoadBytes")]
         public long? LoadBytes { get; set; }
@@ -61,9 +42,6 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
         [JsonPropertyName("CommitAndPublishTimeMs")]
         public long? CommitAndPublishTimeMs { get; set; }
-
-        [JsonPropertyName("ErrorURL")]
-        public string? ErrorUrl { get; set; }
     }
 
 }

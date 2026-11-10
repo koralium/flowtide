@@ -20,6 +20,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
     internal class StarRocksHttpClient : IStarrocksClient
     {
+        private static readonly TimeSpan ErrorLogTimeout = TimeSpan.FromSeconds(10);
+        // Enough rejected rows to show the cause
+        private const int MaxErrorLogLines = 10;
+        private const int MaxErrorLogChars = 4096;
+
         private readonly string _url;
         private readonly string _backendUrl;
         private readonly HttpClient _httpClient;
@@ -113,8 +118,96 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 
             if (transactionResponse.Status == StarRocksStatus.Failed)
             {
-                throw new StarRocksHttpException(transactionResponse.Message);
+                await AddErrorLog(transactionResponse);
+                if (transactionResponse.HasRejectedRows)
+                {
+                    throw new StarRocksInvalidDataException(transactionResponse.GetErrorMessage());
+                }
+                throw new StarRocksHttpException(transactionResponse.GetErrorMessage());
             }
+        }
+
+        private async Task AddErrorLog(LoadResponse response)
+        {
+            if (response.Status == StarRocksStatus.Ok || response.ErrorUrl == null)
+            {
+                return;
+            }
+            response.ErrorLog = await FetchErrorLog(response.ErrorUrl);
+        }
+
+        private async Task<string?> FetchErrorLog(string errorUrl)
+        {
+            if (!Uri.TryCreate(errorUrl, UriKind.Absolute, out var uri))
+            {
+                return null;
+            }
+
+            // BE may advertise an address only reachable internally
+            var candidates = new List<string>();
+            if (_options.BackendHttpUrl != null)
+            {
+                candidates.Add($"{_backendUrl}{uri.PathAndQuery}");
+            }
+            candidates.Add(errorUrl);
+
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    using var timeout = new CancellationTokenSource(ErrorLogTimeout);
+                    using var response = await _httpClient.GetAsync(candidate, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+                    // Missing log is also 200, but html
+                    if (!response.IsSuccessStatusCode || response.Content.Headers.ContentType?.MediaType != "text/plain")
+                    {
+                        continue;
+                    }
+                    using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+                    var log = await ReadErrorLogHead(stream, timeout.Token);
+                    if (log != null)
+                    {
+                        return log;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Best effort, never hide the load error
+                }
+            }
+            return null;
+        }
+
+        private static async Task<string?> ReadErrorLogHead(Stream stream, CancellationToken cancellationToken)
+        {
+            using var reader = new StreamReader(stream);
+            var builder = new StringBuilder();
+            int lineCount = 0;
+            string? line;
+            while ((line = await reader.ReadLineAsync(cancellationToken)) != null)
+            {
+                if (line.Length == 0)
+                {
+                    continue;
+                }
+                if (lineCount == MaxErrorLogLines || builder.Length >= MaxErrorLogChars)
+                {
+                    builder.AppendLine();
+                    builder.Append("...");
+                    break;
+                }
+                var remaining = MaxErrorLogChars - builder.Length;
+                if (line.Length > remaining)
+                {
+                    line = string.Concat(line.AsSpan(0, remaining), "...");
+                }
+                if (lineCount > 0)
+                {
+                    builder.AppendLine();
+                }
+                builder.Append(line);
+                lineCount++;
+            }
+            return builder.Length == 0 ? null : builder.ToString();
         }
 
         public async Task<QueryResult> Query(string query)
@@ -177,7 +270,12 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 
             if (transactionInfo.Status != StarRocksStatus.Ok)
             {
-                throw new StarRocksTransactionException(transactionInfo.Message);
+                await AddErrorLog(transactionInfo);
+                if (transactionInfo.HasRejectedRows)
+                {
+                    throw new StarRocksInvalidDataException(transactionInfo.GetErrorMessage());
+                }
+                throw new StarRocksTransactionException(transactionInfo.GetErrorMessage());
             }
         }
 
@@ -196,6 +294,8 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
             {
                 throw new StarRocksTransactionException("Failed to parse transaction response.");
             }
+            // Filtered rows are rejected at prepare
+            await AddErrorLog(transactionInfo);
             return transactionInfo;
         }
 
@@ -216,6 +316,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
                 throw new StarRocksTransactionException("Failed to parse stream load response.");
             }
 
+            await AddErrorLog(transactionResponse);
             return transactionResponse;
         }
 
