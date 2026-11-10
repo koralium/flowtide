@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Connector.StarRocks.Internal.HttpApi;
 using Microsoft.Extensions.Logging;
@@ -57,6 +58,19 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
             // First attempt plus five retries
             await inner.ReceivedWithAnyArgs(6).StreamLoad(default);
             Assert.Equal(6, logger.Entries.Count);
+        }
+
+        [Fact]
+        public async Task RejectedRowsAreNotRetried()
+        {
+            var inner = Substitute.For<IStarrocksClient>();
+            inner.StreamLoad(default).ReturnsForAnyArgs(_ => Task.FromException(new StarRocksInvalidDataException("too many filtered rows")));
+            var logger = new RecordingLogger();
+
+            await Assert.ThrowsAsync<StarRocksInvalidDataException>(() => CreateClient(inner, logger).StreamLoad(Load));
+
+            await inner.ReceivedWithAnyArgs(1).StreamLoad(default);
+            Assert.Single(logger.Entries);
         }
 
         [Fact]

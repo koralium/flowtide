@@ -12,16 +12,19 @@
 
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
+using FlowtideDotNet.Core.Operators.Write;
 
 namespace FlowtideDotNet.Connector.StarRocks.Tests
 {
     internal class StarRocksTestStream : FlowtideTestStream
     {
         private readonly StarRocksFixture starrocksFixture;
+        private readonly ExecutionMode executionMode;
 
-        public StarRocksTestStream(StarRocksFixture starrocksFixture, string testName) : base(testName)
+        public StarRocksTestStream(StarRocksFixture starrocksFixture, string testName, ExecutionMode executionMode = ExecutionMode.OnCheckpoint) : base(testName)
         {
             this.starrocksFixture = starrocksFixture;
+            this.executionMode = executionMode;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManager)
@@ -31,7 +34,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Tests
                 HttpUrl = starrocksFixture.Uri,
                 BackendHttpUrl = starrocksFixture.BackendUrl,
                 Credentials = () => new StarRocksUsernamePassword("root", ""),
-                ExecutionMode = Core.Operators.Write.ExecutionMode.OnCheckpoint
+                ExecutionMode = executionMode
             });
         }
     }

@@ -14,16 +14,9 @@ using System.Text.Json.Serialization;
 
 namespace FlowtideDotNet.Connector.StarRocks.Internal.HttpApi
 {
-    internal class TransactionInfo
+    internal class TransactionInfo : LoadResponse
     {
-        [JsonPropertyName("Status")]
-        [JsonConverter(typeof(StarRocksStatusConverter))]
-        public StarRocksStatus Status { get; set; }
-
         [JsonPropertyName("ExistingJobStatus")]
         public string? ExistingJobStatus { get; set; }
-
-        [JsonPropertyName("Message")]
-        public string? Message { get; set; }
     }
 }

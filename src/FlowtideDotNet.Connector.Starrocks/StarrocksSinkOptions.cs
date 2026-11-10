@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Connector.StarRocks.Exceptions;
 using FlowtideDotNet.Connector.StarRocks.Internal;
 using FlowtideDotNet.Core.Operators.Write;
 using Polly;
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.Connector.StarRocks
         /// Each failed attempt is logged as a warning.
         ///
         /// Default: 5 retries, exponential backoff from 1 second with jitter,
-        /// any error except the stream shutting down.
+        /// any error except rejected rows or the stream shutting down.
         /// Use <see cref="ResiliencePipeline.Empty"/> to disable retries.
         /// </summary>
         public ResiliencePipeline ResiliencePipeline { get; set; }
@@ -77,6 +78,8 @@ namespace FlowtideDotNet.Connector.StarRocks
                     // HttpClient timeouts are cancellations too, only a stopping stream is final
                     ShouldHandle = args => ValueTask.FromResult(
                         args.Outcome.Exception != null &&
+                        // Same rows would be rejected again
+                        args.Outcome.Exception is not StarRocksInvalidDataException &&
                         !(args.Outcome.Exception is OperationCanceledException && args.Context.CancellationToken.IsCancellationRequested))
                 })
                 .Build();

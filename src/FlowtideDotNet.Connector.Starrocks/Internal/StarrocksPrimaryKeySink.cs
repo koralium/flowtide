@@ -149,7 +149,7 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 var commitResult = await _httpClient.TransactionCommit(new StarRocksTransactionId(_databaseName, _tableName, label));
                 if (commitResult.Status != StarRocksStatus.Ok)
                 {
-                    throw new StarRocksTransactionException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.Message}'");
+                    throw new StarRocksTransactionException($"Transaction commit failed with status '{commitResult.Status}' and message '{commitResult.GetErrorMessage()}'");
                 }
             }
             await base.Compact();
@@ -235,7 +235,11 @@ namespace FlowtideDotNet.Connector.StarRocks.Internal
                 var prepareResponse = await _httpClient.TransactionPrepare(new StarRocksTransactionId(_databaseName, _tableName, labelIdentifier));
                 if (prepareResponse.Status != StarRocksStatus.Ok)
                 {
-                    throw new StarRocksTransactionException(prepareResponse.Message);
+                    if (prepareResponse.HasRejectedRows)
+                    {
+                        throw new StarRocksInvalidDataException(prepareResponse.GetErrorMessage());
+                    }
+                    throw new StarRocksTransactionException(prepareResponse.GetErrorMessage());
                 }
 
                 // Update the label id after we prepared and commit it to the checkpoint data
