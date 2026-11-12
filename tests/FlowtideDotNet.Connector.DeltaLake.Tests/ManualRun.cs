@@ -80,7 +80,6 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 }
             }
             var scratch = options.GetValueOrDefault("scratch") ?? Environment.CurrentDirectory;
-            var drive = new DriveInfo(Path.GetPathRoot(Path.GetFullPath(scratch))!);
 #if DEBUG
             const string configuration = "Debug";
 #else
@@ -109,7 +108,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 serverGc = GCSettings.IsServerGC,
                 commit = options.GetValueOrDefault("commit"),
                 scratch = Path.GetFullPath(scratch),
-                scratchFreeBytes = drive.AvailableFreeSpace,
+                scratchFreeBytes = CompactionProbe.FreeBytes(scratch),
                 options,
                 otherDotnetProcesses = OtherDotnetProcesses(),
                 watchdogMinutes = limit.TotalMinutes

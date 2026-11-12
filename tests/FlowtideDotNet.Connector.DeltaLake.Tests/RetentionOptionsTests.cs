@@ -212,11 +212,19 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         public async Task PropertiesCommitOnIdleTable()
         {
             var testName = nameof(PropertiesCommitOnIdleTable);
-            var storage = await ExistingTable(testName, new Dictionary<string, string>() { ["custom"] = "kept" });
-            await using var stream = new DeltaLakeSinkStream(testName, storage, Retained);
+            using var storage = await ExistingTable(testName, new Dictionary<string, string>() { ["custom"] = "kept" });
+            await using var stream = new DeltaLakeSinkStream(testName, storage, options =>
+            {
+                Retained(options);
+                options.EnableAutoCompaction = true;
+            });
             stream.WaitForUpdateDoesNotRequireDataChange();
             await stream.StartStream(UserInsert);
             await WaitForVersionCheckpointing(storage, "test", stream, 1);
+
+            var guard = stream.Sinks.Single().CompactionGuardForTests;
+            Assert.NotNull(guard);
+            Assert.Equal(0, guard.Commits);
 
             // commitInfo first, then the copied metaData, and no file
             var actions = await ReadCommitActions(storage, "test", 1);

@@ -32,5 +32,26 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.Compaction
 
         // Live rows per bin (R28)
         public long MaxRows { get; set; } = 10_000_000;
+
+        // Data commits a quiet table needs since its last settled candidate
+        public int QuietCommits { get; set; } = 500;
+
+        // The longest the quiet window grows
+        public TimeSpan MaxQuietWindow { get; set; } = TimeSpan.FromDays(30);
+
+        // Slots a cursor inspects per call in array mode
+        public int ScanSlots { get; set; } = 32_768;
+
+        // Leaf pages a cursor reads per call in tree mode
+        public int ScanLeaves { get; set; } = 256;
+
+        // Cold records read per call for revalidation
+        public int ColdReads { get; set; } = 64;
+
+        // Hits a cursor holds between calls
+        public int Hits { get; set; } = 50;
+
+        // Declined files remembered per table
+        public int MemoEntries { get; set; } = 1_024;
     }
 }

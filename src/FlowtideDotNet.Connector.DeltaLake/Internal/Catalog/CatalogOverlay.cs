@@ -26,12 +26,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         // Writes and reads statistics for the commit's schema
         public JsonSerializerOptions StatisticsOptions => _statisticsOptions;
 
-        public CatalogOverlay(long version, PruningLayout layout, JsonSerializerOptions statisticsOptions, DeltaTable? newHeader)
+        public CatalogOverlay(long version, PruningLayout layout, JsonSerializerOptions statisticsOptions, DeltaTable? newHeader, bool compactionEffective = false)
         {
             Version = version;
             Layout = layout;
             _statisticsOptions = statisticsOptions;
             NewHeader = newHeader;
+            CompactionEffective = compactionEffective;
+            RemovedClasses = compactionEffective ? new List<(long, byte)>() : null;
         }
 
         public long Version { get; }
@@ -51,7 +53,13 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         // An overwrite removes every file the catalog held
         public bool RemoveAll { get; set; }
 
+        // Rows carry size classes and the catalog counts them
+        public bool CompactionEffective { get; }
+
         public List<int> Removes { get; } = new List<int>();
+
+        // Size and row class per removal while compaction is on
+        public List<(long Size, byte Class)>? RemovedClasses { get; }
 
         // Files that keep their id, a new deletion vector for the same path
         public List<(int Id, DeltaFileRecord Record)> Updates { get; } = new List<(int, DeltaFileRecord)>();
@@ -66,7 +74,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             var statistics = ParseStatistics(add.Statistics, _statisticsOptions);
             var row = new byte[Layout.RowSize];
             Layout.WriteRow(statistics, row);
-            Adds.Add((id, DeltaFileRecord.FromAdd(add, statistics?.NumRecords), row));
+            var record = DeltaFileRecord.FromAdd(add, statistics?.NumRecords);
+            if (CompactionEffective)
+            {
+                row[0] |= SizeClass.Flags(SizeClass.Of(record));
+            }
+            Adds.Add((id, record, row));
+        }
+
+        public void Remove(int id, DeltaFileRecord record)
+        {
+            Removes.Add(id);
+            RemovedClasses?.Add((record.Size, SizeClass.Of(record)));
         }
 
         /// <summary>

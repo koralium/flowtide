@@ -96,7 +96,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var describe = new Dictionary<string, string>() { ["scratch"] = options.GetValueOrDefault("scratch", Path.GetTempPath()), ["profile"] = "managed admission only" };
                 return await ManualRun.RunAsync(args, describe, output => AdmissionAudit.GateAsync(options, output), Console.Out);
             }
-            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>] | compaction-fixture --root <dir> --fixture <name> | compaction-probe --root <dir> --fixture <name> [--commits n] [--discard n] [--pace s] [--variant off] [--rep n] [--store local|azure-like] [--source on|off] [--scratch <dir>] | admission-audit (--path <dir|file> [--largest n] | --groups n --rows r --scratch <dir>) [--batch rows] | compaction-audit --scratch <dir> (--table <fixture dir> [--dvs on|off] | --shape <name>) [--target MiB] [--codec zstd|snappy] [--skip n] [--bins n] [--keep <dir>]");
+            // P-track: discovery slices over a million files, one process per run
+            if (args.Length >= 1 && args[0] == "compaction-track")
+            {
+                var options = new Dictionary<string, string>(StringComparer.Ordinal);
+                for (int i = 1; i + 1 < args.Length; i += 2)
+                {
+                    options[args[i].TrimStart('-')] = args[i + 1];
+                }
+                var describe = new Dictionary<string, string>() { ["scratch"] = options.GetValueOrDefault("scratch", Path.GetTempPath()), ["profile"] = "spilling state" };
+                return await ManualRun.RunAsync(args, describe, output => CursorTrackProbe.RunAsync(options, output), Console.Out);
+            }
+            Console.Error.WriteLine("usage: hold-scratch <directory> | advance-fixture <directory> [versions] [--commit <sha>] | compaction-fixture --root <dir> --fixture <name> | compaction-probe --root <dir> --fixture <name> [--commits n] [--discard n] [--pace s] [--variant off|on] [--cold-after minutes] [--rep n] [--store local|azure-like] [--source on|off] [--scratch <dir>] | admission-audit (--path <dir|file> [--largest n] | --groups n --rows r --scratch <dir>) [--batch rows] | compaction-audit --scratch <dir> (--table <fixture dir> [--dvs on|off] | --shape <name>) [--target MiB] [--codec zstd|snappy] [--skip n] [--bins n] [--keep <dir>] | compaction-track --scratch <dir> --mode array|tree [--files n] [--laps n] [--seed n]");
             return ManualRun.HarnessError;
         }
     }

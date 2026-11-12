@@ -89,6 +89,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         public static IEnumerable<string> ColumnNames => s_columns.Select(x => x.Name);
+
+        public static IEnumerable<(string Name, string Type)> Columns => s_columns.Select(x => (x.Name, x.Type));
     }
 
     // Rows made from the key alone, the same in every process

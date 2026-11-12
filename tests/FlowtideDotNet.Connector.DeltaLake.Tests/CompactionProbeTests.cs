@@ -250,6 +250,40 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.StartsWith(key == "pace" ? "Need " : $"Unknown {key}", output.ToString());
         }
 
+        [Theory]
+        [InlineData("on", null, "is missing or was built by other code")]
+        [InlineData("on", "1", "is missing or was built by other code")]
+        [InlineData("on", "43200", "is missing or was built by other code")]
+        [InlineData("on", "0", "cold-after must be 1 to 43200 minutes, got 0")]
+        [InlineData("on", "43201", "cold-after must be 1 to 43200 minutes, got 43201")]
+        [InlineData("on", "half", "commits, discard, pace, rep and cold-after must be numbers")]
+        [InlineData("off", "30", "cold-after needs variant on")]
+        [InlineData("placebo", "30", "Variant placebo needs the planner")]
+        [InlineData("bogus", null, "Unknown variant 'bogus'")]
+        [InlineData(null, "30", "cold-after needs variant on")]
+        public async Task VariantOnAndColdAfterAreCheckedBeforeOpeningAFixture(string? variant, string? coldAfter, string message)
+        {
+            var options = new Dictionary<string, string>
+            {
+                ["fixture"] = "A",
+                ["root"] = Path.Join(Path.GetTempPath(), "absent-fixture-" + Guid.NewGuid().ToString("N")),
+                ["commits"] = "1",
+                ["discard"] = "0"
+            };
+            if (variant != null)
+            {
+                options["variant"] = variant;
+            }
+            if (coldAfter != null)
+            {
+                options["cold-after"] = coldAfter;
+            }
+            using var output = new StringWriter();
+
+            Assert.Equal(ManualRun.HarnessError, await CompactionProbe.RunAsync(options, output));
+            Assert.Contains(message, output.ToString());
+        }
+
         [Fact]
         public async Task InvalidBuildOptionsAreRejected()
         {
@@ -497,9 +531,114 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
 
                 Assert.Equal(ManualRun.Passed, await CompactionProbe.RunAsync(fixture, root, root, new CompactionProbe.RunSettings(3, 0, 0, false, false), output));
 
-                var summary = JsonDocument.Parse(output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries)[^1]).RootElement;
-                Assert.Equal("summary", summary.GetProperty("record").GetString());
-                Assert.Equal(JsonValueKind.Null, summary.GetProperty("cRowMicroseconds").ValueKind);
+                var documents = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => JsonDocument.Parse(x)).ToList();
+                try
+                {
+                    var records = documents.Select(x => x.RootElement).ToList();
+                    var commits = records.Where(x => x.GetProperty("record").GetString() == "commit").Select(x => x.GetProperty("value")).ToList();
+                    var summary = records[^1];
+                    Assert.Equal("summary", summary.GetProperty("record").GetString());
+                    Assert.Equal(JsonValueKind.Null, summary.GetProperty("cRowMicroseconds").ValueKind);
+                    Assert.Equal(JsonValueKind.Null, summary.GetProperty("coldAfterMinutes").ValueKind);
+                    Assert.All(commits, x => Assert.Equal(JsonValueKind.Null, x.GetProperty("SettledCandidates").ValueKind));
+                    Assert.All(commits, x => Assert.Equal(JsonValueKind.Null, x.GetProperty("GuardState").ValueKind));
+                }
+                finally
+                {
+                    foreach (var document in documents)
+                    {
+                        document.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Fact]
+        public async Task AVariantOnRunRecordsTheGuardEachCommit()
+        {
+            if (!ProbeKit.Enabled)
+            {
+                return;
+            }
+            var fixture = new CompactionFixture("Append", "append", 400, 200, 0, 1, DeletePlace.None, 0, true, false);
+            var root = ProbeTable.NewRoot();
+            try
+            {
+                using var output = new StringWriter();
+                Assert.Equal(ManualRun.Passed, await CompactionProbe.BuildAsync(fixture, root, output));
+
+                Assert.Equal(ManualRun.Passed, await CompactionProbe.RunAsync(fixture, root, root, new CompactionProbe.RunSettings(545, 0, 0, false, false, "on", 1, 18), output));
+
+                var documents = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => JsonDocument.Parse(x)).ToList();
+                try
+                {
+                    var records = documents.Select(x => x.RootElement).ToList();
+                    var commits = records.Where(x => x.GetProperty("record").GetString() == "commit").Select(x => x.GetProperty("value")).ToList();
+                    Assert.Equal(545, commits.Count);
+                    var guards = commits.Select(x => x.GetProperty("GuardState")).ToList();
+                    Assert.All(commits, x => Assert.Equal(0, x.GetProperty("SettledCandidates").GetInt64()));
+                    Assert.True(guards[0].GetProperty("Epoch").GetInt64() > 0);
+                    Assert.Single(guards.Select(x => x.GetProperty("Epoch").GetInt64()).Distinct());
+                    Assert.Equal(540_000, guards[0].GetProperty("WindowMs").GetInt64());
+                    Assert.True(guards[0].GetProperty("QuietSince").GetInt64() > 0);
+                    Assert.Equal(Enumerable.Range(1, 545).Select(x => (long)x), guards.Select(x => x.GetProperty("Commits").GetInt64()));
+                    Assert.All(guards.Take(539), x => Assert.Equal(3, x.GetProperty("State").GetInt32()));
+                    Assert.All(guards.Skip(539), x => Assert.Equal(1, x.GetProperty("State").GetInt32()));
+                    Assert.Equal(18, records[^1].GetProperty("coldAfterMinutes").GetInt32());
+                }
+                finally
+                {
+                    foreach (var document in documents)
+                    {
+                        document.Dispose();
+                    }
+                }
+            }
+            finally
+            {
+                Directory.Delete(root, true);
+            }
+        }
+
+        [Fact]
+        public async Task AVariantOnDeleteRunRecordsSettledCandidatesAndSequence()
+        {
+            if (!ProbeKit.Enabled)
+            {
+                return;
+            }
+            var fixture = new CompactionFixture("SettledDeletes", "settled-deletes", 7_000, 200, 200, 1, DeletePlace.Uniform, 0, true, false);
+            var root = ProbeTable.NewRoot();
+            try
+            {
+                using var output = new StringWriter();
+                Assert.Equal(ManualRun.Passed, await CompactionProbe.BuildAsync(fixture, root, output));
+
+                Assert.Equal(ManualRun.Passed, await CompactionProbe.RunAsync(fixture, root, root, new CompactionProbe.RunSettings(2, 0, 0, false, false, "on", 1, 1), output));
+
+                var documents = output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries).Select(x => JsonDocument.Parse(x)).ToList();
+                try
+                {
+                    var commits = documents.Select(x => x.RootElement).Where(x => x.GetProperty("record").GetString() == "commit").Select(x => x.GetProperty("value")).ToList();
+                    Assert.Equal(2, commits.Count);
+                    Assert.All(commits, x => Assert.True(x.GetProperty("SettledCandidates").GetInt64() > 0));
+                    var firstGuard = commits[0].GetProperty("GuardState");
+                    var secondGuard = commits[1].GetProperty("GuardState");
+                    Assert.Equal(1, firstGuard.GetProperty("Sequence").GetInt64());
+                    Assert.Equal(2, secondGuard.GetProperty("Sequence").GetInt64());
+                    Assert.True(secondGuard.GetProperty("QuietSince").GetInt64() > firstGuard.GetProperty("QuietSince").GetInt64());
+                }
+                finally
+                {
+                    foreach (var document in documents)
+                    {
+                        document.Dispose();
+                    }
+                }
             }
             finally
             {

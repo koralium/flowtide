@@ -94,6 +94,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         private IObjectState<DeltaLakePendingCommit>? _pendingCommit;
         // True while the committed temporary tree may hold rows that wait for a publication
         private IObjectState<bool>? _bufferDurable;
+        // The delete guard's window, only while compaction is enabled
+        private IObjectState<CompactionWindow>? _compactionWindow;
         // The tree may hold a retraction
         private bool _deletesSeen;
         // The staged bytes and catalog changes of this run's pending commit
@@ -217,6 +219,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _firstInsertDone = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("isFirstInsert");
             _pendingCommit = await stateManagerClient.GetOrCreateObjectStateAsync<DeltaLakePendingCommit>("pendingCommit");
             _bufferDurable = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("bufferDurable");
+            _compactionWindow = null;
+            if (_options.EnableAutoCompaction)
+            {
+                _compactionWindow = await stateManagerClient.GetOrCreateObjectStateAsync<CompactionWindow>("compactionGuard");
+                _compactionWindow.Value ??= new CompactionWindow();
+            }
             // Restored rows never pass this run's intake
             if (_bufferDurable.Value)
             {
@@ -230,7 +238,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             _metadataRetry = false;
             SetHealth(true);
             _catalog?.Dispose();
-            _catalog = await DeltaSinkCatalog.Open(stateManagerClient, _options, _tablePath, _writeRelation.TableSchema.Names, MemoryAllocator, Logger);
+            _catalog = await DeltaSinkCatalog.Open(stateManagerClient, _options, _tablePath, _writeRelation.TableSchema.Names, MemoryAllocator, Logger, _compactionWindow?.Value);
 
             // Meters outlive restarts
             if (!_gaugesCreated)
@@ -492,6 +500,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             await _firstInsertDone.Commit();
             await _pendingCommit.Commit();
             await _bufferDurable.Commit();
+            if (_compactionWindow != null)
+            {
+                await _compactionWindow.Commit();
+            }
         }
 
         // A halted sink's waiting stage, marked once for the worker to drop its hints
@@ -635,6 +647,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         }
 
         internal DeleteStatistics? DeleteStatisticsForTests => _deleteStatistics;
+
+        internal CompactionGuard? CompactionGuardForTests => _catalog?.Guard;
+
+        internal CompactionWindow? CompactionWindowForTests => _compactionWindow?.Value;
+
+        internal bool HasCompactionStateForTests => _compactionWindow != null;
+
+        internal long CatalogEpochForTests => _catalog?.CatalogEpoch ?? 0;
 
         /// <summary>
         /// The version CommitVersion hands off, -1 for none: the validated head when nothing is pending, the commit once it is published.
@@ -793,6 +813,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
             DeltaTable? newHeader = null;
             List<DeltaAction> actions = new List<DeltaAction>();
             var currentTime = _options.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
+            // A commit selecting a settled file is not quiet
+            var sequenceAtStart = _catalog.Guard?.Sequence ?? 0;
             var stageId = Guid.NewGuid().ToString("N");
             // The paths this commit writes fresh, recorded in its commitInfo
             var created = new List<string>();
@@ -1015,7 +1037,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 demand.Add(-(long)weight);
                                 if (deleteWriter.WrittenCount >= _limits.RowCap || deleteWriter.WrittenBytes * _limits.WrittenSlack + (long)deleteWriter.WrittenCount * rowBytes >= _limits.ByteCap)
                                 {
-                                    deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes);
+                                    deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes, currentTime);
                                 }
                             }
                             else
@@ -1044,7 +1066,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
                     if (deleteWriter.WrittenCount > 0)
                     {
-                        deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes);
+                        deleteWritten |= await ResolveBatch(overwrite, cdcWriter, actions, created, table, schema, deleteWriter, demand, deletes, currentTime);
                     }
 
                     // Inserts first, so their files stay in key order
@@ -1098,6 +1120,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     };
                     _stagedBytes = staged.Bytes;
                     _stagedOverlay = overlay;
+                    _catalog.Guard?.CommitStaged(!metadataOnly && !overwrite, sequenceAtStart);
                     if (anchor != 0)
                     {
                         anchorWorker!.AnchorStaged(anchor, nextVersion);
@@ -1243,7 +1266,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
 
         // Match the batch against the candidates in id order
         // True when a copy matched
-        private async Task<bool> ResolveBatch(bool overwrite, ParquetSharpWriter? cdcWriter, List<DeltaAction> actions, List<string> created, DeltaTable? table, StructType schema, ParquetSharpWriter deleteWriter, List<long> demand, DeleteRun deletes)
+        private async Task<bool> ResolveBatch(bool overwrite, ParquetSharpWriter? cdcWriter, List<DeltaAction> actions, List<string> created, DeltaTable? table, StructType schema, ParquetSharpWriter deleteWriter, List<long> demand, DeleteRun deletes, long currentTime)
         {
             Debug.Assert(_catalog != null);
             Debug.Assert(_limits != null);
@@ -1274,7 +1297,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                     var depth = _limits.ReadAheadOn(storage);
                     var matcher = new FileMatcher(storage, _tablePath, _tableName, schema, table.ColumnMappingById);
                     var missing = new List<int>();
-                    for (int start = 0; start < candidates.Count && batch.Unresolved > 0; start += _limits.RecordGroup)
+                    var guard = _catalog.Guard;
+                    var start = 0;
+                    for (; start < candidates.Count && batch.Unresolved > 0; start += _limits.RecordGroup)
                     {
                         var end = Math.Min(start + _limits.RecordGroup, candidates.Count);
                         missing.Clear();
@@ -1288,6 +1313,10 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                         foreach (var (id, record) in await _catalog.GetFiles(missing))
                         {
                             deletes.Records[id] = record;
+                        }
+                        if (guard != null)
+                        {
+                            deletes.Statistics.SettledCandidates += guard.CheckGroup(candidates, start, end, deletes.Records, currentTime);
                         }
                         await using (var ahead = depth > 1 ? CandidateReadAhead.Create(storage, _tablePath, candidates, start, end, deletes.Records, depth, _readAheadStop) : null)
                         {
@@ -1304,6 +1333,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
                                 deletes.Records.Remove(candidates[c]);
                             }
                         }
+                    }
+                    // Groups never read count as settled
+                    if (guard != null && start < candidates.Count)
+                    {
+                        deletes.Statistics.SettledCandidates += candidates.Count - start;
+                        guard.SettledCandidate(currentTime);
                     }
                 }
                 CheckUnmatched(batch, deleteBatch);

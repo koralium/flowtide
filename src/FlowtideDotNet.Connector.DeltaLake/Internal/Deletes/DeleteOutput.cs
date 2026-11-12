@@ -74,7 +74,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
 
                 if (count == rows)
                 {
-                    overlay.Removes.Add(id);
+                    overlay.Remove(id, file);
                     continue;
                 }
                 if (_deletionVectors && (double)count / rows < 0.1)
@@ -102,7 +102,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
                 {
                     await _writeFile(writer);
                 }
-                overlay.Removes.Add(id);
+                overlay.Remove(id, file);
             }
 
             // Written last, unless a roll already wrote one
