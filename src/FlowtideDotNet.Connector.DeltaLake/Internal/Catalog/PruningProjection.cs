@@ -136,14 +136,24 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         }
 
         // Clears a row and returns whether it was live and its flags
-        public async ValueTask<(bool Found, byte Flags)> Remove(int id)
+        public ValueTask<(bool Found, byte Flags)> Remove(int id)
         {
             if (_treeMode)
             {
-                _removedFlags = 0;
-                var operation = await _tree.RMWNoResult(id, null, _removeRow);
-                return (operation == GenericWriteOperation.Delete, _removedFlags);
+                return RemoveFromTree(id);
             }
+            return new ValueTask<(bool, byte)>(RemoveFromArray(id));
+        }
+
+        private async ValueTask<(bool Found, byte Flags)> RemoveFromTree(int id)
+        {
+            _removedFlags = 0;
+            var operation = await _tree.RMWNoResult(id, null, _removeRow);
+            return (operation == GenericWriteOperation.Delete, _removedFlags);
+        }
+
+        private (bool Found, byte Flags) RemoveFromArray(int id)
+        {
             if ((uint)id >= (uint)_capacity)
             {
                 return (false, 0);

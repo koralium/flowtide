@@ -529,9 +529,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             return (null, GenericWriteOperation.Delete);
         }
 
+        private static long NextCatalogEpoch()
+        {
+            return Interlocked.Increment(ref s_catalogEpoch);
+        }
+
         private void BumpEpoch()
         {
-            Volatile.Write(ref _catalogEpoch, Interlocked.Increment(ref s_catalogEpoch));
+            Volatile.Write(ref _catalogEpoch, NextCatalogEpoch());
             _guard?.Restart(Now());
             _declines?.Clear();
             if (_cursors != null)
