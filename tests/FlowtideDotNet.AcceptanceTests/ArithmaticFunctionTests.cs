@@ -538,7 +538,7 @@ namespace FlowtideDotNet.AcceptanceTests
             GenerateData();
             await StartStream("INSERT INTO output SELECT userkey % 0 as UserKey FROM users");
             await WaitForUpdate();
-            AssertCurrentDataEqual(Users.Select(x => new { UserKey = x.UserKey % (double)0 }));
+            AssertCurrentDataEqual(Users.Select(x => new { UserKey = default(long?) }));
         }
 
         [Fact]
@@ -1373,7 +1373,7 @@ namespace FlowtideDotNet.AcceptanceTests
         public async Task SelectWithSignNaN()
         {
             GenerateData();
-            await StartStream("INSERT INTO output SELECT sign(userkey % 0) as UserKey FROM users");
+            await StartStream("INSERT INTO output SELECT sign(userkey % CAST(0 AS DOUBLE)) as UserKey FROM users");
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Select(x => new { a = x.UserKey % (double)0 }));
         }

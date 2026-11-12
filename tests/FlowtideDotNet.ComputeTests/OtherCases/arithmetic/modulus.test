@@ -1,0 +1,17 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.substrait:functions_arithmetic'
+
+# Integer remainder uses truncating division and returns null for a zero divisor.
+modulus(7::i64, 3::i64) = 1::i64
+modulus(-7::i64, 3::i64) = -1::i64
+modulus(7::i64, -3::i64) = 1::i64
+modulus(-7::i64, -3::i64) = -1::i64
+modulus(7::i64, 0::i64) = null::i64
+modulus(0::i64, 0::i64) = null::i64
+modulus(null::i64, 3::i64) = null::i64
+modulus(7::i64, null::i64) = null::i64
+modulus(7::i64, 3::i64) [division_type:TRUNCATE, overflow:ERROR, on_domain_error:NULL] = 1::i64
+modulus(7::i64, 0::i64) [division_type:TRUNCATE, overflow:ERROR, on_domain_error:NULL] = null::i64
+
+# CLR Int64 remainder throws when the division overflows.
+modulus(-9223372036854775808::i64, -1::i64) = <!ERROR>

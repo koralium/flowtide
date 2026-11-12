@@ -357,18 +357,33 @@ namespace FlowtideDotNet.Substrait.Sql
                             }
                         }, "$divide", returnType);
                 case BinaryOperator.Modulo:
-                    returnType = ArithmeticReturnType(left.Type, right.Type);
-                    return new ExpressionData(
-                        new ScalarFunction()
+                    var decimalModulusType = InferDecimalModulusType(left.Type, right.Type);
+                    returnType = decimalModulusType ?? ArithmeticReturnType(left.Type, right.Type);
+                    var integerModulus = left.Type.Type is SubstraitType.Int32 or SubstraitType.Int64
+                        && right.Type.Type is SubstraitType.Int32 or SubstraitType.Int64;
+                    var modulusFunction = new ScalarFunction
+                    {
+                        ExtensionUrn = FunctionsArithmetic.FlowtideUrn,
+                        ExtensionName = FunctionsArithmetic.Modulus,
+                        Arguments = [left.Expr, right.Expr]
+                    };
+                    if (integerModulus)
+                    {
+                        returnType.Nullable = true;
+                        modulusFunction.ExtensionUrn = FunctionsArithmetic.Urn;
+                        modulusFunction.Options = new()
                         {
-                            ExtensionUrn = FunctionsArithmetic.FlowtideUrn,
-                            ExtensionName = FunctionsArithmetic.Modulo,
-                            Arguments = new List<Expressions.Expression>()
-                            {
-                                left.Expr,
-                                right.Expr
-                            }
-                        }, "$modulo", returnType);
+                            ["division_type"] = "TRUNCATE",
+                            ["overflow"] = "ERROR",
+                            ["on_domain_error"] = "NULL"
+                        };
+                    }
+                    else if (decimalModulusType != null)
+                    {
+                        modulusFunction.ExtensionUrn = FunctionsArithmetic.DecimalUrn;
+                        modulusFunction.Options = new() { ["overflow"] = "ERROR" };
+                    }
+                    return new ExpressionData(modulusFunction, "$modulus", returnType);
                 case BinaryOperator.Xor:
                     returnType = left.Type;
                     return new ExpressionData(
@@ -388,6 +403,26 @@ namespace FlowtideDotNet.Substrait.Sql
                 default:
                     throw new NotImplementedException($"Binary operation {binaryOp.Op.ToString()}' is not yet supported in SQL mode.");
             }
+        }
+
+        private static DecimalType? InferDecimalModulusType(SubstraitBaseType left, SubstraitBaseType right)
+        {
+            if (left is not DecimalType { Precision: int leftPrecision, Scale: int leftScale }
+                || right is not DecimalType { Precision: int rightPrecision, Scale: int rightScale }
+                || leftPrecision is < 1 or > 28 || rightPrecision is < 1 or > 28
+                || leftScale < 0 || leftScale > leftPrecision || rightScale < 0 || rightScale > rightPrecision)
+            {
+                return null;
+            }
+            // With input precision <= 28, Substrait's decimal modulus result also fits <= 28;
+            // its 38-digit precision cap and scale-reduction branch are never reached.
+            var scale = Math.Max(leftScale, rightScale);
+            return new DecimalType
+            {
+                Precision = Math.Min(leftPrecision - leftScale, rightPrecision - rightScale) + scale,
+                Scale = scale,
+                Nullable = left.Nullable || right.Nullable
+            };
         }
 
         private SubstraitBaseType ArithmeticReturnType(SubstraitBaseType left, SubstraitBaseType right)

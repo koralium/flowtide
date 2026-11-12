@@ -12,12 +12,15 @@
 
 using FlexBuffers;
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using LinqExpression = System.Linq.Expressions.Expression;
 
 namespace FlowtideDotNet.Core.Compute.Columnar.Functions
 {
@@ -28,7 +31,20 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Add, typeof(BuiltInArithmeticFunctions), nameof(AddImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Subtract, typeof(BuiltInArithmeticFunctions), nameof(SubtractImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Negate, typeof(BuiltInArithmeticFunctions), nameof(NegateImplementation));
-            functionsRegister.RegisterScalarMethod(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Modulo, typeof(BuiltInArithmeticFunctions), nameof(ModuloImplementation));
+            foreach (var urn in new[] { FunctionsArithmetic.Urn, FunctionsArithmetic.DecimalUrn, FunctionsArithmetic.FlowtideUrn })
+            {
+                functionsRegister.RegisterColumnScalarFunction(urn, FunctionsArithmetic.Modulus, (function, parameters, visitor, _) =>
+                {
+                    ModulusOptions.Validate(function);
+                    var left = visitor.Visit(function.Arguments[0], parameters.UpdateResultDataValue(LinqExpression.Constant(new DataValueContainer())))
+                        ?? throw new InvalidOperationException("The first modulus argument could not be compiled.");
+                    var right = visitor.Visit(function.Arguments[1], parameters.UpdateResultDataValue(LinqExpression.Constant(new DataValueContainer())))
+                        ?? throw new InvalidOperationException("The second modulus argument could not be compiled.");
+                    var method = typeof(BuiltInArithmeticFunctions).GetMethod(nameof(ModulusImplementation), BindingFlags.NonPublic | BindingFlags.Static)!;
+                    return LinqExpression.Call(method.MakeGenericMethod(left.Type, right.Type), left, right,
+                        LinqExpression.Constant(new DataValueContainer()));
+                });
+            }
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Divide, typeof(BuiltInArithmeticFunctions), nameof(DivideImplementation));
             functionsRegister.RegisterScalarMethod(FunctionsArithmetic.Urn, FunctionsArithmetic.Multiply, typeof(BuiltInArithmeticFunctions), nameof(MultiplyImplementation));
         }
@@ -208,7 +224,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             return result;
         }
 
-        private static IDataValue ModuloImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
+        private static IDataValue ModulusImplementation<T1, T2>(T1 x, T2 y, DataValueContainer result)
             where T1 : IDataValue
             where T2 : IDataValue
         {
@@ -240,20 +256,14 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 // Int add int, will always return an int
                 if (y.Type == ArrowTypeId.Int64)
                 {
-                    try
+                    if (y.AsLong == 0)
                     {
-                        result._type = ArrowTypeId.Int64;
-                        result._int64Value = new Int64Value(x.AsLong % y.AsLong);
+                        result._type = ArrowTypeId.Null;
                         return result;
                     }
-                    catch (DivideByZeroException)
-                    {
-                        // Handle divide by zero
-                        result._type = ArrowTypeId.Double;
-                        result._doubleValue = new DoubleValue(double.NaN);
-                        return result;
-                    }
-
+                    result._type = ArrowTypeId.Int64;
+                    result._int64Value = new Int64Value(x.AsLong % y.AsLong);
+                    return result;
                 }
                 // Int add float, will always return a float
                 else if (y.Type == ArrowTypeId.Double)

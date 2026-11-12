@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Compute.Internal.StatefulAggregations;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using System.Buffers.Binary;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace FlowtideDotNet.Core.Compute.Internal
 {
@@ -30,7 +31,19 @@ namespace FlowtideDotNet.Core.Compute.Internal
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Multiply, (x, y) => MultiplyImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Divide, (x, y) => DivideImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Negate, (x) => NegateImplementation(x));
-            functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.FlowtideUrn, FunctionsArithmetic.Modulo, (x, y) => ModuloImplementation(x, y));
+            foreach (var urn in new[] { FunctionsArithmetic.Urn, FunctionsArithmetic.DecimalUrn, FunctionsArithmetic.FlowtideUrn })
+            {
+                functionsRegister.RegisterScalarFunction(urn, FunctionsArithmetic.Modulus, (function, parameters, visitor) =>
+                {
+                    ModulusOptions.Validate(function);
+                    var left = visitor.Visit(function.Arguments[0], parameters)
+                        ?? throw new InvalidOperationException("The first modulus argument could not be compiled.");
+                    var right = visitor.Visit(function.Arguments[1], parameters)
+                        ?? throw new InvalidOperationException("The second modulus argument could not be compiled.");
+                    var method = typeof(BuiltInArithmaticFunctions).GetMethod(nameof(ModulusImplementation), BindingFlags.NonPublic | BindingFlags.Static)!;
+                    return Expression.Call(method, left, right);
+                });
+            }
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Power, (x, y) => PowerImplementation(x, y));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Sqrt, (x) => SqrtImplementation(x));
             functionsRegister.RegisterScalarFunctionWithExpression(FunctionsArithmetic.Urn, FunctionsArithmetic.Exp, (x) => ExpImplementation(x));
@@ -332,7 +345,7 @@ namespace FlowtideDotNet.Core.Compute.Internal
             return NullValue;
         }
 
-        private static FlxValue ModuloImplementation(FlxValue x, FlxValue y)
+        private static FlxValue ModulusImplementation(FlxValue x, FlxValue y)
         {
             if (x.ValueType == FlexBuffers.Type.Float)
             {
@@ -356,15 +369,11 @@ namespace FlowtideDotNet.Core.Compute.Internal
                 // Int add int, will always return an int
                 if (y.ValueType == FlexBuffers.Type.Int)
                 {
-                    try
+                    if (y.AsLong == 0)
                     {
-                        return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong % y.AsLong));
+                        return NullValue;
                     }
-                    catch (DivideByZeroException)
-                    {
-                        return FlxValue.FromBytes(FlexBuffer.SingleValue(double.NaN));
-                    }
-
+                    return FlxValue.FromBytes(FlexBuffer.SingleValue(x.AsLong % y.AsLong));
                 }
                 // Int add float, will always return a float
                 else if (y.ValueType == FlexBuffers.Type.Float)

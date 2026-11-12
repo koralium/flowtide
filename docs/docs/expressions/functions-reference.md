@@ -979,11 +979,38 @@ String operation; incompatible input kinds generally yield null.
 
 ### ` x % y `
 
-Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric inputs are also accepted natively.
+**Profile: i64_i64**
 
-- **Extension signatures:** ` modulo:i64_i64, modulo:fp64_fp64 `
+Integer remainder with the sign of the dividend. A zero divisor returns null, including for non-null inputs. Null inputs return null. Int64 overflow throws. FLOOR division and other error/overflow policies are not implemented. SQL uses this standard binding when both declared operands are integer types.
+
+- **Extension signatures:** ` modulus:i64_i64 `
+- **Extension source:** ` extension:io.substrait:functions_arithmetic `
+- **Extension type declaration:** ` (i64, i64) -> i64 `
+- **Required Substrait option division_type:** ` TRUNCATE `
+- **Required Substrait option on_domain_error:** ` NULL `
+- **Required Substrait option overflow:** ` ERROR `
+
+[Detailed documentation](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html)
+
+**Profile: dec_dec**
+
+Decimal remainder for two declared DECIMAL(P,S) operands with precision at most 28 and valid scales. The result scale is max(S1,S2) and its precision is min(P1-S1,P2-S2)+max(S1,S2), matching the upstream formula within this supported input range. Null inputs return null; decimal division by zero and overflow throw. SQL selects this standard binding when both input precisions and scales are known. Decimal casts currently do not retain these parameters and use the Flowtide profile instead.
+
+- **Extension signatures:** ` modulus:dec_dec `
+- **Extension source:** ` extension:io.substrait:functions_arithmetic_decimal `
+- **Extension type declaration:** ` (decimal<P1,S1>, decimal<P2,S2>) -> init_scale = max(S1,S2) init_prec = min(P1 - S1, P2 - S2) + init_scale min_scale = min(init_scale, 6) delta = init_prec - 38 prec = min(init_prec, 38) scale_after_borrow = max(init_scale - delta, min_scale) scale = init_prec > 38 ? scale_after_borrow : init_scale DECIMAL<prec, scale> `
+- **Required Substrait option overflow:** ` ERROR `
+- **Decimal precision max:** ` 28 `
+
+[Detailed documentation](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html)
+
+**Profile: fp64_fp64, any_any**
+
+Remainder for floating-point, mixed numeric or unresolved decimal/dynamic inputs. Floating-point division by zero produces NaN. Integer values with a zero divisor return null. Decimal arithmetic uses System.Decimal; decimal division by zero and overflow throw. Unsupported value kinds return null. Typed integer SQL operands use the standard arithmetic extension instead; resolved decimal pairs use the standard decimal extension.
+
+- **Extension signatures:** ` modulus:fp64_fp64, modulus:any_any `
 - **Extension source:** ` extension:io.github.koralium.flowtide:functions_arithmetic `
-- **Extension type declaration:** ` (i64, i64) -> flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT `
+- **Extension type declaration:** ` (any1, any2) -> flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT `
 - **Extension type declaration:** ` (fp64, fp64) -> fp64?; nullability=DECLARED_OUTPUT `
 
 [Detailed documentation](https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html)
