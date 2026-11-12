@@ -141,13 +141,14 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         [Fact]
         public async Task OverwriteOwnsOnlyItsNewFiles()
         {
-            var storage = Files.Of.InternalMemory($"./{nameof(OverwriteOwnsOnlyItsNewFiles)}");
+            using var storage = Files.Of.InternalMemory($"./{nameof(OverwriteOwnsOnlyItsNewFiles)}");
             await WriteCommit(storage, "test", 0, Protocol(), Metadata(UserSchema), new DeltaAction() { Add = new DeltaAddAction() { Path = "old.parquet", Size = 1, DataChange = true, PartitionValues = new Dictionary<string, string>() } });
-            await using var stream = new DeltaLakeSinkStream(nameof(OverwriteOwnsOnlyItsNewFiles), storage);
+            await using var stream = new DeltaLakeSinkStream(nameof(OverwriteOwnsOnlyItsNewFiles), storage, options => options.EnableAutoCompaction = true);
             stream.Generate(10);
             await stream.StartStream(UserInsert.Replace("INSERT INTO test", "INSERT OVERWRITE test"));
             await WaitForVersion(storage, "test", stream, 1);
 
+            Assert.Equal(0, stream.Sinks.Single().CompactionGuardForTests!.Commits);
             var created = await CreatedFiles(storage, 1);
             Assert.DoesNotContain("old.parquet", created);
             Assert.Equal((await Written(storage, 1)).OrderBy(x => x, StringComparer.Ordinal), created.OrderBy(x => x, StringComparer.Ordinal));

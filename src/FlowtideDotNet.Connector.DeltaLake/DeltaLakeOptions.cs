@@ -158,5 +158,14 @@ namespace FlowtideDotNet.Connector.DeltaLake
 
         // Tests and probes change the delete and intake knobs
         internal Internal.Deletes.DeleteLimits? DeleteLimitsOverride { get; set; }
+
+        // Internal until the public compaction options exist
+        internal bool EnableAutoCompaction { get; set; }
+
+        // Files written at least this long ago can be compacted
+        internal TimeSpan CompactionColdAfter { get; set; } = TimeSpan.FromMinutes(30);
+
+        // Tests and probes change the compaction knobs
+        internal Internal.Maintenance.Compaction.CompactionLimits? CompactionLimitsOverride { get; set; }
     }
 }

@@ -87,6 +87,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Deletes
         // Files the bounds selected, before any early stop
         public long Candidates { get; set; }
 
+        // Candidates the compaction guard counted as settled
+        public long SettledCandidates { get; set; }
+
         public long FilesScanned { get; set; }
 
         public long RowsScanned { get; set; }

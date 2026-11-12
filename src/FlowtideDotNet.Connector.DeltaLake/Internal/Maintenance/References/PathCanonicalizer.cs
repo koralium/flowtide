@@ -967,9 +967,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Maintenance.References
         private static int HexValue(char c) => c <= '9' ? c - '0' : (c | 0x20) - 'a' + 10;
 
         // The length of an RFC 3986 scheme before its ':', zero when there is none
-        private static int SchemeLength(string value)
+        internal static int SchemeLength(string value)
         {
-            if (!char.IsAsciiLetter(value[0]))
+            if (value.Length == 0 || !char.IsAsciiLetter(value[0]))
             {
                 return 0;
             }

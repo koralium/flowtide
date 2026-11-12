@@ -18,6 +18,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
     // The row must not be kept past the call, and the projection must not change during the scan
     internal delegate void BoundsVisitor(int id, ReadOnlySpan<byte> row);
 
+    // Returns false to stop the scan after this id
+    internal delegate bool SlotVisitor(int id);
+
+    // Next is -1 once the scan passed the last id
+    internal readonly record struct SlotScan(int Next, int Inspected, int Leaves);
+
     /// <summary>
     /// The pruning rows of the live files, a scan reads no cold record.
     /// Rows sit in an array indexed by file id under the process-wide reservation, or in a spillable tree when
@@ -34,6 +40,9 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
         private readonly PruningGrant _grant = new PruningGrant();
         private readonly IBPlusTree<int, byte[], PrimitiveListKeyContainer<int>, ManagedValueContainer<byte[]>> _tree;
         private readonly PruningLayout _fullLayout;
+        // Made once, so a removal allocates no more than a delete
+        private readonly GenericWriteFunction<byte[]> _removeRow;
+        private byte _removedFlags;
         private PruningLayout _layout;
         private FlowtideMemory _rows;
         private int _capacity;
@@ -47,6 +56,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             _tree = tree;
             _fullLayout = layout;
             _layout = layout;
+            _removeRow = RemoveRow;
         }
 
         /// <summary>
@@ -125,22 +135,43 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
             target[0] |= Live;
         }
 
-        public async Task Remove(int id)
+        // Clears a row and returns whether it was live and its flags
+        public ValueTask<(bool Found, byte Flags)> Remove(int id)
         {
             if (_treeMode)
             {
-                await _tree.Delete(id);
-                return;
+                return RemoveFromTree(id);
             }
-            ClearRow(id);
+            return new ValueTask<(bool, byte)>(RemoveFromArray(id));
         }
 
-        private void ClearRow(int id)
+        private async ValueTask<(bool Found, byte Flags)> RemoveFromTree(int id)
         {
-            if (id < _capacity)
+            _removedFlags = 0;
+            var operation = await _tree.RMWNoResult(id, null, _removeRow);
+            return (operation == GenericWriteOperation.Delete, _removedFlags);
+        }
+
+        private (bool Found, byte Flags) RemoveFromArray(int id)
+        {
+            if ((uint)id >= (uint)_capacity)
             {
-                _rows.Span.Slice(id * _layout.RowSize, _layout.RowSize).Clear();
+                return (false, 0);
             }
+            var row = _rows.Span.Slice(id * _layout.RowSize, _layout.RowSize);
+            var first = row[0];
+            row.Clear();
+            return ((first & Live) != 0, first);
+        }
+
+        private (byte[]? result, GenericWriteOperation operation) RemoveRow(byte[]? input, byte[]? current, bool exists)
+        {
+            if (!exists)
+            {
+                return (null, GenericWriteOperation.None);
+            }
+            _removedFlags = current![0];
+            return (null, GenericWriteOperation.Delete);
         }
 
         /// <summary>
@@ -187,6 +218,77 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal.Catalog
                 }
                 visit(id, row);
             }
+        }
+
+        // Visits wanted live ids within a slot and leaf budget
+        public ValueTask<SlotScan> ScanFrom(int from, int wanted, int slots, int leaves, SlotVisitor visit)
+        {
+            if (_treeMode)
+            {
+                return ScanTreeFrom(from, wanted, slots, leaves, visit);
+            }
+            return new ValueTask<SlotScan>(ScanArrayFrom(from, wanted, slots, visit));
+        }
+
+        // Reads only the first byte of each row
+        private SlotScan ScanArrayFrom(int from, int wanted, int slots, SlotVisitor visit)
+        {
+            if (from >= _capacity)
+            {
+                return new SlotScan(-1, 0, 0);
+            }
+            var rows = _rows.Span;
+            var rowSize = _layout.RowSize;
+            for (int id = from; id < _capacity; id++)
+            {
+                if (id - from == slots)
+                {
+                    return new SlotScan(id, slots, 0);
+                }
+                var flags = rows[id * rowSize];
+                if ((flags & Live) != 0 && IsWanted(wanted, flags) && !visit(id))
+                {
+                    return new SlotScan(id + 1, id + 1 - from, 0);
+                }
+            }
+            return new SlotScan(-1, _capacity - from, 0);
+        }
+
+        // Every id in the tree is live, whatever its bits say
+        private async ValueTask<SlotScan> ScanTreeFrom(int from, int wanted, int slots, int leaves, SlotVisitor visit)
+        {
+            using var iterator = _tree.CreateIterator();
+            await iterator.Seek(from);
+            var seen = 0;
+            var pages = 0;
+            var next = from;
+            await foreach (var page in iterator)
+            {
+                pages++;
+                foreach (var kv in page)
+                {
+                    if (seen == slots)
+                    {
+                        return new SlotScan(next, seen, pages);
+                    }
+                    seen++;
+                    next = kv.Key + 1;
+                    if (IsWanted(wanted, kv.Value[0]) && !visit(kv.Key))
+                    {
+                        return new SlotScan(next, seen, pages);
+                    }
+                }
+                if (seen == slots || pages == leaves)
+                {
+                    return new SlotScan(next, seen, pages);
+                }
+            }
+            return new SlotScan(-1, seen, pages);
+        }
+
+        private static bool IsWanted(int wanted, byte flags)
+        {
+            return ((wanted >> SizeClass.FromFlags(flags)) & 1) != 0;
         }
 
         // Doubles the arrays, a refused first column moves the rows to the tree

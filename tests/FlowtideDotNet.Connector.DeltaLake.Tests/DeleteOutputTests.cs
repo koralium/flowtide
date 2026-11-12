@@ -314,6 +314,31 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             Assert.Equal(new[] { 0 }, output.Overlay.Removes);
         }
 
+        [Fact]
+        public async Task ADeletionVectorKeepsTheFilesWriteTime()
+        {
+            var output = await Delete(InexactFile("int96"), Timestamps, deletionVectors: true, deleted: new long[] { 0 }, modificationTime: 777);
+
+            var (id, record) = Assert.Single(output.Overlay.Updates);
+            Assert.Equal(0, id);
+            Assert.Equal(777, record.ModificationTime);
+            Assert.Empty(output.Overlay.Removes);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ARemovedFileCarriesItsSizeAndClass(bool wholeFile)
+        {
+            var deleted = wholeFile ? Enumerable.Range(0, 10).Select(x => (long)x).ToArray() : new long[] { 0, 5 };
+
+            var output = await Delete(InexactFile("int96"), Timestamps, deletionVectors: false, deleted: deleted, compactionEffective: true, recordSize: 20_000);
+
+            Assert.Equal(0, Assert.Single(output.Overlay.Removes));
+            Assert.Equal((20_000L, (byte)2), Assert.Single(output.Overlay.RemovedClasses!));
+            Assert.Equal(wholeFile ? 0 : 1, output.Written.Count);
+        }
+
         [Theory]
         [InlineData(2)]
         [InlineData(0)]
@@ -453,7 +478,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Runs the delete output on one file of the table
-        private static async Task<Output> Delete(byte[] source, Delta.StructType table, bool deletionVectors, long[] deleted, bool rollEveryBatch = false, long[]? existing = null, List<string>? requests = null, IDeleteVector? existingVector = null, string? statistics = null)
+        private static async Task<Output> Delete(byte[] source, Delta.StructType table, bool deletionVectors, long[] deleted, bool rollEveryBatch = false, long[]? existing = null, List<string>? requests = null, IDeleteVector? existingVector = null, string? statistics = null, bool compactionEffective = false, long? recordSize = null, long modificationTime = 0)
         {
             var storage = new HookFileStorage(Files.Of.InternalMemory("./" + ScratchOwners.ShortId()));
             using (var write = await storage.OpenWrite("/t/data.parquet"))
@@ -472,11 +497,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             }
             var options = new JsonSerializerOptions();
             options.Converters.Add(new Internal.Delta.Stats.DeltaStatisticsConverter(table));
-            var overlay = new CatalogOverlay(1, PruningLayout.Create(table, Array.Empty<string>(), 8), options, null);
+            var overlay = new CatalogOverlay(1, PruningLayout.Create(table, Array.Empty<string>(), 8), options, null, compactionEffective);
             var actions = new List<DeltaAction>();
             var created = new List<string>();
             var written = new List<(string, long)>();
-            var record = new DeltaFileRecord() { Path = "data.parquet", Size = source.Length, PartitionValues = new Dictionary<string, string>(), Statistics = statistics };
+            var record = new DeltaFileRecord() { Path = "data.parquet", Size = recordSize ?? source.Length, ModificationTime = modificationTime, PartitionValues = new Dictionary<string, string>(), Statistics = statistics };
 
             storage.ClearRequests();
             var output = new DeleteOutput(storage, "/t", "t", table, false, deletionVectors, null, _ => rollEveryBatch, async writer =>

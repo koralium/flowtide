@@ -38,13 +38,16 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         // Workload commits after the base, the table time, and what built it
         internal sealed record FixtureManifest(string Fixture, int Commits, long ClockTicks, string Shape);
 
-        internal sealed record RunSettings(int Commits, int Discard, double Pace, bool AzureLike, bool Source, string Variant = "off", int Rep = 1);
+        internal sealed record RunSettings(int Commits, int Discard, double Pace, bool AzureLike, bool Source, string Variant = "off", int Rep = 1, int ColdAfterMinutes = 30);
 
-        // One commit's numbers; the last five stay null until later PRs
+        // One commit's numbers; requests, wakes and slices come later
         private sealed record CommitRecord(int Index, long Version, double CheckpointMs, double CommitVersionMs, double SinkMs, double IterationMs,
             int Requests, int MaintenanceRequests, long BytesRead, int DvWrites, int Passes, long Candidates, long FilesScanned, long RowsScanned,
             double SourceMs, int Gen2, int AddedFiles, int RemovedFiles, int RewriteFiles, long RewriteRows,
-            long? SettledCandidates, long? CompactionRequests, long? Wakes, string? GuardState, long? CursorSlices);
+            long? SettledCandidates, long? CompactionRequests, long? Wakes, GuardRecord? GuardState, long? CursorSlices);
+
+        // The guard after a commit: 1 quiet, 3 closed, 0 off
+        private sealed record GuardRecord(int State, long WindowMs, long QuietSince, long Commits, long Sequence, long Epoch);
 
         public static async Task<int> BuildAsync(IReadOnlyDictionary<string, string> options, TextWriter output)
         {
@@ -149,22 +152,32 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
             {
                 return $"Unknown variant '{variant}', use off, on or placebo";
             }
-            if (variant != "off" || options.ContainsKey("cold-after"))
+            if (variant == "placebo")
             {
-                return $"Variant {variant} and cold-after need compaction, which later PRs build";
+                return "Variant placebo needs the planner, which a later PR builds";
+            }
+            if (variant == "off" && options.ContainsKey("cold-after"))
+            {
+                return "cold-after needs variant on";
             }
             if (!int.TryParse(options.GetValueOrDefault("commits", "600"), CultureInfo.InvariantCulture, out var commits) ||
                 !int.TryParse(options.GetValueOrDefault("discard", "60"), CultureInfo.InvariantCulture, out var discard) ||
                 !double.TryParse(options.GetValueOrDefault("pace", "1"), CultureInfo.InvariantCulture, out var pace) ||
-                !int.TryParse(options.GetValueOrDefault("rep", "1"), CultureInfo.InvariantCulture, out var rep))
+                !int.TryParse(options.GetValueOrDefault("rep", "1"), CultureInfo.InvariantCulture, out var rep) ||
+                !int.TryParse(options.GetValueOrDefault("cold-after", "30"), CultureInfo.InvariantCulture, out var coldAfter))
             {
-                return "commits, discard, pace and rep must be numbers";
+                return "commits, discard, pace, rep and cold-after must be numbers";
             }
             if (discard < 0 || commits <= discard || !double.IsFinite(pace) || pace < 0 || pace > 3_600 || rep < 1)
             {
                 return $"Need 0 <= discard < commits, 0 <= pace <= 3600 and rep >= 1, got {discard}, {commits}, {pace} and {rep}";
             }
-            run = new RunSettings(commits, discard, pace, store == "azure-like", source == "on", variant, rep);
+            // The plan's bounds, a minute to 30 days
+            if (coldAfter < 1 || coldAfter > 43_200)
+            {
+                return $"cold-after must be 1 to 43200 minutes, got {coldAfter}";
+            }
+            run = new RunSettings(commits, discard, pace, store == "azure-like", source == "on", variant, rep, coldAfter);
             return null;
         }
 
@@ -213,6 +226,12 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 if (run?.AzureLike == true)
                 {
                     x.DeleteLimitsOverride!.ReadAhead = 8;
+                }
+                // Only an on-run turns compaction on, never a pre-age
+                if (run is { Variant: "on" })
+                {
+                    x.EnableAutoCompaction = true;
+                    x.CompactionColdAfter = TimeSpan.FromMinutes(run.ColdAfterMinutes);
                 }
             }, keepFiles: true, objectStore: run?.AzureLike == true, timed: (checkpoint, commitVersion) =>
             {
@@ -271,6 +290,8 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 var sample = await table.Measure(Change, s_commitLimit) ?? throw new TimeoutException($"Commit {i} of {fixture.Name} did not finish in {s_commitLimit}");
                 var published = Interlocked.Read(ref version);
                 var statistics = table.Stream.Sinks[0].DeleteStatisticsForTests;
+                var guard = run.Variant == "on" ? Guard(table.Stream.Sinks[0], clock) : null;
+                long? settled = guard != null ? statistics?.SettledCandidates ?? 0 : null;
                 var sourceMs = reader != null ? (await reader.WaitFor(published)).TotalMilliseconds : 0;
                 table.Storage.ClearRequests();
                 await table.Stream.Maintenance.TickOnceAsync(s_commitLimit);
@@ -296,7 +317,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 records.Add(new CommitRecord(i, published, checkpoint.TotalMilliseconds, commitVersion.TotalMilliseconds, sample.SinkMs, iterationMs,
                     sample.Requests, maintenanceRequests, sample.BytesRead, sample.DvWrites, statistics?.Passes ?? 0, statistics?.Candidates ?? 0, statistics?.FilesScanned ?? 0, statistics?.RowsScanned ?? 0,
                     sourceMs, GC.CollectionCount(2) - gen2, added, removedFiles, Math.Max(0, writtenFiles - 1), writtenRows - fixture.Inserts,
-                    null, null, null, null, null));
+                    settled, null, null, guard, null));
                 if (published / 20 > applied / 20)
                 {
                     PruneLog(dir, published + 1);
@@ -341,6 +362,18 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                     published(version.Value);
                 }
             };
+        }
+
+        // Read between commits, so the sink is idle
+        private static GuardRecord Guard(Internal.DeltaLakeSink sink, ProbeClock clock)
+        {
+            var guard = sink.CompactionGuardForTests;
+            if (guard == null)
+            {
+                return new GuardRecord(0, 0, 0, 0, 0, sink.CatalogEpochForTests);
+            }
+            var state = guard.IsQuiet(clock.GetUtcNow().ToUnixTimeMilliseconds()) ? 1 : 3;
+            return new GuardRecord(state, guard.WindowMs, guard.QuietSince, guard.Commits, guard.Sequence, sink.CatalogEpochForTests);
         }
 
         private static MockTable Users(ProbeTable table)
@@ -416,6 +449,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
                 fixture = fixture.Name,
                 variant = run.Variant,
                 rep = run.Rep,
+                coldAfterMinutes = run.Variant == "on" ? run.ColdAfterMinutes : (int?)null,
                 store,
                 sourceStore = "local",
                 pace = run.Pace,
@@ -705,11 +739,11 @@ namespace FlowtideDotNet.Connector.DeltaLake.Tests
         }
 
         // Free space on the mount that holds the path
-        private static long FreeBytes(string path)
+        internal static long FreeBytes(string path)
         {
             var full = Path.GetFullPath(path) + Path.DirectorySeparatorChar;
             return DriveInfo.GetDrives()
-                .Where(x => x.IsReady && full.StartsWith(Folder(x.RootDirectory.FullName), StringComparison.Ordinal))
+                .Where(x => x.IsReady && full.StartsWith(Folder(x.RootDirectory.FullName), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
                 .MaxBy(x => x.RootDirectory.FullName.Length)!.AvailableFreeSpace;
         }
 
