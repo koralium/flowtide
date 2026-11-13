@@ -62241,12 +62241,12 @@ references:
   commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.MinBy
   fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.MinBy
   nameWithType: FunctionsArithmetic.MinBy
-- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulo
-  name: Modulo
-  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Modulo
-  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulo
-  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulo
-  nameWithType: FunctionsArithmetic.Modulo
+- uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulus
+  name: Modulus
+  href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Modulus
+  commentId: F:FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulus
+  fullName: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Modulus
+  nameWithType: FunctionsArithmetic.Modulus
 - uid: FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.Multiply
   name: Multiply
   href: api/FlowtideDotNet.Substrait.FunctionExtensions.FunctionsArithmetic.html#FlowtideDotNet_Substrait_FunctionExtensions_FunctionsArithmetic_Multiply

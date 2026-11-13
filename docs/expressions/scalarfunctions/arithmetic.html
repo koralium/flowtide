@@ -383,10 +383,10 @@
 <h3 id="sql-usage-4">SQL Usage</h3>
 <pre><code class="lang-sql">SELECT -column1 FROM ...
 </code></pre>
-<h2 id="modulo">Modulo</h2>
+<h2 id="modulus">Modulus</h2>
 <p><a href="https://substrait.io/extensions/functions_arithmetic/#modulus">Substrait definition</a></p>
 <p>Calculate the remainder when dividing two numbers.</p>
-<p>Modulo depends on the input types on what result it will give:</p>
+<p>The result type depends on the input types:</p>
 <table>
 <thead>
 <tr>
@@ -424,7 +424,7 @@
 <tr>
 <td>Decimal</td>
 <td>Decimal</td>
-<td>Decmial</td>
+<td>Decimal</td>
 </tr>
 <tr>
 <td>Non numeric</td>
@@ -432,12 +432,12 @@
 <td>Null</td>
 </tr>
 <tr>
-<td>num numeric</td>
+<td>Non numeric</td>
 <td>Float</td>
 <td>Null</td>
 </tr>
 <tr>
-<td>num numeric</td>
+<td>Non numeric</td>
 <td>Decimal</td>
 <td>Null</td>
 </tr>
@@ -448,7 +448,15 @@
 </tr>
 </tbody>
 </table>
-<p>Taking modulo between two integers where the divider is 0, the return will be type double and the value NaN.</p>
+<p>Integer <code>% 0</code> returns NULL. SQL with two declared integer operands uses Substrait's standard
+<code>modulus</code> function with <code>division_type=TRUNCATE</code>, <code>overflow=ERROR</code> and <code>on_domain_error=NULL</code>.
+The remainder has the sign of the dividend; Int64 overflow throws.</p>
+<p>Two declared <code>DECIMAL(P,S)</code> operands with known precision and scale, and precision at most 28,
+use <code>modulus</code> from <code>extension:io.substrait:functions_arithmetic_decimal</code> with <code>overflow=ERROR</code>.
+The result scale is <code>max(S1,S2)</code> and its precision is <code>min(P1-S1,P2-S2)+max(S1,S2)</code>.</p>
+<p>Floating-point, mixed and unresolved decimal/dynamic operands use Flowtide's <code>modulus</code> profile.
+Decimal casts currently lose their precision/scale parameters and use this profile.
+Floating-point <code>% 0</code> produces NaN; decimal division by zero and overflow throw.</p>
 <h3 id="sql-usage-5">SQL Usage</h3>
 <pre><code class="lang-sql">SELECT column1 % 3 FROM ...
 </code></pre>

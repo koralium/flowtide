@@ -144,13 +144,13 @@ Non numeric values becomes 'null'.
 SELECT -column1 FROM ...
 ```
 
-## Modulo
+## Modulus
 
 [Substrait definition](https://substrait.io/extensions/functions_arithmetic/#modulus)
 
 Calculate the remainder when dividing two numbers.
 
-Modulo depends on the input types on what result it will give:
+The result type depends on the input types:
 
 | Left type     | Right type    | Output    |
 | ------------- | ------------- | --------- |
@@ -159,13 +159,23 @@ Modulo depends on the input types on what result it will give:
 | Float         | Float         | Float     |
 | Decimal       | Integer       | Decimal   |
 | Decimal       | Float         | Decimal   |
-| Decimal       | Decimal       | Decmial   |
+| Decimal       | Decimal       | Decimal   |
 | Non numeric   | Integer       | Null      |
-| num numeric   | Float         | Null      |
-| num numeric   | Decimal       | Null      |
+| Non numeric   | Float         | Null      |
+| Non numeric   | Decimal       | Null      |
 | Non numeric   | Non numeric   | Null      |
 
-Taking modulo between two integers where the divider is 0, the return will be type double and the value NaN.
+Integer `% 0` returns NULL. SQL with two declared integer operands uses Substrait's standard
+`modulus` function with `division_type=TRUNCATE`, `overflow=ERROR` and `on_domain_error=NULL`.
+The remainder has the sign of the dividend; Int64 overflow throws.
+
+Two declared `DECIMAL(P,S)` operands with known precision and scale, and precision at most 28,
+use `modulus` from `extension:io.substrait:functions_arithmetic_decimal` with `overflow=ERROR`.
+The result scale is `max(S1,S2)` and its precision is `min(P1-S1,P2-S2)+max(S1,S2)`.
+
+Floating-point, mixed and unresolved decimal/dynamic operands use Flowtide's `modulus` profile.
+Decimal casts currently lose their precision/scale parameters and use this profile.
+Floating-point `% 0` produces NaN; decimal division by zero and overflow throw.
 
 ### SQL Usage
 
