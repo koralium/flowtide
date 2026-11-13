@@ -1782,16 +1782,77 @@
     <para>
       <b>x % y</b>
     </para>
-    <para>Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric inputs are also accepted natively.</para>
+    <para>
+      <b>Profile: i64_i64</b>
+    </para>
+    <para>Integer remainder with the sign of the dividend. A zero divisor returns null, including for non-null inputs. Null inputs return null. Int64 overflow throws. FLOOR division and other error/overflow policies are not implemented. SQL uses this standard binding when both declared operands are integer types.</para>
     <list type="bullet">
       <item>
-        <description>Extension signatures: <c>modulo:i64_i64, modulo:fp64_fp64</c></description>
+        <description>Extension signatures: <c>modulus:i64_i64</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(i64, i64) -&gt; i64</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option division_type: <c>TRUNCATE</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option on_domain_error: <c>NULL</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: dec_dec</b>
+    </para>
+    <para>Decimal remainder for two declared DECIMAL(P,S) operands with precision at most 28 and valid scales. The result scale is max(S1,S2) and its precision is min(P1-S1,P2-S2)+max(S1,S2), matching the upstream formula within this supported input range. Null inputs return null; decimal division by zero and overflow throw. SQL selects this standard binding when both input precisions and scales are known. Decimal casts currently do not retain these parameters and use the Flowtide profile instead.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>modulus:dec_dec</c></description>
+      </item>
+      <item>
+        <description>Extension source: <c>extension:io.substrait:functions_arithmetic_decimal</c></description>
+      </item>
+      <item>
+        <description>Extension type declaration: <c>(decimal&lt;P1,S1&gt;, decimal&lt;P2,S2&gt;) -&gt; init_scale = max(S1,S2)
+init_prec = min(P1 - S1, P2 - S2) + init_scale
+min_scale = min(init_scale, 6)
+delta = init_prec - 38
+prec = min(init_prec, 38)
+scale_after_borrow = max(init_scale - delta, min_scale)
+scale = init_prec &gt; 38 ? scale_after_borrow : init_scale
+DECIMAL&lt;prec, scale&gt;</c></description>
+      </item>
+      <item>
+        <description>Required Substrait option overflow: <c>ERROR</c></description>
+      </item>
+      <item>
+        <description>Decimal precision max: <c>28</c></description>
+      </item>
+    </list>
+    <para>
+      <see href="https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html">Detailed documentation</see>
+    </para>
+    <para>
+      <b>Profile: fp64_fp64, any_any</b>
+    </para>
+    <para>Remainder for floating-point, mixed numeric or unresolved decimal/dynamic inputs. Floating-point division by zero produces NaN. Integer values with a zero divisor return null. Decimal arithmetic uses System.Decimal; decimal division by zero and overflow throw. Unsupported value kinds return null. Typed integer SQL operands use the standard arithmetic extension instead; resolved decimal pairs use the standard decimal extension.</para>
+    <list type="bullet">
+      <item>
+        <description>Extension signatures: <c>modulus:fp64_fp64, modulus:any_any</c></description>
       </item>
       <item>
         <description>Extension source: <c>extension:io.github.koralium.flowtide:functions_arithmetic</c></description>
       </item>
       <item>
-        <description>Extension type declaration: <c>(i64, i64) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
+        <description>Extension type declaration: <c>(any1, any2) -&gt; flowtide_types.u!dynamic?; nullability=DECLARED_OUTPUT</c></description>
       </item>
       <item>
         <description>Extension type declaration: <c>(fp64, fp64) -&gt; fp64?; nullability=DECLARED_OUTPUT</c></description>

@@ -1,0 +1,9 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.github.koralium.flowtide:functions_arithmetic'
+
+# Flowtide's extra numeric profiles retain their result kinds.
+modulus(7.5::fp64, 3.0::fp64) = 1.5::fp64
+modulus(-7.5::fp64, 3.0::fp64) = -1.5::fp64
+modulus(7::i64, 3.0::fp64) = 1.0::fp64
+modulus(7.5::dec, 3::i64) = 1.5::dec
+modulus('x'::str, 3::i64) = null::i64

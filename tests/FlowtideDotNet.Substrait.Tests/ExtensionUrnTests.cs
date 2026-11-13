@@ -64,6 +64,12 @@ public class ExtensionUrnTests
     [InlineData("INSERT INTO output SELECT from_json('{}');", "from_json", FunctionsString.FlowtideUrn)]
     [InlineData("INSERT INTO output SELECT round(1.5);", "round", FunctionsRounding.FlowtideUrn)]
     [InlineData("INSERT INTO output SELECT ceil(1.5);", "ceil", FunctionsRounding.Urn)]
+    [InlineData("INSERT INTO output SELECT 7 % 3;", "modulus", FunctionsArithmetic.Urn)]
+    [InlineData("INSERT INTO output SELECT 7.5 % 3;", "modulus", FunctionsArithmetic.FlowtideUrn)]
+    [InlineData("CREATE TABLE input_data (x DECIMAL(10,2), y DECIMAL(8,4)); INSERT INTO output SELECT x % y FROM input_data;", "modulus", FunctionsArithmetic.DecimalUrn)]
+    [InlineData("CREATE TABLE input_data (x DECIMAL, y DECIMAL); INSERT INTO output SELECT x % y FROM input_data;", "modulus", FunctionsArithmetic.FlowtideUrn)]
+    [InlineData("CREATE TABLE input_data (x DECIMAL(38,2), y DECIMAL(38,2)); INSERT INTO output SELECT x % y FROM input_data;", "modulus", FunctionsArithmetic.FlowtideUrn)]
+    [InlineData("CREATE TABLE input_data (value ANY); INSERT INTO output SELECT value % 3 FROM input_data;", "modulus", FunctionsArithmetic.FlowtideUrn)]
     [InlineData("INSERT INTO output SELECT 'abc' LIKE 'a%';", "like", FunctionsString.Urn)]
     [InlineData("INSERT INTO output SELECT 'a_c' LIKE 'a!_c' ESCAPE '!';", "like", FunctionsString.FlowtideUrn)]
     [InlineData("CREATE TABLE input_data (value BIGINT); INSERT INTO output SELECT sum(value) FROM input_data;", "sum", FunctionsArithmetic.Urn)]
@@ -85,6 +91,43 @@ public class ExtensionUrnTests
         var declaration = Assert.Single(wire.Extensions.Where(extension => extension.ExtensionFunction?.Name == function)).ExtensionFunction;
         var reference = Assert.Single(wire.ExtensionUrns.Where(extension => extension.ExtensionUrnAnchor == declaration.ExtensionUrnReference));
         Assert.Equal(expectedUrn, reference.Urn);
+    }
+
+    [Fact]
+    public void SQL_integer_modulus_declares_the_supported_standard_options()
+    {
+        var builder = new SqlPlanBuilder();
+        builder.Sql("CREATE TABLE input_data (value BIGINT NOT NULL); INSERT INTO output SELECT value % 0 AS result FROM input_data;");
+        var plan = builder.GetPlan();
+        var write = Assert.IsType<WriteRelation>(Assert.Single(plan.Relations));
+        var project = Assert.IsType<ProjectRelation>(write.Input);
+        var modulus = Assert.IsType<ScalarFunction>(Assert.Single(project.Expressions));
+        Assert.Equal("TRUNCATE", modulus.Options!["division_type"]);
+        Assert.Equal("ERROR", modulus.Options["overflow"]);
+        Assert.Equal("NULL", modulus.Options["on_domain_error"]);
+        Assert.True(write.TableSchema!.Struct!.Types[0].Nullable);
+        var restored = SubstraitSerializer.Serialize(SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan)));
+        Assert.Equal(SubstraitSerializer.Serialize(plan).Extensions, restored.Extensions);
+        Assert.Equal(3, modulus.Options.Count);
+    }
+
+    [Theory]
+    [InlineData(10, 2, 8, 4, 8, 4)]
+    [InlineData(28, 0, 28, 28, 28, 28)]
+    [InlineData(28, 28, 28, 0, 28, 28)]
+    [InlineData(6, 2, 5, 1, 6, 2)]
+    public void Decimal_modulus_uses_the_upstream_return_type(int leftPrecision, int leftScale,
+        int rightPrecision, int rightScale, int precision, int scale)
+    {
+        var plan = Sql($"CREATE TABLE input_data (x DECIMAL({leftPrecision},{leftScale}), y DECIMAL({rightPrecision},{rightScale})); INSERT INTO output SELECT x % y AS result FROM input_data;");
+        var write = Assert.IsType<WriteRelation>(Assert.Single(plan.Relations));
+        var project = Assert.IsType<ProjectRelation>(write.Input);
+        var modulus = Assert.IsType<ScalarFunction>(Assert.Single(project.Expressions));
+        Assert.Equal(FunctionsArithmetic.DecimalUrn, modulus.ExtensionUrn);
+        Assert.Equal("ERROR", Assert.Single(modulus.Options!).Value);
+        var result = Assert.IsType<DecimalType>(Assert.Single(write.TableSchema!.Struct!.Types));
+        Assert.Equal(precision, result.Precision);
+        Assert.Equal(scale, result.Scale);
     }
 
     [Fact]

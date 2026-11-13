@@ -8,17 +8,19 @@ metadata:
   dialect: ../dialect.yaml
   runtime_binding: References use this extension URN and the function or type name.
 scalar_functions:
-  - name: modulo
+  - name: modulus
     description: >-
-      Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload
-      has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric
-      inputs are also accepted natively.
+      Remainder for floating-point, mixed numeric and unresolved decimal/dynamic inputs. The result has the sign
+      of the dividend. Integer values with a zero divisor return null; floating-point division by zero produces
+      NaN. Decimal arithmetic uses System.Decimal and throws on division by zero or overflow. Unsupported value
+      kinds return null. Typed integer SQL operands use the upstream arithmetic extension's modulus definition;
+      resolved decimal pairs use the upstream decimal arithmetic extension's modulus definition.
     metadata:
       runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
     impls:
       - args:
-          - value: i64
-          - value: i64
+          - value: any1
+          - value: any2
         return: flowtide_types.u!dynamic?
         nullability: DECLARED_OUTPUT
       - args:

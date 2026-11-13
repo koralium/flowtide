@@ -1,0 +1,11 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.substrait:functions_arithmetic_decimal'
+
+# Decimal pairs use the standard decimal extension with overflow=ERROR.
+modulus(7.50::dec, 3.000::dec) [overflow:ERROR] = 1.50::dec
+modulus(-7.50::dec, 3.000::dec) [overflow:ERROR] = -1.50::dec
+modulus(7.50::dec, -3.000::dec) [overflow:ERROR] = 1.50::dec
+modulus(1.0::dec, 2.00::dec) [overflow:ERROR] = 1.0::dec
+modulus(9999999999999999999999999999::dec, 0.0000000000000000000000000001::dec) [overflow:ERROR] = 0::dec
+modulus(null::dec, 3.00::dec) [overflow:ERROR] = null::dec
+modulus(7.50::dec, 0.00::dec) [overflow:ERROR] = <!ERROR>

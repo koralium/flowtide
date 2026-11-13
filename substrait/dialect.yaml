@@ -1275,19 +1275,57 @@ supported_scalar_functions:
         These are the implemented upstream option values. The runtime default on_domain_error=NONE returns null;
         explicit NULL is not declared because its behavior differs. Only the native rounding policy is available.
       doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/logarithmic.html
-  - source: flowtide_arithmetic
-    name: modulo
+  - source: arithmetic
+    name: modulus
     system_metadata:
       name: '%'
       notation: INFIX
-    supported_impls: [i64_i64, fp64_fp64]
+    required_options:
+      division_type: TRUNCATE
+      overflow: ERROR
+      on_domain_error: "NULL"
+    supported_impls: [i64_i64]
+    metadata:
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic
+      sql_signature: x % y
+      notes: >-
+        Integer remainder with the sign of the dividend. A zero divisor returns null, including for non-null
+        inputs. Null inputs return null. Int64 overflow throws. FLOOR division and other error/overflow policies
+        are not implemented. SQL uses this standard binding when both declared operands are integer types.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: arithmetic_decimal
+    name: modulus
+    system_metadata:
+      name: '%'
+      notation: INFIX
+    required_options:
+      overflow: ERROR
+    supported_impls: [dec_dec]
+    metadata:
+      runtime_extension_urn: extension:io.substrait:functions_arithmetic_decimal
+      sql_signature: x % y
+      decimal_precision_max: 28
+      notes: >-
+        Decimal remainder for two declared DECIMAL(P,S) operands with precision at most 28 and valid scales.
+        The result scale is max(S1,S2) and its precision is min(P1-S1,P2-S2)+max(S1,S2), matching the upstream
+        formula within this supported input range. Null inputs return null; decimal division by zero and overflow
+        throw. SQL selects this standard binding when both input precisions and scales are known. Decimal casts
+        currently do not retain these parameters and use the Flowtide profile instead.
+      doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
+  - source: flowtide_arithmetic
+    name: modulus
+    system_metadata:
+      name: '%'
+      notation: INFIX
+    supported_impls: [fp64_fp64, any_any]
     metadata:
       runtime_extension_urn: extension:io.github.koralium.flowtide:functions_arithmetic
       sql_signature: x % y
       notes: >-
-        Remainder with the sign of the dividend. Integer division by zero returns Double NaN, so the integer overload
-        has a dynamic result and is not advertised as the upstream modulus implementation. Decimal and mixed numeric
-        inputs are also accepted natively.
+        Remainder for floating-point, mixed numeric or unresolved decimal/dynamic inputs. Floating-point division
+        by zero produces NaN. Integer values with a zero divisor return null. Decimal arithmetic uses System.Decimal;
+        decimal division by zero and overflow throw. Unsupported value kinds return null. Typed integer SQL operands
+        use the standard arithmetic extension instead; resolved decimal pairs use the standard decimal extension.
       doc_url: https://koralium.github.io/flowtide/docs/expressions/scalarfunctions/arithmetic.html
   - source: flowtide_rounding
     name: round
