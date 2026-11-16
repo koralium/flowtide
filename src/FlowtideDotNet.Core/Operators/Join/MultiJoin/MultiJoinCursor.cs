@@ -788,9 +788,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             }
             foreach (var settles in _program.SettlesEndingAt)
             {
-                foreach (var settle in settles)
+                foreach (var own in settles.Select(x => x.Check?.OwnOffsets))
                 {
-                    var own = settle.Check?.OwnOffsets;
                     for (int i = 0; own != null && i < own.Length; i++)
                     {
                         own[i]?.Dispose();

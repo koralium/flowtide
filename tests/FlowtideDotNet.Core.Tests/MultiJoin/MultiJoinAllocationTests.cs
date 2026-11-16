@@ -206,6 +206,8 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
         // Every other key carries a double as its value, so the value columns hold two types
         private static bool _mixedValues;
 
+        private static void SetMixedValues(bool mixed) => _mixedValues = mixed;
+
         private static IDataValue Value(int key, int generation)
         {
             if (_mixedValues && key % 2 == 1)
@@ -1088,7 +1090,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                 await BuildMulti(ChainOf(inputs)[inputs - 2], chainOutput, 2, hosts, chainTargets, options);
                 await LoadChain(chainTargets, chainOutput);
                 long chainBytes = LiveNativeBytes() - before;
-                var line = $"PERF state, {inputs} inputs, payload of {payloadWidth} characters: chain {chainBytes / 1024}k bytes";
+                var line = new System.Text.StringBuilder($"PERF state, {inputs} inputs, payload of {payloadWidth} characters: chain {chainBytes / 1024}k bytes");
                 foreach (int cap in new[] { 5, 16 })
                 {
                     if (cap == 5 && inputs <= 5)
@@ -1101,9 +1103,9 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                     int operators = await BuildMulti(ChainOf(inputs)[inputs - 2], output, cap, hosts, targets, options);
                     await LoadChain(targets, output);
                     long multiBytes = LiveNativeBytes() - before;
-                    line += $"; multi joins of at most {cap} inputs ({operators} operators) {multiBytes / 1024}k bytes ({(double)multiBytes / chainBytes:F2})";
+                    line.Append($"; multi joins of at most {cap} inputs ({operators} operators) {multiBytes / 1024}k bytes ({(double)multiBytes / chainBytes:F2})");
                 }
-                _output.WriteLine(line);
+                _output.WriteLine(line.ToString());
             }
             finally
             {
@@ -1154,14 +1156,14 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
         {
             var same = await MeasureMulti(256);
             (double managed, double native, long rows, double ms) mixed;
-            _mixedValues = true;
+            SetMixedValues(true);
             try
             {
                 mixed = await MeasureMulti(256);
             }
             finally
             {
-                _mixedValues = false;
+                SetMixedValues(false);
             }
             _output.WriteLine($"Managed bytes per input row: one type {same.managed:F1}, two types {mixed.managed:F1}");
             Assert.Equal(same.rows, mixed.rows);

@@ -186,9 +186,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     return AddLeaf(Filtered(relation, filters));
                 }
                 extra = new List<Expression>(filters.Count);
-                foreach (var filter in filters)
+                foreach (var copy in filters.Select(x => x.Clone()))
                 {
-                    var copy = filter.Clone();
                     if (join.EmitSet)
                     {
                         var usage = new ExpressionFieldUsageVisitor(int.MaxValue);
@@ -617,9 +616,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         private static List<int[]> InIndexOrder(List<int[]> sets)
         {
             var ordered = new List<int[]>();
-            foreach (var set in sets)
+            foreach (var columns in sets.Select(x => x.OrderBy(c => c).ToArray()))
             {
-                var columns = set.OrderBy(c => c).ToArray();
                 if (!ordered.Exists(x => x.SequenceEqual(columns)))
                 {
                     ordered.Add(columns);
@@ -793,9 +791,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             }
             int leftSize = join.Left.OutputLength;
             var copies = new List<Expression>(conditions.Count);
-            foreach (var condition in conditions)
+            foreach (var copy in conditions.Select(x => x.Clone()))
             {
-                var copy = condition.Clone();
                 var usage = new ExpressionFieldUsageVisitor(leftSize);
                 usage.Visit(copy, null);
                 var oldToNew = new Dictionary<int, int>();
