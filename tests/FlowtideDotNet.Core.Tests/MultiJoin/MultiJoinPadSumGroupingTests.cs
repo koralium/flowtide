@@ -59,9 +59,9 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             switch (value.Type)
             {
                 case ArrowTypeId.Int64:
-                    return "i" + value.AsLong.ToString();
+                    return "i" + value.AsLong;
                 case ArrowTypeId.Double:
-                    return "d" + ((long)value.AsDouble).ToString();
+                    return "d" + (long)value.AsDouble;
                 default:
                     return value.Type.ToString();
             }

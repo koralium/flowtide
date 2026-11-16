@@ -493,6 +493,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             MatchTotals.Begin(keys, keyRows == null, null);
             while (await MatchTotals.MoveNext())
             {
+                // Run to its end for the totals, its rows are not used
             }
 
             PaddedRows.Reset();

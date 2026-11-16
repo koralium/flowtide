@@ -804,6 +804,8 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
         // The payload column as a string of this many characters, 0 for a number
         private static int _payloadWidth;
 
+        private static void SetPayloadWidth(int width) => _payloadWidth = width;
+
         private static long LiveNativeBytes()
         {
             long total = 0;
@@ -1075,7 +1077,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                 return;
             }
             var options = new ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 };
-            _payloadWidth = payloadWidth;
+            SetPayloadWidth(payloadWidth);
             var hosts = new List<Host>();
             try
             {
@@ -1105,7 +1107,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             }
             finally
             {
-                _payloadWidth = 0;
+                SetPayloadWidth(0);
                 await DisposeAll(hosts);
             }
         }
@@ -1129,7 +1131,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             // Five inputs with wide rows through a cache of a few pages: lookups and inserts run while pages go out and come back
             var options = new ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 };
             var hosts = new List<Host>();
-            _payloadWidth = 200;
+            SetPayloadWidth(200);
             Host.CachePages = 48;
             try
             {
@@ -1142,7 +1144,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             finally
             {
                 Host.CachePages = null;
-                _payloadWidth = 0;
+                SetPayloadWidth(0);
                 await DisposeAll(hosts);
             }
         }
