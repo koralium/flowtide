@@ -46,6 +46,10 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
                         break;
                     }
                 }
+                if (safe && relation is IterationRelation iterationRelation)
+                {
+                    safe = CommonSubPlanUtils.IsClosedLoop(iterationRelation);
+                }
                 if (safe)
                 {
                     SafeNodes.Add(relation);

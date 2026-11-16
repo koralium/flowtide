@@ -2087,5 +2087,116 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
                  new { subjectType = "user", subjectId = "*", relation = "can_view_wildcard", resourceType = "project", resourceId = "123"},
                 ]);
         }
+
+        private const string SharedRecursionSchema = @"
+            definition user {}
+
+            definition organization {
+                relation member: user
+                relation parent: organization
+                permission can_view = member + parent->can_view
+            }
+
+            definition project {
+                relation organization: organization
+                relation owner: organization
+                permission can_view = organization->can_view + owner->can_view
+                permission org_can_view = organization->can_view
+            }";
+
+        private async Task WriteSharedRecursionData(string testName)
+        {
+            var metadata = new Metadata
+            {
+                { "Authorization", $"Bearer {testName}" }
+            };
+            var schemaServiceClient = new SchemaService.SchemaServiceClient(spiceDbFixture.GetChannel());
+            await schemaServiceClient.WriteSchemaAsync(new WriteSchemaRequest()
+            {
+                Schema = SharedRecursionSchema
+            }, metadata);
+
+            static RelationshipUpdate Touch(string resourceType, string resourceId, string relation, string subjectType, string subjectId)
+            {
+                return new RelationshipUpdate()
+                {
+                    Operation = RelationshipUpdate.Types.Operation.Touch,
+                    Relationship = new Relationship()
+                    {
+                        Resource = new ObjectReference() { ObjectType = resourceType, ObjectId = resourceId },
+                        Relation = relation,
+                        Subject = new SubjectReference()
+                        {
+                            Object = new ObjectReference() { ObjectType = subjectType, ObjectId = subjectId }
+                        }
+                    }
+                };
+            }
+
+            var writeRequest = new WriteRelationshipsRequest();
+            writeRequest.Updates.Add(Touch("organization", "1", "member", "user", "u1"));
+            writeRequest.Updates.Add(Touch("organization", "2", "parent", "organization", "1"));
+            writeRequest.Updates.Add(Touch("organization", "3", "member", "user", "u2"));
+            writeRequest.Updates.Add(Touch("project", "p1", "organization", "organization", "2"));
+            writeRequest.Updates.Add(Touch("project", "p1", "owner", "organization", "3"));
+
+            var permissionClient = new PermissionsService.PermissionsServiceClient(spiceDbFixture.GetChannel());
+            await permissionClient.WriteRelationshipsAsync(writeRequest, metadata);
+        }
+
+        [Fact]
+        public async Task UseTableFunctionTwiceWithSharedRecursion()
+        {
+            await WriteSharedRecursionData(nameof(UseTableFunctionTwiceWithSharedRecursion));
+
+            var stream = new SpiceDbTestStream(nameof(UseTableFunctionTwiceWithSharedRecursion), spiceDbFixture.GetChannel(), false, true);
+
+            // Each call contains the organization can_view loop once
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT subject_type, subject_id, relation, resource_type, resource_id
+                FROM spicedb.materialize_permission('organization', 'can_view')
+                UNION ALL
+                SELECT subject_type, subject_id, relation, resource_type, resource_id
+                FROM spicedb.materialize_permission('project', 'org_can_view')
+            ");
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual([
+                new { subjectType = "user", subjectId = "u1", relation = "can_view", resourceType = "organization", resourceId = "1"},
+                new { subjectType = "user", subjectId = "u1", relation = "can_view", resourceType = "organization", resourceId = "2"},
+                new { subjectType = "user", subjectId = "u1", relation = "org_can_view", resourceType = "project", resourceId = "p1"},
+                new { subjectType = "user", subjectId = "u2", relation = "can_view", resourceType = "organization", resourceId = "3"},
+                ]);
+
+            // The identical loop is computed once
+            Assert.Single(stream.GetDiagnosticsGraph().Nodes.Values, x => x.DisplayName == "Iteration Operator");
+        }
+
+        [Fact]
+        public async Task UseTableFunctionWithRecursivePermissionReachedTwice()
+        {
+            await WriteSharedRecursionData(nameof(UseTableFunctionWithRecursivePermissionReachedTwice));
+
+            var stream = new SpiceDbTestStream(nameof(UseTableFunctionWithRecursivePermissionReachedTwice), spiceDbFixture.GetChannel(), false, true);
+
+            // Both organization and owner lead into the organization can_view loop
+            await stream.StartStream(@"
+                INSERT INTO testverify
+                SELECT subject_type, subject_id, relation, resource_type, resource_id
+                FROM spicedb.materialize_permission('project', 'can_view')
+            ");
+
+            await stream.WaitForUpdate();
+
+            stream.AssertCurrentDataEqual([
+                new { subjectType = "user", subjectId = "u1", relation = "can_view", resourceType = "project", resourceId = "p1"},
+                new { subjectType = "user", subjectId = "u2", relation = "can_view", resourceType = "project", resourceId = "p1"},
+                ]);
+
+            // The identical loop is computed once
+            Assert.Single(stream.GetDiagnosticsGraph().Nodes.Values, x => x.DisplayName == "Iteration Operator");
+        }
     }
 }
