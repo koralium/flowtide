@@ -6230,6 +6230,759 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.IngressVertex(Of TData).TrySetDependenciesDone
   nameWithType: IngressVertex<TData>.TrySetDependenciesDone
   nameWithType.vb: IngressVertex(Of TData).TrySetDependenciesDone
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1
+  name: MultipleInputRoundVertex<T>
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html
+  commentId: T:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1
+  name.vb: MultipleInputRoundVertex(Of T)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T)
+  nameWithType: MultipleInputRoundVertex<T>
+  nameWithType.vb: MultipleInputRoundVertex(Of T)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.#ctor(System.Int32,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
+  name: MultipleInputRoundVertex(int, ExecutionDataflowBlockOptions)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1__ctor_System_Int32_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.#ctor(System.Int32,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
+  name.vb: New(Integer, ExecutionDataflowBlockOptions)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MultipleInputRoundVertex(int, System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).New(Integer, System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)
+  nameWithType: MultipleInputRoundVertex<T>.MultipleInputRoundVertex(int, ExecutionDataflowBlockOptions)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).New(Integer, ExecutionDataflowBlockOptions)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.#ctor*
+  name: MultipleInputRoundVertex
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1__ctor_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MultipleInputRoundVertex
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).New
+  nameWithType: MultipleInputRoundVertex<T>.MultipleInputRoundVertex
+  nameWithType.vb: MultipleInputRoundVertex(Of T).New
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Backpressure
+  name: Backpressure
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Backpressure
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Backpressure
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Backpressure
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Backpressure
+  nameWithType: MultipleInputRoundVertex<T>.Backpressure
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Backpressure
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Backpressure*
+  name: Backpressure
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Backpressure_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Backpressure
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Backpressure
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Backpressure
+  nameWithType: MultipleInputRoundVertex<T>.Backpressure
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Backpressure
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.BeforeSaveCheckpoint
+  name: BeforeSaveCheckpoint()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_BeforeSaveCheckpoint
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.BeforeSaveCheckpoint
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.BeforeSaveCheckpoint()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).BeforeSaveCheckpoint()
+  nameWithType: MultipleInputRoundVertex<T>.BeforeSaveCheckpoint()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).BeforeSaveCheckpoint()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.BeforeSaveCheckpoint*
+  name: BeforeSaveCheckpoint
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_BeforeSaveCheckpoint_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.BeforeSaveCheckpoint
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.BeforeSaveCheckpoint
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).BeforeSaveCheckpoint
+  nameWithType: MultipleInputRoundVertex<T>.BeforeSaveCheckpoint
+  nameWithType.vb: MultipleInputRoundVertex(Of T).BeforeSaveCheckpoint
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Compact
+  name: Compact()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Compact
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Compact
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Compact()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Compact()
+  nameWithType: MultipleInputRoundVertex<T>.Compact()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Compact()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Compact*
+  name: Compact
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Compact_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Compact
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Compact
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Compact
+  nameWithType: MultipleInputRoundVertex<T>.Compact
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Compact
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Complete
+  name: Complete()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Complete
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Complete
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Complete()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Complete()
+  nameWithType: MultipleInputRoundVertex<T>.Complete()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Complete()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Complete*
+  name: Complete
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Complete_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Complete
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Complete
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Complete
+  nameWithType: MultipleInputRoundVertex<T>.Complete
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Complete
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Completion
+  name: Completion
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Completion
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Completion
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Completion
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Completion
+  nameWithType: MultipleInputRoundVertex<T>.Completion
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Completion
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Completion*
+  name: Completion
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Completion_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Completion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Completion
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Completion
+  nameWithType: MultipleInputRoundVertex<T>.Completion
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Completion
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ConsumeMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Boolean@)
+  name: ConsumeMessage(DataflowMessageHeader, ITargetBlock<IStreamEvent>, out bool)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ConsumeMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Boolean__
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ConsumeMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Boolean@)
+  name.vb: ConsumeMessage(DataflowMessageHeader, ITargetBlock(Of IStreamEvent), Boolean)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ConsumeMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock<FlowtideDotNet.Base.IStreamEvent>, out bool)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ConsumeMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock(Of FlowtideDotNet.Base.IStreamEvent), Boolean)
+  nameWithType: MultipleInputRoundVertex<T>.ConsumeMessage(DataflowMessageHeader, ITargetBlock<IStreamEvent>, out bool)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ConsumeMessage(DataflowMessageHeader, ITargetBlock(Of IStreamEvent), Boolean)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ConsumeMessage*
+  name: ConsumeMessage
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ConsumeMessage_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ConsumeMessage
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ConsumeMessage
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ConsumeMessage
+  nameWithType: MultipleInputRoundVertex<T>.ConsumeMessage
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ConsumeMessage
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.CreateBlock
+  name: CreateBlock()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_CreateBlock
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.CreateBlock
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.CreateBlock()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).CreateBlock()
+  nameWithType: MultipleInputRoundVertex<T>.CreateBlock()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).CreateBlock()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.CreateBlock*
+  name: CreateBlock
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_CreateBlock_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.CreateBlock
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.CreateBlock
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).CreateBlock
+  nameWithType: MultipleInputRoundVertex<T>.CreateBlock
+  nameWithType.vb: MultipleInputRoundVertex(Of T).CreateBlock
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DeleteAsync
+  name: DeleteAsync()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DeleteAsync
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DeleteAsync
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DeleteAsync()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DeleteAsync()
+  nameWithType: MultipleInputRoundVertex<T>.DeleteAsync()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DeleteAsync()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DeleteAsync*
+  name: DeleteAsync
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DeleteAsync_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DeleteAsync
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DeleteAsync
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DeleteAsync
+  nameWithType: MultipleInputRoundVertex<T>.DeleteAsync
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DeleteAsync
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisplayName
+  name: DisplayName
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DisplayName
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisplayName
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DisplayName
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DisplayName
+  nameWithType: MultipleInputRoundVertex<T>.DisplayName
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DisplayName
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisplayName*
+  name: DisplayName
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DisplayName_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisplayName
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DisplayName
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DisplayName
+  nameWithType: MultipleInputRoundVertex<T>.DisplayName
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DisplayName
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisposeAsync
+  name: DisposeAsync()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DisposeAsync
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisposeAsync
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DisposeAsync()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DisposeAsync()
+  nameWithType: MultipleInputRoundVertex<T>.DisposeAsync()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DisposeAsync()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisposeAsync*
+  name: DisposeAsync
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_DisposeAsync_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.DisposeAsync
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.DisposeAsync
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).DisposeAsync
+  nameWithType: MultipleInputRoundVertex<T>.DisposeAsync
+  nameWithType.vb: MultipleInputRoundVertex(Of T).DisposeAsync
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Fault(System.Exception)
+  name: Fault(Exception)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Fault_System_Exception_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Fault(System.Exception)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Fault(System.Exception)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Fault(System.Exception)
+  nameWithType: MultipleInputRoundVertex<T>.Fault(Exception)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Fault(Exception)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Fault*
+  name: Fault
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Fault_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Fault
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Fault
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Fault
+  nameWithType: MultipleInputRoundVertex<T>.Fault
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Fault
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.GetLinks
+  name: GetLinks()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_GetLinks
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.GetLinks
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.GetLinks()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).GetLinks()
+  nameWithType: MultipleInputRoundVertex<T>.GetLinks()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).GetLinks()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.GetLinks*
+  name: GetLinks
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_GetLinks_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.GetLinks
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.GetLinks
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).GetLinks
+  nameWithType: MultipleInputRoundVertex<T>.GetLinks
+  nameWithType.vb: MultipleInputRoundVertex(Of T).GetLinks
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)
+  name: Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Initialize_System_String_System_Int64_System_Int64_FlowtideDotNet_Base_IVertexHandler_FlowtideDotNet_Storage_StreamVersionInformation_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Initialize(System.String,System.Int64,System.Int64,FlowtideDotNet.Base.IVertexHandler,FlowtideDotNet.Storage.StreamVersionInformation)
+  name.vb: Initialize(String, Long, Long, IVertexHandler, StreamVersionInformation)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Initialize(string, long, long, FlowtideDotNet.Base.IVertexHandler, FlowtideDotNet.Storage.StreamVersionInformation?)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Initialize(String, Long, Long, FlowtideDotNet.Base.IVertexHandler, FlowtideDotNet.Storage.StreamVersionInformation)
+  nameWithType: MultipleInputRoundVertex<T>.Initialize(string, long, long, IVertexHandler, StreamVersionInformation?)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Initialize(String, Long, Long, IVertexHandler, StreamVersionInformation)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Initialize*
+  name: Initialize
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Initialize_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Initialize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Initialize
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Initialize
+  nameWithType: MultipleInputRoundVertex<T>.Initialize
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Initialize
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)
+  name: InitializeOrRestore(IStateManagerClient)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_InitializeOrRestore_FlowtideDotNet_Storage_StateManager_IStateManagerClient_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).InitializeOrRestore(FlowtideDotNet.Storage.StateManager.IStateManagerClient)
+  nameWithType: MultipleInputRoundVertex<T>.InitializeOrRestore(IStateManagerClient)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).InitializeOrRestore(IStateManagerClient)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.InitializeOrRestore*
+  name: InitializeOrRestore
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_InitializeOrRestore_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.InitializeOrRestore
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.InitializeOrRestore
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).InitializeOrRestore
+  nameWithType: MultipleInputRoundVertex<T>.InitializeOrRestore
+  nameWithType.vb: MultipleInputRoundVertex(Of T).InitializeOrRestore
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Link
+  name: Link()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Link
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Link
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Link()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Link()
+  nameWithType: MultipleInputRoundVertex<T>.Link()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Link()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Link*
+  name: Link
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Link_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Link
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Link
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Link
+  nameWithType: MultipleInputRoundVertex<T>.Link
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Link
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.LinkTo(System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Threading.Tasks.Dataflow.DataflowLinkOptions)
+  name: LinkTo(ITargetBlock<IStreamEvent>, DataflowLinkOptions)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_LinkTo_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__System_Threading_Tasks_Dataflow_DataflowLinkOptions_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.LinkTo(System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent},System.Threading.Tasks.Dataflow.DataflowLinkOptions)
+  name.vb: LinkTo(ITargetBlock(Of IStreamEvent), DataflowLinkOptions)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.LinkTo(System.Threading.Tasks.Dataflow.ITargetBlock<FlowtideDotNet.Base.IStreamEvent>, System.Threading.Tasks.Dataflow.DataflowLinkOptions)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).LinkTo(System.Threading.Tasks.Dataflow.ITargetBlock(Of FlowtideDotNet.Base.IStreamEvent), System.Threading.Tasks.Dataflow.DataflowLinkOptions)
+  nameWithType: MultipleInputRoundVertex<T>.LinkTo(ITargetBlock<IStreamEvent>, DataflowLinkOptions)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).LinkTo(ITargetBlock(Of IStreamEvent), DataflowLinkOptions)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.LinkTo*
+  name: LinkTo
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_LinkTo_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.LinkTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.LinkTo
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).LinkTo
+  nameWithType: MultipleInputRoundVertex<T>.LinkTo
+  nameWithType.vb: MultipleInputRoundVertex(Of T).LinkTo
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Logger
+  name: Logger
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Logger
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Logger
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Logger
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Logger
+  nameWithType: MultipleInputRoundVertex<T>.Logger
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Logger
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Logger*
+  name: Logger
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Logger_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Logger
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Logger
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Logger
+  nameWithType: MultipleInputRoundVertex<T>.Logger
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Logger
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundCostPerInput
+  name: MaxRoundCostPerInput
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MaxRoundCostPerInput
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundCostPerInput
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MaxRoundCostPerInput
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MaxRoundCostPerInput
+  nameWithType: MultipleInputRoundVertex<T>.MaxRoundCostPerInput
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MaxRoundCostPerInput
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundCostPerInput*
+  name: MaxRoundCostPerInput
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MaxRoundCostPerInput_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundCostPerInput
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MaxRoundCostPerInput
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MaxRoundCostPerInput
+  nameWithType: MultipleInputRoundVertex<T>.MaxRoundCostPerInput
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MaxRoundCostPerInput
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundMessages
+  name: MaxRoundMessages
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MaxRoundMessages
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundMessages
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MaxRoundMessages
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MaxRoundMessages
+  nameWithType: MultipleInputRoundVertex<T>.MaxRoundMessages
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MaxRoundMessages
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundMessages*
+  name: MaxRoundMessages
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MaxRoundMessages_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MaxRoundMessages
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MaxRoundMessages
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MaxRoundMessages
+  nameWithType: MultipleInputRoundVertex<T>.MaxRoundMessages
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MaxRoundMessages
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MemoryAllocator
+  name: MemoryAllocator
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MemoryAllocator
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MemoryAllocator
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MemoryAllocator
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MemoryAllocator
+  nameWithType: MultipleInputRoundVertex<T>.MemoryAllocator
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MemoryAllocator
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MemoryAllocator*
+  name: MemoryAllocator
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_MemoryAllocator_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.MemoryAllocator
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.MemoryAllocator
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).MemoryAllocator
+  nameWithType: MultipleInputRoundVertex<T>.MemoryAllocator
+  nameWithType.vb: MultipleInputRoundVertex(Of T).MemoryAllocator
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Metrics
+  name: Metrics
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Metrics
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Metrics
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Metrics
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Metrics
+  nameWithType: MultipleInputRoundVertex<T>.Metrics
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Metrics
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Metrics*
+  name: Metrics
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Metrics_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Metrics
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Metrics
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Metrics
+  nameWithType: MultipleInputRoundVertex<T>.Metrics
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Metrics
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Name
+  name: Name
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Name
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Name
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Name
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Name
+  nameWithType: MultipleInputRoundVertex<T>.Name
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Name
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Name*
+  name: Name
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Name_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Name
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Name
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Name
+  nameWithType: MultipleInputRoundVertex<T>.Name
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Name
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpoint
+  name: OnCheckpoint()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnCheckpoint
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpoint
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnCheckpoint()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnCheckpoint()
+  nameWithType: MultipleInputRoundVertex<T>.OnCheckpoint()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnCheckpoint()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpoint*
+  name: OnCheckpoint
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnCheckpoint_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpoint
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnCheckpoint
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnCheckpoint
+  nameWithType: MultipleInputRoundVertex<T>.OnCheckpoint
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnCheckpoint
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpointFlush
+  name: OnCheckpointFlush()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnCheckpointFlush
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpointFlush
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnCheckpointFlush()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnCheckpointFlush()
+  nameWithType: MultipleInputRoundVertex<T>.OnCheckpointFlush()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnCheckpointFlush()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpointFlush*
+  name: OnCheckpointFlush
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnCheckpointFlush_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnCheckpointFlush
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnCheckpointFlush
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnCheckpointFlush
+  nameWithType: MultipleInputRoundVertex<T>.OnCheckpointFlush
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnCheckpointFlush
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnFailure(System.Int64)
+  name: OnFailure(long)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnFailure_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnFailure(System.Int64)
+  name.vb: OnFailure(Long)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnFailure(long)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnFailure(Long)
+  nameWithType: MultipleInputRoundVertex<T>.OnFailure(long)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnFailure(Long)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnFailure*
+  name: OnFailure
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnFailure_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnFailure
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnFailure
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnFailure
+  nameWithType: MultipleInputRoundVertex<T>.OnFailure
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnFailure
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnLockingEventPrepare
+  name: OnLockingEventPrepare()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnLockingEventPrepare
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnLockingEventPrepare
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnLockingEventPrepare()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnLockingEventPrepare()
+  nameWithType: MultipleInputRoundVertex<T>.OnLockingEventPrepare()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnLockingEventPrepare()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnLockingEventPrepare*
+  name: OnLockingEventPrepare
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnLockingEventPrepare_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnLockingEventPrepare
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnLockingEventPrepare
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnLockingEventPrepare
+  nameWithType: MultipleInputRoundVertex<T>.OnLockingEventPrepare
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnLockingEventPrepare
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieve(System.Int32,`0,System.Int64)
+  name: OnRecieve(int, T, long)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnRecieve_System_Int32__0_System_Int64_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieve(System.Int32,`0,System.Int64)
+  name.vb: OnRecieve(Integer, T, Long)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnRecieve(int, T, long)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnRecieve(Integer, T, Long)
+  nameWithType: MultipleInputRoundVertex<T>.OnRecieve(int, T, long)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnRecieve(Integer, T, Long)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieve*
+  name: OnRecieve
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnRecieve_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieve
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnRecieve
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnRecieve
+  nameWithType: MultipleInputRoundVertex<T>.OnRecieve
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnRecieve
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieveRound(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Base.Vertices.RoundMessage{`0}},System.Int64)
+  name: OnRecieveRound(IReadOnlyList<RoundMessage<T>>, long)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnRecieveRound_System_Collections_Generic_IReadOnlyList_FlowtideDotNet_Base_Vertices_RoundMessage__0___System_Int64_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieveRound(System.Collections.Generic.IReadOnlyList{FlowtideDotNet.Base.Vertices.RoundMessage{`0}},System.Int64)
+  name.vb: OnRecieveRound(IReadOnlyList(Of RoundMessage(Of T)), Long)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnRecieveRound(System.Collections.Generic.IReadOnlyList<FlowtideDotNet.Base.Vertices.RoundMessage<T>>, long)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnRecieveRound(System.Collections.Generic.IReadOnlyList(Of FlowtideDotNet.Base.Vertices.RoundMessage(Of T)), Long)
+  nameWithType: MultipleInputRoundVertex<T>.OnRecieveRound(IReadOnlyList<RoundMessage<T>>, long)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnRecieveRound(IReadOnlyList(Of RoundMessage(Of T)), Long)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieveRound*
+  name: OnRecieveRound
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnRecieveRound_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnRecieveRound
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnRecieveRound
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnRecieveRound
+  nameWithType: MultipleInputRoundVertex<T>.OnRecieveRound
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnRecieveRound
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnTrigger(System.String,System.Object)
+  name: OnTrigger(string, object?)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnTrigger_System_String_System_Object_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnTrigger(System.String,System.Object)
+  name.vb: OnTrigger(String, Object)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnTrigger(string, object?)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnTrigger(String, Object)
+  nameWithType: MultipleInputRoundVertex<T>.OnTrigger(string, object?)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnTrigger(String, Object)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnTrigger*
+  name: OnTrigger
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnTrigger_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnTrigger
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnTrigger
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnTrigger
+  nameWithType: MultipleInputRoundVertex<T>.OnTrigger
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnTrigger
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnWatermark(FlowtideDotNet.Base.Watermark)
+  name: OnWatermark(Watermark)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnWatermark_FlowtideDotNet_Base_Watermark_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnWatermark(FlowtideDotNet.Base.Watermark)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnWatermark(FlowtideDotNet.Base.Watermark)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnWatermark(FlowtideDotNet.Base.Watermark)
+  nameWithType: MultipleInputRoundVertex<T>.OnWatermark(Watermark)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnWatermark(Watermark)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnWatermark*
+  name: OnWatermark
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_OnWatermark_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.OnWatermark
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.OnWatermark
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).OnWatermark
+  nameWithType: MultipleInputRoundVertex<T>.OnWatermark
+  nameWithType.vb: MultipleInputRoundVertex(Of T).OnWatermark
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Pause
+  name: Pause()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Pause
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Pause
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Pause()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Pause()
+  nameWithType: MultipleInputRoundVertex<T>.Pause()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Pause()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Pause*
+  name: Pause
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Pause_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Pause
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Pause
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Pause
+  nameWithType: MultipleInputRoundVertex<T>.Pause
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Pause
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)
+  name: QueueTrigger(TriggerEvent)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_QueueTrigger_FlowtideDotNet_Base_TriggerEvent_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.QueueTrigger(FlowtideDotNet.Base.TriggerEvent)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).QueueTrigger(FlowtideDotNet.Base.TriggerEvent)
+  nameWithType: MultipleInputRoundVertex<T>.QueueTrigger(TriggerEvent)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).QueueTrigger(TriggerEvent)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueueTrigger*
+  name: QueueTrigger
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_QueueTrigger_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueueTrigger
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.QueueTrigger
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).QueueTrigger
+  nameWithType: MultipleInputRoundVertex<T>.QueueTrigger
+  nameWithType.vb: MultipleInputRoundVertex(Of T).QueueTrigger
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueuedEvents
+  name: QueuedEvents
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_QueuedEvents
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueuedEvents
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.QueuedEvents
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).QueuedEvents
+  nameWithType: MultipleInputRoundVertex<T>.QueuedEvents
+  nameWithType.vb: MultipleInputRoundVertex(Of T).QueuedEvents
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueuedEvents*
+  name: QueuedEvents
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_QueuedEvents_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.QueuedEvents
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.QueuedEvents
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).QueuedEvents
+  nameWithType: MultipleInputRoundVertex<T>.QueuedEvents
+  nameWithType.vb: MultipleInputRoundVertex(Of T).QueuedEvents
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReleaseReservation(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})
+  name: ReleaseReservation(DataflowMessageHeader, ITargetBlock<IStreamEvent>)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ReleaseReservation_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReleaseReservation(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})
+  name.vb: ReleaseReservation(DataflowMessageHeader, ITargetBlock(Of IStreamEvent))
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ReleaseReservation(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock<FlowtideDotNet.Base.IStreamEvent>)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ReleaseReservation(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock(Of FlowtideDotNet.Base.IStreamEvent))
+  nameWithType: MultipleInputRoundVertex<T>.ReleaseReservation(DataflowMessageHeader, ITargetBlock<IStreamEvent>)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ReleaseReservation(DataflowMessageHeader, ITargetBlock(Of IStreamEvent))
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReleaseReservation*
+  name: ReleaseReservation
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ReleaseReservation_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReleaseReservation
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ReleaseReservation
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ReleaseReservation
+  nameWithType: MultipleInputRoundVertex<T>.ReleaseReservation
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ReleaseReservation
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReserveMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})
+  name: ReserveMessage(DataflowMessageHeader, ITargetBlock<IStreamEvent>)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ReserveMessage_System_Threading_Tasks_Dataflow_DataflowMessageHeader_System_Threading_Tasks_Dataflow_ITargetBlock_FlowtideDotNet_Base_IStreamEvent__
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReserveMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader,System.Threading.Tasks.Dataflow.ITargetBlock{FlowtideDotNet.Base.IStreamEvent})
+  name.vb: ReserveMessage(DataflowMessageHeader, ITargetBlock(Of IStreamEvent))
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ReserveMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock<FlowtideDotNet.Base.IStreamEvent>)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ReserveMessage(System.Threading.Tasks.Dataflow.DataflowMessageHeader, System.Threading.Tasks.Dataflow.ITargetBlock(Of FlowtideDotNet.Base.IStreamEvent))
+  nameWithType: MultipleInputRoundVertex<T>.ReserveMessage(DataflowMessageHeader, ITargetBlock<IStreamEvent>)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ReserveMessage(DataflowMessageHeader, ITargetBlock(Of IStreamEvent))
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReserveMessage*
+  name: ReserveMessage
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_ReserveMessage_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.ReserveMessage
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.ReserveMessage
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).ReserveMessage
+  nameWithType: MultipleInputRoundVertex<T>.ReserveMessage
+  nameWithType.vb: MultipleInputRoundVertex(Of T).ReserveMessage
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Resume
+  name: Resume()
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Resume
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Resume
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Resume()
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Resume()
+  nameWithType: MultipleInputRoundVertex<T>.Resume()
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Resume()
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Resume*
+  name: Resume
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Resume_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Resume
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Resume
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Resume
+  nameWithType: MultipleInputRoundVertex<T>.Resume
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Resume
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.RoundCost(`0)
+  name: RoundCost(T)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_RoundCost__0_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.RoundCost(`0)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.RoundCost(T)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).RoundCost(T)
+  nameWithType: MultipleInputRoundVertex<T>.RoundCost(T)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).RoundCost(T)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.RoundCost*
+  name: RoundCost
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_RoundCost_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.RoundCost
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.RoundCost
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).RoundCost
+  nameWithType: MultipleInputRoundVertex<T>.RoundCost
+  nameWithType.vb: MultipleInputRoundVertex(Of T).RoundCost
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.SetHealth(System.Boolean)
+  name: SetHealth(bool)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_SetHealth_System_Boolean_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.SetHealth(System.Boolean)
+  name.vb: SetHealth(Boolean)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.SetHealth(bool)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).SetHealth(Boolean)
+  nameWithType: MultipleInputRoundVertex<T>.SetHealth(bool)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).SetHealth(Boolean)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.SetHealth*
+  name: SetHealth
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_SetHealth_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.SetHealth
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.SetHealth
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).SetHealth
+  nameWithType: MultipleInputRoundVertex<T>.SetHealth
+  nameWithType.vb: MultipleInputRoundVertex(Of T).SetHealth
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Setup(System.String,System.String)
+  name: Setup(string, string)
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Setup_System_String_System_String_
+  commentId: M:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Setup(System.String,System.String)
+  name.vb: Setup(String, String)
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Setup(string, string)
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Setup(String, String)
+  nameWithType: MultipleInputRoundVertex<T>.Setup(string, string)
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Setup(String, String)
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Setup*
+  name: Setup
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Setup_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Setup
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Setup
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Setup
+  nameWithType: MultipleInputRoundVertex<T>.Setup
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Setup
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamName
+  name: StreamName
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_StreamName
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamName
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.StreamName
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).StreamName
+  nameWithType: MultipleInputRoundVertex<T>.StreamName
+  nameWithType.vb: MultipleInputRoundVertex(Of T).StreamName
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamName*
+  name: StreamName
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_StreamName_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamName
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.StreamName
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).StreamName
+  nameWithType: MultipleInputRoundVertex<T>.StreamName
+  nameWithType.vb: MultipleInputRoundVertex(Of T).StreamName
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamVersion
+  name: StreamVersion
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_StreamVersion
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamVersion
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.StreamVersion
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).StreamVersion
+  nameWithType: MultipleInputRoundVertex<T>.StreamVersion
+  nameWithType.vb: MultipleInputRoundVertex(Of T).StreamVersion
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamVersion*
+  name: StreamVersion
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_StreamVersion_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.StreamVersion
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.StreamVersion
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).StreamVersion
+  nameWithType: MultipleInputRoundVertex<T>.StreamVersion
+  nameWithType.vb: MultipleInputRoundVertex(Of T).StreamVersion
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Targets
+  name: Targets
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Targets
+  commentId: P:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Targets
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Targets
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Targets
+  nameWithType: MultipleInputRoundVertex<T>.Targets
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Targets
+- uid: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Targets*
+  name: Targets
+  href: api/FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex-1.html#FlowtideDotNet_Base_Vertices_MultipleInputRoundVertex_1_Targets_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex`1.Targets
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex<T>.Targets
+  fullName.vb: FlowtideDotNet.Base.Vertices.MultipleInputRoundVertex(Of T).Targets
+  nameWithType: MultipleInputRoundVertex<T>.Targets
+  nameWithType.vb: MultipleInputRoundVertex(Of T).Targets
 - uid: FlowtideDotNet.Base.Vertices.MultipleInputTargetHolder
   name: MultipleInputTargetHolder
   href: api/FlowtideDotNet.Base.Vertices.MultipleInputTargetHolder.html
@@ -7719,6 +8472,68 @@ references:
   fullName.vb: FlowtideDotNet.Base.Vertices.PartitionedOutputVertex(Of T).OnRecieve
   nameWithType: PartitionedOutputVertex<T>.OnRecieve
   nameWithType.vb: PartitionedOutputVertex(Of T).OnRecieve
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1
+  name: RoundMessage<T>
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html
+  commentId: T:FlowtideDotNet.Base.Vertices.RoundMessage`1
+  name.vb: RoundMessage(Of T)
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T)
+  nameWithType: RoundMessage<T>
+  nameWithType.vb: RoundMessage(Of T)
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.#ctor(System.Int32,`0)
+  name: RoundMessage(int, T)
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1__ctor_System_Int32__0_
+  commentId: M:FlowtideDotNet.Base.Vertices.RoundMessage`1.#ctor(System.Int32,`0)
+  name.vb: New(Integer, T)
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.RoundMessage(int, T)
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).New(Integer, T)
+  nameWithType: RoundMessage<T>.RoundMessage(int, T)
+  nameWithType.vb: RoundMessage(Of T).New(Integer, T)
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.#ctor*
+  name: RoundMessage
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1__ctor_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.RoundMessage`1.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.RoundMessage
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).New
+  nameWithType: RoundMessage<T>.RoundMessage
+  nameWithType.vb: RoundMessage(Of T).New
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.Message
+  name: Message
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1_Message
+  commentId: P:FlowtideDotNet.Base.Vertices.RoundMessage`1.Message
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.Message
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).Message
+  nameWithType: RoundMessage<T>.Message
+  nameWithType.vb: RoundMessage(Of T).Message
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.Message*
+  name: Message
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1_Message_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.RoundMessage`1.Message
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.Message
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).Message
+  nameWithType: RoundMessage<T>.Message
+  nameWithType.vb: RoundMessage(Of T).Message
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.TargetId
+  name: TargetId
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1_TargetId
+  commentId: P:FlowtideDotNet.Base.Vertices.RoundMessage`1.TargetId
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.TargetId
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).TargetId
+  nameWithType: RoundMessage<T>.TargetId
+  nameWithType.vb: RoundMessage(Of T).TargetId
+- uid: FlowtideDotNet.Base.Vertices.RoundMessage`1.TargetId*
+  name: TargetId
+  href: api/FlowtideDotNet.Base.Vertices.RoundMessage-1.html#FlowtideDotNet_Base_Vertices_RoundMessage_1_TargetId_
+  commentId: Overload:FlowtideDotNet.Base.Vertices.RoundMessage`1.TargetId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Base.Vertices.RoundMessage<T>.TargetId
+  fullName.vb: FlowtideDotNet.Base.Vertices.RoundMessage(Of T).TargetId
+  nameWithType: RoundMessage<T>.TargetId
+  nameWithType.vb: RoundMessage(Of T).TargetId
 - uid: FlowtideDotNet.Base.Vertices.UnaryVertex`1
   name: UnaryVertex<T>
   href: api/FlowtideDotNet.Base.Vertices.UnaryVertex-1.html
@@ -33958,6 +34773,150 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Join.JoinStreamEvent.Weight
   nameWithType: JoinStreamEvent.Weight
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin
+  name: FlowtideDotNet.Core.Operators.Join.MultiJoin
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.html
+  commentId: N:FlowtideDotNet.Core.Operators.Join.MultiJoin
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin
+  nameWithType: FlowtideDotNet.Core.Operators.Join.MultiJoin
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport
+  name: MultiJoinReport
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html
+  commentId: T:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport
+  nameWithType: MultiJoinReport
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan,System.Int32)
+  name: Create(Plan, int)
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Create_FlowtideDotNet_Substrait_Plan_System_Int32_
+  commentId: M:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan,System.Int32)
+  name.vb: Create(Plan, Integer)
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan, int)
+  fullName.vb: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan, Integer)
+  nameWithType: MultiJoinReport.Create(Plan, int)
+  nameWithType.vb: MultiJoinReport.Create(Plan, Integer)
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create*
+  name: Create
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Create_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create
+  nameWithType: MultiJoinReport.Create
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups
+  name: Groups
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Groups
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups
+  nameWithType: MultiJoinReport.Groups
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups*
+  name: Groups
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Groups_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Groups
+  nameWithType: MultiJoinReport.Groups
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.InsideLoopReason
+  name: InsideLoopReason
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_InsideLoopReason
+  commentId: F:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.InsideLoopReason
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.InsideLoopReason
+  nameWithType: MultiJoinReport.InsideLoopReason
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut
+  name: LeftOut
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_LeftOut
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut
+  nameWithType: MultiJoinReport.LeftOut
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut*
+  name: LeftOut
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_LeftOut_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.LeftOut
+  nameWithType: MultiJoinReport.LeftOut
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount
+  name: MergeJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_MergeJoinCount
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount
+  nameWithType: MultiJoinReport.MergeJoinCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount*
+  name: MergeJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_MergeJoinCount_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.MergeJoinCount
+  nameWithType: MultiJoinReport.MergeJoinCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_ToString
+  commentId: M:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString()
+  nameWithType: MultiJoinReport.ToString()
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_ToString_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.ToString
+  nameWithType: MultiJoinReport.ToString
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup
+  name: MultiJoinReportGroup
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html
+  commentId: T:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup
+  nameWithType: MultiJoinReportGroup
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount
+  name: InnerJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InnerJoinCount
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount
+  nameWithType: MultiJoinReportGroup.InnerJoinCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount*
+  name: InnerJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InnerJoinCount_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InnerJoinCount
+  nameWithType: MultiJoinReportGroup.InnerJoinCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount
+  name: InputCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InputCount
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount
+  nameWithType: MultiJoinReportGroup.InputCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount*
+  name: InputCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InputCount_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputCount
+  nameWithType: MultiJoinReportGroup.InputCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames
+  name: InputNames
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InputNames
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames
+  nameWithType: MultiJoinReportGroup.InputNames
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames*
+  name: InputNames
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_InputNames_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.InputNames
+  nameWithType: MultiJoinReportGroup.InputNames
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount
+  name: LeftJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_LeftJoinCount
+  commentId: P:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount
+  nameWithType: MultiJoinReportGroup.LeftJoinCount
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount*
+  name: LeftJoinCount
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReportGroup_LeftJoinCount_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReportGroup.LeftJoinCount
+  nameWithType: MultiJoinReportGroup.LeftJoinCount
 - uid: FlowtideDotNet.Core.Operators.Partition
   name: FlowtideDotNet.Core.Operators.Partition
   href: api/FlowtideDotNet.Core.Operators.Partition.html
@@ -36039,6 +36998,32 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.GroupByToDistinct
   nameWithType: PlanOptimizerSettings.GroupByToDistinct
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin
+  name: MultiJoin
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoin
+  commentId: P:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin
+  nameWithType: PlanOptimizerSettings.MultiJoin
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin*
+  name: MultiJoin
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoin_
+  commentId: Overload:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoin
+  nameWithType: PlanOptimizerSettings.MultiJoin
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
+  name: MultiJoinMaxInputs
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinMaxInputs
+  commentId: P:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
+  nameWithType: PlanOptimizerSettings.MultiJoinMaxInputs
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs*
+  name: MultiJoinMaxInputs
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinMaxInputs_
+  commentId: Overload:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
+  nameWithType: PlanOptimizerSettings.MultiJoinMaxInputs
 - uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.NoMergeJoin
   name: NoMergeJoin
   href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_NoMergeJoin
@@ -55215,6 +56200,191 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.WriteTo
   nameWithType: IterationRelation.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint
+  name: MultiJoinHint
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint
+  nameWithType: MultiJoinHint
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor
+  name: MultiJoinHint()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MultiJoinHint()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.New()
+  nameWithType: MultiJoinHint.MultiJoinHint()
+  nameWithType.vb: MultiJoinHint.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  name: MultiJoinHint(MultiJoinHint)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint__ctor_FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  name.vb: New(MultiJoinHint)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MultiJoinHint(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.New(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  nameWithType: MultiJoinHint.MultiJoinHint(MultiJoinHint)
+  nameWithType.vb: MultiJoinHint.New(MultiJoinHint)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor*
+  name: MultiJoinHint
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MultiJoinHint
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.New
+  nameWithType: MultiJoinHint.MultiJoinHint
+  nameWithType.vb: MultiJoinHint.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize()
+  nameWithType: MultiJoinHint.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.CalculateSize
+  nameWithType: MultiJoinHint.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone()
+  nameWithType: MultiJoinHint.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Clone
+  nameWithType: MultiJoinHint.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor
+  nameWithType: MultiJoinHint.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Descriptor
+  nameWithType: MultiJoinHint.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  name: Equals(MultiJoinHint)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Equals_FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  nameWithType: MultiJoinHint.Equals(MultiJoinHint)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals(Object)
+  nameWithType: MultiJoinHint.Equals(object)
+  nameWithType.vb: MultiJoinHint.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Equals
+  nameWithType: MultiJoinHint.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode()
+  nameWithType: MultiJoinHint.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GetHashCode
+  nameWithType: MultiJoinHint.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group
+  name: Group
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Group
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group
+  nameWithType: MultiJoinHint.Group
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group*
+  name: Group
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Group_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Group
+  nameWithType: MultiJoinHint.Group
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GroupFieldNumber
+  name: GroupFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_GroupFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GroupFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.GroupFieldNumber
+  nameWithType: MultiJoinHint.GroupFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  name: MergeFrom(MultiJoinHint)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint)
+  nameWithType: MultiJoinHint.MergeFrom(MultiJoinHint)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: MultiJoinHint.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.MergeFrom
+  nameWithType: MultiJoinHint.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser
+  nameWithType: MultiJoinHint.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.Parser
+  nameWithType: MultiJoinHint.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString()
+  nameWithType: MultiJoinHint.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.ToString
+  nameWithType: MultiJoinHint.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: MultiJoinHint.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.html#FlowtideDotNet_Substrait_CustomProtobuf_MultiJoinHint_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.MultiJoinHint.WriteTo
+  nameWithType: MultiJoinHint.WriteTo
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.NormalizationRelation
   name: NormalizationRelation
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.NormalizationRelation.html
@@ -65866,6 +67036,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.LeftKeys
   nameWithType: MergeJoinRelation.LeftKeys
+- uid: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup
+  name: MultiJoinGroup
+  href: api/FlowtideDotNet.Substrait.Relations.MergeJoinRelation.html#FlowtideDotNet_Substrait_Relations_MergeJoinRelation_MultiJoinGroup
+  commentId: P:FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup
+  fullName: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup
+  nameWithType: MergeJoinRelation.MultiJoinGroup
+- uid: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup*
+  name: MultiJoinGroup
+  href: api/FlowtideDotNet.Substrait.Relations.MergeJoinRelation.html#FlowtideDotNet_Substrait_Relations_MergeJoinRelation_MultiJoinGroup_
+  commentId: Overload:FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.MultiJoinGroup
+  nameWithType: MergeJoinRelation.MultiJoinGroup
 - uid: FlowtideDotNet.Substrait.Relations.MergeJoinRelation.OutputLength
   name: OutputLength
   href: api/FlowtideDotNet.Substrait.Relations.MergeJoinRelation.html#FlowtideDotNet_Substrait_Relations_MergeJoinRelation_OutputLength
