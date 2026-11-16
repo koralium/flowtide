@@ -36,8 +36,27 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
         private readonly string resourceTypeColumnName;
         private readonly string resourceIdColumnName;
 
-        private Dictionary<string, int> _iterationOutputLengths;
-        private Dictionary<string, List<IterationReferenceReadRelation>> _iterationReferenceRelations;
+        private sealed class LoopScope
+        {
+            public LoopScope(string name)
+            {
+                Name = name;
+            }
+
+            public string Name { get; }
+
+            // Reads bound to this loop
+            public List<IterationReferenceReadRelation> Reads { get; } = new List<IterationReferenceReadRelation>();
+        }
+
+        // Open loops per type and relation, innermost on top
+        private readonly Dictionary<string, Stack<LoopScope>> _openLoops;
+        // Built loop per name, same name means same loop
+        private readonly Dictionary<string, IterationRelation> _loopsByName;
+        // Output length of the first loop per type and relation
+        private readonly Dictionary<string, int> _iterationOutputLengths;
+        // Reads outside an open loop, bound to the first loop
+        private readonly Dictionary<string, List<IterationReferenceReadRelation>> _iterationReferenceRelations;
 
         public ZanzibarToFlowtideVisitor(
             string inputTableName,
@@ -55,6 +74,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             this.relationColumnName = relationColumnName;
             this.resourceTypeColumnName = resourceTypeColumnName;
             this.resourceIdColumnName = resourceIdColumnName;
+            _openLoops = new Dictionary<string, Stack<LoopScope>>();
+            _loopsByName = new Dictionary<string, IterationRelation>();
             _iterationOutputLengths = new Dictionary<string, int>();
             _iterationReferenceRelations = new Dictionary<string, List<IterationReferenceReadRelation>>();
         }
@@ -498,35 +519,93 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
 
         public override Relation VisitZanzibarLoop(ZanzibarLoop loop, object? state)
         {
-            var input = loop.LoopRelation.Accept(this, state);
-
             var id = $"{loop.Type}_{loop.Relation}";
-            _iterationOutputLengths.Add(id, input.OutputLength);
 
-            if (_iterationReferenceRelations.TryGetValue(id, out var existingRelations))
+            if (!_openLoops.TryGetValue(id, out var scopes))
             {
-                foreach (var rel in existingRelations)
-                {
-                    rel.ReferenceOutputLength = input.OutputLength;
-                }
+                scopes = new Stack<LoopScope>();
+                _openLoops.Add(id, scopes);
+            }
+            // Built with the plain id, renamed after if needed
+            var scope = new LoopScope(id);
+            scopes.Push(scope);
+            var input = loop.LoopRelation.Accept(this, state);
+            scopes.Pop();
+
+            foreach (var rel in scope.Reads)
+            {
+                rel.ReferenceOutputLength = input.OutputLength;
             }
 
-            return new IterationRelation()
+            var iterationRelation = new IterationRelation()
             {
                 LoopPlan = input,
-                IterationName = $"{loop.Type}_{loop.Relation}",
+                IterationName = id,
                 MaxIterations = 1000
             };
+
+            if (!_loopsByName.ContainsKey(id))
+            {
+                // First loop keeps plain id, existing plan hashes unchanged
+                _loopsByName.Add(id, iterationRelation);
+                _iterationOutputLengths.Add(id, input.OutputLength);
+                if (_iterationReferenceRelations.TryGetValue(id, out var existingRelations))
+                {
+                    foreach (var rel in existingRelations)
+                    {
+                        rel.ReferenceOutputLength = input.OutputLength;
+                    }
+                }
+                return iterationRelation;
+            }
+
+            // Identical loops share a name so they can be computed once
+            for (int suffix = 0; ; suffix++)
+            {
+                var name = suffix == 0 ? id : $"{id}_{suffix}";
+                SetLoopName(iterationRelation, scope, name);
+                if (!_loopsByName.TryGetValue(name, out var existing))
+                {
+                    _loopsByName.Add(name, iterationRelation);
+                    return iterationRelation;
+                }
+                if (existing.Equals(iterationRelation))
+                {
+                    return iterationRelation;
+                }
+            }
+        }
+
+        private static void SetLoopName(IterationRelation iterationRelation, LoopScope scope, string name)
+        {
+            iterationRelation.IterationName = name;
+            foreach (var rel in scope.Reads)
+            {
+                rel.IterationName = name;
+            }
         }
 
         public override Relation VisitZanzibarReadLoop(ZanzibarReadLoop readLoop, object? state)
         {
             var id = $"{readLoop.Type}_{readLoop.Relation}";
+
+            // Bind to the innermost open loop
+            if (_openLoops.TryGetValue(id, out var scopes) && scopes.Count > 0)
+            {
+                var scope = scopes.Peek();
+                var scopedRel = new IterationReferenceReadRelation()
+                {
+                    IterationName = scope.Name
+                };
+                scope.Reads.Add(scopedRel);
+                return scopedRel;
+            }
+
             if (_iterationOutputLengths.TryGetValue(id, out var outputLength))
             {
                 return new IterationReferenceReadRelation()
                 {
-                    IterationName = $"{readLoop.Type}_{readLoop.Relation}",
+                    IterationName = id,
                     ReferenceOutputLength = outputLength
                 };
             }
@@ -539,7 +618,7 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
                 }
                 var rel = new IterationReferenceReadRelation()
                 {
-                    IterationName = $"{readLoop.Type}_{readLoop.Relation}"
+                    IterationName = id
                 };
                 existingRelations.Add(rel);
                 return rel;

@@ -494,7 +494,8 @@ namespace FlowtideDotNet.Zanzibar.QueryPlanner
             var loopFoundType = loopFoundTypes.FirstOrDefault(x => x.Type == typeRef.Type && x.Relation == typeRef.Relation);
             if (loopFoundType != null)
             {
-                loopFoundTypes.Remove(typeRef);
+                // Entries carry the inner counter, match type and relation
+                loopFoundTypes.RemoveWhere(x => x.Type == typeRef.Type && x.Relation == typeRef.Relation);
                 rel = new ZanzibarLoop()
                 {
                     LoopRelation = rel,
