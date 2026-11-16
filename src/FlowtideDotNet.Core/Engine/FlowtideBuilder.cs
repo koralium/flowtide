@@ -306,8 +306,13 @@ namespace FlowtideDotNet.Core.Engine
                 {
                     json = SubstraitSerializer.SerializeToJson(_plan);
                 }
-                catch
+                catch (Exception e)
                 {
+                    if (Operators.Join.MultiJoin.MultiJoinMarker.Count(_plan) > 0)
+                    {
+                        // Without a hash the stream could not tell that its joins are stored in another way than before
+                        throw new InvalidOperationException("The plan has a multi join and could not be serialized, so its version cannot be told. Turn MultiJoin off for this plan.", e);
+                    }
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));

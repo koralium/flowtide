@@ -1160,6 +1160,15 @@ namespace FlowtideDotNet.Substrait
                     rel.Common.Emit.OutputMapping.AddRange(mergeJoinRelation.Emit);
                 }
 
+                if (mergeJoinRelation.MultiJoinGroup != null)
+                {
+                    // Nothing is written for a join that is not marked
+                    rel.AdvancedExtension = new Protobuf.AdvancedExtension()
+                    {
+                        Optimization = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.MultiJoinHint() { Group = mergeJoinRelation.MultiJoinGroup.Value })
+                    };
+                }
+
                 rel.Left = Visit(mergeJoinRelation.Left, state);
                 rel.Right = Visit(mergeJoinRelation.Right, state);
 

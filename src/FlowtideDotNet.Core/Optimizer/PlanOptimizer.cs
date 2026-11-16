@@ -28,6 +28,9 @@ namespace FlowtideDotNet.Core.Optimizer
                 settings = new PlanOptimizerSettings();
             }
 
+            // Marks the plan came with are not used: they would make equal joins differ, and the setting may be off
+            Operators.Join.MultiJoin.MultiJoinMarker.Clear(plan);
+
             // Before gettimestamp turns filters into joins
             plan = CheckExtractor.Extract(plan);
 
@@ -103,6 +106,16 @@ namespace FlowtideDotNet.Core.Optimizer
             }
 
             EmitPushdown.EmitPushdown.Optimize(plan);
+
+            // After the emits are settled and before the joins are partitioned: a marked join is left whole
+            if (settings.MultiJoin && settings.DistributedPlanOptions == null)
+            {
+                if (settings.MultiJoinMaxInputs < 3)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(settings), "MultiJoinMaxInputs must be at least 3.");
+                }
+                Operators.Join.MultiJoin.MultiJoinMarker.Mark(plan, settings.MultiJoinMaxInputs);
+            }
 
             if (settings.DistributedPlanOptions != null)
             {

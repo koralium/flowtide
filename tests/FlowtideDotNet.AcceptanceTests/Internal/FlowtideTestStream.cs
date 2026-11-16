@@ -61,6 +61,18 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
 
         public string TestName => testName;
 
+        /// <summary>
+        /// When set, join chains are run as multi joins with at most this many inputs each.
+        /// </summary>
+        public int? MultiJoinMaxInputs { get; set; }
+
+        public int MultiJoinGroupsMarked { get; private set; }
+
+        /// <summary>
+        /// The version of the stream is the hash of its plan, set before StartStream.
+        /// </summary>
+        public bool VersionFromPlanHash { get; set; }
+
         public string StreamName => testName.Replace("/", "_");
 
         public IReadOnlyList<User> Users => generator.Users;
@@ -406,7 +418,36 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             _persistentStorage = CreatePersistentStorage(testName, ignoreSameDataCheck);
             _notificationReciever = new NotificationReciever(CheckpointComplete);
 
+            // A stream says how many inputs a multi join may take, or the environment does for the whole suite
+            int? multiJoinMaxInputs = MultiJoinMaxInputs;
+            if (multiJoinMaxInputs == null && int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_TEST_MULTIJOIN"), out var fromEnvironment))
+            {
+                multiJoinMaxInputs = fromEnvironment;
+            }
+            if (multiJoinMaxInputs != null)
+            {
+                planOptimizerSettings ??= new Core.Optimizer.PlanOptimizerSettings();
+                // Zero keeps a stream on ordinary joins whatever the environment says
+                planOptimizerSettings.MultiJoin = multiJoinMaxInputs.Value > 0;
+                if (multiJoinMaxInputs.Value > 0)
+                {
+                    planOptimizerSettings.MultiJoinMaxInputs = multiJoinMaxInputs.Value;
+                }
+            }
+
             plan = Core.Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
+            MultiJoinGroupsMarked = Core.Operators.Join.MultiJoin.MultiJoinMarker.Count(plan);
+
+            // Test harness only: collects which joins of the suite's plans a multi join would take
+            var multiJoinReportFile = Environment.GetEnvironmentVariable("FLOWTIDE_TEST_MULTIJOIN_REPORT");
+            if (!string.IsNullOrEmpty(multiJoinReportFile))
+            {
+                var report = Core.Operators.Join.MultiJoin.MultiJoinReport.Create(plan, 5);
+                lock (typeof(FlowtideTestStream))
+                {
+                    File.AppendAllText(multiJoinReportFile, "=== plan" + Environment.NewLine + report + Environment.NewLine);
+                }
+            }
 
             var emitValidationVisitor = new EmitLengthValidatorVisitor();
             foreach (var relation in plan.Relations)
@@ -442,6 +483,10 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (!string.IsNullOrWhiteSpace(version))
             {
                 flowtideBuilder.SetVersion(version);
+            }
+            if (VersionFromPlanHash)
+            {
+                flowtideBuilder.SetVersionParts(new (string?, bool?)[] { (null, true) });
             }
 
             if (UseColumnStore.HasValue)
@@ -515,7 +560,59 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             {
                 _actualData = actualData;
                 _dataUpdated = true;
+                _publishedWatermark = _lastWatermark;
+                _runsAtPublish = RunningCount;
             }
+        }
+
+        private Watermark? _publishedWatermark;
+        private int _runsAtPublish;
+
+        private int RunningCount => _notificationReciever == null ? 0 : Volatile.Read(ref _notificationReciever._runningNotifications);
+
+        // A stream that failed has not come back until it has reached running again
+        private bool HasRecovered => _notificationReciever == null || Volatile.Read(ref _notificationReciever._failuresAtRunning) == FailureNotificationCount;
+
+        /// <summary>
+        /// The offsets the sink last published and the ones the source tables are at, for a failure message.
+        /// </summary>
+        public string DescribePublishedOffsets()
+        {
+            Watermark? watermark;
+            lock (_lock)
+            {
+                watermark = _publishedWatermark;
+            }
+            string published = watermark == null ? "nothing" : string.Join(", ", watermark.Watermarks.Select(x => x.Key + "=" + (x.Value is LongWatermarkValue offset ? offset.Value.ToString() : "unknown")));
+            return $"published {published}; tables {string.Join(", ", _db.Tables.Select(x => $"{x.Key}={x.Value.CurrentOffset}"))}";
+        }
+
+        /// <summary>
+        /// True when the rows the sink last published include every change made to the source tables so far.
+        /// </summary>
+        public bool PublishedDataIsCurrent()
+        {
+            Watermark? watermark;
+            int runsAtPublish;
+            lock (_lock)
+            {
+                watermark = _publishedWatermark;
+                runsAtPublish = _runsAtPublish;
+            }
+            // Rows the sink of a failed run still published say nothing about the stream that comes back:
+            // they count only when published in the run the stream is in now, and that run began after the last failure
+            if (watermark == null || !HasRecovered || runsAtPublish != RunningCount)
+            {
+                return false;
+            }
+            foreach (var entry in watermark.Watermarks)
+            {
+                if (entry.Value is not LongWatermarkValue offset || !_db.Tables.TryGetValue(entry.Key, out var table) || offset.Value < table.CurrentOffset)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         private int _changeRowsReceived;
@@ -577,6 +674,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         {
             Debug.Assert(_notificationReciever != null);
             int failuresBefore = Volatile.Read(ref _notificationReciever._failureNotifications);
+            lock (_lock)
+            {
+                // What was published before the crash says nothing about the stream that comes back
+                _publishedWatermark = null;
+            }
             await _stream!.CallTrigger("crash", default);
 
             var scheduler = _stream.Scheduler as DefaultStreamScheduler;

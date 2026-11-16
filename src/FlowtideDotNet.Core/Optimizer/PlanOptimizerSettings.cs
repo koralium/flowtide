@@ -54,6 +54,16 @@ namespace FlowtideDotNet.Core.Optimizer
         public bool WindowJoinKeyOptimization { get; set; } = true;
 
         /// <summary>
+        /// Runs chains of merge joins as multi joins, on by default and not used in a distributed plan. Changing it changes the state of the stream.
+        /// </summary>
+        public bool MultiJoin { get; set; } = true;
+
+        /// <summary>
+        /// The most inputs one multi join takes when <see cref="MultiJoin"/> is set, at least 3.
+        /// </summary>
+        public int MultiJoinMaxInputs { get; set; } = 5;
+
+        /// <summary>
         /// If set, the plan is split into substreams for distributed mode as the last
         /// optimization step. Merge joins, aggregates and window functions are partitioned
         /// with one partition per substream. Plans that already contain substream statements
