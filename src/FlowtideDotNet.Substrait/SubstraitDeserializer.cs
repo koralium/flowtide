@@ -1132,6 +1132,12 @@ namespace FlowtideDotNet.Substrait
                 {
                     postJoinFilter = expressionDeserializer.VisitExpression(mergeJoin.PostJoinFilter);
                 }
+                int? multiJoinGroup = null;
+                var optimization = mergeJoin.AdvancedExtension?.Optimization;
+                if (optimization != null && Google.Protobuf.WellKnownTypes.Any.GetTypeName(optimization.TypeUrl) == CustomProtobuf.MultiJoinHint.Descriptor.FullName)
+                {
+                    multiJoinGroup = optimization.Unpack<CustomProtobuf.MultiJoinHint>().Group;
+                }
                 var output = new MergeJoinRelation()
                 {
                     Emit = GetEmit(mergeJoin.Common),
@@ -1141,7 +1147,8 @@ namespace FlowtideDotNet.Substrait
                     RightKeys = rightKeys,
                     ComparisonTypes = comparisonTypes,
                     Type = GetJoinType(mergeJoin.Type),
-                    PostJoinFilter = postJoinFilter
+                    PostJoinFilter = postJoinFilter,
+                    MultiJoinGroup = multiJoinGroup
                 };
                 return output;
             }

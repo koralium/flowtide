@@ -66,9 +66,20 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             Interlocked.Increment(ref _failureNotifications);
         }
 
+        // Times the stream has reached running, and the failures there had been when it last did
+        internal int _runningNotifications;
+        internal int _failuresAtRunning;
+        internal Action? BetweenRunningUpdatesForTests;
+
         public void OnStreamStateChange(StreamStateChangeNotification notification)
         {
-
+            if (notification.State == StreamStateValue.Running)
+            {
+                // The run is counted first: in between, what the run before published is of another run and the stream has not recovered
+                Interlocked.Increment(ref _runningNotifications);
+                BetweenRunningUpdatesForTests?.Invoke();
+                Volatile.Write(ref _failuresAtRunning, Volatile.Read(ref _failureNotifications));
+            }
         }
     }
 }

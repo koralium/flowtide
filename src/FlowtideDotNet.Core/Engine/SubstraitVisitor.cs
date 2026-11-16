@@ -68,6 +68,9 @@ namespace FlowtideDotNet.Core.Engine
         private int _operatorId = 0;
         private readonly List<(CheckRelation Relation, IReadOnlyList<string> CheckIds)> _builtChecks = new List<(CheckRelation Relation, IReadOnlyList<string> CheckIds)>();
         private Dictionary<int, RelationTree> _doneRelations;
+        private int _relationIndex;
+        private int _loopPlanDepth;
+        private HashSet<int>? _multiJoinLoopBodies;
         private Dictionary<string, ColumnIterationOperator> _iterationOperators = new Dictionary<string, ColumnIterationOperator>();
         private readonly TaskScheduler? _taskScheduler;
         private readonly DistributedOptions? _distributedOptions;
@@ -112,7 +115,13 @@ namespace FlowtideDotNet.Core.Engine
             {
                 return tree;
             }
+            int relationBefore = _relationIndex;
+            int loopDepthBefore = _loopPlanDepth;
+            _relationIndex = index;
+            _loopPlanDepth = 0;
             var block = Visit(plan.Relations[index], null);
+            _relationIndex = relationBefore;
+            _loopPlanDepth = loopDepthBefore;
 
             RelationTree? relationTree = null;
             if (block is ISourceBlock<IStreamEvent> sourceBlock)
@@ -292,6 +301,32 @@ namespace FlowtideDotNet.Core.Engine
 
         public override IStreamVertex VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, ITargetBlock<IStreamEvent>? state)
         {
+            if (mergeJoinRelation.MultiJoinGroup != null)
+            {
+                // The root of a marked group, the other joins of the group are consumed by it and never visited
+                _multiJoinLoopBodies ??= Operators.Join.MultiJoin.MultiJoinLoopBodies.Find(plan);
+                if (_loopPlanDepth > 0 || _multiJoinLoopBodies.Contains(_relationIndex))
+                {
+                    throw new NotSupportedException("A multi join cannot run inside a loop.");
+                }
+                if (!_useColumnStore)
+                {
+                    throw new NotSupportedException("A multi join needs the column store.");
+                }
+                var multiJoinPlan = Operators.Join.MultiJoin.MultiJoinPlanBuilder.Build(mergeJoinRelation);
+                var multiJoinId = _operatorId++;
+                var multiJoin = new Operators.Join.MultiJoin.MultiJoinOperator(multiJoinPlan, functionsRegister, DefaultBlockOptions);
+                if (state != null)
+                {
+                    multiJoin.LinkTo(state);
+                }
+                for (int i = 0; i < multiJoinPlan.Inputs.Count; i++)
+                {
+                    multiJoinPlan.Inputs[i].Relation.Accept(this, multiJoin.Targets[i]);
+                }
+                dataflowStreamBuilder.AddPropagatorBlock(multiJoinId.ToString(), multiJoin);
+                return multiJoin;
+            }
             if (parallelism > 1)
             {
                 var leftPartitionOperatorId = _operatorId++;
@@ -628,7 +663,9 @@ namespace FlowtideDotNet.Core.Engine
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
 
             _iterationOperators.Add(iterationRelation.IterationName, op);
+            _loopPlanDepth++;
             Visit(iterationRelation.LoopPlan, op.FeedbackTarget);
+            _loopPlanDepth--;
 
             return (op.EgressSource as IStreamVertex)!;
         }

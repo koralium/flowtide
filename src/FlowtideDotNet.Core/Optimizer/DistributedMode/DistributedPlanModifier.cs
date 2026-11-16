@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Core.Optimizer.DistributedMode
                 }
             }
 
+            // A multi join is not split over substreams, its joins are distributed as ordinary joins
+            Operators.Join.MultiJoin.MultiJoinMarker.Clear(plan);
+
             var nameGenerator = options.SubstreamNameGenerator ?? (i => $"substream_{i}");
 
             var (exchangeConsumers, plainReferencedIds, referencedIds) = CollectReferences(plan);

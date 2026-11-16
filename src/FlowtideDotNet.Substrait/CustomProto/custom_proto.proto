@@ -120,6 +120,12 @@ message PullBucketExchangeTarget {
     int32 exchange_target_id = 1;
 }
 
+// Marks a merge join as part of a multi join, every join of one group carries the same group.
+// Packed into the optimization of a merge join's advanced extension.
+message MultiJoinHint {
+    int32 group = 1;
+}
+
 // Passes its input through and tracks the issues raised by its checks.
 // Packed into the detail of an extension single rel.
 message CheckRelation {

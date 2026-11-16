@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Substrait
             CustomProtobuf.SubstreamExchangeTarget.Descriptor,
             CustomProtobuf.PullBucketExchangeTarget.Descriptor,
             CustomProtobuf.WriteRelationPrimaryKeys.Descriptor,
-            CustomProtobuf.CheckRelation.Descriptor);
+            CustomProtobuf.CheckRelation.Descriptor,
+            CustomProtobuf.MultiJoinHint.Descriptor);
     }
 }

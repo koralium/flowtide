@@ -314,6 +314,13 @@ namespace FlowtideDotNet.Core.Optimizer.MergeJoinParallelize
             {
                 return mergeJoinRelation;
             }
+            if (mergeJoinRelation.MultiJoinGroup != null)
+            {
+                // A multi join runs as one operator, only what is below its joins is partitioned
+                mergeJoinRelation.Left = Visit(mergeJoinRelation.Left, state);
+                mergeJoinRelation.Right = Visit(mergeJoinRelation.Right, state);
+                return mergeJoinRelation;
+            }
 
             // Only equality keys can drive the partitioning: rows must land in the same
             // partition to be able to match, which only holds for keys compared with
