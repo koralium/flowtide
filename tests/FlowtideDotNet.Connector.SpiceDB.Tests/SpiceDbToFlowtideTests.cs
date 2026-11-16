@@ -261,5 +261,105 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
 
             Assert.Equal(expectedPlan, plan);
         }
+
+        private const string SharedRecursionSchema = @"
+            definition user {}
+
+            definition organization {
+                relation member: user
+                relation parent: organization
+                permission can_view = member + parent->can_view
+            }
+
+            definition project {
+                relation organization: organization
+                relation owner: organization
+                permission can_view = organization->can_view + owner->can_view
+                permission org_can_view = organization->can_view
+            }
+        ";
+
+        [Fact]
+        public void SameRecursivePermissionReachedTwice()
+        {
+            var plan = SpiceDbToFlowtide.Convert(SharedRecursionSchema, "project", "can_view", "spicedb");
+
+            var (loops, reads) = CollectIterations(plan);
+
+            // Identical loops share the plain name
+            Assert.Equal(2, loops.Count);
+            Assert.All(loops, loop => Assert.Equal("organization_can_view", loop.IterationName));
+            Assert.Equal(loops[0], loops[1]);
+            Assert.NotEmpty(reads);
+            // Each read binds to its own enclosing loop
+            Assert.All(reads, read => Assert.Equal(read.Scope[0], read.Name));
+        }
+
+        [Fact]
+        public void DifferentPermissionsReachingSameLoopGetIdenticalLoops()
+        {
+            var organizationPlan = SpiceDbToFlowtide.Convert(SharedRecursionSchema, "organization", "can_view", "spicedb");
+            var projectPlan = SpiceDbToFlowtide.Convert(SharedRecursionSchema, "project", "org_can_view", "spicedb");
+
+            var organizationLoop = Assert.Single(CollectIterations(organizationPlan).Loops);
+            var projectLoop = Assert.Single(CollectIterations(projectPlan).Loops);
+
+            Assert.Equal(organizationLoop, projectLoop);
+        }
+
+        private static (List<IterationRelation> Loops, List<(string Name, string[] Scope)> Reads) CollectIterations(Plan plan)
+        {
+            var loops = new List<IterationRelation>();
+            var reads = new List<(string Name, string[] Scope)>();
+            for (int i = 0; i < plan.Relations.Count; i++)
+            {
+                CollectIterations(plan.Relations[i], new Stack<string>(), loops, reads);
+            }
+            return (loops, reads);
+        }
+
+        private static void CollectIterations(Relation relation, Stack<string> scope, List<IterationRelation> loops, List<(string Name, string[] Scope)> reads)
+        {
+            switch (relation)
+            {
+                case RootRelation root:
+                    CollectIterations(root.Input, scope, loops, reads);
+                    break;
+                case IterationRelation iteration:
+                    loops.Add(iteration);
+                    if (iteration.Input != null)
+                    {
+                        CollectIterations(iteration.Input, scope, loops, reads);
+                    }
+                    scope.Push(iteration.IterationName);
+                    CollectIterations(iteration.LoopPlan, scope, loops, reads);
+                    scope.Pop();
+                    break;
+                case IterationReferenceReadRelation read:
+                    reads.Add((read.IterationName, scope.ToArray()));
+                    break;
+                case FilterRelation filter:
+                    CollectIterations(filter.Input, scope, loops, reads);
+                    break;
+                case ProjectRelation project:
+                    CollectIterations(project.Input, scope, loops, reads);
+                    break;
+                case JoinRelation join:
+                    CollectIterations(join.Left, scope, loops, reads);
+                    CollectIterations(join.Right, scope, loops, reads);
+                    break;
+                case SetRelation set:
+                    foreach (var input in set.Inputs)
+                    {
+                        CollectIterations(input, scope, loops, reads);
+                    }
+                    break;
+                case ReadRelation:
+                case ReferenceRelation:
+                    break;
+                default:
+                    throw new NotSupportedException(relation.GetType().Name);
+            }
+        }
     }
 }

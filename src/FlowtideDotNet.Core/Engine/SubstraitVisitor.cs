@@ -662,10 +662,21 @@ namespace FlowtideDotNet.Core.Engine
             }
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
 
-            _iterationOperators.Add(iterationRelation.IterationName, op);
+            // Name only lives inside its loop plan
+            var iterationName = iterationRelation.IterationName;
+            _iterationOperators.TryGetValue(iterationName, out var outerOp);
+            _iterationOperators[iterationName] = op;
             _loopPlanDepth++;
             Visit(iterationRelation.LoopPlan, op.FeedbackTarget);
             _loopPlanDepth--;
+            if (outerOp != null)
+            {
+                _iterationOperators[iterationName] = outerOp;
+            }
+            else
+            {
+                _iterationOperators.Remove(iterationName);
+            }
 
             return (op.EgressSource as IStreamVertex)!;
         }

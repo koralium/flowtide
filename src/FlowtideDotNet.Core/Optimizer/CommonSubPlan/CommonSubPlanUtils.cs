@@ -45,10 +45,59 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
                 case TableFunctionRelation:
                 case ConsistentPartitionWindowRelation:
                 case CheckRelation:
+                // Loop plan is checked by IsClosedLoop
+                case IterationRelation:
+                case IterationReferenceReadRelation:
                     return true;
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// A loop can only be shared as a whole when its loop plan has value based
+        /// equality and every iteration read binds to a loop inside it.
+        /// A read of an outer loop would lose its loop when moved to its own relation.
+        /// </summary>
+        public static bool IsClosedLoop(IterationRelation iterationRelation)
+        {
+            return IsClosedLoop(iterationRelation, new List<string>());
+        }
+
+        private static bool IsClosedLoop(IterationRelation iterationRelation, List<string> scope)
+        {
+            // Input runs outside the loop, its name is not in scope
+            if (iterationRelation.Input != null && !IsClosed(iterationRelation.Input, scope))
+            {
+                return false;
+            }
+            scope.Add(iterationRelation.IterationName);
+            var closed = IsClosed(iterationRelation.LoopPlan, scope);
+            scope.RemoveAt(scope.Count - 1);
+            return closed;
+        }
+
+        private static bool IsClosed(Relation relation, List<string> scope)
+        {
+            switch (relation)
+            {
+                case IterationRelation iterationRelation:
+                    return IsClosedLoop(iterationRelation, scope);
+                case IterationReferenceReadRelation read:
+                    return scope.Contains(read.IterationName);
+            }
+            if (!HasValueEquality(relation))
+            {
+                return false;
+            }
+            foreach (var child in GetChildren(relation))
+            {
+                if (!IsClosed(child, scope))
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         /// <summary>
@@ -60,6 +109,11 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
             if (!HasValueEquality(relation))
             {
                 return false;
+            }
+            if (relation is IterationRelation)
+            {
+                // Always a computation, even without an input
+                return true;
             }
             foreach (var _ in GetChildren(relation))
             {
@@ -125,6 +179,13 @@ namespace FlowtideDotNet.Core.Optimizer.CommonSubPlan
                     break;
                 case CheckRelation check:
                     yield return check.Input;
+                    break;
+                case IterationRelation iteration:
+                    // Loop plan is not a child, it is never shared on its own
+                    if (iteration.Input != null)
+                    {
+                        yield return iteration.Input;
+                    }
                     break;
             }
         }
