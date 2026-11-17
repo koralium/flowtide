@@ -47,4 +47,9 @@ if (args.FirstOrDefault() == "--checkpoint-finality")
     await CheckpointFinalityProbe.Run(args);
     return;
 }
+if (args.FirstOrDefault() == "--late-materialization")
+{
+    Environment.ExitCode = await FlowtideDotNet.Benchmarks.LateMaterialization.LmProgram.Run(args);
+    return;
+}
 var summaries = BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
