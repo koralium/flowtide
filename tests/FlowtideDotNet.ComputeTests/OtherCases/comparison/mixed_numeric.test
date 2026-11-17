@@ -1,0 +1,41 @@
+### SUBSTRAIT_SCALAR_TEST: v1.0
+### SUBSTRAIT_INCLUDE: 'extension:io.substrait:functions_comparison'
+
+# decimal_integer: Decimal compared with an integer
+equal(0::dec<38, 0>, 0::i64) = true::bool
+not_equal(0::dec<38, 0>, 0::i64) = false::bool
+not_equal(2.5::dec<38, 1>, 0::i64) = true::bool
+gt(0::dec<38, 0>, 0::i64) = false::bool
+gt(2.5::dec<38, 1>, 2::i64) = true::bool
+lt(-1.5::dec<38, 1>, 0::i64) = true::bool
+lt(0::i64, 0.01::dec<38, 2>) = true::bool
+gte(2::dec<38, 0>, 2::i64) = true::bool
+lte(2::i64, 1.99::dec<38, 2>) = false::bool
+
+# double_integer: Double compared with an integer
+equal(0.0::fp64, 0::i64) = true::bool
+not_equal(0.0::fp64, 0::i64) = false::bool
+gt(-0.5::fp64, 0::i64) = false::bool
+lt(-0.5::fp64, 0::i64) = true::bool
+gte(1.0::fp64, 1::i64) = true::bool
+lte(1.5::fp64, 1::i64) = false::bool
+gt(inf::fp64, 9223372036854775807::i64) = true::bool
+lt(-inf::fp64, -9223372036854775807::i64) = true::bool
+
+# double_decimal: Double compared with a decimal
+equal(1.5::fp64, 1.5::dec<38, 1>) = true::bool
+lt(1.25::dec<38, 2>, 1.5::fp64) = true::bool
+gt(1.25::dec<38, 2>, 1.5::fp64) = false::bool
+
+# between_mixed: Between with mixed numeric bounds
+between(5::dec<38, 0>, 0::i64, 10::i64) = true::bool
+between(0.5::fp64, 1::i64, 2.5::dec<38, 1>) = false::bool
+
+# distinct_mixed: Distinct checks with mixed numeric types
+is_distinct_from(0::dec<38, 0>, 0::i64) = false::bool
+is_not_distinct_from(1::i64, 1.0::fp64) = true::bool
+is_distinct_from(null::dec<38, 0>, 0::i64) = true::bool
+
+# null_input: Examples with null as input
+not_equal(null::dec<38, 0>, 0::i64) = null::bool
+gt(0.0::fp64, null::i64) = null::bool

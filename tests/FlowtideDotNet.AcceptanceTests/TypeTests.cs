@@ -80,5 +80,23 @@ namespace FlowtideDotNet.AcceptanceTests
 
             Assert.Equal("Missmatch type in equality: 'active = 1', type(Bool) = type(Int64)", ex.Message);
         }
+
+        [Fact]
+        public async Task TestComparisonDifferentColumnTypes()
+        {
+            GenerateData();
+            var ex = await Assert.ThrowsAsync<SubstraitParseException>(async () =>
+            {
+                await StartStream(@"
+                INSERT INTO output
+                SELECT
+                userkey
+                FROM users
+                WHERE doublevalue > userkey
+                ");
+            });
+
+            Assert.Equal("Missmatch type in comparison: 'doublevalue > userkey', type(Fp64) > type(Int64)", ex.Message);
+        }
     }
 }

@@ -125,7 +125,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
             else if (type == typeof(DateTime))
             {
-                return new Int64Type();
+                return new TimestampType();
             }
             else if (type == typeof(Guid))
             {
