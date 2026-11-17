@@ -145,6 +145,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             }
         }
 
+        // Only forwards, the run disposes the inner storage itself
         public void Dispose()
         {
             _inner.Dispose();
@@ -259,23 +260,17 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 {
                     foreach (var page in _sessions[i].Pages())
                     {
-                        if (!counted.TryAdd(page.Key, page.Value))
-                        {
-                            problems.Add($"page {page.Key} is counted by two trees");
-                        }
+                        CountOnce(counted, page.Key, page.Value, "by two trees", problems);
                     }
                 }
                 foreach (var page in _storagePages)
                 {
-                    if (!counted.TryAdd(page.Key, page.Value))
-                    {
-                        problems.Add($"page {page.Key} is counted as a tree's page and as a storage page");
-                    }
+                    CountOnce(counted, page.Key, page.Value, "as a tree's page and as a storage page", problems);
                 }
                 // The storage writes the manager metadata as page one
-                if (_managerMetadataBytes > 0 && !counted.TryAdd(1, _managerMetadataBytes))
+                if (_managerMetadataBytes > 0)
                 {
-                    problems.Add("page 1 is counted twice");
+                    CountOnce(counted, 1, _managerMetadataBytes, "twice", problems);
                 }
             }
             var stored = handler.PageFileLocations_Test;
@@ -310,6 +305,14 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 problems.Add($"the storage holds {storedBytes} bytes in {stored.Count} pages, the census counts {countedBytes} bytes in {counted.Count}");
             }
             return problems;
+        }
+
+        private static void CountOnce(Dictionary<long, int> counted, long page, int bytes, string how, List<string> problems)
+        {
+            if (!counted.TryAdd(page, bytes))
+            {
+                problems.Add($"page {page} is counted {how}");
+            }
         }
 
         public long TotalLiveBytes()

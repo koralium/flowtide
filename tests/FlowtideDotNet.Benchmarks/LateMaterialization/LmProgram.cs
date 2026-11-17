@@ -369,7 +369,8 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
         private static double Variation(double[] values)
         {
             double mean = Mean(values);
-            return mean == 0 ? 0 : 100.0 * Deviation(values) / mean;
+            // The metrics are never negative
+            return mean > 0 ? 100.0 * Deviation(values) / mean : 0;
         }
     }
 
@@ -539,12 +540,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
         public List<string> ChildArguments(string[] args)
         {
             var arguments = new List<string>() { args[0], "run" };
-            foreach (var value in _values)
+            foreach (var value in _values.Where(value => value.Key != "pairs"))
             {
-                if (value.Key != "pairs")
-                {
-                    arguments.Add($"--{value.Key}={value.Value}");
-                }
+                arguments.Add($"--{value.Key}={value.Value}");
             }
             return arguments;
         }

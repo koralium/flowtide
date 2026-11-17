@@ -211,14 +211,15 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             connectors.AddSink(new LmSinkFactory(control, options.Wide ? workload.WideKeyColumns : workload.NarrowKeyColumns));
 
             string runDirectory = Path.Join(options.StateDirectory ?? Path.GetTempPath(), $"lm-{Guid.NewGuid():N}");
-            var reservoir = new ReservoirPersistentStorage(new ReservoirStorageOptions()
-            {
-                FileProvider = options.StateDirectory != null ? new LocalDiskProvider(Path.Join(runDirectory, "state")) : new MemoryFileProvider()
-            });
-            IPersistentStorage storage = reservoir;
-            LmCensusStorage? census = null;
             try
             {
+                // Disposed with the block, before the folder is deleted
+                using var reservoir = new ReservoirPersistentStorage(new ReservoirStorageOptions()
+                {
+                    FileProvider = options.StateDirectory != null ? new LocalDiskProvider(Path.Join(runDirectory, "state")) : new MemoryFileProvider()
+                });
+                IPersistentStorage storage = reservoir;
+                LmCensusStorage? census = null;
                 if (options.Census)
                 {
                     census = new LmCensusStorage(reservoir);
@@ -255,16 +256,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             }
             finally
             {
-                try
+                if (Directory.Exists(runDirectory))
                 {
-                    storage.Dispose();
-                }
-                finally
-                {
-                    if (Directory.Exists(runDirectory))
-                    {
-                        Directory.Delete(runDirectory, true);
-                    }
+                    Directory.Delete(runDirectory, true);
                 }
             }
         }
@@ -380,15 +374,28 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         private static async Task DisposeStream(EngineStream stream)
         {
-            try
+            string? failure = await StopFailure(stream.DisposeAsync().AsTask(), TimeSpan.FromMinutes(2));
+            if (failure != null)
             {
-                await stream.DisposeAsync().AsTask().WaitAsync(TimeSpan.FromMinutes(2));
+                Console.Error.WriteLine($"The stream did not stop cleanly: {failure}");
             }
-            catch (Exception e)
+        }
+
+        /// <summary>
+        /// Says why a stop failed, never throws.
+        /// </summary>
+        public static async Task<string?> StopFailure(Task stop, TimeSpan limit)
+        {
+            await stop.WaitAsync(limit).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
+            if (stop.IsCompletedSuccessfully)
             {
-                // A failed stop must not hide the run's own error
-                Console.Error.WriteLine($"The stream did not stop cleanly: {e.Message}");
+                return null;
             }
+            if (stop.IsFaulted)
+            {
+                return stop.Exception!.GetBaseException().Message;
+            }
+            return stop.IsCanceled ? "it was cancelled" : "it took too long";
         }
 
         private static FlowtideDotNet.Substrait.Plan BuildPlan(LmWorkload workload, bool wide)

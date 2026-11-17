@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                         await RunOne(name, true, true, problems);
                         await CheckCounters(name, problems);
                         await CheckCheckpoints(name, problems);
+                        await CheckStop(problems);
                         first = false;
                     }
                     CheckGenerator(workload, problems);
@@ -241,6 +242,22 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             if (held != Rounds)
             {
                 problems.Add($"{held} of {Rounds} checkpoints were asked for while the one before still ran, the check proved nothing");
+            }
+        }
+
+        /// <summary>
+        /// A stop that fails is reported and never thrown.
+        /// </summary>
+        private static async Task CheckStop(List<string> problems)
+        {
+            var limit = TimeSpan.FromMilliseconds(50);
+            string? done = await LmRun.StopFailure(Task.CompletedTask, limit);
+            string? faulted = await LmRun.StopFailure(Task.FromException(new IOException("disk gone")), limit);
+            string? cancelled = await LmRun.StopFailure(Task.FromCanceled(new CancellationToken(true)), limit);
+            string? late = await LmRun.StopFailure(new TaskCompletionSource().Task, limit);
+            if (done != null || faulted != "disk gone" || cancelled == null || late == null || cancelled == late)
+            {
+                problems.Add($"the four stop outcomes are reported as '{done}', '{faulted}', '{cancelled}' and '{late}'");
             }
         }
 
@@ -486,7 +503,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             public long Sum;
             public long Min = long.MaxValue;
             public long DimensionSum;
-            public HashSet<long> Distinct = new HashSet<long>();
+            public readonly HashSet<long> Distinct = new HashSet<long>();
         }
 
         private static void CheckGroupRows(LmWorkload workload, LmControl control, List<string> problems)
@@ -521,9 +538,10 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             // Whole rows are compared, the group key included
             var columns = control.SinkColumns;
             var expected = new List<string>();
+            var text = new StringBuilder();
             foreach (var group in groups)
             {
-                var text = new StringBuilder();
+                text.Clear();
                 for (int c = 0; c < columns.Count; c++)
                 {
                     text.Append(ExpectedGroupValue(workload, columns[c], group.Key, group.Value)).Append('|');
@@ -533,7 +551,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             var actual = new List<string>();
             foreach (var row in control.SinkRows!)
             {
-                var text = new StringBuilder();
+                text.Clear();
                 for (int c = 0; c < row.Value.Length; c++)
                 {
                     text.Append(row.Value[c]).Append('|');
