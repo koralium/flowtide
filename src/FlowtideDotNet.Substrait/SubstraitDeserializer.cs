@@ -694,8 +694,7 @@ namespace FlowtideDotNet.Substrait
 
             private static void RequireDecimalRange(double value)
             {
-                // NaN and infinity fail this too
-                if (!(Math.Abs(value) < (double)decimal.MaxValue))
+                if (double.IsNaN(value) || Math.Abs(value) >= (double)decimal.MaxValue)
                 {
                     throw new SubstraitParseException($"The literal {value} is outside the range of a numeric literal.");
                 }

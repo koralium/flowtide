@@ -1847,6 +1847,7 @@ namespace FlowtideDotNet.Substrait.Tests
         [InlineData(1E-05, "0.00001")]
         [InlineData(0.30000000000000004, "0.3")]
         [InlineData(3, "3")]
+        [InlineData(7.922816251426433E+28, "79228162514264300000000000000")]
         public void DoubleLiteralIsReadWithFifteenDigits(double value, string expected)
         {
             var proto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
@@ -1863,6 +1864,8 @@ namespace FlowtideDotNet.Substrait.Tests
         [InlineData(double.PositiveInfinity)]
         [InlineData(double.NegativeInfinity)]
         [InlineData(1E+300)]
+        [InlineData(7.922816251426434E+28)]
+        [InlineData(-7.922816251426434E+28)]
         public void DoubleLiteralWithoutADecimalFormIsRefused(double value)
         {
             var proto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
