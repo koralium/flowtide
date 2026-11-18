@@ -91,7 +91,7 @@
 
 
   <h1 id="FlowtideDotNet_Substrait_SubstraitSerializer" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer" class="text-break">
-Class SubstraitSerializer  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L32"><i class="bi bi-code-slash"></i></a>
+Class SubstraitSerializer  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L33"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -161,21 +161,24 @@ a stream mutates the plan in place.</p>
 
   <a id="FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.Serialize*"></a>
 
-  <h3 id="FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_FlowtideDotNet_Substrait_Plan_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan)">
-  Serialize(Plan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L1839"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_FlowtideDotNet_Substrait_Plan_System_Boolean_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan,System.Boolean)">
+  Serialize(Plan, bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L1938"><i class="bi bi-code-slash"></i></a>
   </h3>
 
-  <div class="markdown level1 summary"></div>
+  <div class="markdown level1 summary"><p>The plan hash is taken without hints.</p>
+</div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public static Plan Serialize(Plan plan)</code></pre>
+    <pre><code class="lang-csharp hljs">public static Plan Serialize(Plan plan, bool includeHints = true)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>plan</code> <a class="xref" href="FlowtideDotNet.Substrait.Plan.html">Plan</a></dt>
+    <dd></dd>
+    <dt><code>includeHints</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 
@@ -197,21 +200,23 @@ a stream mutates the plan in place.</p>
 
   <a id="FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson*"></a>
 
-  <h3 id="FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_FlowtideDotNet_Substrait_Plan_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan)">
-  SerializeToJson(Plan)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L1878"><i class="bi bi-code-slash"></i></a>
+  <h3 id="FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_FlowtideDotNet_Substrait_Plan_System_Boolean_" data-uid="FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan,System.Boolean)">
+  SerializeToJson(Plan, bool)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L1977"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
   <div class="markdown level1 conceptual"></div>
 
   <div class="codewrapper">
-    <pre><code class="lang-csharp hljs">public static string SerializeToJson(Plan plan)</code></pre>
+    <pre><code class="lang-csharp hljs">public static string SerializeToJson(Plan plan, bool includeHints = true)</code></pre>
   </div>
 
   <h4 class="section">Parameters</h4>
   <dl class="parameters">
     <dt><code>plan</code> <a class="xref" href="FlowtideDotNet.Substrait.Plan.html">Plan</a></dt>
+    <dd></dd>
+    <dt><code>includeHints</code> <a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 
@@ -235,7 +240,7 @@ a stream mutates the plan in place.</p>
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L32" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/SubstraitSerializer.cs/#L33" class="edit-link">Edit this page</a>
         </div>
 
 

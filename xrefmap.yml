@@ -55811,6 +55811,191 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.CustomProtoReflection.Descriptor
   nameWithType: CustomProtoReflection.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations
+  name: HintOptimizations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations
+  nameWithType: HintOptimizations
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor
+  name: HintOptimizations()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.HintOptimizations()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.New()
+  nameWithType: HintOptimizations.HintOptimizations()
+  nameWithType.vb: HintOptimizations.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  name: HintOptimizations(HintOptimizations)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations__ctor_FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  name.vb: New(HintOptimizations)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.HintOptimizations(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.New(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  nameWithType: HintOptimizations.HintOptimizations(HintOptimizations)
+  nameWithType.vb: HintOptimizations.New(HintOptimizations)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor*
+  name: HintOptimizations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.HintOptimizations
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.New
+  nameWithType: HintOptimizations.HintOptimizations
+  nameWithType.vb: HintOptimizations.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize()
+  nameWithType: HintOptimizations.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.CalculateSize
+  nameWithType: HintOptimizations.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone()
+  nameWithType: HintOptimizations.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Clone
+  nameWithType: HintOptimizations.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor
+  nameWithType: HintOptimizations.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Descriptor
+  nameWithType: HintOptimizations.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  name: Equals(HintOptimizations)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Equals_FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  nameWithType: HintOptimizations.Equals(HintOptimizations)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals(Object)
+  nameWithType: HintOptimizations.Equals(object)
+  nameWithType.vb: HintOptimizations.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Equals
+  nameWithType: HintOptimizations.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode()
+  nameWithType: HintOptimizations.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.GetHashCode
+  nameWithType: HintOptimizations.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  name: MergeFrom(HintOptimizations)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations)
+  nameWithType: HintOptimizations.MergeFrom(HintOptimizations)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: HintOptimizations.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.MergeFrom
+  nameWithType: HintOptimizations.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser
+  nameWithType: HintOptimizations.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Parser
+  nameWithType: HintOptimizations.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties
+  name: Properties
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Properties
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties
+  nameWithType: HintOptimizations.Properties
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties*
+  name: Properties
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_Properties_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.Properties
+  nameWithType: HintOptimizations.Properties
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.PropertiesFieldNumber
+  name: PropertiesFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_PropertiesFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.PropertiesFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.PropertiesFieldNumber
+  nameWithType: HintOptimizations.PropertiesFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString()
+  nameWithType: HintOptimizations.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.ToString
+  nameWithType: HintOptimizations.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: HintOptimizations.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.html#FlowtideDotNet_Substrait_CustomProtobuf_HintOptimizations_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.HintOptimizations.WriteTo
+  nameWithType: HintOptimizations.WriteTo
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationReferenceReadRelation
   name: IterationReferenceReadRelation
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationReferenceReadRelation.html
@@ -56062,6 +56247,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.CalculateSize
   nameWithType: IterationRelation.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations
+  name: ClearMaxIterations()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_ClearMaxIterations
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations()
+  nameWithType: IterationRelation.ClearMaxIterations()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations*
+  name: ClearMaxIterations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_ClearMaxIterations_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ClearMaxIterations
+  nameWithType: IterationRelation.ClearMaxIterations
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.Clone
   name: Clone()
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_Clone
@@ -56123,6 +56321,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.GetHashCode
   nameWithType: IterationRelation.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations
+  name: HasMaxIterations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_HasMaxIterations
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations
+  nameWithType: IterationRelation.HasMaxIterations
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations*
+  name: HasMaxIterations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_HasMaxIterations_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.HasMaxIterations
+  nameWithType: IterationRelation.HasMaxIterations
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.IterationName
   name: IterationName
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_IterationName
@@ -56142,6 +56353,25 @@ references:
   commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.IterationNameFieldNumber
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.IterationNameFieldNumber
   nameWithType: IterationRelation.IterationNameFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations
+  name: MaxIterations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_MaxIterations
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations
+  nameWithType: IterationRelation.MaxIterations
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations*
+  name: MaxIterations
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_MaxIterations_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterations
+  nameWithType: IterationRelation.MaxIterations
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterationsFieldNumber
+  name: MaxIterationsFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_MaxIterationsFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterationsFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MaxIterationsFieldNumber
+  nameWithType: IterationRelation.MaxIterationsFieldNumber
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation)
   name: MergeFrom(IterationRelation)
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_
@@ -56174,6 +56404,25 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.Parser
   nameWithType: IterationRelation.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition
+  name: SkipIterateCondition
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_SkipIterateCondition
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition
+  nameWithType: IterationRelation.SkipIterateCondition
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition*
+  name: SkipIterateCondition
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_SkipIterateCondition_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateCondition
+  nameWithType: IterationRelation.SkipIterateCondition
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateConditionFieldNumber
+  name: SkipIterateConditionFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_SkipIterateConditionFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateConditionFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.SkipIterateConditionFieldNumber
+  nameWithType: IterationRelation.SkipIterateConditionFieldNumber
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.ToString
   name: ToString()
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_IterationRelation_ToString
@@ -56997,6 +57246,191 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.CustomProtobuf.PullExchangeReferenceRelation.WriteTo
   nameWithType: PullExchangeReferenceRelation.WriteTo
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation
+  name: ReferenceRelation
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html
+  commentId: T:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation
+  nameWithType: ReferenceRelation
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor
+  name: ReferenceRelation()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation__ctor
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor
+  name.vb: New()
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ReferenceRelation()
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.New()
+  nameWithType: ReferenceRelation.ReferenceRelation()
+  nameWithType.vb: ReferenceRelation.New()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  name: ReferenceRelation(ReferenceRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation__ctor_FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  name.vb: New(ReferenceRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ReferenceRelation(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.New(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  nameWithType: ReferenceRelation.ReferenceRelation(ReferenceRelation)
+  nameWithType.vb: ReferenceRelation.New(ReferenceRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor*
+  name: ReferenceRelation
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation__ctor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.#ctor
+  isSpec: "True"
+  name.vb: New
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ReferenceRelation
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.New
+  nameWithType: ReferenceRelation.ReferenceRelation
+  nameWithType.vb: ReferenceRelation.New
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize
+  name: CalculateSize()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_CalculateSize
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize()
+  nameWithType: ReferenceRelation.CalculateSize()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize*
+  name: CalculateSize
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_CalculateSize_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.CalculateSize
+  nameWithType: ReferenceRelation.CalculateSize
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone
+  name: Clone()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Clone
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone()
+  nameWithType: ReferenceRelation.Clone()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone*
+  name: Clone
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Clone_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Clone
+  nameWithType: ReferenceRelation.Clone
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Descriptor
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor
+  nameWithType: ReferenceRelation.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor*
+  name: Descriptor
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Descriptor_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Descriptor
+  nameWithType: ReferenceRelation.Descriptor
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  name: Equals(ReferenceRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Equals_FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  nameWithType: ReferenceRelation.Equals(ReferenceRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(System.Object)
+  name: Equals(object)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Equals_System_Object_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(System.Object)
+  name.vb: Equals(Object)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(object)
+  fullName.vb: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals(Object)
+  nameWithType: ReferenceRelation.Equals(object)
+  nameWithType.vb: ReferenceRelation.Equals(Object)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals*
+  name: Equals
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Equals_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Equals
+  nameWithType: ReferenceRelation.Equals
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode
+  name: GetHashCode()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_GetHashCode
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode()
+  nameWithType: ReferenceRelation.GetHashCode()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode*
+  name: GetHashCode
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_GetHashCode_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.GetHashCode
+  nameWithType: ReferenceRelation.GetHashCode
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  name: MergeFrom(ReferenceRelation)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_MergeFrom_FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation)
+  nameWithType: ReferenceRelation.MergeFrom(ReferenceRelation)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  name: MergeFrom(CodedInputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_MergeFrom_Google_Protobuf_CodedInputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom(Google.Protobuf.CodedInputStream)
+  nameWithType: ReferenceRelation.MergeFrom(CodedInputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom*
+  name: MergeFrom
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_MergeFrom_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.MergeFrom
+  nameWithType: ReferenceRelation.MergeFrom
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Parser
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser
+  nameWithType: ReferenceRelation.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser*
+  name: Parser
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_Parser_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.Parser
+  nameWithType: ReferenceRelation.Parser
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId
+  name: RelationId
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_RelationId
+  commentId: P:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId
+  nameWithType: ReferenceRelation.RelationId
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId*
+  name: RelationId
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_RelationId_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationId
+  nameWithType: ReferenceRelation.RelationId
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationIdFieldNumber
+  name: RelationIdFieldNumber
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_RelationIdFieldNumber
+  commentId: F:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationIdFieldNumber
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.RelationIdFieldNumber
+  nameWithType: ReferenceRelation.RelationIdFieldNumber
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString
+  name: ToString()
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_ToString
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString()
+  nameWithType: ReferenceRelation.ToString()
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString*
+  name: ToString
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_ToString_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.ToString
+  nameWithType: ReferenceRelation.ToString
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  name: WriteTo(CodedOutputStream)
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_WriteTo_Google_Protobuf_CodedOutputStream_
+  commentId: M:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo(Google.Protobuf.CodedOutputStream)
+  nameWithType: ReferenceRelation.WriteTo(CodedOutputStream)
+- uid: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo*
+  name: WriteTo
+  href: api/FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.html#FlowtideDotNet_Substrait_CustomProtobuf_ReferenceRelation_WriteTo_
+  commentId: Overload:FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo
+  isSpec: "True"
+  fullName: FlowtideDotNet.Substrait.CustomProtobuf.ReferenceRelation.WriteTo
+  nameWithType: ReferenceRelation.WriteTo
 - uid: FlowtideDotNet.Substrait.CustomProtobuf.StandardOutputTargetReferenceRelation
   name: StandardOutputTargetReferenceRelation
   href: api/FlowtideDotNet.Substrait.CustomProtobuf.StandardOutputTargetReferenceRelation.html
@@ -72861,12 +73295,15 @@ references:
   commentId: T:FlowtideDotNet.Substrait.SubstraitSerializer
   fullName: FlowtideDotNet.Substrait.SubstraitSerializer
   nameWithType: SubstraitSerializer
-- uid: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan)
-  name: Serialize(Plan)
-  href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_FlowtideDotNet_Substrait_Plan_
-  commentId: M:FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan)
-  fullName: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan)
-  nameWithType: SubstraitSerializer.Serialize(Plan)
+- uid: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan,System.Boolean)
+  name: Serialize(Plan, bool)
+  href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_FlowtideDotNet_Substrait_Plan_System_Boolean_
+  commentId: M:FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan,System.Boolean)
+  name.vb: Serialize(Plan, Boolean)
+  fullName: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan, bool)
+  fullName.vb: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize(FlowtideDotNet.Substrait.Plan, Boolean)
+  nameWithType: SubstraitSerializer.Serialize(Plan, bool)
+  nameWithType.vb: SubstraitSerializer.Serialize(Plan, Boolean)
 - uid: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize*
   name: Serialize
   href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_Serialize_
@@ -72874,12 +73311,15 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Substrait.SubstraitSerializer.Serialize
   nameWithType: SubstraitSerializer.Serialize
-- uid: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan)
-  name: SerializeToJson(Plan)
-  href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_FlowtideDotNet_Substrait_Plan_
-  commentId: M:FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan)
-  fullName: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan)
-  nameWithType: SubstraitSerializer.SerializeToJson(Plan)
+- uid: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan,System.Boolean)
+  name: SerializeToJson(Plan, bool)
+  href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_FlowtideDotNet_Substrait_Plan_System_Boolean_
+  commentId: M:FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan,System.Boolean)
+  name.vb: SerializeToJson(Plan, Boolean)
+  fullName: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan, bool)
+  fullName.vb: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson(FlowtideDotNet.Substrait.Plan, Boolean)
+  nameWithType: SubstraitSerializer.SerializeToJson(Plan, bool)
+  nameWithType.vb: SubstraitSerializer.SerializeToJson(Plan, Boolean)
 - uid: FlowtideDotNet.Substrait.SubstraitSerializer.SerializeToJson*
   name: SerializeToJson
   href: api/FlowtideDotNet.Substrait.SubstraitSerializer.html#FlowtideDotNet_Substrait_SubstraitSerializer_SerializeToJson_
