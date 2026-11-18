@@ -92,6 +92,33 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         /// <summary>
+        /// A filter pushed into a read applies on substreams.
+        /// </summary>
+        [Fact]
+        public async Task FilterOnAReadAppliesOnTheSubstreams()
+        {
+            var sql = @"
+            CREATE TABLE filter_left (val any);
+            CREATE TABLE filter_right (val any);
+
+            INSERT INTO filter_out
+            SELECT l.val FROM filter_left l
+            INNER JOIN filter_right r ON l.val = r.val
+            WHERE l.val < 10;
+            ";
+            TestTableStore.AddRows("filter_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("filter_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_test_filter");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 10).Select(x => (long)x).ToList();
+            await WaitForResult("filter_out", expected, TimeSpan.FromSeconds(60));
+
+            await streamGrain.StopStreamAsync();
+        }
+
+        /// <summary>
         /// A stream can be started from a user created plan instead of SQL text: the plan is
         /// serialized into the start request, prepared centrally by the stream grain
         /// (optimized and split into substreams), and the final distributed plan is sent to

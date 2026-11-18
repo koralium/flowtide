@@ -490,40 +490,63 @@ namespace FlowtideDotNet.Substrait
 
             public override Protobuf.Expression? VisitDirectFieldReference(DirectFieldReference directFieldReference, SerializerVisitorState state)
             {
-                if (directFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+                var fieldRef = new Protobuf.Expression.Types.FieldReference()
                 {
-                    var fieldRef = new Protobuf.Expression.Types.FieldReference()
+                    DirectReference = SerializeSegment(directFieldReference.ReferenceSegment)
+                };
+
+                if (directFieldReference.Root is OuterReference outerReference)
+                {
+                    fieldRef.OuterReference = new Protobuf.Expression.Types.FieldReference.Types.OuterReference()
                     {
-                        DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
-                        {
-                            StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                            {
-                                Field = structReferenceSegment.Field
-                            }
-                        }
+                        StepsOut = outerReference.StepsOut
                     };
-
-                    if (directFieldReference.Root is OuterReference outerReference)
-                    {
-                        fieldRef.OuterReference = new Protobuf.Expression.Types.FieldReference.Types.OuterReference()
-                        {
-                            StepsOut = outerReference.StepsOut
-                        };
-                    }
-                    else if (directFieldReference.Root is RootReference)
-                    {
-                        fieldRef.RootReference = new Protobuf.Expression.Types.FieldReference.Types.RootReference();
-                    }
-
-                    var expr = new Protobuf.Expression()
-                    {
-                        Selection = fieldRef
-                    };
-
-                    return expr;
+                }
+                else if (directFieldReference.Root is RootReference)
+                {
+                    fieldRef.RootReference = new Protobuf.Expression.Types.FieldReference.Types.RootReference();
                 }
 
-                throw new NotImplementedException();
+                return new Protobuf.Expression()
+                {
+                    Selection = fieldRef
+                };
+            }
+
+            /// <summary>
+            /// Writes a segment with the segments nested under it.
+            /// </summary>
+            internal static Protobuf.Expression.Types.ReferenceSegment SerializeSegment(ReferenceSegment segment)
+            {
+                var result = new Protobuf.Expression.Types.ReferenceSegment();
+                if (segment is StructReferenceSegment structSegment)
+                {
+                    result.StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
+                    {
+                        Field = structSegment.Field
+                    };
+                    if (segment.Child != null)
+                    {
+                        result.StructField.Child = SerializeSegment(segment.Child);
+                    }
+                    return result;
+                }
+                if (segment is MapKeyReferenceSegment mapSegment)
+                {
+                    result.MapKey = new Protobuf.Expression.Types.ReferenceSegment.Types.MapKey()
+                    {
+                        MapKey_ = new Protobuf.Expression.Types.Literal()
+                        {
+                            String = mapSegment.Key
+                        }
+                    };
+                    if (segment.Child != null)
+                    {
+                        result.MapKey.Child = SerializeSegment(segment.Child);
+                    }
+                    return result;
+                }
+                throw new NotSupportedException($"A reference segment of type {segment.GetType().Name} cannot be serialized.");
             }
 
             public override Protobuf.Expression? VisitSingularOrList(SingularOrListExpression singularOrList, SerializerVisitorState state)
@@ -1100,23 +1123,11 @@ namespace FlowtideDotNet.Substrait
                             Comparison = comparison,
                             Left = new Protobuf.Expression.Types.FieldReference()
                             {
-                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
-                                {
-                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                                    {
-                                        Field = structReferenceSegmentLeft.Field
-                                    }
-                                }
+                                DirectReference = SerializerExpressionVisitor.SerializeSegment(structReferenceSegmentLeft)
                             },
                             Right = new Protobuf.Expression.Types.FieldReference()
                             {
-                                DirectReference = new Protobuf.Expression.Types.ReferenceSegment()
-                                {
-                                    StructField = new Protobuf.Expression.Types.ReferenceSegment.Types.StructField()
-                                    {
-                                        Field = structReferenceSegmentRight.Field
-                                    }
-                                }
+                                DirectReference = SerializerExpressionVisitor.SerializeSegment(structReferenceSegmentRight)
                             }
                         });
                     }
@@ -1833,12 +1844,35 @@ namespace FlowtideDotNet.Substrait
             var visitor = new SerializerVisitor();
             foreach (var relation in plan.Relations)
             {
+                if (relation is RootRelation rootRelation)
+                {
+                    rootPlan.Relations.Add(new Protobuf.PlanRel()
+                    {
+                        Root = SerializeRoot(rootRelation, visitor, state)
+                    });
+                    continue;
+                }
                 rootPlan.Relations.Add(new Protobuf.PlanRel()
                 {
                     Rel = visitor.Visit(relation, state)
                 });
             }
             return rootPlan;
+        }
+
+        private static Protobuf.RelRoot SerializeRoot(RootRelation rootRelation, SerializerVisitor visitor, SerializerVisitorState state)
+        {
+            if (rootRelation.EmitSet)
+            {
+                // The root message has no place for an emit
+                throw new NotSupportedException("A root relation with an emit cannot be serialized.");
+            }
+            var root = new Protobuf.RelRoot()
+            {
+                Input = visitor.Visit(rootRelation.Input, state)
+            };
+            root.Names.AddRange(rootRelation.Names);
+            return root;
         }
 
         public static string SerializeToJson(Plan plan)
