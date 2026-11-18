@@ -77,6 +77,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>
         {
+            if (keyLength == 0)
+            {
+                // Empty batch, split step would read stale keys
+                _mappings.Clear();
+                return;
+            }
             _totalBatchByteSize = totalBatchByteSize;
             await StartBatch(keys, values, keyLength);
             await MutateBatch(mutator);
@@ -87,6 +93,12 @@ namespace FlowtideDotNet.Storage.Tree.Internal
         public async ValueTask ApplyBatch<TMutator>(K[] keys, V[] values, int keyLength, int[] sortedIndices, int[] duplicateTags, TMutator mutator, int totalBatchByteSize)
             where TMutator : IRowMutator<K, V>
         {
+            if (keyLength == 0)
+            {
+                // Empty batch, split step would read stale keys
+                _mappings.Clear();
+                return;
+            }
             _totalBatchByteSize = totalBatchByteSize;
             await StartBatch(keys, values, keyLength, sortedIndices, duplicateTags);
             await MutateBatch(mutator);

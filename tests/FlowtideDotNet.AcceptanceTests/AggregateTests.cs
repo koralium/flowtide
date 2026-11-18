@@ -325,6 +325,38 @@ namespace FlowtideDotNet.AcceptanceTests
             AssertCurrentDataEqual(expected);
         }
 
+        /// <summary>
+        /// Empty batch after root leaf overflow does not crash.
+        /// </summary>
+        [Fact]
+        public async Task AggregateEmptyBatchAfterRootLeafOverflowDoesNotCrash()
+        {
+            SourceImmutable();
+            SetPageSizeBytes(256);
+            // One batch, keys fit the page, states overflow it
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User { UserKey = i, Visits = i, Active = true });
+            }
+            await StartStream(@"
+                INSERT INTO output
+                SELECT userkey, count(*), sum(visits)
+                FROM (SELECT userkey, visits, active, userkey + 1 AS k FROM users) u
+                WHERE active = true
+                GROUP BY userkey");
+            await WaitForUpdate();
+
+            var expected = Users.Where(x => x.Active).OrderBy(x => x.UserKey).Select(x => new { x.UserKey, Count = 1, Sum = x.Visits }).ToList();
+            AssertCurrentDataEqual(expected);
+
+            // Filter drops it, aggregate gets an empty batch
+            WaitForUpdateDoesNotRequireDataChange();
+            AddUser(new Entities.User { UserKey = 100, Visits = 100, Active = false });
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(expected);
+        }
+
         [Fact]
         public async Task AggregateCountDistinct()
         {
