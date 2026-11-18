@@ -85,12 +85,18 @@ namespace FlowtideDotNet.Connector.Permify.Internal
             }
             indices.Add(objectIdIndex);
 
+            // The source ignores filter and emit, the wrapper applies them
+            var filter = readRelation.Filter;
+            var emit = readRelation.Emit;
+            readRelation.Filter = null;
+            readRelation.Emit = null;
+
             return new NormalizationRelation()
             {
                 Input = readRelation,
-                Filter = readRelation.Filter,
+                Filter = filter,
                 KeyIndex = indices,
-                Emit = readRelation.Emit
+                Emit = emit
             };
         }
 

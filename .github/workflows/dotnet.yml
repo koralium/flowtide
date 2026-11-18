@@ -43,7 +43,7 @@ jobs:
 
     runs-on: ubuntu-latest
     # GitHub defaults to 6 hours, fail a wedged run faster
-    # Build, then acceptance 25, Delta Lake 10 and Core 10 minutes
+    # Build, then acceptance 25, Delta Lake 10, Core 10 and connector plans 5 minutes
     timeout-minutes: 60
 
     steps:
@@ -122,6 +122,17 @@ jobs:
         --blame-hang-timeout 5min
         --blame-hang-dump-type mini
         --results-directory ./CrashDiagnostics/Core
+
+    # Plan checks of the wrapper sources, these need no containers
+    - name: Test connector source plans
+      if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+      timeout-minutes: 5
+      run: |
+        for name in Kafka OpenFGA Permify SpiceDB; do
+          dotnet test ./tests/FlowtideDotNet.Connector.$name.Tests/FlowtideDotNet.Connector.$name.Tests.csproj \
+            --no-build --framework net10.0 --filter "FullyQualifiedName~SourcePlanTests" \
+            -- RunConfiguration.TreatNoTestsAsError=true
+        done
 
     # Every thread's frames, without downloading the dump
     - name: Print crash reports

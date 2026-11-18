@@ -673,24 +673,51 @@ namespace FlowtideDotNet.Substrait
 
             private static DirectFieldReference VisitDirectReference(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
             {
+                return new DirectFieldReference()
+                {
+                    ReferenceSegment = VisitReferenceSegment(referenceSegment)
+                };
+            }
+
+            /// <summary>
+            /// Reads a segment with the segments nested under it.
+            /// </summary>
+            private static ReferenceSegment VisitReferenceSegment(Protobuf.Expression.Types.ReferenceSegment referenceSegment)
+            {
                 switch (referenceSegment.ReferenceTypeCase)
                 {
                     case Protobuf.Expression.Types.ReferenceSegment.ReferenceTypeOneofCase.StructField:
-                        return VisitStructField(referenceSegment.StructField);
+                        var structField = referenceSegment.StructField;
+                        return new StructReferenceSegment()
+                        {
+                            Field = structField.Field,
+                            Child = structField.Child != null ? VisitReferenceSegment(structField.Child) : null
+                        };
+                    case Protobuf.Expression.Types.ReferenceSegment.ReferenceTypeOneofCase.MapKey:
+                        var mapKey = referenceSegment.MapKey;
+                        return new MapKeyReferenceSegment()
+                        {
+                            Key = MapKeyOf(mapKey.MapKey_),
+                            Child = mapKey.Child != null ? VisitReferenceSegment(mapKey.Child) : null
+                        };
                     default:
-                        throw new NotImplementedException();
+                        throw new NotSupportedException($"A reference segment of type {referenceSegment.ReferenceTypeCase} is not supported.");
                 }
             }
 
-            private static DirectFieldReference VisitStructField(Protobuf.Expression.Types.ReferenceSegment.Types.StructField structField)
+            private static string MapKeyOf(Protobuf.Expression.Types.Literal? key)
             {
-                return new DirectFieldReference()
+                switch (key?.LiteralTypeCase)
                 {
-                    ReferenceSegment = new StructReferenceSegment()
-                    {
-                        Field = structField.Field
-                    }
-                };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.String:
+                        return key.String;
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.FixedChar:
+                        return key.FixedChar;
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.VarChar:
+                        return key.VarChar.Value;
+                    default:
+                        throw new NotSupportedException("A map key reference must have a string key.");
+                }
             }
 
             private Expressions.Expression VisitScalarFunction(Protobuf.Expression.Types.ScalarFunction scalarFunction)
@@ -1441,6 +1468,17 @@ namespace FlowtideDotNet.Substrait
                         Emit = GetEmit(extensionSingle.Common)
                     };
                 }
+                else if (typeName == CustomProtobuf.NormalizationRelation.Descriptor.FullName)
+                {
+                    var normalization = extensionSingle.Detail.Unpack<CustomProtobuf.NormalizationRelation>();
+                    return new NormalizationRelation()
+                    {
+                        Input = input,
+                        KeyIndex = normalization.KeyIndex.ToList(),
+                        Filter = normalization.Filter != null ? expressionDeserializer.VisitExpression(normalization.Filter) : null,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                }
                 else if (typeName == CustomProtobuf.CheckRelation.Descriptor.FullName)
                 {
                     var checkRel = extensionSingle.Detail.Unpack<CustomProtobuf.CheckRelation>();
@@ -1656,6 +1694,7 @@ namespace FlowtideDotNet.Substrait
                         {
                             Names = namedTable
                         },
+                        Filter = readRel.Filter != null ? expressionDeserializer.VisitExpression(readRel.Filter) : null,
                         Emit = GetEmit(readRel.Common)
                     };
                 }

@@ -16,6 +16,7 @@ using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
+using Protobuf = global::Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -1130,6 +1131,320 @@ namespace FlowtideDotNet.Substrait.Tests
             ");
             var plan = sqlPlanBuilder.GetPlan();
             AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        private static ReadRelation ReadOf(params string[] names)
+        {
+            return new ReadRelation()
+            {
+                BaseSchema = new Type.NamedStruct()
+                {
+                    Names = names.ToList()
+                },
+                NamedTable = new Type.NamedTable()
+                {
+                    Names = ["a"]
+                }
+            };
+        }
+
+        private static Plan ProjectionOf(params Expression[] expressions)
+        {
+            return new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = expressions.ToList(),
+                        Input = ReadOf("a", "b")
+                    }
+                }
+            };
+        }
+
+        private static DirectFieldReference Reference(ReferenceSegment segment)
+        {
+            return new DirectFieldReference()
+            {
+                ReferenceSegment = segment
+            };
+        }
+
+        [Fact]
+        public void SerializeReadRelationWithFilter()
+        {
+            var read = ReadOf("a", "b");
+            read.Filter = Reference(new StructReferenceSegment() { Field = 1 });
+            read.Emit = [0];
+
+            AssertPlanCanSerializeDeserialize(new Plan() { Relations = new List<Relation>() { read } });
+        }
+
+        // Join pushdown puts is_not_null on reads
+        [Fact]
+        public void SerializeReadRelationWithFunctionFilter()
+        {
+            var read = ReadOf("a", "b");
+            read.Filter = new ScalarFunction()
+            {
+                ExtensionUrn = FunctionsBoolean.Urn,
+                ExtensionName = FunctionsBoolean.And,
+                Arguments = new List<Expression>()
+                {
+                    new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsComparison.Urn,
+                        ExtensionName = FunctionsComparison.IsNotNull,
+                        Arguments = new List<Expression>() { Reference(new StructReferenceSegment() { Field = 0 }) }
+                    },
+                    new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsComparison.Urn,
+                        ExtensionName = FunctionsComparison.LessThan,
+                        Arguments = new List<Expression>()
+                        {
+                            Reference(new StructReferenceSegment() { Field = 0 }),
+                            new NumericLiteral() { Value = 10 }
+                        }
+                    }
+                }
+            };
+            read.Emit = [1];
+
+            AssertPlanCanSerializeDeserialize(new Plan() { Relations = new List<Relation>() { read } });
+        }
+
+        [Fact]
+        public void SerializeRootRelation()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        Names = ["first", "second"]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void RootRelationWithEmitIsRefused()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        Names = ["second"],
+                        Emit = [1]
+                    }
+                }
+            };
+
+            Assert.Throws<NotSupportedException>(() => SubstraitSerializer.SerializeToJson(plan));
+        }
+
+        [Fact]
+        public void SerializeNormalizationRelation()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new NormalizationRelation()
+                    {
+                        Input = ReadOf("a", "b", "c"),
+                        KeyIndex = [0, 2],
+                        Filter = Reference(new StructReferenceSegment() { Field = 1 }),
+                        Emit = [2, 0]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeNormalizationRelationWithoutFilterAndEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new NormalizationRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        KeyIndex = [1]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeNestedReferences()
+        {
+            var structInStruct = Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 3 }
+            });
+            var mapKeyInStruct = Reference(new StructReferenceSegment()
+            {
+                Field = 1,
+                Child = new MapKeyReferenceSegment() { Key = "key" }
+            });
+            var threeLevels = Reference(new StructReferenceSegment()
+            {
+                Field = 1,
+                Child = new MapKeyReferenceSegment()
+                {
+                    Key = "key",
+                    Child = new StructReferenceSegment() { Field = 2 }
+                }
+            });
+            var mapKeyFirst = Reference(new MapKeyReferenceSegment()
+            {
+                Key = "top",
+                Child = new StructReferenceSegment() { Field = 4 }
+            });
+
+            AssertPlanCanSerializeDeserialize(ProjectionOf(structInStruct, mapKeyInStruct, threeLevels, mapKeyFirst));
+        }
+
+        [Fact]
+        public void NestedPathsSerializeDifferently()
+        {
+            var first = ProjectionOf(Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 1 }
+            }));
+            var second = ProjectionOf(Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 2 }
+            }));
+            var noChild = ProjectionOf(Reference(new StructReferenceSegment() { Field = 0 }));
+
+            var firstJson = SubstraitSerializer.SerializeToJson(first);
+            Assert.NotEqual(firstJson, SubstraitSerializer.SerializeToJson(second));
+            Assert.NotEqual(firstJson, SubstraitSerializer.SerializeToJson(noChild));
+        }
+
+        [Fact]
+        public void SerializeMergeJoinKeyWithNestedReference()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new MergeJoinRelation()
+                    {
+                        Left = ReadOf("a"),
+                        Right = ReadOf("a"),
+                        LeftKeys = new List<FieldReference>()
+                        {
+                            Reference(new StructReferenceSegment()
+                            {
+                                Field = 0,
+                                Child = new StructReferenceSegment() { Field = 2 }
+                            })
+                        },
+                        RightKeys = new List<FieldReference>()
+                        {
+                            Reference(new StructReferenceSegment()
+                            {
+                                Field = 1,
+                                Child = new MapKeyReferenceSegment() { Key = "key" }
+                            })
+                        },
+                        Type = JoinType.Inner
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        // Equality ignores the root, so it is checked directly
+        [Fact]
+        public void OuterReferenceWithChildRoundTrips()
+        {
+            var outer = new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment() { Field = 0, Child = new StructReferenceSegment() { Field = 1 } },
+                Root = new OuterReference() { StepsOut = 1 }
+            };
+            var plain = Reference(new StructReferenceSegment() { Field = 0, Child = new StructReferenceSegment() { Field = 1 } });
+
+            var json = SubstraitSerializer.SerializeToJson(ProjectionOf(outer));
+            var deserialized = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var project = Assert.IsType<ProjectRelation>(deserialized.Relations[0]);
+            var reference = Assert.IsType<DirectFieldReference>(project.Expressions[0]);
+            var root = Assert.IsType<OuterReference>(reference.Root);
+            Assert.Equal(1u, root.StepsOut);
+            Assert.Equal(outer.ReferenceSegment, reference.ReferenceSegment);
+            Assert.NotEqual(json, SubstraitSerializer.SerializeToJson(ProjectionOf(plain)));
+        }
+
+        [Fact]
+        public void ListElementReferenceIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new StructReferenceSegment() { Field = 0 })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.StructField.Child = new Protobuf.Expression.Types.ReferenceSegment()
+            {
+                ListElement = new Protobuf.Expression.Types.ReferenceSegment.Types.ListElement() { Offset = 1 }
+            };
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
+        }
+
+        [Fact]
+        public void FixedAndVariableLengthMapKeysAreRead()
+        {
+            var expected = ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" }));
+            var fixedChar = SubstraitSerializer.Serialize(expected);
+            fixedChar.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal() { FixedChar = "key" };
+            var varChar = SubstraitSerializer.Serialize(expected);
+            varChar.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal()
+            {
+                VarChar = new Protobuf.Expression.Types.Literal.Types.VarChar() { Value = "key", Length = 3 }
+            };
+
+            Assert.Equal(expected, new SubstraitDeserializer().Deserialize(fixedChar));
+            Assert.Equal(expected, new SubstraitDeserializer().Deserialize(varChar));
+        }
+
+        [Fact]
+        public void MapKeyReferenceWithoutKeyIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.MapKey.MapKey_ = null;
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
+        }
+
+        [Fact]
+        public void MapKeyReferenceWithoutStringKeyIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal() { I32 = 1 };
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
         }
 
         private void AssertPlanCanSerializeDeserialize(Plan plan)
