@@ -304,7 +304,8 @@ namespace FlowtideDotNet.Core.Engine
                 string json = "";
                 try
                 {
-                    json = SubstraitSerializer.SerializeToJson(_plan);
+                    // Hints are left out of the plan hash
+                    json = SubstraitSerializer.SerializeToJson(_plan, includeHints: false);
                 }
                 catch (Exception e)
                 {

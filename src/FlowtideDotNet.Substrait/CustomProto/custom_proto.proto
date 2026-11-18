@@ -8,6 +8,10 @@ option csharp_namespace = "FlowtideDotNet.Substrait.CustomProtobuf";
 
 message IterationRelation {
     string iterationName = 1;
+    // Rows that match are not sent around the loop again.
+    substrait.Expression skipIterateCondition = 2;
+    // Not set means no limit.
+    optional int32 maxIterations = 3;
 }
 
 message IterationReferenceReadRelation {
@@ -98,6 +102,12 @@ message SubstreamExchangeReferenceRelation {
     int32 output_length = 3;
 }
 
+// A reference that carries an emit or hints.
+// Packed into the detail of an extension leaf rel.
+message ReferenceRelation {
+    int32 relation_id = 1;
+}
+
 message StandardOutputTargetReferenceRelation {
     int32 relation_id = 1;
     int32 target_id = 2;
@@ -118,6 +128,12 @@ message SubstreamExchangeTarget {
 message PullBucketExchangeTarget {
     // Identifier used when the data is pulled.
     int32 exchange_target_id = 1;
+}
+
+// A relation's hints, such as a read's watermark mode.
+// Packed into the optimization of a relation hint's advanced extension.
+message HintOptimizations {
+    map<string, string> properties = 1;
 }
 
 // Marks a merge join as part of a multi join, every join of one group carries the same group.

@@ -32,6 +32,8 @@ namespace FlowtideDotNet.Nexmark.Internal
         public NexmarkQueryStream(string baseDir, string testName) : base(testName)
         {
             _baseDir = baseDir;
+            // The check would count as query time
+            CheckPlanRoundTrip = false;
         }
 
         protected override void AddReadResolvers(IConnectorManager connectorManger)

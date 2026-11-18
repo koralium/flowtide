@@ -17,6 +17,7 @@ using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using Google.Protobuf;
+using System.Buffers.Binary;
 using Substrait.Protobuf;
 using Protobuf = Substrait.Protobuf;
 
@@ -53,6 +54,8 @@ namespace FlowtideDotNet.Substrait
             }
         }
 
+        internal const string NullTypeMarker = "null";
+
         private sealed class SerializerVisitorState
         {
             private uint urnCounter = 1;
@@ -61,10 +64,13 @@ namespace FlowtideDotNet.Substrait
             private readonly Dictionary<(string Urn, string Name), uint> _typeExtensions = new();
             private readonly Dictionary<(string Urn, string Name), uint> _functionsExtensions = new();
 
-            public SerializerVisitorState(Protobuf.Plan root)
+            public SerializerVisitorState(Protobuf.Plan root, bool includeHints)
             {
                 Root = root;
+                IncludeHints = includeHints;
             }
+
+            public bool IncludeHints { get; }
 
             private uint GetUrnAnchor(string urn)
             {
@@ -216,11 +222,14 @@ namespace FlowtideDotNet.Substrait
                             }
                         };
                     case SubstraitType.Decimal:
+                        var decimalType = (DecimalType)type;
                         return new Protobuf.Type()
                         {
                             Decimal = new Protobuf.Type.Types.Decimal()
                             {
-                                Nullability = nullable
+                                Nullability = nullable,
+                                Precision = decimalType.Precision ?? 0,
+                                Scale = decimalType.Scale ?? 0
                             }
                         };
                     case SubstraitType.Fp32:
@@ -308,14 +317,16 @@ namespace FlowtideDotNet.Substrait
                             throw new InvalidOperationException("Map type must be MapType");
                         }
                     case SubstraitType.Null:
-                        var anyTypeIdForNull = GetAnyTypeId();
+                        // The dynamic type with a marker, read back as null
+                        var nullType = new Protobuf.Type.Types.UserDefined()
+                        {
+                            Nullability = nullable,
+                            TypeReference = GetAnyTypeId()
+                        };
+                        nullType.TypeParameters.Add(new Protobuf.Type.Types.Parameter() { String = NullTypeMarker });
                         return new Protobuf.Type()
                         {
-                            UserDefined = new Protobuf.Type.Types.UserDefined()
-                            {
-                                Nullability = Protobuf.Type.Types.Nullability.Nullable,
-                                TypeReference = anyTypeIdForNull
-                            }
+                            UserDefined = nullType
                         };
                     case SubstraitType.TimestampTz:
                         return new Protobuf.Type()
@@ -382,23 +393,53 @@ namespace FlowtideDotNet.Substrait
 
             public override Protobuf.Expression? VisitNumericLiteral(NumericLiteral numericLiteral, SerializerVisitorState state)
             {
-                if (numericLiteral.Value % 1 == 0)
+                decimal value = numericLiteral.Value;
+                var literal = new Protobuf.Expression.Types.Literal();
+                if (value % 1 == 0)
                 {
-                    return new Protobuf.Expression()
+                    if (value >= long.MinValue && value <= long.MaxValue)
                     {
-                        Literal = new Protobuf.Expression.Types.Literal()
-                        {
-                            I64 = (long)numericLiteral.Value
-                        }
-                    };
+                        literal.I64 = (long)value;
+                    }
+                    else
+                    {
+                        literal.Decimal = DecimalLiteral(value);
+                    }
                 }
-
+                else
+                {
+                    double asDouble = (double)value;
+                    decimal back = (decimal)asDouble;
+                    // A double keeps about fifteen digits
+                    if (back == value && (double)back == asDouble)
+                    {
+                        literal.Fp64 = asDouble;
+                    }
+                    else
+                    {
+                        literal.Decimal = DecimalLiteral(value);
+                    }
+                }
                 return new Protobuf.Expression()
                 {
-                    Literal = new Protobuf.Expression.Types.Literal()
-                    {
-                        Fp64 = (double)numericLiteral.Value
-                    }
+                    Literal = literal
+                };
+            }
+
+            private static Protobuf.Expression.Types.Literal.Types.Decimal DecimalLiteral(decimal value)
+            {
+                Span<int> parts = stackalloc int[4];
+                decimal.GetBits(value, parts);
+                var unscaled = new UInt128((uint)parts[2], ((ulong)(uint)parts[1] << 32) | (uint)parts[0]);
+                Int128 signed = value < 0 ? -(Int128)unscaled : (Int128)unscaled;
+                // Sixteen bytes with the lowest byte first
+                Span<byte> bytes = stackalloc byte[16];
+                BinaryPrimitives.WriteInt128LittleEndian(bytes, signed);
+                return new Protobuf.Expression.Types.Literal.Types.Decimal()
+                {
+                    Value = ByteString.CopyFrom(bytes),
+                    Precision = 38,
+                    Scale = (parts[3] >> 16) & 0xFF
                 };
             }
 
@@ -679,6 +720,61 @@ namespace FlowtideDotNet.Substrait
             {
             }
 
+            public override Protobuf.Rel Visit(Relation relation, SerializerVisitorState state)
+            {
+                var rel = base.Visit(relation, state);
+                WriteCommon(relation, rel, state);
+                return rel;
+            }
+
+            /// <summary>
+            /// Writes the emit and hints of any relation.
+            /// </summary>
+            private static void WriteCommon(Relation relation, Protobuf.Rel rel, SerializerVisitorState state)
+            {
+                bool hints = state.IncludeHints && relation.Hint.HasHints;
+                if (!relation.EmitSet && !hints)
+                {
+                    return;
+                }
+                var common = RelCommonAccess.GetOrCreate(rel);
+                if (common == null)
+                {
+                    if (relation.EmitSet)
+                    {
+                        throw new NotSupportedException($"A {relation.GetType().Name} with an emit cannot be serialized.");
+                    }
+                    // Hints may be left out, they change no result
+                    return;
+                }
+                if (relation.EmitSet && common.EmitKindCase != Protobuf.RelCommon.EmitKindOneofCase.Emit)
+                {
+                    common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    common.Emit.OutputMapping.AddRange(relation.Emit);
+                }
+                if (hints)
+                {
+                    common.Hint = new Protobuf.RelCommon.Types.Hint();
+                    if (relation.Hint.Alias != null)
+                    {
+                        common.Hint.Alias = relation.Hint.Alias;
+                    }
+                    if (relation.Hint.Optimizations.Properties.Count > 0)
+                    {
+                        var optimizations = new CustomProtobuf.HintOptimizations();
+                        // Sorted, so one plan always gives one text
+                        foreach (var property in relation.Hint.Optimizations.Properties.OrderBy(x => x.Key, StringComparer.Ordinal))
+                        {
+                            optimizations.Properties.Add(property.Key, property.Value);
+                        }
+                        common.Hint.AdvancedExtension = new Protobuf.AdvancedExtension()
+                        {
+                            Optimization = Google.Protobuf.WellKnownTypes.Any.Pack(optimizations)
+                        };
+                    }
+                }
+            }
+
             public override Protobuf.Rel VisitReadRelation(ReadRelation readRelation, SerializerVisitorState state)
             {
                 var readRel = new Protobuf.ReadRel();
@@ -846,6 +942,14 @@ namespace FlowtideDotNet.Substrait
             {
                 FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation iterRel = new FlowtideDotNet.Substrait.CustomProtobuf.IterationRelation();
                 iterRel.IterationName = iterationRelation.IterationName;
+                if (iterationRelation.SkipIterateCondition != null)
+                {
+                    iterRel.SkipIterateCondition = new SerializerExpressionVisitor().Visit(iterationRelation.SkipIterateCondition, state);
+                }
+                if (iterationRelation.MaxIterations.HasValue)
+                {
+                    iterRel.MaxIterations = iterationRelation.MaxIterations.Value;
+                }
 
                 var rel = new Protobuf.ExtensionMultiRel()
                 {
@@ -905,7 +1009,7 @@ namespace FlowtideDotNet.Substrait
 
                 if (joinRelation.PostJoinFilter != null)
                 {
-                    joinRel.Expression = exprVisitor.Visit(joinRelation.PostJoinFilter, state);
+                    joinRel.PostJoinFilter = exprVisitor.Visit(joinRelation.PostJoinFilter, state);
                 }
 
                 if (joinRelation.EmitSet)
@@ -1223,6 +1327,20 @@ namespace FlowtideDotNet.Substrait
 
             public override Rel VisitReferenceRelation(ReferenceRelation referenceRelation, SerializerVisitorState state)
             {
+                if (referenceRelation.EmitSet || (state.IncludeHints && referenceRelation.Hint.HasHints))
+                {
+                    // The plain reference has no common part to carry them
+                    return new Rel()
+                    {
+                        ExtensionLeaf = new Protobuf.ExtensionLeafRel()
+                        {
+                            Detail = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.ReferenceRelation()
+                            {
+                                RelationId = referenceRelation.RelationId
+                            })
+                        }
+                    };
+                }
                 var refRel = new ReferenceRel()
                 {
                     SubtreeOrdinal = referenceRelation.RelationId
@@ -1320,30 +1438,8 @@ namespace FlowtideDotNet.Substrait
             public override Rel VisitSetRelation(SetRelation setRelation, SerializerVisitorState state)
             {
                 var rel = new Protobuf.SetRel();
-                switch (setRelation.Operation)
-                {
-                    case SetOperation.UnionDistinct:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.UnionDistinct;
-                        break;
-                    case SetOperation.IntersectionPrimary:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.IntersectionPrimary;
-                        break;
-                    case SetOperation.MinusPrimary:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.MinusPrimary;
-                        break;
-                    case SetOperation.IntersectionMultiset:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.IntersectionMultiset;
-                        break;
-                    case SetOperation.MinusMultiset:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.MinusMultiset;
-                        break;
-                    case SetOperation.UnionAll:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.UnionAll;
-                        break;
-                    case SetOperation.Unspecified:
-                        rel.Op = Protobuf.SetRel.Types.SetOp.Unspecified;
-                        break;
-                }
+                // Both enums use the numbers of the Substrait specification
+                rel.Op = (Protobuf.SetRel.Types.SetOp)(int)setRelation.Operation;
 
                 if (setRelation.EmitSet)
                 {
@@ -1836,11 +1932,14 @@ namespace FlowtideDotNet.Substrait
             }
         }
 
-        public static Protobuf.Plan Serialize(Plan plan)
+        /// <summary>
+        /// The plan hash is taken without hints.
+        /// </summary>
+        public static Protobuf.Plan Serialize(Plan plan, bool includeHints = true)
         {
             var rootPlan = new Protobuf.Plan();
 
-            var state = new SerializerVisitorState(rootPlan);
+            var state = new SerializerVisitorState(rootPlan, includeHints);
             var visitor = new SerializerVisitor();
             foreach (var relation in plan.Relations)
             {
@@ -1875,9 +1974,9 @@ namespace FlowtideDotNet.Substrait
             return root;
         }
 
-        public static string SerializeToJson(Plan plan)
+        public static string SerializeToJson(Plan plan, bool includeHints = true)
         {
-            var protoPlan = Serialize(plan);
+            var protoPlan = Serialize(plan, includeHints);
             var settings = new Google.Protobuf.JsonFormatter.Settings(true, CustomProtoTypeRegistry.Instance)
                 .WithIndentation();
             var formatter = new Google.Protobuf.JsonFormatter(settings);

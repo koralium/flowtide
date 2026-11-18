@@ -17,6 +17,7 @@ using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
+using System.Buffers.Binary;
 using Protobuf = Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait
@@ -140,7 +141,13 @@ namespace FlowtideDotNet.Substrait
                         {
                             if (typeName.Urn == FunctionsTypes.Urn && typeName.Name == FunctionsTypes.Dynamic)
                             {
-                                return new AnyType();
+                                var parameters = type.UserDefined.TypeParameters;
+                                bool nullable = type.UserDefined.Nullability != Protobuf.Type.Types.Nullability.Required;
+                                if (parameters.Count == 1 && parameters[0].String == SubstraitSerializer.NullTypeMarker)
+                                {
+                                    return new NullType() { Nullable = nullable };
+                                }
+                                return new AnyType() { Nullable = nullable };
                             }
                             else if (typeName.Urn == FunctionsTypes.Urn && typeName.Name == FunctionsTypes.NamedStruct)
                             {
@@ -204,6 +211,15 @@ namespace FlowtideDotNet.Substrait
                         return new BinaryType()
                         {
                             Nullable = type.Binary.Nullability != Protobuf.Type.Types.Nullability.Required
+                        };
+                    case Protobuf.Type.KindOneofCase.Decimal:
+                        // A precision of zero means none was given
+                        bool sized = type.Decimal.Precision > 0;
+                        return new DecimalType()
+                        {
+                            Nullable = type.Decimal.Nullability != Protobuf.Type.Types.Nullability.Required,
+                            Precision = sized ? type.Decimal.Precision : null,
+                            Scale = sized ? type.Decimal.Scale : null
                         };
                     default:
                         throw new NotImplementedException($"Type is not yet implemented {type.KindCase}");
@@ -279,6 +295,11 @@ namespace FlowtideDotNet.Substrait
                     {
                         Types = types
                     };
+                }
+                else
+                {
+                    // Names without types are kept as they are
+                    names.AddRange(namedStruct.Names);
                 }
                 return new NamedStruct()
                 {
@@ -599,7 +620,7 @@ namespace FlowtideDotNet.Substrait
                 return new IfThenExpression()
                 {
                     Ifs = ifClauses,
-                    Else = VisitExpression(ifThen.Else)
+                    Else = ifThen.Else != null ? VisitExpression(ifThen.Else) : null
                 };
             }
 
@@ -614,6 +635,33 @@ namespace FlowtideDotNet.Substrait
                         };
                     case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Null:
                         return new NullLiteral();
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64:
+                        RequireDecimalRange(literal.Fp64);
+                        return new NumericLiteral()
+                        {
+                            Value = (decimal)literal.Fp64
+                        };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp32:
+                        RequireDecimalRange(literal.Fp32);
+                        return new NumericLiteral()
+                        {
+                            Value = (decimal)literal.Fp32
+                        };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Decimal:
+                        return new NumericLiteral()
+                        {
+                            Value = DecimalOf(literal.Decimal)
+                        };
+                    case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.List:
+                        var items = new List<Expressions.Expression>();
+                        foreach (var item in literal.List.Values)
+                        {
+                            items.Add(VisitLiteral(item));
+                        }
+                        return new ArrayLiteral()
+                        {
+                            Expressions = items
+                        };
                     case Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I32:
                         return new NumericLiteral()
                         {
@@ -642,6 +690,31 @@ namespace FlowtideDotNet.Substrait
                     default:
                         throw new NotImplementedException();
                 }
+            }
+
+            private static void RequireDecimalRange(double value)
+            {
+                if (double.IsNaN(value) || Math.Abs(value) >= (double)decimal.MaxValue)
+                {
+                    throw new SubstraitParseException($"The literal {value} is outside the range of a numeric literal.");
+                }
+            }
+
+            private static decimal DecimalOf(Protobuf.Expression.Types.Literal.Types.Decimal literal)
+            {
+                if (literal.Value.Length != 16)
+                {
+                    throw new SubstraitParseException("A decimal literal must hold 16 bytes.");
+                }
+                Int128 signed = BinaryPrimitives.ReadInt128LittleEndian(literal.Value.Span);
+                bool negative = signed < 0;
+                UInt128 unscaled = negative ? (UInt128)(-signed) : (UInt128)signed;
+                // A numeric literal holds 96 bits and 28 decimals
+                if ((unscaled >> 96) != 0 || literal.Scale < 0 || literal.Scale > 28)
+                {
+                    throw new SubstraitParseException("The decimal literal is outside the range of a numeric literal.");
+                }
+                return new decimal((int)(uint)unscaled, (int)(uint)(unscaled >> 32), (int)(uint)(unscaled >> 64), negative, (byte)literal.Scale);
             }
 
             public static FieldReference VisitFieldReference(Protobuf.Expression.Types.FieldReference fieldReference)
@@ -784,6 +857,7 @@ namespace FlowtideDotNet.Substrait
             // Reference output lengths that could not be resolved while deserializing because
             // the referenced relation appears later in the plan, see SetReferenceOutputLength.
             private readonly List<(int RelationId, Action<int> Apply)> _pendingReferenceOutputLengths = new List<(int, Action<int>)>();
+            private readonly List<(int RelationId, Action<int> Apply)> _referenceOutputLengths = new List<(int, Action<int>)>();
 
             public Plan Convert()
             {
@@ -812,7 +886,35 @@ namespace FlowtideDotNet.Substrait
                     }
                     apply(_relations[relationId].OutputLength);
                 }
+                ResolveReferenceChains();
                 return output;
+            }
+
+            private void ResolveReferenceChains()
+            {
+                var lengths = new int[_referenceOutputLengths.Count];
+                Array.Fill(lengths, -1);
+                // A chain is never longer than the plan
+                for (int pass = 0; pass <= _relations.Count; pass++)
+                {
+                    bool changed = false;
+                    for (int i = 0; i < lengths.Length; i++)
+                    {
+                        var (relationId, apply) = _referenceOutputLengths[i];
+                        int length = _relations[relationId].OutputLength;
+                        if (length != lengths[i])
+                        {
+                            lengths[i] = length;
+                            apply(length);
+                            changed = true;
+                        }
+                    }
+                    if (!changed)
+                    {
+                        return;
+                    }
+                }
+                throw new InvalidOperationException("The reference relations of the plan point at each other in a cycle.");
             }
 
             /// <summary>
@@ -824,6 +926,7 @@ namespace FlowtideDotNet.Substrait
             /// </summary>
             private void SetReferenceOutputLength(int relationId, Action<int> apply)
             {
+                _referenceOutputLengths.Add((relationId, apply));
                 if (relationId >= 0 && relationId < _relations.Count)
                 {
                     apply(_relations[relationId].OutputLength);
@@ -858,6 +961,45 @@ namespace FlowtideDotNet.Substrait
             }
 
             public Relation VisitRel(Protobuf.Rel rel)
+            {
+                var relation = VisitRelCore(rel);
+                ReadCommon(relation, RelCommonAccess.Get(rel));
+                return relation;
+            }
+
+            /// <summary>
+            /// Reads the emit and hints of any relation.
+            /// </summary>
+            private static void ReadCommon(Relation relation, Protobuf.RelCommon? common)
+            {
+                if (common == null)
+                {
+                    return;
+                }
+                if (!relation.EmitSet)
+                {
+                    relation.Emit = GetEmit(common);
+                }
+                var hint = common.Hint;
+                if (hint == null)
+                {
+                    return;
+                }
+                if (hint.Alias.Length > 0)
+                {
+                    relation.Hint.Alias = hint.Alias;
+                }
+                var optimization = hint.AdvancedExtension?.Optimization;
+                if (optimization != null && Google.Protobuf.WellKnownTypes.Any.GetTypeName(optimization.TypeUrl) == CustomProtobuf.HintOptimizations.Descriptor.FullName)
+                {
+                    foreach (var property in optimization.Unpack<CustomProtobuf.HintOptimizations>().Properties)
+                    {
+                        relation.Hint.Optimizations.Properties[property.Key] = property.Value;
+                    }
+                }
+            }
+
+            private Relation VisitRelCore(Protobuf.Rel rel)
             {
                 switch (rel.RelTypeCase)
                 {
@@ -1247,6 +1389,8 @@ namespace FlowtideDotNet.Substrait
                         Input = inputRel,
                         LoopPlan = loopPlan,
                         IterationName = iterationRel.IterationName,
+                        SkipIterateCondition = iterationRel.SkipIterateCondition != null ? expressionDeserializer.VisitExpression(iterationRel.SkipIterateCondition) : null,
+                        MaxIterations = iterationRel.HasMaxIterations ? iterationRel.MaxIterations : null,
                         Emit = GetEmit(extensionMulti.Common)
                     };
                     return rel;
@@ -1355,6 +1499,15 @@ namespace FlowtideDotNet.Substrait
                     };
                     return rel;
                 }
+                else if (typeName == CustomProtobuf.ReferenceRelation.Descriptor.FullName)
+                {
+                    var reference = new ReferenceRelation()
+                    {
+                        RelationId = extensionLeaf.Detail.Unpack<CustomProtobuf.ReferenceRelation>().RelationId
+                    };
+                    SetReferenceOutputLength(reference.RelationId, length => reference.ReferenceOutputLength = length);
+                    return reference;
+                }
                 else if (typeName == CustomProtobuf.StandardOutputTargetReferenceRelation.Descriptor.FullName)
                 {
                     var standardOutputRef = extensionLeaf.Detail.Unpack<CustomProtobuf.StandardOutputTargetReferenceRelation>();
@@ -1411,7 +1564,7 @@ namespace FlowtideDotNet.Substrait
                 else if (typeName == CustomProtobuf.TableFunctionRelation.Descriptor.FullName)
                 {
                     var tableFuncRel = extensionSingle.Detail.Unpack<CustomProtobuf.TableFunctionRelation>();
-                    var expr = expressionDeserializer.VisitExpression(tableFuncRel.JoinCondition);
+                    var expr = tableFuncRel.JoinCondition != null ? expressionDeserializer.VisitExpression(tableFuncRel.JoinCondition) : null;
 
                     JoinType joinType = JoinType.Unspecified;
 
@@ -1623,8 +1776,10 @@ namespace FlowtideDotNet.Substrait
                         return null;
                     case Protobuf.RelCommon.EmitKindOneofCase.Emit:
                         return relCommon.Emit.OutputMapping.ToList();
+                    default:
+                        // A common part that only carries hints
+                        return null;
                 }
-                throw new NotImplementedException();
             }
 
             private Relation VisitSet(Protobuf.SetRel setRel)
@@ -1638,7 +1793,12 @@ namespace FlowtideDotNet.Substrait
                 {
                     set.Inputs.Add(VisitRel(setRel.Inputs[i]));
                 }
-                set.Operation = SetOperation.UnionAll;
+                // Both enums use the numbers of the Substrait specification
+                set.Operation = (SetOperation)(int)setRel.Op;
+                if (!Enum.IsDefined(set.Operation))
+                {
+                    throw new SubstraitParseException($"The set operation {(int)setRel.Op} is not known.");
+                }
                 set.Emit = GetEmit(setRel.Common);
                 return set;
             }
@@ -1759,6 +1919,12 @@ namespace FlowtideDotNet.Substrait
                         break;
                     case Protobuf.JoinRel.Types.JoinType.LeftMark:
                         joinType = JoinType.LeftMark;
+                        break;
+                    case Protobuf.JoinRel.Types.JoinType.Outer:
+                        joinType = JoinType.Outer;
+                        break;
+                    case Protobuf.JoinRel.Types.JoinType.Unspecified:
+                        joinType = JoinType.Unspecified;
                         break;
                     default:
                         throw new NotSupportedException("Join type not supported: " + joinRel.Type);

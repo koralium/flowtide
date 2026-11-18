@@ -10,10 +10,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 using FlowtideDotNet.Core.Connectors;
+using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
+using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
 using Grpc.Net.Client;
 
@@ -82,6 +86,26 @@ namespace FlowtideDotNet.Connector.SpiceDB.Tests
             Assert.False(normalization.EmitSet);
             Assert.Equal(read.BaseSchema.Names.Count, normalization.OutputLength);
             AssertReadDeclaresWhatIsSent(read);
+        }
+
+        [Theory]
+        [InlineData("schema.txt", "document", "view", 1, false)]
+        [InlineData("schema.txt", "document", "view", 2, false)]
+        [InlineData("recursiveschema.txt", "organization", "can_view", 1, true)]
+        [InlineData("recursiveschema.txt", "organization", "can_view", 2, true)]
+        public void PermissionPlanSurvivesTheRoundTrip(string schemaFile, string type, string permission, int parallelization, bool loop)
+        {
+            var builder = new SqlPlanBuilder();
+            builder.AddPlanAsView("authdata", SpiceDbToFlowtide.Convert(File.ReadAllText(schemaFile), type, permission, "spicedb"));
+            builder.Sql(@"
+                INSERT INTO testverify
+                SELECT subject_type, subject_id, relation, resource_type, resource_id
+                FROM authdata");
+
+            var plan = PlanOptimizer.Optimize(builder.GetPlan(), new PlanOptimizerSettings() { Parallelization = parallelization });
+
+            PlanRoundTrip.AssertSurvives(plan);
+            Assert.Equal(loop, SubstraitSerializer.SerializeToJson(plan).Contains("\"maxIterations\": 1000"));
         }
     }
 }

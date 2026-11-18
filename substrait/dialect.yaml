@@ -2,14 +2,23 @@ name: "Flowtide dialect"
 
 metadata:
   max_expression_depth: 128
+  flowtide_relation_hints:
+    alias_field: RelCommon.hint.alias
+    optimizations_field: RelCommon.hint.advanced_extension.optimization
+    optimizations_message_type: type.googleapis.com/flowtide.HintOptimizations
+    in_plan_hash: false
+    notes: Relation hints, such as WATERMARK_OUTPUT_MODE on a read, are written with a plan and read back. The
+      properties of flowtide.HintOptimizations are written in ordinal key order. Hints change no result, so the
+      text the plan hash is taken from leaves them out. A relation message without a common part carries no hints,
+      except a reference, which is then written as flowtide.ReferenceRelation. An empty alias is no alias.
   flowtide_type_compatibility:
     declaration_scope: supported_types describes native value/model capabilities. Each entry separately states schema
       and non-null literal wire support; a native type declaration alone does not imply that every schema/literal
       form can be imported.
     nullability: Native columns store nulls separately from value kinds. Required schema annotations are not a row-validation
-      step. For supported scalar/LIST/MAP schema paths, nullability annotations are retained; any imports as nullable,
-      and standard nested STRUCT container nullability is not retained. Typed protobuf null literals import as an untyped NullLiteral and lose
-      their original type annotation.
+      step. For supported scalar/LIST/MAP schema paths and Flowtide any, nullability annotations are retained;
+      standard nested STRUCT container nullability is not retained. Typed protobuf null literals import as an untyped
+      NullLiteral and lose their original type annotation.
     type_variations: Only default type behavior is advertised. Type-variation references are not preserved or enforced
       by the current model/reader/writer.
     numeric_string_cast_culture: Numeric string casts use the process .NET culture (TryParse without an explicit provider);
@@ -25,9 +34,10 @@ metadata:
           CLR DateTime uses TimestampType. DATE is therefore not advertised as a complete runtime value type.
       - native_model: NullType
         runtime_value: NullValue
-        protobuf_codec: nullable Flowtide any
-        notes: NullType serializes as nullable any and imports as AnyType. Null values are supported through nullable/dynamic
-          types rather than a separate standard NULL type class.
+        protobuf_codec: Flowtide any with the single string type parameter null
+        notes: NullType serializes as Flowtide any with one string type parameter, null, and imports as NullType
+          with its nullability. Any without that parameter imports as AnyType. Null values are supported through
+          nullable/dynamic types rather than a separate standard NULL type class.
     unsupported_standard_type_classes:
       - I8
       - I16
@@ -115,25 +125,29 @@ metadata:
 supported_expressions:
   - expression: LITERAL
     metadata:
-      notes: Protobuf import accepts boolean, null, i32, i64, string, fixed_char and binary literals. Fractional
-        NumericLiteral values in native plans execute as doubles and serialize as fp64, but fp64 literal import
-        is not implemented. Use NESTED LIST/MAP for collection construction; collection literals are not supported
-        by the protobuf literal reader.
+      notes: Protobuf import accepts boolean, null, i32, i64, fp32, fp64, decimal, string, fixed_char, binary and
+        list literals. A native NumericLiteral executes as Int64 when its value is whole and as Double otherwise.
+        It serializes as i64, as fp64 when that double gives the same value back (about 15 significant digits),
+        and otherwise as a decimal literal that keeps every digit and the scale. fp32, fp64 and decimal literals
+        import as NumericLiteral; fp64 import keeps 15 significant digits and fp32 import keeps 7. NaN, infinities
+        and values outside the System.Decimal range are rejected, as are decimal literals that are not 16 bytes,
+        exceed 96 bits or have a scale outside 0..28. List literals import as ArrayLiteral. Use NESTED LIST/MAP
+        for collection construction; map and struct literals are not supported by the protobuf literal reader.
   - expression: SELECTION
     metadata:
       notes: Use a direct StructField reference with a zero-based input column index. RootReference selects
         from the current input; OuterReference is used for correlated EXISTS filters and must be removed by
         decorrelation before execution. Masked references and expression-rooted selections are unsupported.
-        Child reference segments are not preserved by the protobuf reader/writer, even though native plans
-        can access nested fields.
+        Child reference segments for struct fields and string map keys are preserved by the protobuf reader/writer.
+        List-element segments are rejected.
   - expression: SCALAR_FUNCTION
     metadata:
       notes: Calls resolve through registered extension URI/name pairs. Availability depends on the engine's
         function registry; this expression form does not imply support for every function in a Substrait extension.
   - expression: IF_THEN
     metadata:
-      notes: 'Searched CASE semantics: evaluate conditions in order and return the first matching result. Supply
-        an explicit else expression when importing a plan; use a null literal for CASE without an ELSE clause.'
+      notes: 'Searched CASE semantics: evaluate conditions in order and return the first matching result. The
+        else expression is optional; without it a row that matches no condition gives null.'
   - expression: SINGULAR_OR_LIST
     metadata:
       notes: Tests one value against a list of expression options, using equality comparisons combined with
@@ -2727,18 +2741,17 @@ supported_relations:
     metadata:
       requires_base_schema: true
       virtual_table_encoding: EXPRESSIONS
-      imports_read_filter: false
+      imports_read_filter: true
       imports_projection_mask: false
       notes: Named tables resolve through configured source connectors. Supply a base_schema with column names and
         types. Virtual tables use ReadRel.virtual_table.expressions (Struct expressions); the legacy values field
-        is not read. ReadRel.filter and projection masks are not imported, so express required predicates with FILTER
-        and output selection with common.emit or PROJECT. Local-file, extension-table and Iceberg ReadRel forms
-        are not implemented.
+        is not read. ReadRel.filter imports as the native read filter, the field the SQL optimizer pushes predicates
+        into. Projection masks are not imported, so express output selection with common.emit or PROJECT. Local-file,
+        extension-table and Iceberg ReadRel forms are not implemented.
   - relation: FILTER
     metadata:
       notes: A condition expression is required. Rows whose condition evaluates to true pass through; false and
-        null are rejected. Supports common.emit output mappings and incremental insert/retract weights. Use this
-        relation for predicates that must survive protobuf import instead of ReadRel.filter.
+        null are rejected. Supports common.emit output mappings and incremental insert/retract weights.
       doc_url: https://koralium.github.io/flowtide/docs/operators/filter.html
   - relation: PROJECT
     metadata:
@@ -2752,6 +2765,7 @@ supported_relations:
       - INNER
       - LEFT
       - RIGHT
+      - OUTER
       - LEFT_MARK
     metadata:
       native_join_types:
@@ -2761,13 +2775,12 @@ supported_relations:
         - OUTER
         - LEFT_MARK
       predicate_reference_schema: LEFT_COLUMNS_THEN_RIGHT_COLUMNS
-      roundtrip_post_join_filter: false
-      notes: 'The protobuf importer accepts INNER, LEFT, RIGHT and LEFT_MARK. Native SQL/model plans also support
-        OUTER; importing a generic JoinRel with OUTER throws. The optimizer may lower suitable keyed joins to MERGE_JOIN;
-        other predicates use the block-nested join operator. Predicate field references use the concatenated left/right
-        schema. LEFT_MARK outputs left columns plus a boolean mark. For reliable export, leave PostJoinFilter unset:
-        the generic JoinRel serializer currently writes it into expression, replacing the original join predicate.
-        Express post-join filtering as a separate FILTER relation.'
+      roundtrip_post_join_filter: true
+      notes: The protobuf importer accepts INNER, LEFT, RIGHT, OUTER and LEFT_MARK, and keeps an unspecified
+        join type as it is. The optimizer may lower suitable keyed joins to MERGE_JOIN; other predicates use the
+        block-nested join operator. Predicate field references use the concatenated left/right schema. LEFT_MARK
+        outputs left columns plus a boolean mark. The join predicate and post_join_filter are written and read
+        as separate fields.
       doc_url: https://koralium.github.io/flowtide/docs/operators/join.html
   - relation: MERGE_JOIN
     join_types:
@@ -2798,20 +2811,25 @@ supported_relations:
       supports_measure_filters: true
       aggregation_phases:
         - INITIAL_TO_RESULT
-      imports_common_emit: false
+      imports_common_emit: true
       output_layout: GROUPING_EXPRESSIONS_THEN_MEASURES
       notes: Supports global aggregation or one grouping set containing multiple expressions. Multiple grouping
         sets are rejected. Outputs grouping columns followed by measures; per-measure FILTER is supported. Grouping-only
         aggregation with no measures is supported. Aggregate bindings are listed in supported_aggregate_functions.
         The native model executes raw input to final results; protobuf phase, invocation and aggregate sort fields
-        are not retained. COUNT(DISTINCT x) uses the dedicated count_distinct binding. The importer also drops AggregateRel.common.emit,
-        so use PROJECT above the aggregate to apply an output mapping after import.
+        are not retained. COUNT(DISTINCT x) uses the dedicated count_distinct binding. AggregateRel.common.emit
+        is imported.
       doc_url: https://koralium.github.io/flowtide/docs/operators/aggregate.html
   - relation: SET
     operations:
       - UNION_ALL
+      - UNION_DISTINCT
+      - MINUS_PRIMARY
+      - MINUS_PRIMARY_ALL
+      - INTERSECTION_MULTISET
+      - INTERSECTION_MULTISET_ALL
     metadata:
-      imports_operation: false
+      imports_operation: true
       native_operations:
         - UNION_ALL
         - UNION_DISTINCT
@@ -2820,19 +2838,21 @@ supported_relations:
         - INTERSECTION_MULTISET
         - INTERSECTION_MULTISET_ALL
       max_inputs_for_native_stateful_operations: 8
-      notes: The wire importer currently sets every SetRel operation to UNION_ALL, regardless of op. Only UNION_ALL
-        is advertised for protobuf plans. Native SQL/model execution additionally supports UNION_DISTINCT, MINUS_PRIMARY,
-        MINUS_PRIMARY_ALL, INTERSECTION_MULTISET and INTERSECTION_MULTISET_ALL. Those stateful native operations
-        accept one through eight inputs; UNION_ALL uses a separate operator. Inputs must have the same column count.
-        The serializer also leaves op unspecified for the native MINUS_PRIMARY_ALL and INTERSECTION_MULTISET_ALL
-        variants. Use explicit grouping of all output columns for distinct results in an imported plan.
+      notes: SetRel.op is written and read for every operation; the native enum uses the numbers of the specification,
+        and a number outside it is rejected on import. UNION_DISTINCT, MINUS_PRIMARY, MINUS_PRIMARY_ALL, INTERSECTION_MULTISET
+        and INTERSECTION_MULTISET_ALL are stateful and accept one through eight inputs; UNION_ALL uses a separate
+        operator. MINUS_MULTISET, INTERSECTION_PRIMARY and an unspecified op are read but have no runtime operator.
+        Inputs must have the same column count.
       doc_url: https://koralium.github.io/flowtide/docs/operators/set.html
   - relation: REFERENCE
     metadata:
-      imports_common_emit: false
+      imports_common_emit: true
       notes: ReferenceRel.subtree_ordinal refers to a relation in the plan relation list. The importer resolves
-        its output length from the referenced relation; the runtime shares that relation rather than building another
-        copy. Common.emit is not imported for references; use PROJECT for output mapping.
+        its output length from the referenced relation, also when that relation comes later in the list or reads
+        another reference. A cycle of references whose output lengths never settle is rejected; a cycle of plain
+        references settles at length 0 and is not detected. The runtime shares the relation rather than building
+        another copy. ReferenceRel has no common part, so a reference with an output mapping or hints is written
+        as the flowtide.ReferenceRelation extension leaf, and a plain one stays a ReferenceRel.
   - relation: WRITE
     write_types:
       - NAMED_TABLE
@@ -2879,6 +2899,7 @@ supported_relations:
       - type.googleapis.com/flowtide.TopNRelation
       - type.googleapis.com/flowtide.BufferRelation
       - type.googleapis.com/flowtide.CheckRelation
+      - type.googleapis.com/flowtide.NormalizationRelation
     metadata:
       messages:
         flowtide.SubStreamRootRelation:
@@ -2890,10 +2911,9 @@ supported_relations:
             - INNER
             - LEFT
           notes: Correlates table-function value arguments with the input row. Function bindings are documented
-            in metadata.flowtide_table_functions. The EXTENSION_SINGLE importer unconditionally reads join_condition,
-            so provide a boolean true expression for an unconditional join. Omitting it currently fails import.
-            The native SQL planner permits an omitted ON clause.
-          requires_join_condition_for_import: true
+            in metadata.flowtide_table_functions. An omitted join_condition is an unconditional join, as with an
+            omitted ON clause in native SQL.
+          requires_join_condition_for_import: false
         flowtide.TopNRelation:
           native_relation: TopNRelation
           notes: Incrementally maintains a bounded sorted result with Count and Offset. Use nonnegative Int32 bounds
@@ -2922,15 +2942,10 @@ supported_relations:
             - IS_NOT_TRUE
             - IS_NULL
           doc_url: https://koralium.github.io/flowtide/docs/operators/check.html
-      native_only_extensions:
-        - protobuf_type: flowtide.NormalizationRelation
+        flowtide.NormalizationRelation:
           native_relation: NormalizationRelation
-          protobuf_serialization: EXTENSION_SINGLE
-          protobuf_import: false
-          runtime_execution: true
-          notes: Native normalization tracks current rows by KeyIndex for upsert/delete semantics and can apply
-            a filter. It is inserted by connectors/native planning. The serializer writes this extension, but the
-            EXTENSION_SINGLE importer has no handler for it.
+          notes: Tracks current rows by KeyIndex for upsert/delete semantics and can apply a filter. It is inserted
+            by connectors/native planning. The key index, the optional filter and common.emit are written and read.
           doc_url: https://koralium.github.io/flowtide/docs/operators/normalization.html
       notes: The listed Any detail messages are imported and have runtime implementations. Their per-message restrictions
         below are part of the supported contract.
@@ -2941,6 +2956,7 @@ supported_relations:
       - type.googleapis.com/flowtide.StandardOutputTargetReferenceRelation
       - type.googleapis.com/flowtide.SubstreamExchangeReferenceRelation
       - type.googleapis.com/flowtide.PullExchangeReferenceRelation
+      - type.googleapis.com/flowtide.ReferenceRelation
     metadata:
       messages:
         flowtide.TableFunctionRelation:
@@ -2960,6 +2976,10 @@ supported_relations:
         flowtide.PullExchangeReferenceRelation:
           native_relation: PullExchangeReferenceRelation
           notes: Reads a configured pull exchange target using the substream name, target id and output length.
+        flowtide.ReferenceRelation:
+          native_relation: ReferenceRelation
+          notes: A reference to a relation of the plan relation list by its id, in the form that has a common
+            part. The writer uses it for a reference with an output mapping or hints; a plain reference is a ReferenceRel.
       notes: The listed source/reference extension messages are supported. Their referenced iterations or exchange
         endpoints must exist in the enclosing stream graph.
   - relation: EXTENSION_MULTI
@@ -2969,12 +2989,11 @@ supported_relations:
       input_order:
         - LOOP_PLAN
         - OPTIONAL_INITIAL_INPUT
-      native_properties_not_serialized:
-        - MaxIterations
-        - SkipIterateCondition
       notes: Flowtide iteration has the loop plan at inputs[0] and an optional initial input at inputs[1]. Feedback
-        uses a matching flowtide.IterationReferenceReadRelation. The protobuf message carries the iteration name;
-        native MaxIterations and SkipIterateCondition properties are not serialized.
+        uses a matching flowtide.IterationReferenceReadRelation. The protobuf message carries the iteration name,
+        the optional skipIterateCondition expression and the optional maxIterations. Without maxIterations there
+        is no limit. A row that comes back from the loop at the limit is dropped from the loop and from the output,
+        so with zero only the initial input is output.
       doc_url: https://koralium.github.io/flowtide/docs/operators/iteration.html
 
 # Types
@@ -3023,12 +3042,13 @@ supported_types:
       wire_support:
         schema_import: FULL
         schema_export: FULL
-        non_null_literal_import: false
+        non_null_literal_import: true
       runtime_float_width: 64
       native_cast_enforces_declared_width: false
       notes: FP32 schemas are accepted, but native values and casts use Double without enforcing single-precision
-        rounding. The default CLR float converter reports Fp64Type. FP32 literals are not imported. Check the function
-        catalogs for supported signatures rather than assuming FP32 arithmetic is implemented.
+        rounding. The default CLR float converter reports Fp64Type. FP32 literals import as NumericLiteral with
+        7 significant digits and evaluate as Int64 or Double. Check the function catalogs for supported signatures
+        rather than assuming FP32 arithmetic is implemented.
   - type: FP64
     metadata:
       native_model: Fp64Type
@@ -3036,11 +3056,13 @@ supported_types:
       wire_support:
         schema_import: FULL
         schema_export: FULL
-        non_null_literal_import: false
+        non_null_literal_import: true
       runtime_float_width: 64
       notes: IEEE Double values, including NaN and infinities, are supported natively. Fractional SQL/NumericLiteral
-        values evaluate as Double and serialize as FP64 literals, but those literals are not imported by the current
-        protobuf expression reader. Connector values and native plans can use them.
+        values evaluate as Double. They serialize as FP64 literals when the double gives the same value back and
+        as decimal literals otherwise. FP64 literals import as NumericLiteral with 15 significant digits, so an
+        imported double with more digits is rounded; NaN, infinities and values outside the System.Decimal range
+        are rejected as literals.
   - type: STRING
     metadata:
       native_model: StringType
@@ -3071,18 +3093,20 @@ supported_types:
       native_model: DecimalType
       runtime_value: DecimalValue / Decimal128 (System.Decimal)
       wire_support:
-        schema_import: NONE
-        schema_export: PARTIAL
+        schema_import: FULL
+        schema_export: FULL
         non_null_literal_import: false
       native_cast_enforces_precision_scale: false
       sql_example: SELECT CAST(123 AS DECIMAL) FROM t
       notes: The Decimal128 runtime tag stores System.Decimal, not arbitrary 38-digit decimal arithmetic. Precision
         28 and scale 0..28 are conservatively advertised; System.Decimal can represent some 29-digit values. Native
-        casts do not enforce DecimalType.Precision/Scale or quantize to the declared scale. The protobuf writer
-        emits a Decimal type but omits precision/scale (both default to zero), and the reader has no Decimal type
-        handler. Decimal type schemas and decimal literals therefore do not round-trip. Use native plans or connector
-        values for decimal execution; fractional SQL numeric literals evaluate as Double, so use an explicit decimal cast when
-        a decimal value is required.
+        casts do not enforce DecimalType.Precision/Scale or quantize to the declared scale. A DecimalType has a
+        size or none. A precision without a scale has scale 0, and without a positive precision there is no size.
+        The protobuf writer emits precision and scale for a sized type and zero for both otherwise, and the reader
+        maps precision zero to a DecimalType without a size. Decimal
+        literals are read, but as NumericLiteral values that evaluate as Int64 or Double, so decimal literal import
+        is not advertised. Fractional SQL numeric literals evaluate as Double too; use an explicit decimal cast
+        when a decimal value is required.
   - type: PRECISION_TIMESTAMP_TZ
     max_precision: 7
     metadata:
@@ -3110,13 +3134,13 @@ supported_types:
       wire_support:
         schema_import: PARTIAL
         schema_export: FULL
-        non_null_literal_import: false
+        non_null_literal_import: true
       construction: NESTED_LIST
       sql_example: SELECT list(1, 2, 3) FROM t
       notes: Ordered elements with a declared element type; nullable containers and elements are supported. Dynamic
-        heterogeneous lists use Flowtide any as the element type. Construct imported values using NESTED LIST expressions;
-        collection literals are not imported. Schema support depends on the element type and its schema context,
-        including the nested STRUCT restrictions below.
+        heterogeneous lists use Flowtide any as the element type. Construct imported values using NESTED LIST expressions.
+        A list literal imports as ArrayLiteral when each of its elements is a literal the reader accepts. Schema
+        support depends on the element type and its schema context, including the nested STRUCT restrictions below.
   - type: MAP
     metadata:
       native_model: MapType
@@ -3159,14 +3183,15 @@ supported_types:
       native_model: AnyType
       runtime_value: Dynamically tagged IDataValue
       wire_support:
-        schema_import: PARTIAL
+        schema_import: FULL
         schema_export: FLOWTIDE_CODEC
         non_null_literal_import: false
       runtime_extension_urn: extension:io.github.koralium.flowtide:types
       runtime_type_name: dynamic
-      imported_nullability: ALWAYS_NULLABLE
+      imported_nullability: RETAINED
       notes: Flowtide any represents dynamic values, including null and values whose output kind, decimal scale
         or nested shape cannot be fixed by a signature. It serializes as the dynamic type in
-        extension:io.github.koralium.flowtide:types. Import always creates nullable AnyType, even when the wire annotation is required. It is a Flowtide
-        type codec, not the standard UNBOUND type. Other user-defined names are rejected except named_struct, which
-        is the STRUCT annotation wrapper described above.
+        extension:io.github.koralium.flowtide:types. Import keeps the wire nullability. With the single string
+        type parameter null it imports as NullType. It is a Flowtide type codec, not the standard UNBOUND type.
+        Other user-defined names are rejected except named_struct, which is the STRUCT annotation wrapper described
+        above.
