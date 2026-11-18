@@ -39,6 +39,11 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public Expression? PostJoinFilter { get; set; }
 
+        /// <summary>
+        /// Set when this join is part of a multi join, every join of one group carries the same id.
+        /// </summary>
+        public int? MultiJoinGroup { get; set; }
+
         public override int OutputLength
         {
             get
@@ -89,7 +94,8 @@ namespace FlowtideDotNet.Substrait.Relations
                 !Equals(Right, other.Right) ||
                 !LeftKeys.SequenceEqual(other.LeftKeys) ||
                 !RightKeys.SequenceEqual(other.RightKeys) ||
-                !Equals(PostJoinFilter, other.PostJoinFilter))
+                !Equals(PostJoinFilter, other.PostJoinFilter) ||
+                MultiJoinGroup != other.MultiJoinGroup)
             {
                 return false;
             }
@@ -130,6 +136,11 @@ namespace FlowtideDotNet.Substrait.Relations
             }
 
             code.Add(PostJoinFilter);
+            if (MultiJoinGroup != null)
+            {
+                // A join that is not marked hashes as it did before the mark existed
+                code.Add(MultiJoinGroup.Value + 1);
+            }
             return code.ToHashCode();
         }
 

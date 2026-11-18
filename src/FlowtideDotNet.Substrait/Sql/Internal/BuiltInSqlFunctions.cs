@@ -230,7 +230,15 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                     var expr = visitor.Visit(funcExpr.Expression, emitData);
                     arguments.Add(expr.Expr);
                     returnType = expr.Type;
-                    returnType.Nullable = true;
+                    if (returnType is NullType)
+                    {
+                        // The null type is one shared object
+                        returnType = new NullType() { Nullable = true };
+                    }
+                    else
+                    {
+                        returnType.Nullable = true;
+                    }
                 }
                 else
                 {

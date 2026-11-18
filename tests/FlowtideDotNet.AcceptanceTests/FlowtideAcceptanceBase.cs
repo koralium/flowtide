@@ -61,6 +61,13 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected TaskScheduler? TaskScheduler { set => flowtideTestStream.TaskScheduler = value; }
 
+        /// <summary>
+        /// Runs join chains as multi joins with at most this many inputs each, set before starting.
+        /// </summary>
+        protected int? MultiJoinMaxInputs { set => flowtideTestStream.MultiJoinMaxInputs = value; }
+
+        protected int MultiJoinGroupsMarked => flowtideTestStream.MultiJoinGroupsMarked;
+
         protected Task StartStream(
             string sql,
             int parallelism = 1,

@@ -14,6 +14,7 @@ using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Connectors;
 using FlowtideDotNet.Core.Lineage;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using System.Threading.Tasks.Dataflow;
@@ -57,15 +58,31 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
                 keyIndex = readRelation.BaseSchema.Names.Count - 1;
             }
 
+            // The source ignores filter and emit, the wrapper applies them
+            var filter = readRelation.Filter;
+            var emit = readRelation.Emit;
+            readRelation.Filter = null;
+            readRelation.Emit = null;
+
             if (options.IsImmutable)
             {
-                if (readRelation.Filter != null)
+                if (filter != null)
                 {
                     return new FilterRelation()
                     {
-                        Condition = readRelation.Filter,
+                        Condition = filter,
                         Input = readRelation,
-                        Emit = readRelation.Emit
+                        Emit = emit
+                    };
+                }
+                // An emit that keeps every column in place needs no operator
+                if (emit != null && !IsIdentity(emit, readRelation.BaseSchema.Names.Count))
+                {
+                    return new ProjectRelation()
+                    {
+                        Expressions = new List<Expression>(),
+                        Input = readRelation,
+                        Emit = emit
                     };
                 }
                 return readRelation;
@@ -74,10 +91,26 @@ namespace FlowtideDotNet.Connector.Kafka.Internal
             return new NormalizationRelation()
             {
                 Input = readRelation,
-                Filter = readRelation.Filter,
+                Filter = filter,
                 KeyIndex = new List<int>() { keyIndex },
-                Emit = readRelation.Emit
+                Emit = emit
             };
+        }
+
+        private static bool IsIdentity(List<int> emit, int columns)
+        {
+            if (emit.Count != columns)
+            {
+                return false;
+            }
+            for (int i = 0; i < emit.Count; i++)
+            {
+                if (emit[i] != i)
+                {
+                    return false;
+                }
+            }
+            return true;
         }
 
         public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)

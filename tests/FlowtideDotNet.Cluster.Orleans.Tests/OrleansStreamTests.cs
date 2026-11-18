@@ -92,6 +92,89 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         }
 
         /// <summary>
+        /// A filter pushed into a read applies on substreams.
+        /// </summary>
+        [Fact]
+        public async Task FilterOnAReadAppliesOnTheSubstreams()
+        {
+            var sql = @"
+            CREATE TABLE filter_left (val any);
+            CREATE TABLE filter_right (val any);
+
+            INSERT INTO filter_out
+            SELECT l.val FROM filter_left l
+            INNER JOIN filter_right r ON l.val = r.val
+            WHERE l.val < 10;
+            ";
+            TestTableStore.AddRows("filter_left", Enumerable.Range(0, 100).Select(x => (long)x));
+            TestTableStore.AddRows("filter_right", Enumerable.Range(0, 50).Select(x => (long)x));
+
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>("orleans_test_filter");
+            await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+
+            var expected = Enumerable.Range(0, 10).Select(x => (long)x).ToList();
+            await WaitForResult("filter_out", expected, TimeSpan.FromSeconds(60));
+
+            await streamGrain.StopStreamAsync();
+        }
+
+        private async Task StartAndExpect(string name, string sql, List<long> expected)
+        {
+            var streamGrain = _fixture.Cluster.GrainFactory.GetGrain<IStreamGrain>($"orleans_test_{name}");
+            try
+            {
+                await streamGrain.StartStreamAsync(new StartStreamRequest(sql, substreamCount: 2));
+                await WaitForResult($"{name}_out", expected, TimeSpan.FromSeconds(60));
+            }
+            finally
+            {
+                await streamGrain.StopStreamAsync();
+            }
+        }
+
+        /// <summary>
+        /// A set operation keeps its kind on substreams.
+        /// </summary>
+        [Fact]
+        public async Task ExceptAppliesOnTheSubstreams()
+        {
+            var sql = @"
+            CREATE TABLE except_left (val any);
+            CREATE TABLE except_right (val any);
+
+            INSERT INTO except_out
+            SELECT val FROM except_left
+            EXCEPT DISTINCT
+            SELECT val FROM except_right;
+            ";
+            TestTableStore.AddRows("except_left", Enumerable.Range(0, 20).Select(x => (long)x));
+            TestTableStore.AddRows("except_left", Enumerable.Range(10, 10).Select(x => (long)x));
+            TestTableStore.AddRows("except_right", Enumerable.Range(10, 20).Select(x => (long)x));
+
+            await StartAndExpect("except", sql, Enumerable.Range(0, 10).Select(x => (long)x).ToList());
+        }
+
+        /// <summary>
+        /// A table with a decimal column can be read on substreams.
+        /// </summary>
+        [Fact]
+        public async Task DecimalColumnStartsOnTheSubstreams()
+        {
+            var sql = @"
+            CREATE TABLE decimal_left (val decimal(10, 2));
+            CREATE TABLE decimal_right (val decimal);
+
+            INSERT INTO decimal_out
+            SELECT l.val FROM decimal_left l
+            INNER JOIN decimal_right r ON l.val = r.val;
+            ";
+            TestTableStore.AddRows("decimal_left", Enumerable.Range(0, 20).Select(x => (long)x));
+            TestTableStore.AddRows("decimal_right", Enumerable.Range(0, 10).Select(x => (long)x));
+
+            await StartAndExpect("decimal", sql, Enumerable.Range(0, 10).Select(x => (long)x).ToList());
+        }
+
+        /// <summary>
         /// A stream can be started from a user created plan instead of SQL text: the plan is
         /// serialized into the start request, prepared centrally by the stream grain
         /// (optimized and split into substreams), and the final distributed plan is sent to

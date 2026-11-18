@@ -96,6 +96,24 @@ namespace FlowtideDotNet.Cluster.Orleans.Tests
         {
             return new TableLineageMetadata("test", readRelation.NamedTable.DotSeperated, default);
         }
+
+        // Wraps a read's filter, as real connectors do
+        public override Relation ModifyPlan(ReadRelation readRelation)
+        {
+            if (readRelation.Filter == null)
+            {
+                return readRelation;
+            }
+            var filter = new FilterRelation()
+            {
+                Condition = readRelation.Filter,
+                Input = readRelation,
+                Emit = readRelation.Emit
+            };
+            readRelation.Filter = null;
+            readRelation.Emit = null;
+            return filter;
+        }
     }
 
     /// <summary>

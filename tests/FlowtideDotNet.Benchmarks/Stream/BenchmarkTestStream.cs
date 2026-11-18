@@ -24,6 +24,8 @@ namespace FlowtideDotNet.Benchmarks.Stream
         private int checkpointCounter = 0;
         public BenchmarkTestStream(string testName) : base(testName)
         {
+            // The check would count as stream time
+            CheckPlanRoundTrip = false;
         }
 
         protected override void AddWriteResolvers(IConnectorManager connectorManger)

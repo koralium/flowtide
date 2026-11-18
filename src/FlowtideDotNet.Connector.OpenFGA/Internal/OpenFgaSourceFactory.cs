@@ -85,12 +85,16 @@ namespace FlowtideDotNet.Connector.OpenFGA.Internal
             }
             indices.Add(objectIdIndex);
 
+            // The source sends every column and reads the filter itself
+            var emit = readRelation.Emit;
+            readRelation.Emit = null;
+
             return new NormalizationRelation()
             {
                 Input = readRelation,
                 Filter = readRelation.Filter,
                 KeyIndex = indices,
-                Emit = readRelation.Emit
+                Emit = emit
             };
         }
 

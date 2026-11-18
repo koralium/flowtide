@@ -14,7 +14,20 @@ namespace FlowtideDotNet.Substrait.Hints
 {
     public class Hint : IEquatable<Hint>
     {
-        public string? Alias { get; set; }
+        private string? _alias;
+
+        public string? Alias
+        {
+            get
+            {
+                return _alias;
+            }
+            set
+            {
+                // An empty alias is no alias
+                _alias = string.IsNullOrEmpty(value) ? null : value;
+            }
+        }
 
         public HintOptimizations Optimizations { get; set; } = new HintOptimizations();
 

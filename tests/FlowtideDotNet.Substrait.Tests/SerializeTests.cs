@@ -10,12 +10,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Exceptions;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Expressions.Literals;
 using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Sql;
 using FlowtideDotNet.Substrait.Type;
+using System.Globalization;
+using System.Numerics;
+using Protobuf = global::Substrait.Protobuf;
 
 namespace FlowtideDotNet.Substrait.Tests
 {
@@ -1132,10 +1136,880 @@ namespace FlowtideDotNet.Substrait.Tests
             AssertPlanCanSerializeDeserialize(plan);
         }
 
+        private static ReadRelation ReadOf(params string[] names)
+        {
+            return new ReadRelation()
+            {
+                BaseSchema = new Type.NamedStruct()
+                {
+                    Names = names.ToList()
+                },
+                NamedTable = new Type.NamedTable()
+                {
+                    Names = ["a"]
+                }
+            };
+        }
+
+        private static Plan ProjectionOf(params Expression[] expressions)
+        {
+            return new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ProjectRelation()
+                    {
+                        Expressions = expressions.ToList(),
+                        Input = ReadOf("a", "b")
+                    }
+                }
+            };
+        }
+
+        private static DirectFieldReference Reference(ReferenceSegment segment)
+        {
+            return new DirectFieldReference()
+            {
+                ReferenceSegment = segment
+            };
+        }
+
+        [Fact]
+        public void SerializeReadRelationWithFilter()
+        {
+            var read = ReadOf("a", "b");
+            read.Filter = Reference(new StructReferenceSegment() { Field = 1 });
+            read.Emit = [0];
+
+            AssertPlanCanSerializeDeserialize(new Plan() { Relations = new List<Relation>() { read } });
+        }
+
+        // Join pushdown puts is_not_null on reads
+        [Fact]
+        public void SerializeReadRelationWithFunctionFilter()
+        {
+            var read = ReadOf("a", "b");
+            read.Filter = new ScalarFunction()
+            {
+                ExtensionUrn = FunctionsBoolean.Urn,
+                ExtensionName = FunctionsBoolean.And,
+                Arguments = new List<Expression>()
+                {
+                    new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsComparison.Urn,
+                        ExtensionName = FunctionsComparison.IsNotNull,
+                        Arguments = new List<Expression>() { Reference(new StructReferenceSegment() { Field = 0 }) }
+                    },
+                    new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsComparison.Urn,
+                        ExtensionName = FunctionsComparison.LessThan,
+                        Arguments = new List<Expression>()
+                        {
+                            Reference(new StructReferenceSegment() { Field = 0 }),
+                            new NumericLiteral() { Value = 10 }
+                        }
+                    }
+                }
+            };
+            read.Emit = [1];
+
+            AssertPlanCanSerializeDeserialize(new Plan() { Relations = new List<Relation>() { read } });
+        }
+
+        [Fact]
+        public void SerializeRootRelation()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        Names = ["first", "second"]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void RootRelationWithEmitIsRefused()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new RootRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        Names = ["second"],
+                        Emit = [1]
+                    }
+                }
+            };
+
+            Assert.Throws<NotSupportedException>(() => SubstraitSerializer.SerializeToJson(plan));
+        }
+
+        [Fact]
+        public void SerializeNormalizationRelation()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new NormalizationRelation()
+                    {
+                        Input = ReadOf("a", "b", "c"),
+                        KeyIndex = [0, 2],
+                        Filter = Reference(new StructReferenceSegment() { Field = 1 }),
+                        Emit = [2, 0]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeNormalizationRelationWithoutFilterAndEmit()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new NormalizationRelation()
+                    {
+                        Input = ReadOf("a", "b"),
+                        KeyIndex = [1]
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void SerializeNestedReferences()
+        {
+            var structInStruct = Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 3 }
+            });
+            var mapKeyInStruct = Reference(new StructReferenceSegment()
+            {
+                Field = 1,
+                Child = new MapKeyReferenceSegment() { Key = "key" }
+            });
+            var threeLevels = Reference(new StructReferenceSegment()
+            {
+                Field = 1,
+                Child = new MapKeyReferenceSegment()
+                {
+                    Key = "key",
+                    Child = new StructReferenceSegment() { Field = 2 }
+                }
+            });
+            var mapKeyFirst = Reference(new MapKeyReferenceSegment()
+            {
+                Key = "top",
+                Child = new StructReferenceSegment() { Field = 4 }
+            });
+
+            AssertPlanCanSerializeDeserialize(ProjectionOf(structInStruct, mapKeyInStruct, threeLevels, mapKeyFirst));
+        }
+
+        [Fact]
+        public void NestedPathsSerializeDifferently()
+        {
+            var first = ProjectionOf(Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 1 }
+            }));
+            var second = ProjectionOf(Reference(new StructReferenceSegment()
+            {
+                Field = 0,
+                Child = new StructReferenceSegment() { Field = 2 }
+            }));
+            var noChild = ProjectionOf(Reference(new StructReferenceSegment() { Field = 0 }));
+
+            var firstJson = SubstraitSerializer.SerializeToJson(first);
+            Assert.NotEqual(firstJson, SubstraitSerializer.SerializeToJson(second));
+            Assert.NotEqual(firstJson, SubstraitSerializer.SerializeToJson(noChild));
+        }
+
+        [Fact]
+        public void SerializeMergeJoinKeyWithNestedReference()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new MergeJoinRelation()
+                    {
+                        Left = ReadOf("a"),
+                        Right = ReadOf("a"),
+                        LeftKeys = new List<FieldReference>()
+                        {
+                            Reference(new StructReferenceSegment()
+                            {
+                                Field = 0,
+                                Child = new StructReferenceSegment() { Field = 2 }
+                            })
+                        },
+                        RightKeys = new List<FieldReference>()
+                        {
+                            Reference(new StructReferenceSegment()
+                            {
+                                Field = 1,
+                                Child = new MapKeyReferenceSegment() { Key = "key" }
+                            })
+                        },
+                        Type = JoinType.Inner
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        // Equality ignores the root, so it is checked directly
+        [Fact]
+        public void OuterReferenceWithChildRoundTrips()
+        {
+            var outer = new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment() { Field = 0, Child = new StructReferenceSegment() { Field = 1 } },
+                Root = new OuterReference() { StepsOut = 1 }
+            };
+            var plain = Reference(new StructReferenceSegment() { Field = 0, Child = new StructReferenceSegment() { Field = 1 } });
+
+            var json = SubstraitSerializer.SerializeToJson(ProjectionOf(outer));
+            var deserialized = SubstraitDeserializer.DeserializeFromJson(json);
+
+            var project = Assert.IsType<ProjectRelation>(deserialized.Relations[0]);
+            var reference = Assert.IsType<DirectFieldReference>(project.Expressions[0]);
+            var root = Assert.IsType<OuterReference>(reference.Root);
+            Assert.Equal(1u, root.StepsOut);
+            Assert.Equal(outer.ReferenceSegment, reference.ReferenceSegment);
+            Assert.NotEqual(json, SubstraitSerializer.SerializeToJson(ProjectionOf(plain)));
+        }
+
+        [Fact]
+        public void ListElementReferenceIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new StructReferenceSegment() { Field = 0 })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.StructField.Child = new Protobuf.Expression.Types.ReferenceSegment()
+            {
+                ListElement = new Protobuf.Expression.Types.ReferenceSegment.Types.ListElement() { Offset = 1 }
+            };
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
+        }
+
+        [Fact]
+        public void FixedAndVariableLengthMapKeysAreRead()
+        {
+            var expected = ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" }));
+            var fixedChar = SubstraitSerializer.Serialize(expected);
+            fixedChar.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal() { FixedChar = "key" };
+            var varChar = SubstraitSerializer.Serialize(expected);
+            varChar.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal()
+            {
+                VarChar = new Protobuf.Expression.Types.Literal.Types.VarChar() { Value = "key", Length = 3 }
+            };
+
+            Assert.Equal(expected, new SubstraitDeserializer().Deserialize(fixedChar));
+            Assert.Equal(expected, new SubstraitDeserializer().Deserialize(varChar));
+        }
+
+        [Fact]
+        public void MapKeyReferenceWithoutKeyIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.MapKey.MapKey_ = null;
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
+        }
+
+        [Fact]
+        public void MapKeyReferenceWithoutStringKeyIsRefused()
+        {
+            var plan = SubstraitSerializer.Serialize(ProjectionOf(Reference(new MapKeyReferenceSegment() { Key = "key" })));
+            var segment = plan.Relations[0].Rel.Project.Expressions[0].Selection.DirectReference;
+            segment.MapKey.MapKey_ = new Protobuf.Expression.Types.Literal() { I32 = 1 };
+
+            Assert.Throws<NotSupportedException>(() => new SubstraitDeserializer().Deserialize(plan));
+        }
+
+        private static Plan PlanOf(params Relation[] relations)
+        {
+            return new Plan() { Relations = relations.ToList() };
+        }
+
+        [Fact]
+        public void SerializeHints()
+        {
+            var read = ReadOf("a", "b");
+            read.Hint.Alias = "t";
+            read.Hint.Optimizations.Properties["WATERMARK_OUTPUT_MODE"] = "ON_EACH_BATCH";
+            var filter = new FilterRelation()
+            {
+                Input = read,
+                Condition = Reference(new StructReferenceSegment() { Field = 1 })
+            };
+            filter.Hint.Optimizations.Properties["first"] = "1";
+            filter.Hint.Optimizations.Properties["second"] = "2";
+
+            AssertPlanCanSerializeDeserialize(PlanOf(filter));
+        }
+
+        [Fact]
+        public void HintsAreLeftOutOfTheHashText()
+        {
+            var plain = ReadOf("a", "b");
+            var hinted = ReadOf("a", "b");
+            hinted.Hint.Alias = "t";
+            hinted.Hint.Optimizations.Properties["WATERMARK_OUTPUT_MODE"] = "ON_EACH_BATCH";
+
+            var plainJson = SubstraitSerializer.SerializeToJson(PlanOf(plain));
+            Assert.Equal(plainJson, SubstraitSerializer.SerializeToJson(PlanOf(hinted), includeHints: false));
+            Assert.NotEqual(plainJson, SubstraitSerializer.SerializeToJson(PlanOf(hinted)));
+        }
+
+        [Fact]
+        public void SerializeAggregateWithEmit()
+        {
+            var aggregate = new AggregateRelation()
+            {
+                Input = ReadOf("a", "b"),
+                Groupings = [new AggregateGrouping() { GroupingExpressions = [Reference(new StructReferenceSegment() { Field = 0 })] }],
+                Measures =
+                [
+                    new AggregateMeasure()
+                    {
+                        Measure = new AggregateFunction()
+                        {
+                            ExtensionUrn = FunctionsArithmetic.Urn,
+                            ExtensionName = FunctionsArithmetic.Sum,
+                            Arguments = [Reference(new StructReferenceSegment() { Field = 1 })]
+                        }
+                    }
+                ],
+                Emit = [1, 0]
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(aggregate));
+        }
+
+        [Fact]
+        public void SerializeAggregateWithoutGroupings()
+        {
+            var aggregate = new AggregateRelation()
+            {
+                Input = ReadOf("a", "b"),
+                Measures =
+                [
+                    new AggregateMeasure()
+                    {
+                        Measure = new AggregateFunction()
+                        {
+                            ExtensionUrn = FunctionsArithmetic.Urn,
+                            ExtensionName = FunctionsArithmetic.Sum,
+                            Arguments = [Reference(new StructReferenceSegment() { Field = 1 })]
+                        }
+                    }
+                ]
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(aggregate));
+        }
+
+        [Fact]
+        public void SerializeDecimalAndNullTypes()
+        {
+            var read = ReadOf("a", "b", "c", "d", "e", "f");
+            read.BaseSchema.Struct = new Struct()
+            {
+                Types =
+                [
+                    new DecimalType() { Precision = 10, Scale = 2 },
+                    new DecimalType() { Nullable = false },
+                    new NullType(),
+                    new NullType() { Nullable = true },
+                    new AnyType(),
+                    new AnyType() { Nullable = false }
+                ]
+            };
+            var plan = PlanOf(read);
+
+            var proto = SubstraitSerializer.Serialize(plan).Relations[0].Rel.Read.BaseSchema.Struct.Types_;
+            var back = ((ReadRelation)SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan)).Relations[0]).BaseSchema.Struct!.Types;
+
+            Assert.Equal(10, proto[0].Decimal.Precision);
+            Assert.Equal(2, proto[0].Decimal.Scale);
+            var sized = Assert.IsType<DecimalType>(back[0]);
+            Assert.Equal(10, sized.Precision);
+            Assert.Equal(2, sized.Scale);
+            var plain = Assert.IsType<DecimalType>(back[1]);
+            Assert.Null(plain.Precision);
+            Assert.Null(plain.Scale);
+            Assert.False(Assert.IsType<NullType>(back[2]).Nullable);
+            Assert.True(Assert.IsType<NullType>(back[3]).Nullable);
+            Assert.True(Assert.IsType<AnyType>(back[4]).Nullable);
+            Assert.False(Assert.IsType<AnyType>(back[5]).Nullable);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Theory]
+        [InlineData(10, null, 10, 0)]
+        [InlineData(null, 2, null, null)]
+        [InlineData(0, 0, null, null)]
+        [InlineData(0, 3, null, null)]
+        [InlineData(5, 5, 5, 5)]
+        public void DecimalSizeIsWholeOrNotThere(int? precision, int? scale, int? expectedPrecision, int? expectedScale)
+        {
+            var type = new DecimalType() { Scale = scale, Precision = precision };
+            var read = ReadOf("a");
+            read.BaseSchema.Struct = new Struct() { Types = [type] };
+            var plan = PlanOf(read);
+
+            var back = Assert.IsType<DecimalType>(((ReadRelation)SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan)).Relations[0]).BaseSchema.Struct!.Types[0]);
+
+            Assert.Equal(expectedPrecision, type.Precision);
+            Assert.Equal(expectedScale, type.Scale);
+            Assert.Equal(expectedPrecision, back.Precision);
+            Assert.Equal(expectedScale, back.Scale);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Theory]
+        [InlineData(SetOperation.Unspecified)]
+        [InlineData(SetOperation.MinusPrimary)]
+        [InlineData(SetOperation.MinusPrimaryAll)]
+        [InlineData(SetOperation.MinusMultiset)]
+        [InlineData(SetOperation.IntersectionPrimary)]
+        [InlineData(SetOperation.IntersectionMultiset)]
+        [InlineData(SetOperation.IntersectionMultisetAll)]
+        [InlineData(SetOperation.UnionDistinct)]
+        [InlineData(SetOperation.UnionAll)]
+        public void SerializeSetOperation(SetOperation operation)
+        {
+            var set = new SetRelation()
+            {
+                Inputs = [ReadOf("a"), ReadOf("a")],
+                Operation = operation
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(set));
+        }
+
+        [Fact]
+        public void SetOperationsUseTheNumbersOfTheSpecification()
+        {
+            foreach (var operation in Enum.GetValues<SetOperation>())
+            {
+                Assert.True(Enum.IsDefined((Protobuf.SetRel.Types.SetOp)(int)operation));
+                Assert.Equal(operation.ToString(), ((Protobuf.SetRel.Types.SetOp)(int)operation).ToString());
+            }
+            Assert.Equal(Enum.GetValues<Protobuf.SetRel.Types.SetOp>().Length, Enum.GetValues<SetOperation>().Length);
+        }
+
+        [Fact]
+        public void UnknownSetOperationIsRefused()
+        {
+            var proto = SubstraitSerializer.Serialize(PlanOf(new SetRelation()
+            {
+                Inputs = [ReadOf("a"), ReadOf("a")],
+                Operation = SetOperation.UnionAll
+            }));
+            proto.Relations[0].Rel.Set.Op = (Protobuf.SetRel.Types.SetOp)99;
+
+            Assert.Throws<SubstraitParseException>(() => new SubstraitDeserializer().Deserialize(proto));
+        }
+
+        [Fact]
+        public void SerializeReferencesWithEmit()
+        {
+            var reference = new ReferenceRelation() { RelationId = 2, ReferenceOutputLength = 2, Emit = [1] };
+            var exchangeReference = new StandardOutputExchangeReferenceRelation() { RelationId = 2, TargetId = 0, ReferenceOutputLength = 2, Emit = [1, 0] };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(reference, exchangeReference, ReadOf("a", "b")));
+        }
+
+        [Fact]
+        public void ReferenceWithoutEmitKeepsItsPlainForm()
+        {
+            var reference = new ReferenceRelation() { RelationId = 1, ReferenceOutputLength = 2 };
+            reference.Hint.Optimizations.Properties["hint"] = "1";
+
+            var proto = SubstraitSerializer.Serialize(PlanOf(reference, ReadOf("a", "b")), includeHints: false);
+
+            Assert.Equal(Protobuf.Rel.RelTypeOneofCase.Reference, proto.Relations[0].Rel.RelTypeCase);
+            AssertPlanCanSerializeDeserialize(PlanOf(reference, ReadOf("a", "b")));
+        }
+
+        // The target's own length is not known yet
+        [Fact]
+        public void ReferenceToARelationThatReadsALaterOne()
+        {
+            var set = new SetRelation()
+            {
+                Inputs =
+                [
+                    new ReferenceRelation() { RelationId = 2, ReferenceOutputLength = 1 },
+                    new ReferenceRelation() { RelationId = 2, ReferenceOutputLength = 1 }
+                ],
+                Operation = SetOperation.UnionAll
+            };
+            var reference = new ReferenceRelation() { RelationId = 0, ReferenceOutputLength = 1 };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(set, reference, ReadOf("a")));
+        }
+
+        [Fact]
+        public void SerializeWriteRelationWithEmit()
+        {
+            var write = new WriteRelation()
+            {
+                Input = ReadOf("a", "b"),
+                TableSchema = new NamedStruct() { Names = ["a"] },
+                NamedObject = new NamedTable() { Names = ["out"] },
+                Emit = [0]
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(write));
+        }
+
+        [Theory]
+        [InlineData(JoinType.Unspecified)]
+        [InlineData(JoinType.Inner)]
+        [InlineData(JoinType.Outer)]
+        [InlineData(JoinType.Left)]
+        [InlineData(JoinType.Right)]
+        [InlineData(JoinType.LeftMark)]
+        public void SerializeJoinWithConditionAndPostJoinFilter(JoinType type)
+        {
+            var join = new JoinRelation()
+            {
+                Left = ReadOf("a"),
+                Right = ReadOf("b"),
+                Type = type,
+                Expression = Reference(new StructReferenceSegment() { Field = 0 }),
+                PostJoinFilter = Reference(new StructReferenceSegment() { Field = 1 })
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(join));
+        }
+
+        [Fact]
+        public void SerializeTableFunctionWithInputAndNoCondition()
+        {
+            var tableFunction = new TableFunctionRelation()
+            {
+                Input = ReadOf("a"),
+                Type = JoinType.Inner,
+                TableFunction = new TableFunction()
+                {
+                    ExtensionUrn = FunctionsTableGeneric.Urn,
+                    ExtensionName = FunctionsTableGeneric.Unnest,
+                    Arguments = [Reference(new StructReferenceSegment() { Field = 0 })],
+                    TableSchema = new NamedStruct() { Names = ["value"] }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(tableFunction));
+        }
+
+        [Fact]
+        public void SerializeIfWithoutElseAndMoreLiterals()
+        {
+            var ifThen = new FlowtideDotNet.Substrait.Expressions.IfThen.IfThenExpression()
+            {
+                Ifs =
+                [
+                    new FlowtideDotNet.Substrait.Expressions.IfThen.IfClause()
+                    {
+                        If = new BoolLiteral() { Value = true },
+                        Then = new NumericLiteral() { Value = 1.5m }
+                    }
+                ]
+            };
+            var array = new ArrayLiteral()
+            {
+                Expressions = [new NumericLiteral() { Value = 1 }, new StringLiteral() { Value = "a" }, new NullLiteral()]
+            };
+
+            AssertPlanCanSerializeDeserialize(ProjectionOf(ifThen, array));
+        }
+
+        [Fact]
+        public void SerializeIterationWithStopConditions()
+        {
+            var iteration = new IterationRelation()
+            {
+                IterationName = "loop",
+                LoopPlan = ReadOf("a"),
+                Input = ReadOf("a"),
+                SkipIterateCondition = Reference(new StructReferenceSegment() { Field = 0 }),
+                MaxIterations = 5
+            };
+            var plain = new IterationRelation()
+            {
+                IterationName = "loop",
+                LoopPlan = ReadOf("a")
+            };
+
+            AssertPlanCanSerializeDeserialize(PlanOf(iteration));
+            AssertPlanCanSerializeDeserialize(PlanOf(plain));
+        }
+
+        [Fact]
+        public void IterationLimitOfZeroIsKept()
+        {
+            var iteration = new IterationRelation()
+            {
+                IterationName = "loop",
+                LoopPlan = ReadOf("a"),
+                MaxIterations = 0
+            };
+            var plan = PlanOf(iteration);
+
+            var back = SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan));
+
+            Assert.Equal(0, Assert.IsType<IterationRelation>(back.Relations[0]).MaxIterations);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Theory]
+        [InlineData("0.1234567890123456789")]
+        [InlineData("1234567.123456789")]
+        [InlineData("0.5000000000000001")]
+        [InlineData("2.0000000000000001")]
+        [InlineData("0.9999999999999999")]
+        [InlineData("-3.14159265358979323846")]
+        [InlineData("0.0000000000001234567890123456")]
+        [InlineData("3728664694.5253500")]
+        [InlineData("-127.63374653514000000000000000")]
+        [InlineData("7922816251426433759354395.0335")]
+        [InlineData("79228162514264337593543950335")]
+        [InlineData("-79228162514264337593543950335")]
+        [InlineData("9223372036854775808")]
+        [InlineData("-9223372036854775809")]
+        public void NumericLiteralKeepsEveryDigit(string text)
+        {
+            var value = decimal.Parse(text, CultureInfo.InvariantCulture);
+            var plan = ProjectionOf(new NumericLiteral() { Value = value });
+
+            var proto = SubstraitSerializer.Serialize(plan).Relations[0].Rel.Project.Expressions[0].Literal;
+            var back = SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan));
+            var literal = Assert.IsType<NumericLiteral>(((ProjectRelation)back.Relations[0]).Expressions[0]);
+
+            Assert.Equal(Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Decimal, proto.LiteralTypeCase);
+            Assert.Equal(16, proto.Decimal.Value.Length);
+            Assert.Equal(value, literal.Value);
+            Assert.Equal((double)value, (double)literal.Value);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Theory]
+        [InlineData("1.5", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("-0.1", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("123456.789012345", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("0.000001", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("-0.0000000000000000000000000001", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("0.50", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.Fp64)]
+        [InlineData("17", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I64)]
+        [InlineData("-9223372036854775808", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I64)]
+        [InlineData("9223372036854775807", Protobuf.Expression.Types.Literal.LiteralTypeOneofCase.I64)]
+        public void ShortNumericLiteralKeepsItsForm(string text, Protobuf.Expression.Types.Literal.LiteralTypeOneofCase expected)
+        {
+            var value = decimal.Parse(text, CultureInfo.InvariantCulture);
+            var plan = ProjectionOf(new NumericLiteral() { Value = value });
+
+            var proto = SubstraitSerializer.Serialize(plan).Relations[0].Rel.Project.Expressions[0].Literal;
+
+            Assert.Equal(expected, proto.LiteralTypeCase);
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Theory]
+        [InlineData(0.1, "0.1")]
+        [InlineData(-12.5, "-12.5")]
+        [InlineData(1E-05, "0.00001")]
+        [InlineData(0.30000000000000004, "0.3")]
+        [InlineData(3, "3")]
+        [InlineData(7.922816251426433E+28, "79228162514264300000000000000")]
+        public void DoubleLiteralIsReadWithFifteenDigits(double value, string expected)
+        {
+            var proto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
+            proto.Relations[0].Rel.Project.Expressions[0].Literal.Fp64 = value;
+
+            var back = new SubstraitDeserializer().Deserialize(proto);
+
+            Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), Assert.IsType<NumericLiteral>(((ProjectRelation)back.Relations[0]).Expressions[0]).Value);
+            AssertPlanCanSerializeDeserialize(back);
+        }
+
+        [Theory]
+        [InlineData(double.NaN)]
+        [InlineData(double.PositiveInfinity)]
+        [InlineData(double.NegativeInfinity)]
+        [InlineData(1E+300)]
+        [InlineData(7.922816251426434E+28)]
+        [InlineData(-7.922816251426434E+28)]
+        public void DoubleLiteralWithoutADecimalFormIsRefused(double value)
+        {
+            var proto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
+            proto.Relations[0].Rel.Project.Expressions[0].Literal.Fp64 = value;
+            var floatProto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
+            floatProto.Relations[0].Rel.Project.Expressions[0].Literal.Fp32 = (float)value;
+
+            Assert.Throws<SubstraitParseException>(() => new SubstraitDeserializer().Deserialize(proto));
+            Assert.Throws<SubstraitParseException>(() => new SubstraitDeserializer().Deserialize(floatProto));
+        }
+
+        private static Protobuf.Plan DecimalLiteralPlan(string unscaled, int scale, int length)
+        {
+            var number = BigInteger.Parse(unscaled, CultureInfo.InvariantCulture);
+            var bytes = new byte[length];
+            if (number.Sign < 0)
+            {
+                Array.Fill(bytes, (byte)0xFF);
+            }
+            Assert.True(number.TryWriteBytes(bytes, out _));
+            var proto = SubstraitSerializer.Serialize(ProjectionOf(new NumericLiteral() { Value = 1.5m }));
+            proto.Relations[0].Rel.Project.Expressions[0].Literal = new Protobuf.Expression.Types.Literal()
+            {
+                Decimal = new Protobuf.Expression.Types.Literal.Types.Decimal()
+                {
+                    Value = Google.Protobuf.ByteString.CopyFrom(bytes),
+                    Precision = 38,
+                    Scale = scale
+                }
+            };
+            return proto;
+        }
+
+        [Theory]
+        [InlineData("-1234567890123456789012", 4, "-123456789012345678.9012")]
+        [InlineData("79228162514264337593543950335", 28, "7.9228162514264337593543950335")]
+        [InlineData("-79228162514264337593543950335", 0, "-79228162514264337593543950335")]
+        [InlineData("0", 3, "0")]
+        [InlineData("-1", 0, "-1")]
+        public void DecimalLiteralFromAnotherEngineIsRead(string unscaled, int scale, string expected)
+        {
+            var back = new SubstraitDeserializer().Deserialize(DecimalLiteralPlan(unscaled, scale, 16));
+
+            Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), Assert.IsType<NumericLiteral>(((ProjectRelation)back.Relations[0]).Expressions[0]).Value);
+            AssertPlanCanSerializeDeserialize(back);
+        }
+
+        [Theory]
+        [InlineData("79228162514264337593543950336", 0, 16)]
+        [InlineData("-79228162514264337593543950336", 0, 16)]
+        [InlineData("170141183460469231731687303715884105727", 0, 16)]
+        [InlineData("-170141183460469231731687303715884105728", 0, 16)]
+        [InlineData("1", 29, 16)]
+        [InlineData("1", -1, 16)]
+        [InlineData("1", 0, 8)]
+        [InlineData("1", 0, 17)]
+        public void DecimalLiteralOutsideTheRangeIsRefused(string unscaled, int scale, int length)
+        {
+            var proto = DecimalLiteralPlan(unscaled, scale, length);
+
+            Assert.Throws<SubstraitParseException>(() => new SubstraitDeserializer().Deserialize(proto));
+        }
+
+        [Fact]
+        public void EmptyAliasIsNoAlias()
+        {
+            var read = ReadOf("a", "b");
+            read.Hint.Alias = "";
+
+            Assert.Null(read.Hint.Alias);
+            Assert.False(read.Hint.HasHints);
+            Assert.Equal(SubstraitSerializer.SerializeToJson(PlanOf(ReadOf("a", "b"))), SubstraitSerializer.SerializeToJson(PlanOf(read)));
+            AssertPlanCanSerializeDeserialize(PlanOf(read));
+        }
+
+        [Fact]
+        public void ReferencesInACycleAreRefused()
+        {
+            var first = new ProjectRelation()
+            {
+                Input = new ReferenceRelation() { RelationId = 1, ReferenceOutputLength = 1 },
+                Expressions = [new NumericLiteral() { Value = 1 }]
+            };
+            var second = new ProjectRelation()
+            {
+                Input = new ReferenceRelation() { RelationId = 0, ReferenceOutputLength = 1 },
+                Expressions = [new NumericLiteral() { Value = 1 }]
+            };
+            var proto = SubstraitSerializer.Serialize(PlanOf(first, second));
+
+            Assert.Throws<InvalidOperationException>(() => new SubstraitDeserializer().Deserialize(proto));
+        }
+
+        // Each reference is behind the one it reads
+        [Fact]
+        public void LongChainOfReferencesIsRead()
+        {
+            const int count = 400;
+            var relations = new Relation[count];
+            for (int i = 0; i < count - 1; i++)
+            {
+                relations[i] = new ReferenceRelation() { RelationId = i + 1, ReferenceOutputLength = 2 };
+            }
+            relations[count - 1] = ReadOf("a", "b");
+
+            AssertPlanCanSerializeDeserialize(PlanOf(relations));
+        }
+
+        private static string TextOfAPlanWithANullType()
+        {
+            var builder = new SqlPlanBuilder();
+            builder.Sql(@"
+                create table users (companyid any, userkey any, firstname any, doublevalue any);
+                insert into output
+                select companyid, userkey,
+                    avg(case when userkey = 20 then firstname else doublevalue end)
+                        over (partition by companyid order by userkey rows between 1 preceding and current row) as value
+                from users;
+            ");
+            return SubstraitSerializer.SerializeToJson(builder.GetPlan(), includeHints: false);
+        }
+
+        [Fact]
+        public void NullifOfNullDoesNotChangeTheTextOfOtherPlans()
+        {
+            var before = TextOfAPlanWithANullType();
+            var other = new SqlPlanBuilder();
+            other.Sql(@"
+                create table t (a any);
+                insert into out
+                select nullif(null, a) as b from t;
+            ");
+            other.GetPlan();
+
+            Assert.Contains("\"string\": \"null\"", before);
+            Assert.False(NullType.Instance.Nullable);
+            Assert.Equal(before, TextOfAPlanWithANullType());
+        }
+
         private void AssertPlanCanSerializeDeserialize(Plan plan)
         {
             var json = SubstraitSerializer.SerializeToJson(plan);
             var deserializedPlan = SubstraitDeserializer.DeserializeFromJson(json);
+            Assert.Equal(json, SubstraitSerializer.SerializeToJson(deserializedPlan));
             Assert.Equal(plan, deserializedPlan);
         }
     }

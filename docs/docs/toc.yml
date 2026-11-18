@@ -186,6 +186,8 @@
       href: internal/reservoir/index.md
     - name: Requirements for data consistency
       href: internal/dataconsistency.md
+    - name: Multi Join
+      href: internal/multijoin.md
     - name: Storage
       items:
         - name: Persistent Storage Rules
