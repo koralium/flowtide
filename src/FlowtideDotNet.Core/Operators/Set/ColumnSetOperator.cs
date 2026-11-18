@@ -254,7 +254,7 @@ namespace FlowtideDotNet.Core.Operators.Set
                 rowCount,
                 sortedIndices,
                 _duplicateTagsBuffer,
-                new SetWeightsMutator<TStruct>(_weightCalculator, msg.Data.Iterations, foundOffsets, outputWeights, iterations),
+                new SetWeightsMutator<TStruct>(_weightCalculator, targetId, msg.Data.Iterations, foundOffsets, outputWeights, iterations),
                 batchByteSize);
 
             if (outputWeights.Count > 0)

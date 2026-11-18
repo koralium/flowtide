@@ -25,6 +25,7 @@ namespace FlowtideDotNet.Core.Operators.Set
         where TStruct : unmanaged, IInputWeight
     {
         private readonly Func<TStruct, int> _weightCalculator;
+        private readonly int _input;
         private readonly PrimitiveList<uint> _inputIterations;
         private readonly PrimitiveList<int> _outputOffsets;
         private readonly PrimitiveList<int> _outputWeights;
@@ -32,12 +33,14 @@ namespace FlowtideDotNet.Core.Operators.Set
 
         public SetWeightsMutator(
             Func<TStruct, int> weightCalculator,
+            int input,
             PrimitiveList<uint> inputIterations,
             PrimitiveList<int> outputOffsets,
             PrimitiveList<int> outputWeights,
             PrimitiveList<uint> outputIterations)
         {
             _weightCalculator = weightCalculator;
+            _input = input;
             _inputIterations = inputIterations;
             _outputOffsets = outputOffsets;
             _outputWeights = outputWeights;
@@ -83,12 +86,17 @@ namespace FlowtideDotNet.Core.Operators.Set
                 return GenericWriteOperation.Upsert;
             }
 
+            // A new row only has the weight of its input
+            if (incomingData.GetValue(_input) == 0)
+            {
+                return GenericWriteOperation.None;
+            }
             var weight = _weightCalculator(incomingData);
             if (weight != 0)
             {
                 AddOutputRow(key.RowIndex, weight);
             }
-            // Always store, another input can add weight later
+            // Stored without output too, another input can add weight
             return GenericWriteOperation.Upsert;
         }
 
