@@ -549,6 +549,11 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             m_hasRowsSinceWatermark = true;
             for (int i = 0; i < msg.Data.Weights.Count; i++)
             {
+                if (weights[i] == 0)
+                {
+                    // A row without weight changes nothing
+                    continue;
+                }
                 m_hasModified = true;
                 var rowReference = new ColumnRowReference() { referenceBatch = batch, RowIndex = i };
                 await m_tree.RMWNoResult(in rowReference, weights[i], (input, current, found) =>

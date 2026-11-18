@@ -68,6 +68,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
                 }
                 return GenericWriteOperation.Upsert;
             }
+            if (incomingData.weight == 0)
+            {
+                // A row without weight is not stored
+                return GenericWriteOperation.None;
+            }
             return GenericWriteOperation.Upsert;
         }
     }
