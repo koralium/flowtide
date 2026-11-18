@@ -73,6 +73,8 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public bool VersionFromPlanHash { get; set; }
 
+        public bool CheckPlanRoundTrip { get; set; } = true;
+
         public string StreamName => testName.Replace("/", "_");
 
         public IReadOnlyList<User> Users => generator.Users;
@@ -436,6 +438,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             }
 
             plan = Core.Optimizer.PlanOptimizer.Optimize(plan, planOptimizerSettings);
+            if (CheckPlanRoundTrip)
+            {
+                // Orleans sends plans as text, so every plan must survive that
+                PlanRoundTrip.AssertSurvives(plan);
+            }
             MultiJoinGroupsMarked = Core.Operators.Join.MultiJoin.MultiJoinMarker.Count(plan);
 
             // Test harness only: collects which joins of the suite's plans a multi join would take

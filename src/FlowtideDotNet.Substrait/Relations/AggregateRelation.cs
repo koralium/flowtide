@@ -161,34 +161,22 @@ namespace FlowtideDotNet.Substrait.Relations
             {
                 return false;
             }
-            if (Groupings == null && other.Groupings != null)
-            {
-                return false;
-            }
-            if (Groupings != null && other.Groupings == null)
-            {
-                return false;
-            }
-            if (Groupings != null && other.Groupings != null &&
-                !Groupings.SequenceEqual(other.Groupings))
-            {
-                return false;
-            }
-            if (Measures == null && other.Measures != null)
-            {
-                return false;
-            }
-            if (Measures != null && other.Measures == null)
-            {
-                return false;
-            }
-            if (Measures != null && other.Measures != null &&
-                !Measures.SequenceEqual(other.Measures))
+            // No list and an empty list both mean there are none
+            if (!SameItems(Groupings, other.Groupings) || !SameItems(Measures, other.Measures))
             {
                 return false;
             }
             return base.Equals(other) &&
                 Equals(Input, other.Input);
+        }
+
+        private static bool SameItems<T>(List<T>? left, List<T>? right)
+        {
+            if (left == null || right == null)
+            {
+                return (left?.Count ?? 0) == (right?.Count ?? 0);
+            }
+            return left.SequenceEqual(right);
         }
 
         public static bool operator ==(AggregateRelation? left, AggregateRelation? right)

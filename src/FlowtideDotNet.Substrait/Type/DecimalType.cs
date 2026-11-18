@@ -14,9 +14,34 @@ namespace FlowtideDotNet.Substrait.Type
 {
     public class DecimalType : SubstraitBaseType
     {
-        public int? Precision { get; set; }
+        private int? _precision;
+        private int? _scale;
 
-        public int? Scale { get; set; }
+        public int? Precision
+        {
+            get
+            {
+                // A size needs a precision
+                return _precision > 0 ? _precision : null;
+            }
+            set
+            {
+                _precision = value;
+            }
+        }
+
+        public int? Scale
+        {
+            get
+            {
+                // A precision alone means no decimals
+                return Precision.HasValue ? _scale ?? 0 : null;
+            }
+            set
+            {
+                _scale = value;
+            }
+        }
 
         public override SubstraitType Type => SubstraitType.Decimal;
     }
