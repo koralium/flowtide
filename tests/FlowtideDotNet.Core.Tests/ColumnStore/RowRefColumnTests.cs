@@ -174,7 +174,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             ranged.InsertRangeFrom(1, source, 1, 3);
             Assert.Equal([1, null, High, 30, 2], Read(ranged));
 
-            var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            using var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
             offsets.Add(3);
             offsets.Add(ColumnWithOffset.NullValueIndex);
             offsets.Add(0);
@@ -346,8 +346,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             var metadata = new Dictionary<string, string>() { { "ARROW:extension:name", "flowtide.rowref" } };
             var field = new Field("c", new FixedSizeBinaryType(16), true, metadata);
-            var data = new ArrayData(field.DataType, 1, 0, 0, [ArrowBuffer.Empty, new ArrowBuffer(new byte[16])]);
-            using var recordBatch = new RecordBatch(new Schema([field], null), [new Apache.Arrow.Arrays.FixedSizeBinaryArray(data)], 1);
+            using var data = new ArrayData(field.DataType, 1, 0, 0, [ArrowBuffer.Empty, new ArrowBuffer(new byte[16])]);
+            using var array = new Apache.Arrow.Arrays.FixedSizeBinaryArray(data);
+            using var recordBatch = new RecordBatch(new Schema([field], null), [array], 1);
             using var stream = new MemoryStream();
             using (var arrowWriter = new ArrowStreamWriter(stream, recordBatch.Schema, true))
             {
@@ -371,8 +372,9 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             var metadata = new Dictionary<string, string>() { { "ARROW:extension:name", "flowtide.rowref" } };
             var field = new Field("c", new FixedSizeBinaryType(8), true, metadata);
-            var data = new ArrayData(field.DataType, 1, 0, 1, [ArrowBuffer.Empty, new ArrowBuffer(new byte[16])]);
-            using var recordBatch = new RecordBatch(new Schema([field], null), [new Apache.Arrow.Arrays.FixedSizeBinaryArray(data)], 1);
+            using var data = new ArrayData(field.DataType, 1, 0, 1, [ArrowBuffer.Empty, new ArrowBuffer(new byte[16])]);
+            using var array = new Apache.Arrow.Arrays.FixedSizeBinaryArray(data);
+            using var recordBatch = new RecordBatch(new Schema([field], null), [array], 1);
 
             var error = Assert.Throws<NotSupportedException>(() => EventArrowSerializer.ArrowToBatch(recordBatch, GlobalMemoryManager.Instance));
 
@@ -410,17 +412,23 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             var metadata = new Dictionary<string, string>() { { "ARROW:extension:name", "flowtide.rowref" } };
             var field = new Field("c", new FixedSizeBinaryType(8), true, metadata);
-            var data = new ArrayData(field.DataType, 9, 0, 0, [ArrowBuffer.Empty, new ArrowBuffer(new byte[71])]);
-            using var recordBatch = new RecordBatch(new Schema([field], null), [new Apache.Arrow.Arrays.FixedSizeBinaryArray(data)], 9);
+            using var data = new ArrayData(field.DataType, 9, 0, 0, [ArrowBuffer.Empty, new ArrowBuffer(new byte[71])]);
+            using var array = new Apache.Arrow.Arrays.FixedSizeBinaryArray(data);
+            using var recordBatch = new RecordBatch(new Schema([field], null), [array], 9);
 
             var error = Assert.Throws<InvalidOperationException>(() => EventArrowSerializer.ArrowToBatch(recordBatch, GlobalMemoryManager.Instance));
 
             Assert.Contains("9 rows needs 72 bytes, this one has 71", error.Message);
         }
 
-        private sealed class TestCompressor : IBatchCompressor
+        private sealed class TestCompressor : IBatchCompressor, IDisposable
         {
             public readonly ZstdSharp.Compressor Zstd = new ZstdSharp.Compressor();
+
+            public void Dispose()
+            {
+                Zstd.Dispose();
+            }
 
             public void ColumnChange(int columnIndex)
             {
@@ -432,9 +440,14 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             }
         }
 
-        private sealed class TestDecompressor : IBatchDecompressor
+        private sealed class TestDecompressor : IBatchDecompressor, IDisposable
         {
             private readonly ZstdSharp.Decompressor _zstd = new ZstdSharp.Decompressor();
+
+            public void Dispose()
+            {
+                _zstd.Dispose();
+            }
 
             public void ColumnChange(int columnIndex)
             {
@@ -451,12 +464,13 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
         {
             using var column = Refs(1, 2, 3, 4, 5, 6, 7, 8, 9);
             using var batch = new EventBatchData([column]);
-            var compressor = new TestCompressor();
+            using var compressor = new TestCompressor();
+            using var decompressor = new TestDecompressor();
             var writer = new ArrayBufferWriter<byte>();
             new EventBatchSerializer().SerializeEventBatch(writer, batch, 9, compressor);
             var bytes = writer.WrittenSpan.ToArray();
             var intact = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
-            using (var read = new EventBatchDeserializer(GlobalMemoryManager.Instance, new TestDecompressor()).DeserializeBatch(ref intact).EventBatch)
+            using (var read = new EventBatchDeserializer(GlobalMemoryManager.Instance, decompressor).DeserializeBatch(ref intact).EventBatch)
             {
                 Assert.Equal([1, 2, 3, 4, 5, 6, 7, 8, 9], Read(read.Columns[0]));
             }
@@ -477,7 +491,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var error = Assert.Throws<InvalidOperationException>(() =>
             {
                 var reader = new SequenceReader<byte>(new ReadOnlySequence<byte>(bytes));
-                new EventBatchDeserializer(GlobalMemoryManager.Instance, new TestDecompressor()).DeserializeBatch(ref reader);
+                new EventBatchDeserializer(GlobalMemoryManager.Instance, decompressor).DeserializeBatch(ref reader);
             });
 
             Assert.Contains("9 rows needs 72 bytes, this one has 8", error.Message);
@@ -594,7 +608,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             Assert.True(MultiJoinTreeLookup.IsPlain(FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RowRef));
             Assert.False(MultiJoinTreeLookup.TakesRowsAsObjects(target, source));
 
-            var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            using var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
             offsets.Add(2);
             offsets.Add(1);
             offsets.Add(0);
@@ -640,7 +654,7 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var container = new DataValueContainer();
             column.GetValueAt(0, container, default);
             using var stream = new MemoryStream();
-            var json = new Utf8JsonWriter(stream);
+            using var json = new Utf8JsonWriter(stream);
 
             var castTypes = new SubstraitBaseType[]
             {

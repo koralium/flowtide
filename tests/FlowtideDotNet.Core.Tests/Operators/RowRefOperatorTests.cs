@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Core.Tests.Operators
             union.Add(new Int64Value(1));
             union.Add(new RowRefValue(7));
             columns.Add(union);
-            var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            using var offsets = new PrimitiveList<int>(GlobalMemoryManager.Instance);
             offsets.Add(0);
             var viewed = Column.Create(GlobalMemoryManager.Instance);
             viewed.Add(new StringValue("a"));
