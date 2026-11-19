@@ -134,6 +134,11 @@ flowtideBuilder.AddPlan(optimized, optimize: false);
 <td><code>5</code></td>
 <td>The most tables one multi join takes. A longer chain is split into several multi joins in a row. The lowest value is 3.</td>
 </tr>
+<tr>
+<td><code>MultiJoinPairConditions</code></td>
+<td><code>true</code></td>
+<td>Takes joins that compare their two sides next to the key, for example a date between a start and an end date.</td>
+</tr>
 </tbody>
 </table>
 <p>A higher <code>MultiJoinMaxInputs</code> saves more state, since every split stores the joined rows that pass from one multi join to the next. How a higher value affects speed depends on the query, so measure before you raise it.</p>
@@ -154,7 +159,7 @@ flowtideBuilder.AddPlan(optimized, optimize: false);
 </tr>
 <tr>
 <td>Left, right</td>
-<td>Each condition reads columns from one of its two sides only.</td>
+<td>Any, when the side that can be filled with nulls is one table.</td>
 </tr>
 <tr>
 <td>Full outer</td>
@@ -166,10 +171,15 @@ flowtideBuilder.AddPlan(optimized, optimize: false);
 </tr>
 </tbody>
 </table>
-<p>These joins stay ordinary joins, also with the setting on:</p>
+<p>A left or right join can compare its two sides, for example:</p>
+<pre><code class="lang-sql">FROM orders o
+LEFT JOIN prices p ON o.product = p.product AND o.date &gt;= p.startDate AND o.date &lt; p.endDate
+</code></pre>
+<p>With <code>MultiJoinPairConditions</code> off, such a join stays an ordinary join, and so does any join that compares its two sides with <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code> or <code>&gt;=</code>.</p>
+<p>These joins stay ordinary joins, also with the settings on:</p>
 <ul>
-<li>A left, right or full outer join with a condition the table above does not allow, for example <code>LEFT JOIN c ON a.k = c.k AND a.x &lt;&gt; c.x</code>.</li>
-<li>A join that compares its two sides with <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code> or <code>&gt;=</code>, for example <code>ON a.k = b.k AND a.time &lt; b.time</code>.</li>
+<li>A full outer join with an extra condition.</li>
+<li>A left or right join that compares its two sides when the side that can be filled with nulls is itself a join, for example a subquery or a view with a join in it.</li>
 <li>A join whose key or condition reads a value inside a struct, a map or a list of the rows joined before it. Reading inside a column of a table that is joined directly is fine.</li>
 <li>A join whose key takes columns from more than one of the tables joined before it, for example <code>ON c.x = a.x AND c.y = b.y</code>.</li>
 <li>Joins inside a recursive query.</li>
@@ -184,7 +194,7 @@ flowtideBuilder.AddPlan(optimized, optimize: false);
 <p>A query can mix both. The joins that qualify become multi joins and the rest run as before.</p>
 <p>Multi join needs the column store, which is on by default. A stream that has turned the column store off fails to build when its plan has a multi join.</p>
 <h2 id="changing-the-setting-on-an-existing-stream">Changing the setting on an existing stream</h2>
-<p>Turning <code>MultiJoin</code> on or off, or changing <code>MultiJoinMaxInputs</code>, changes how the joins store their rows. A stream cannot continue on the state it had before.</p>
+<p>Turning <code>MultiJoin</code> or <code>MultiJoinPairConditions</code> on or off, or changing <code>MultiJoinMaxInputs</code>, changes how the joins store their rows. A stream cannot continue on the state it had before.</p>
 <ul>
 <li>If the stream takes its version from the plan (<code>AddVersioningFromPlanHash()</code>) or has no version set, and keeps its state in Reservoir storage on disk or in a blob store, it gets a new version and reads its sources again from the start. Reservoir storage keeps the state of every version apart.</li>
 <li>If the stream has a version you set yourself (<code>AddVersioningFromString(&quot;v1&quot;)</code>), it refuses to start and reports that the stored plan hash is different. Give the stream a new version to start it again.</li>

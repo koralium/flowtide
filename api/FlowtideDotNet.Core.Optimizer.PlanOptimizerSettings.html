@@ -190,7 +190,7 @@ Class PlanOptimizerSettings  <a class="header-action link-secondary" title="View
 
   <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_DistributedPlanOptions" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.DistributedPlanOptions">
   DistributedPlanOptions
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L79"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>If set, the plan is split into substreams for distributed mode as the last
@@ -373,6 +373,38 @@ each usage references the shared result.</p>
   <h4 class="section">Property Value</h4>
   <dl class="parameters">
     <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinPairConditions_" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinPairConditions" data-uid="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions">
+  MultiJoinPairConditions
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Optimizer/PlanOptimizerSettings.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Takes joins with a condition on both sides next to their key into multi joins when <a class="xref" href="FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoin">MultiJoin</a> is set, on by default. Changing it changes the state of the stream.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public bool MultiJoinPairConditions { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
     <dd></dd>
   </dl>
 

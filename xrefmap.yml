@@ -34794,6 +34794,15 @@ references:
   fullName.vb: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan, Integer)
   nameWithType: MultiJoinReport.Create(Plan, int)
   nameWithType.vb: MultiJoinReport.Create(Plan, Integer)
+- uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan,System.Int32,System.Boolean)
+  name: Create(Plan, int, bool)
+  href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Create_FlowtideDotNet_Substrait_Plan_System_Int32_System_Boolean_
+  commentId: M:FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan,System.Int32,System.Boolean)
+  name.vb: Create(Plan, Integer, Boolean)
+  fullName: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan, int, bool)
+  fullName.vb: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create(FlowtideDotNet.Substrait.Plan, Integer, Boolean)
+  nameWithType: MultiJoinReport.Create(Plan, int, bool)
+  nameWithType.vb: MultiJoinReport.Create(Plan, Integer, Boolean)
 - uid: FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.Create*
   name: Create
   href: api/FlowtideDotNet.Core.Operators.Join.MultiJoin.MultiJoinReport.html#FlowtideDotNet_Core_Operators_Join_MultiJoin_MultiJoinReport_Create_
@@ -37024,6 +37033,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinMaxInputs
   nameWithType: PlanOptimizerSettings.MultiJoinMaxInputs
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions
+  name: MultiJoinPairConditions
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinPairConditions
+  commentId: P:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions
+  nameWithType: PlanOptimizerSettings.MultiJoinPairConditions
+- uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions*
+  name: MultiJoinPairConditions
+  href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_MultiJoinPairConditions_
+  commentId: Overload:FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.MultiJoinPairConditions
+  nameWithType: PlanOptimizerSettings.MultiJoinPairConditions
 - uid: FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.NoMergeJoin
   name: NoMergeJoin
   href: api/FlowtideDotNet.Core.Optimizer.PlanOptimizerSettings.html#FlowtideDotNet_Core_Optimizer_PlanOptimizerSettings_NoMergeJoin
