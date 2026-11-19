@@ -464,7 +464,7 @@ namespace FlowtideDotNet.Substrait.Sql.Internal
                         ExtensionName = FunctionsDatetime.GetTimestamp,
                         Arguments = new List<Expressions.Expression>()
                     },
-                    new Int64Type()
+                    new TimestampType()
                     );
             });
 

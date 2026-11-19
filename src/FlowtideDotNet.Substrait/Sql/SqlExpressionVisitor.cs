@@ -129,24 +129,121 @@ namespace FlowtideDotNet.Substrait.Sql
             return true;
         }
 
+        private static string? GetComparisonSymbol(BinaryOperator op)
+        {
+            return op switch
+            {
+                BinaryOperator.Eq => "=",
+                BinaryOperator.NotEq => "<>",
+                BinaryOperator.Gt => ">",
+                BinaryOperator.GtEq => ">=",
+                BinaryOperator.Lt => "<",
+                BinaryOperator.LtEq => "<=",
+                _ => null
+            };
+        }
+
+        private enum NumericFamily
+        {
+            None,
+            Integer,
+            Float,
+            Decimal
+        }
+
+        private static NumericFamily GetNumericFamily(SubstraitType type)
+        {
+            return type switch
+            {
+                SubstraitType.Int32 or SubstraitType.Int64 => NumericFamily.Integer,
+                SubstraitType.Fp32 or SubstraitType.Fp64 => NumericFamily.Float,
+                SubstraitType.Decimal => NumericFamily.Decimal,
+                _ => NumericFamily.None
+            };
+        }
+
+        /// <summary>
+        /// Casts a numeric literal to the numeric type it is compared with.
+        /// </summary>
+        private static ExpressionData CastNumericLiteral(ExpressionData literal, ExpressionData other)
+        {
+            if (literal.Expr is not NumericLiteral numericLiteral)
+            {
+                return literal;
+            }
+            var literalFamily = GetNumericFamily(literal.Type.Type);
+            var otherFamily = GetNumericFamily(other.Type.Type);
+            if (otherFamily == NumericFamily.None || literalFamily == otherFamily)
+            {
+                return literal;
+            }
+            SubstraitBaseType castType;
+            switch (otherFamily)
+            {
+                case NumericFamily.Decimal:
+                    castType = new DecimalType();
+                    break;
+                case NumericFamily.Float:
+                    castType = new Fp64Type();
+                    break;
+                default:
+                    // Integer cast would truncate fractions
+                    if (numericLiteral.Value % 1 != 0)
+                    {
+                        return literal;
+                    }
+                    castType = new Int64Type();
+                    break;
+            }
+            return new ExpressionData(new Expressions.CastExpression()
+            {
+                Expression = numericLiteral,
+                Type = castType
+            }, literal.Name, castType);
+        }
+
+        private static void ValidateComparisonTypes(SqlParser.Ast.Expression expression, ExpressionData left, ExpressionData right, string symbol)
+        {
+            var leftType = left.Type.Type;
+            var rightType = right.Type.Type;
+            if (leftType == rightType ||
+                leftType == SubstraitType.Any || rightType == SubstraitType.Any ||
+                leftType == SubstraitType.Null || rightType == SubstraitType.Null)
+            {
+                return;
+            }
+            var leftFamily = GetNumericFamily(leftType);
+            var rightFamily = GetNumericFamily(rightType);
+            if (leftFamily != NumericFamily.None && rightFamily != NumericFamily.None)
+            {
+                // Uncastable literals compare by value
+                if (leftFamily == rightFamily || left.Expr is NumericLiteral || right.Expr is NumericLiteral)
+                {
+                    return;
+                }
+            }
+            var kind = symbol == "=" ? "equality" : "comparison";
+            throw new SubstraitParseException($"Missmatch type in {kind}: '{expression.ToSql()}', type({leftType}) {symbol} type({rightType})");
+        }
+
         protected override ExpressionData VisitBinaryOperation(SqlParser.Ast.Expression.BinaryOp binaryOp, EmitData state)
         {
             var left = Visit(binaryOp.Left, state);
             var right = Visit(binaryOp.Right, state);
+
+            var comparisonSymbol = GetComparisonSymbol(binaryOp.Op);
+            if (comparisonSymbol != null)
+            {
+                left = CastNumericLiteral(left, right);
+                right = CastNumericLiteral(right, left);
+                ValidateComparisonTypes(binaryOp, left, right, comparisonSymbol);
+            }
 
             SubstraitBaseType returnType = new BoolType();
 
             switch (binaryOp.Op)
             {
                 case BinaryOperator.Eq:
-                    if (left.Type.Type != AnyType.Instance.Type && 
-                        right.Type.Type != AnyType.Instance.Type && 
-                        left.Type.Type != right.Type.Type
-                        && left.Type.Type != SubstraitType.Null &&
-                        right.Type.Type != SubstraitType.Null)
-                    {
-                        throw new SubstraitParseException($"Missmatch type in equality: '{binaryOp.ToSql()}', type({left.Type.Type.ToString()}) = type({right.Type.Type.ToString()})");
-                    }
                     var func = new ScalarFunction()
                     {
                         ExtensionUrn = FunctionsComparison.Urn,
@@ -345,6 +442,11 @@ namespace FlowtideDotNet.Substrait.Sql
                         }, "$multiply", returnType);
                 case BinaryOperator.Divide:
                     returnType = ArithmeticReturnType(left.Type, right.Type);
+                    // Integer division returns a double
+                    if (returnType.Type is SubstraitType.Int32 or SubstraitType.Int64)
+                    {
+                        returnType = new Fp64Type();
+                    }
                     return new ExpressionData(
                         new ScalarFunction()
                         {
@@ -427,6 +529,12 @@ namespace FlowtideDotNet.Substrait.Sql
 
         private SubstraitBaseType ArithmeticReturnType(SubstraitBaseType left, SubstraitBaseType right)
         {
+            // Unknown input gives unknown result
+            if (left.Type == SubstraitType.Any || right.Type == SubstraitType.Any)
+            {
+                return AnyType.Instance;
+            }
+
             var maxType = Math.Max((int)left.Type, (int)right.Type);
 
             if (maxType == (int)SubstraitType.Int64)
@@ -763,9 +871,11 @@ namespace FlowtideDotNet.Substrait.Sql
         protected override ExpressionData VisitBetween(Between between, EmitData state)
         {
             var expr = Visit(between.Expression, state);
-            var low = Visit(between.Low, state);
-            var high = Visit(between.High, state);
-            
+            var low = CastNumericLiteral(Visit(between.Low, state), expr);
+            var high = CastNumericLiteral(Visit(between.High, state), expr);
+            ValidateComparisonTypes(between, expr, low, ">=");
+            ValidateComparisonTypes(between, expr, high, "<=");
+
             return new ExpressionData(
                 new ScalarFunction()
                 {

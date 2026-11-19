@@ -262,5 +262,47 @@ namespace FlowtideDotNet.AcceptanceTests
             await WaitForUpdate();
             AssertCurrentDataEqual(Users.Where(x => x.UserKey > 200).Select(x => new { userkey = x.UserKey + 100 }));
         }
+
+        [Fact]
+        public async Task DecimalColumnComparedWithIntegerLiteral()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    o.orderkey
+                FROM orders o
+                WHERE o.money > 500");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Where(x => x.Money > 500).Select(x => new { x.OrderKey }));
+        }
+
+        [Fact]
+        public async Task DoubleColumnComparedWithIntegerLiteral()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    u.userkey
+                FROM users u
+                WHERE u.doublevalue < 500");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Users.Where(x => x.DoubleValue < 500).Select(x => new { x.UserKey }));
+        }
+
+        [Fact]
+        public async Task DecimalColumnBetweenIntegerLiterals()
+        {
+            GenerateData();
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    o.orderkey
+                FROM orders o
+                WHERE o.money BETWEEN 100 AND 500");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(Orders.Where(x => x.Money >= 100 && x.Money <= 500).Select(x => new { x.OrderKey }));
+        }
     }
 }

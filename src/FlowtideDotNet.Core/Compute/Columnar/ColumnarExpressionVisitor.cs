@@ -163,6 +163,26 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
         public override System.Linq.Expressions.Expression? VisitCastExpression(CastExpression castExpression, ColumnParameterInfo state)
         {
+            // Numeric literal casts become typed constants
+            if (castExpression.Expression is NumericLiteral numericLiteral)
+            {
+                switch (castExpression.Type.Type)
+                {
+                    case SubstraitType.Decimal:
+                        return System.Linq.Expressions.Expression.Constant(new DecimalValue(numericLiteral.Value), typeof(IDataValue));
+                    case SubstraitType.Fp32:
+                    case SubstraitType.Fp64:
+                        return System.Linq.Expressions.Expression.Constant(new DoubleValue((double)numericLiteral.Value), typeof(IDataValue));
+                    case SubstraitType.Int32:
+                    case SubstraitType.Int64:
+                        if (numericLiteral.Value % 1 == 0)
+                        {
+                            return System.Linq.Expressions.Expression.Constant(new Int64Value((long)numericLiteral.Value), typeof(IDataValue));
+                        }
+                        break;
+                }
+            }
+
             var visitState = state.UpdateResultDataValue(System.Linq.Expressions.Expression.Constant(new DataValueContainer()));
             var expr = Visit(castExpression.Expression, visitState);
 
