@@ -51,6 +51,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.Map;
 
+        bool IDataColumn.HoldsRowReferences => _keyColumn.HoldsRowReferences || _valueColumn.HoldsRowReferences;
+
         public StructHeader StructHeader => throw new NotImplementedException();
 
         public MapColumn(IMemoryAllocator memoryAllocator)

@@ -1459,6 +1459,7 @@ namespace FlowtideDotNet.Connector.DeltaLake.Internal
         protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
             Debug.Assert(_intake != null);
+            RowRefGuard.ThrowIfPresent(msg.Data.EventBatchData, this);
             // Before any intake path, so every path's retractions count
             if (!_deletesSeen && msg.Data.Weights.Span.IndexOfAnyInRange(int.MinValue, -1) >= 0)
             {

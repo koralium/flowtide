@@ -49,6 +49,8 @@ namespace FlowtideDotNet.Core.ColumnStore
         BinaryView,
         StringView,
         ListView,
+        // Flowtide's own type, a reference to a stored row
+        RowRef = 35,
     }
 
 }

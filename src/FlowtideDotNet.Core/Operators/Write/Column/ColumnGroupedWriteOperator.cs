@@ -545,6 +545,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_modified != null);
 
             var batch = msg.Data.EventBatchData;
+            RowRefGuard.ThrowIfPresent(batch, this);
             var weights = msg.Data.Weights;
             m_hasRowsSinceWatermark = true;
             for (int i = 0; i < msg.Data.Weights.Count; i++)

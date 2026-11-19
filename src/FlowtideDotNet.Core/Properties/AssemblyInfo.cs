@@ -21,6 +21,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Permify")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.Sharepoint")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Connector.DeltaLake")]
+[assembly: InternalsVisibleTo("FlowtideDotNet.Connector.DeltaLake.Tests")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Benchmarks")]
 [assembly: InternalsVisibleTo("SqlSampleWithUI")]
 [assembly: InternalsVisibleTo("FlowtideDotNet.Cluster.Orleans")]

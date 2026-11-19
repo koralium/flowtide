@@ -205,6 +205,31 @@ namespace FlowtideDotNet.Core.ColumnStore.Sort
             return valueX.CompareTo(valueY);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining | MethodImplOptions.AggressiveOptimization)]
+        public static int CompareUInt64(void* ptr, int x, int y)
+        {
+            var valuePtr = (ulong*)ptr;
+            ulong valueX = valuePtr[x];
+            ulong valueY = valuePtr[y];
+            return valueX.CompareTo(valueY);
+        }
+
+        public static Expression CallCompareUInt64(Expression selfComparePointers, Expression x, Expression y)
+        {
+            var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareUInt64), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (methodInfo == null)
+            {
+                throw new InvalidOperationException("Method not found: " + nameof(CompareUInt64));
+            }
+            var pointerField = typeof(SelfComparePointers).GetField("dataPointer");
+            if (pointerField == null)
+            {
+                throw new InvalidOperationException("Field not found: dataPointer");
+            }
+            var getPtrExpression = Expression.Field(selfComparePointers, pointerField);
+            return Expression.Call(methodInfo, getPtrExpression, x, y);
+        }
+
         public static Expression CallCompareInt64(Expression selfComparePointers, Expression x, Expression y)
         {
             var methodInfo = typeof(NativeSortHelpers).GetMethod(nameof(CompareInt64), System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);

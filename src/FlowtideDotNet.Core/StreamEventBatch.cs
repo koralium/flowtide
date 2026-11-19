@@ -36,6 +36,11 @@ namespace FlowtideDotNet.Core
 
         public IReadOnlyList<RowEvent> Events => GetEvents();
 
+#if DEBUG_WRITE
+        // Row events for debug files, a reference is shown as text
+        internal IReadOnlyList<RowEvent> DebugEvents => _data != null ? RowEventToEventBatchData.EventBatchWeightedToDebugRowEvents(_data) : GetEvents();
+#endif
+
         private IReadOnlyList<RowEvent> GetEvents()
         {
             if (_events != null)

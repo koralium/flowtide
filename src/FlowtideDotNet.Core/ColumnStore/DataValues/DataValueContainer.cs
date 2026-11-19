@@ -137,6 +137,13 @@ namespace FlowtideDotNet.Core.ColumnStore
                     }
                     break;
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (_type == ArrowTypeId.RowRef)
+                    {
+                        var rowRef = new RowRefValue((ulong)_int64Value.AsLong);
+                        visitor.VisitRowRefValue(in rowRef);
+                        return;
+                    }
                     throw new System.InvalidOperationException($"Unknown type: {Type}");
             }
         }
@@ -178,6 +185,12 @@ namespace FlowtideDotNet.Core.ColumnStore
                 case ArrowTypeId.Struct:
                     _structValue!.AddToHash(hashAlgorithm);
                     return;
+            }
+            // Not a case, so the switch stays as it was
+            if (_type == ArrowTypeId.RowRef)
+            {
+                _int64Value.AddToHash(hashAlgorithm);
+                return;
             }
             throw new NotImplementedException($"{Type} is not supported for hashing.");
         }

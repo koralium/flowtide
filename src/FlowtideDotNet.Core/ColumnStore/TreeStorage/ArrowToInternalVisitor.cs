@@ -361,6 +361,25 @@ namespace FlowtideDotNet.Core.ColumnStore.TreeStorage
                         _dataColumn = new TimestampTzColumn(timestampMemory, array.Length, _memoryAllocator);
                         _typeId = ArrowTypeId.Timestamp;
                         break;
+                    case RowRefType.ExtensionName:
+                        int byteWidth = ((FixedSizeBinaryType)array.Data.DataType).ByteWidth;
+                        if (byteWidth != sizeof(ulong))
+                        {
+                            throw new InvalidOperationException($"A flowtide.rowref column must be 8 bytes wide, this one is {byteWidth}.");
+                        }
+                        // The buffers are copied from their start
+                        if (array.Offset != 0)
+                        {
+                            throw new NotSupportedException("A sliced flowtide.rowref array cannot be converted.");
+                        }
+                        if (array.ValueBuffer.Length < (long)array.Length * sizeof(ulong))
+                        {
+                            throw new InvalidOperationException($"A flowtide.rowref column of {array.Length} rows needs {(long)array.Length * sizeof(ulong)} bytes, this one has {array.ValueBuffer.Length}.");
+                        }
+                        var rowRefMemory = CopyBuffer(array.ValueBuffer);
+                        _dataColumn = new RowRefColumn(rowRefMemory, array.Length, _memoryAllocator);
+                        _typeId = ArrowTypeId.RowRef;
+                        break;
                     default:
                         throw new NotImplementedException(typeName);
                 }

@@ -829,6 +829,15 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             {
                 return new DataColumnResult(DeserializeTimestampTzColumn(ref data, in fieldStruct, in recordBatchStruct, length), ArrowTypeId.Timestamp);
             }
+            if (valueBytes.SequenceEqual("flowtide.rowref"u8))
+            {
+                int byteWidth = fieldStruct.TypeAsFixedSizeBinary().ByteWidth;
+                if (byteWidth != sizeof(ulong))
+                {
+                    throw new InvalidOperationException($"A flowtide.rowref column must be 8 bytes wide, this one is {byteWidth}.");
+                }
+                return new DataColumnResult(DeserializeRowRefColumn(ref data, length), ArrowTypeId.RowRef);
+            }
 
             throw new NotImplementedException(Encoding.UTF8.GetString(valueBytes));
         }
@@ -844,6 +853,24 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 return new TimestampTzColumn(memory, length, memoryAllocator);
             }
             return new TimestampTzColumn(memoryAllocator);
+        }
+
+        private RowRefColumn DeserializeRowRefColumn(ref SequenceReader<byte> data, int length)
+        {
+            var hasValues = TryReadNextBuffer(ref data, out var memory, out var byteCount);
+            if (byteCount < (long)length * sizeof(ulong))
+            {
+                if (hasValues)
+                {
+                    memoryAllocator.Free(ref memory);
+                }
+                throw new InvalidOperationException($"A flowtide.rowref column of {length} rows needs {(long)length * sizeof(ulong)} bytes, this one has {byteCount}.");
+            }
+            if (hasValues)
+            {
+                return new RowRefColumn(memory, length, memoryAllocator);
+            }
+            return new RowRefColumn(memoryAllocator);
         }
 
         private DecimalColumn DeserializeDecimalColumn(
@@ -1011,6 +1038,12 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
         /// </summary>
         private bool TryReadNextBuffer(ref SequenceReader<byte> data, out FlowtideMemory memory)
         {
+            return TryReadNextBuffer(ref data, out memory, out _);
+        }
+
+        // byteCount is the size of the data, the memory can be larger
+        private bool TryReadNextBuffer(ref SequenceReader<byte> data, out FlowtideMemory memory, out int byteCount)
+        {
             // Without this we walk past the buffer table.
             if (bufferIndex >= _buffersLength)
             {
@@ -1037,6 +1070,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             if (bufferLength == 0)
             {
                 memory = default;
+                byteCount = 0;
                 return false;
             }
 
@@ -1057,6 +1091,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     {
                         throw new InvalidOperationException("Not enough data to read buffer");
                     }
+                    byteCount = bufferLength - 8;
                     memory = memoryAllocator.AllocateMemory(bufferLength - 8);
                     data.TryCopyTo(memory.Span.Slice(0, bufferLength - 8));
                     readDataIndex += bufferLength;
@@ -1077,7 +1112,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                     memory = memoryAllocator.AllocateMemory((int)uncompressedLength);
                     try
                     {
-                        decompressor!.Unwrap(compressedData, memory.Span);
+                        byteCount = decompressor!.Unwrap(compressedData, memory.Span);
                     }
                     catch
                     {
@@ -1094,6 +1129,7 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
                 {
                     throw new InvalidOperationException("Not enough data to read buffer");
                 }
+                byteCount = bufferLength;
                 memory = memoryAllocator.AllocateMemory(bufferLength);
                 data.TryCopyTo(memory.Span.Slice(0, bufferLength));
                 readDataIndex += bufferLength;

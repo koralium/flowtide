@@ -108,6 +108,11 @@ namespace FlowtideDotNet.Core.ColumnStore
                 case ArrowTypeId.Struct:
                     return StructToFlxValue(dataValue);
             }
+            // Not a case, so the switch stays as it was
+            if (dataValue.Type == ArrowTypeId.RowRef)
+            {
+                throw RowRefGuard.NotAValue("converted to a row event");
+            }
             throw new NotImplementedException();
         }
 
@@ -175,6 +180,34 @@ namespace FlowtideDotNet.Core.ColumnStore
             }
             return rowEvents;
         }
+
+#if DEBUG_WRITE
+        /// <summary>
+        /// Row events for debug files, a reference is shown as text.
+        /// </summary>
+        public static List<RowEvent> EventBatchWeightedToDebugRowEvents(EventBatchWeighted eventBatch)
+        {
+            List<RowEvent> rowEvents = new List<RowEvent>();
+            for (int i = 0; i < eventBatch.Weights.Count; i++)
+            {
+                FlxValue[] columns = new FlxValue[eventBatch.EventBatchData.Columns.Count];
+                for (int c = 0; c < columns.Length; c++)
+                {
+                    var value = eventBatch.EventBatchData.Columns[c].GetValueAt(i, default);
+                    if (value.Type == ArrowTypeId.RowRef)
+                    {
+                        columns[c] = FlxValue.FromBytes(FlexBuffer.SingleValue($"rowref:{(ulong)value.AsLong}"));
+                    }
+                    else
+                    {
+                        columns[c] = DataValueToFlxValue(value);
+                    }
+                }
+                rowEvents.Add(new RowEvent(eventBatch.Weights[i], eventBatch.Iterations[i], new ArrayRowData(columns)));
+            }
+            return rowEvents;
+        }
+#endif
 
         public static RowEvent RowReferenceToRowEvent(int weight, uint iteration, ColumnRowReference columnRowReference)
         {

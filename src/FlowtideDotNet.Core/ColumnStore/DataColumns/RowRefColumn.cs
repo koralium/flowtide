@@ -1,0 +1,364 @@
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using Apache.Arrow;
+using Apache.Arrow.Arrays;
+using Apache.Arrow.Types;
+using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataValues;
+using FlowtideDotNet.Core.ColumnStore.Hash;
+using FlowtideDotNet.Core.ColumnStore.Serialization;
+using FlowtideDotNet.Core.ColumnStore.Serialization.CustomTypes;
+using FlowtideDotNet.Core.ColumnStore.Serialization.Serializer;
+using FlowtideDotNet.Core.ColumnStore.Sort;
+using FlowtideDotNet.Core.ColumnStore.TreeStorage;
+using FlowtideDotNet.Core.ColumnStore.Utils;
+using FlowtideDotNet.Storage.DataStructures;
+using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Substrait.Expressions;
+using System.Buffers.Binary;
+using System.IO.Hashing;
+using System.Text.Json;
+
+namespace FlowtideDotNet.Core.ColumnStore.DataColumns
+{
+    /// <summary>
+    /// A data column of references to rows that are stored elsewhere.
+    /// </summary>
+    internal class RowRefColumn : IDataColumn
+    {
+        // Not readonly, mutations would run on a copy.
+        private NativeList<ulong> _values;
+
+        public RowRefColumn(IMemoryAllocator memoryAllocator)
+        {
+        }
+
+        public RowRefColumn(IMemoryAllocator memoryAllocator, ColumnSizeInfo columnSizeInfo)
+        {
+            _values.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
+        }
+
+        public RowRefColumn(FlowtideMemory memory, int length, IMemoryAllocator memoryAllocator)
+        {
+            _values = new NativeList<ulong>(memory, length);
+        }
+
+#pragma warning disable RS0042 // The list moves into the column and is not used again.
+        internal RowRefColumn(NativeList<ulong> values)
+        {
+            _values = values;
+        }
+#pragma warning restore RS0042
+
+        public int Count => _values.Count;
+
+        public ArrowTypeId Type => ArrowTypeId.RowRef;
+
+        bool IDataColumn.HoldsRowReferences => true;
+
+        public StructHeader StructHeader => throw new NotSupportedException();
+
+        private static ulong Reference<T>(in T value) where T : IDataValue
+        {
+            if (value.Type != ArrowTypeId.RowRef)
+            {
+                throw new InvalidOperationException($"A row reference column cannot take a value of type {value.Type}.");
+            }
+            return (ulong)value.AsLong;
+        }
+
+        public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
+        {
+            var index = _values.Count;
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _values.Add(0, memoryAllocator);
+            }
+            else
+            {
+                _values.Add(Reference(in value), memoryAllocator);
+            }
+            return index;
+        }
+
+        public void AddToNewList<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
+        {
+            throw new NotSupportedException();
+        }
+
+        public void Clear(IMemoryAllocator memoryAllocator)
+        {
+            _values.Clear();
+        }
+
+        public int CompareTo<T>(in int index, in T value, in ReferenceSegment? child, in BitmapList validityList) where T : IDataValue
+        {
+            if (!validityList.IsNull &&
+                !validityList.Get(index))
+            {
+                if (value.Type == ArrowTypeId.Null)
+                {
+                    return 0;
+                }
+                return -1;
+            }
+            else if (value.Type == ArrowTypeId.Null)
+            {
+                return 1;
+            }
+            return _values.Get(index).CompareTo(Reference(in value));
+        }
+
+        public int CompareTo(in IDataColumn otherColumn, in int thisIndex, in int otherIndex)
+        {
+            if (otherColumn is RowRefColumn rowRefColumn)
+            {
+                return _values.Get(thisIndex).CompareTo(rowRefColumn._values.Get(otherIndex));
+            }
+            throw new NotSupportedException("A row reference can only be compared with a row reference.");
+        }
+
+        public IDataColumn Copy(IMemoryAllocator memoryAllocator)
+        {
+            return new RowRefColumn(_values.Copy(memoryAllocator));
+        }
+
+        public int EndNewList(IMemoryAllocator memoryAllocator)
+        {
+            throw new NotSupportedException();
+        }
+
+        public int GetByteSize(int start, int end)
+        {
+            return (end - start + 1) * sizeof(ulong);
+        }
+
+        public int GetByteSize()
+        {
+            return Count * sizeof(ulong);
+        }
+
+        public void GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            _values.GetPrefixSumByteSizes(indices, sizes);
+        }
+
+        public ArrowTypeId GetTypeAt(in int index, in ReferenceSegment? child)
+        {
+            return ArrowTypeId.RowRef;
+        }
+
+        public IDataValue GetValueAt(in int index, in ReferenceSegment? child)
+        {
+            return new RowRefValue(_values.Get(index));
+        }
+
+        public void GetValueAt(in int index, in DataValueContainer dataValueContainer, in ReferenceSegment? child)
+        {
+            dataValueContainer._type = ArrowTypeId.RowRef;
+            dataValueContainer._int64Value = new Int64Value((long)_values.Get(index));
+        }
+
+        public void InsertAt<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
+        {
+            if (value.Type == ArrowTypeId.Null)
+            {
+                _values.InsertAt(index, 0, memoryAllocator);
+            }
+            else
+            {
+                _values.InsertAt(index, Reference(in value), memoryAllocator);
+            }
+        }
+
+        public void InsertNullRange(int index, int count, IMemoryAllocator memoryAllocator)
+        {
+            _values.InsertStaticRange(index, 0, count, memoryAllocator);
+        }
+
+        public void InsertRangeFrom(int index, IDataColumn other, int start, int count, in BitmapList validityList, IMemoryAllocator memoryAllocator)
+        {
+            if (other is RowRefColumn rowRefColumn)
+            {
+                _values.InsertRangeFrom(index, in rowRefColumn._values, start, count, memoryAllocator);
+            }
+            else
+            {
+                throw new NotSupportedException("Rows can only be copied from another row reference column.");
+            }
+        }
+
+        public void RemoveAt(in int index, IMemoryAllocator memoryAllocator)
+        {
+            _values.RemoveAt(index, memoryAllocator);
+        }
+
+        public void RemoveRange(int start, int count, IMemoryAllocator memoryAllocator)
+        {
+            _values.RemoveRange(start, count, memoryAllocator);
+        }
+
+        public (int, int) SearchBoundries<T>(in T dataValue, in int start, in int end, in ReferenceSegment? child, bool desc) where T : IDataValue
+        {
+            if (desc)
+            {
+                return BoundarySearch.SearchBoundries(in _values, Reference(in dataValue), start, end, RowRefComparerDesc.Instance);
+            }
+            return BoundarySearch.SearchBoundries(in _values, Reference(in dataValue), start, end, RowRefComparer.Instance);
+        }
+
+        public (IArrowArray, IArrowType) ToArrowArray(ArrowBuffer nullBuffer, int nullCount)
+        {
+            var buffers = new ArrowBuffer[2]
+            {
+                nullBuffer,
+                new ArrowBuffer(_values.SlicedMemory)
+            };
+            var array = new FixedSizeBinaryArray(new ArrayData(RowRefType.Default, Count, nullCount, 0, buffers));
+            return (array, RowRefType.Default);
+        }
+
+        public int Update<T>(in int index, in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
+        {
+            _values.Update(index, value.Type == ArrowTypeId.Null ? 0 : Reference(in value));
+            return index;
+        }
+
+        public void WriteToJson(ref readonly Utf8JsonWriter writer, in int index)
+        {
+            throw new NotSupportedException("A row reference cannot be written as JSON, its columns must be fetched first.");
+        }
+
+        public void Dispose(IMemoryAllocator memoryAllocator)
+        {
+            _values.Dispose(memoryAllocator);
+        }
+
+        public void AddToHash(in int index, ReferenceSegment? child, NonCryptographicHashAlgorithm hashAlgorithm)
+        {
+            Span<byte> buffer = stackalloc byte[8];
+            BinaryPrimitives.WriteUInt64LittleEndian(buffer, _values.Get(index));
+            hashAlgorithm.Append(buffer);
+        }
+
+        public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                ref var state = ref states[i];
+                XxHash32Implementation.AppendLong((long)_values.Get(index), ref state);
+            }
+        }
+
+        public void AppendXxHash32Single(int index, ReferenceSegment? child, ref Xxh32RowState state)
+        {
+            XxHash32Implementation.AppendLong((long)_values.Get(index), ref state);
+        }
+
+        public void ToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<uint> destination)
+        {
+            for (int i = 0; i < indices.Length; i++)
+            {
+                var index = indices[i];
+                if (index == -1)
+                {
+                    continue;
+                }
+                var val = (long)_values.Get(index);
+                if (!BitConverter.IsLittleEndian)
+                {
+                    val = BinaryPrimitives.ReverseEndianness(val);
+                }
+                destination[i] = XxHash32Implementation.HashSingleLong(val);
+            }
+        }
+
+        public SerializationEstimation GetSerializationEstimate()
+        {
+            return new SerializationEstimation(1, 1, GetByteSize());
+        }
+
+        int IDataColumn.CreateSchemaField(ref ArrowSerializer arrowSerializer, int emptyStringPointer, Span<int> pointerStack)
+        {
+            var extensionKeyPointer = arrowSerializer.CreateStringUtf8("ARROW:extension:name"u8);
+            var extensionValuePointer = arrowSerializer.CreateStringUtf8("flowtide.rowref"u8);
+            var typePointer = arrowSerializer.AddFixedSizeBinaryType(8);
+            pointerStack[0] = arrowSerializer.CreateKeyValue(extensionKeyPointer, extensionValuePointer);
+            var customMetadataPointer = arrowSerializer.CreateCustomMetadataVector(pointerStack.Slice(0, 1));
+            return arrowSerializer.CreateField(emptyStringPointer, true, Serialization.ArrowType.FixedSizeBinary, typePointer, custom_metadataOffset: customMetadataPointer);
+        }
+
+        void IDataColumn.AddFieldNodes(ref ArrowSerializer arrowSerializer, in int nullCount)
+        {
+            arrowSerializer.CreateFieldNode(Count, nullCount);
+        }
+
+        void IDataColumn.AddBuffers(ref ArrowSerializer arrowSerializer)
+        {
+            arrowSerializer.AddBufferForward(_values.SlicedSpan.Length);
+        }
+
+        void IDataColumn.WriteDataToBuffer(ref ArrowDataWriter dataWriter)
+        {
+            dataWriter.WriteArrowBuffer(_values.SlicedSpan);
+        }
+
+        public void InsertFrom(in IDataColumn other, ref readonly ReadOnlySpan<int> sortedLookup, ref readonly ReadOnlySpan<int> insertPositions, in int lookupNullIndex, IMemoryAllocator memoryAllocator)
+        {
+            if (other is RowRefColumn rowRefColumn)
+            {
+                _values.InsertFrom(in rowRefColumn._values, in sortedLookup, in insertPositions, lookupNullIndex, memoryAllocator);
+            }
+            else
+            {
+                throw new NotSupportedException("Rows can only be copied from another row reference column.");
+            }
+        }
+
+        public void DeleteBatch(ReadOnlySpan<int> targets, IMemoryAllocator memoryAllocator)
+        {
+            _values.DeleteBatch(targets, memoryAllocator);
+        }
+
+        public ColumnSizeInfo GetColumnSizeInfo()
+        {
+            return new ColumnSizeInfo()
+            {
+                DataType = ArrowTypeId.RowRef,
+                TotalRows = Count,
+            };
+        }
+
+        public CompareColumnState GetColumnState()
+        {
+            return CompareColumnStateBuilder.Create(ArrowTypeId.RowRef);
+        }
+
+        unsafe void IDataColumn.SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
+        {
+            selfComparePointers.dataPointer = _values.GetPointer_Unsafe();
+        }
+
+        System.Linq.Expressions.Expression IDataColumn.CreateSelfCompareExpression(System.Linq.Expressions.Expression selfComparePointerExpression, System.Linq.Expressions.Expression xExpression, System.Linq.Expressions.Expression yExpression)
+        {
+            return NativeSortHelpers.CallCompareUInt64(selfComparePointerExpression, xExpression, yExpression);
+        }
+
+        bool IDataColumn.SupportSelfCompareExpression => true;
+    }
+}

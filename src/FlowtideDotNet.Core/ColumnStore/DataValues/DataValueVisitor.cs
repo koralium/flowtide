@@ -86,6 +86,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataValues
             throw new NotImplementedException();
         }
 
+        internal virtual void VisitRowRefValue(ref readonly RowRefValue rowRefValue)
+        {
+            throw new NotSupportedException("A row reference cannot be converted, its columns must be fetched first.");
+        }
+
         public virtual void VisitStructValue(ref readonly StructValue structValue)
         {
             throw new NotImplementedException();
