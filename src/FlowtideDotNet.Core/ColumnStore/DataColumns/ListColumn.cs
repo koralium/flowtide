@@ -43,6 +43,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => ArrowTypeId.List;
 
+        bool IDataColumn.HoldsRowReferences => _internalColumn.HoldsRowReferences;
+
         public StructHeader StructHeader => throw new NotImplementedException();
 
         public ListColumn(IMemoryAllocator memoryAllocator)

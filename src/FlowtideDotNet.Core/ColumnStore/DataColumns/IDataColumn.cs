@@ -114,6 +114,11 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         bool SupportSelfCompareExpression => false;
 
+        /// <summary>
+        /// True when this column, or a column inside it, holds row references.
+        /// </summary>
+        internal bool HoldsRowReferences => false;
+
         void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
             // Do nothing

@@ -90,5 +90,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Serialization
             int o = ReadUtils.__offset(in span, in position, 10);
             return new TypeIntStruct(span, ReadUtils.__indirect(in span, position + o));
         }
+
+        public TypeFixedSizeBinaryStruct TypeAsFixedSizeBinary()
+        {
+            int o = ReadUtils.__offset(in span, in position, 10);
+            return new TypeFixedSizeBinaryStruct(span, ReadUtils.__indirect(in span, position + o));
+        }
     }
 }

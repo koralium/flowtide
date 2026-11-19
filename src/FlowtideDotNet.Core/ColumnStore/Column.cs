@@ -185,6 +185,10 @@ namespace FlowtideDotNet.Core.ColumnStore
                     _dataColumn = new TimestampTzColumn(memoryAllocator, columnSizeInfo);
                     _type = ArrowTypeId.Timestamp;
                     break;
+                case ArrowTypeId.RowRef:
+                    _dataColumn = new RowRefColumn(memoryAllocator, columnSizeInfo);
+                    _type = ArrowTypeId.RowRef;
+                    break;
                 case ArrowTypeId.Union:
                     _dataColumn = new UnionColumn(memoryAllocator, columnSizeInfo);
                     _type = ArrowTypeId.Union;
@@ -218,6 +222,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
         public ArrowTypeId Type => _type;
         IDataColumn IColumn.DataColumn => _dataColumn!;
+
+        internal bool HoldsRowReferences => _dataColumn != null && _dataColumn.HoldsRowReferences;
 
         internal StructHeader StructHeader => _dataColumn!.StructHeader;
 
@@ -275,6 +281,8 @@ namespace FlowtideDotNet.Core.ColumnStore
                     return new UnionColumn(_memoryAllocator);
                 case ArrowTypeId.Timestamp:
                     return new TimestampTzColumn(_memoryAllocator);
+                case ArrowTypeId.RowRef:
+                    return new RowRefColumn(_memoryAllocator);
                 default:
                     throw new NotImplementedException();
             }

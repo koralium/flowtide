@@ -43,6 +43,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
     /// </summary>
     internal class UnionColumn : IDataColumn, IReadOnlyList<IDataValue>
     {
+        // One slot per type id
+        private static readonly int TypeCount = (int)Enum.GetValues<ArrowTypeId>().Max() + 1;
+
         // Not readonly, mutations would run on a copy.
         private NativeList<sbyte> _typeList;
         private IntList _offsets;
@@ -54,13 +57,28 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Union;
 
+        bool IDataColumn.HoldsRowReferences
+        {
+            get
+            {
+                for (int i = 0; i < _valueColumns.Count; i++)
+                {
+                    if (_valueColumns[i].HoldsRowReferences)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         public StructHeader StructHeader => throw new NotImplementedException();
 
         public IDataValue this[int index] => GetValueAt(index, default);
 
         public UnionColumn(IMemoryAllocator memoryAllocator)
         {
-            _typeIds = new sbyte[35]; //35 types exist
+            _typeIds = new sbyte[TypeCount];
             _valueColumns = new List<IDataColumn>()
             {
                 new NullColumn()
@@ -73,7 +91,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             {
                 throw new ArgumentException("ColumnSizeInfo for UnionColumn must have children");
             }
-            _typeIds = new sbyte[35]; //35 types exist
+            _typeIds = new sbyte[TypeCount];
             _typeList.EnsureCapacity(columnSizeInfo.TotalRows, memoryAllocator);
             _offsets = new IntList(columnSizeInfo.TotalRows, memoryAllocator);
             _valueColumns = new List<IDataColumn>()
@@ -118,6 +136,8 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                     return new DecimalColumn(memoryAllocator, columnSizeInfo);
                 case ArrowTypeId.Timestamp:
                     return new TimestampTzColumn(memoryAllocator, columnSizeInfo);
+                case ArrowTypeId.RowRef:
+                    return new RowRefColumn(memoryAllocator, columnSizeInfo);
                 case ArrowTypeId.Null:
                     return new NullColumn();
                 default:
@@ -128,7 +148,7 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
         internal UnionColumn(List<IDataColumn> columns, FlowtideMemory typeListMemory, FlowtideMemory offsetMemory, int count, IMemoryAllocator memoryAllocator)
         {
             _valueColumns = columns;
-            _typeIds = new sbyte[35]; //35 types exist
+            _typeIds = new sbyte[TypeCount];
             _typeList = new NativeList<sbyte>(typeListMemory, count);
             _offsets = new IntList(offsetMemory, count);
             for (int i = 0; i < _valueColumns.Count; i++)
@@ -235,6 +255,9 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
                         break;
                     case ArrowTypeId.Timestamp:
                         valueColumns.Add(new TimestampTzColumn(memoryAllocator));
+                        break;
+                    case ArrowTypeId.RowRef:
+                        valueColumns.Add(new RowRefColumn(memoryAllocator));
                         break;
                     default:
                         throw new NotImplementedException();

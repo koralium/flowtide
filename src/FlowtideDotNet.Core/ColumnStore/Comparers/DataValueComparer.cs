@@ -57,6 +57,11 @@ namespace FlowtideDotNet.Core.ColumnStore.Comparers
                 case ArrowTypeId.Struct:
                     return CompareStruct(x.AsStruct, y.AsStruct);
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (x.Type == ArrowTypeId.RowRef)
+                    {
+                        return ((ulong)x.AsLong).CompareTo((ulong)y.AsLong);
+                    }
                     throw new NotImplementedException();
             }
         }

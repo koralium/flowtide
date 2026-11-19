@@ -113,6 +113,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                 result._timestampValue = TimestampTzValue.FromUnixMicroseconds(value.AsLong / 10);
                 return result;
             }
+            if (value.Type == ArrowTypeId.RowRef)
+            {
+                throw RowRefGuard.NotAValue("cast");
+            }
 
             result._type = ArrowTypeId.Null;
             return result;
@@ -178,6 +182,10 @@ namespace FlowtideDotNet.Core.Compute.Columnar
 
                 return result;
             }
+            if (value.Type == ArrowTypeId.RowRef)
+            {
+                throw RowRefGuard.NotAValue("cast");
+            }
 
             result._type = ArrowTypeId.Null;
             return result;
@@ -235,6 +243,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     result._int64Value = new Int64Value(value.AsTimestamp.UnixTimestampMicroseconds);
                     return result;
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (value.Type == ArrowTypeId.RowRef)
+                    {
+                        throw RowRefGuard.NotAValue("cast");
+                    }
                     result._type = ArrowTypeId.Null;
                     return result;
             }
@@ -288,6 +301,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     result._decimalValue = new DecimalValue((decimal)value.AsLong);
                     return result;
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (value.Type == ArrowTypeId.RowRef)
+                    {
+                        throw RowRefGuard.NotAValue("cast");
+                    }
                     result._type = ArrowTypeId.Null;
                     return result;
             }
@@ -332,6 +350,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     result._boolValue = new BoolValue(value.AsLong != 0);
                     return result;
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (value.Type == ArrowTypeId.RowRef)
+                    {
+                        throw RowRefGuard.NotAValue("cast");
+                    }
                     result._type = ArrowTypeId.Null;
                     return result;
             }
@@ -385,6 +408,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar
                     result._doubleValue = new DoubleValue((double)value.AsLong);
                     return result;
                 default:
+                    // Not a case, so the switch stays as it was
+                    if (value.Type == ArrowTypeId.RowRef)
+                    {
+                        throw RowRefGuard.NotAValue("cast");
+                    }
                     result._type = ArrowTypeId.Null;
                     return result;
             }

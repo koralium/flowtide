@@ -251,6 +251,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 case ArrowTypeId.Binary:
                 case ArrowTypeId.Decimal128:
                 case ArrowTypeId.Timestamp:
+                case ArrowTypeId.RowRef:
                     return true;
                 default:
                     // Lists, maps, structs and columns of several types

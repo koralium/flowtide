@@ -281,13 +281,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 #if DEBUG_WRITE
             allInput!.WriteLine("New batch");
-            foreach (var e in msg.Events)
+            var debugEvents = msg.DebugEvents;
+            foreach (var e in debugEvents)
             {
                 allInput!.WriteLine($"{targetId}, {e.Weight} {e.ToJson()}");
             }
             if (targetId == 0)
             {
-                foreach (var e in msg.Events)
+                foreach (var e in debugEvents)
                 {
                     leftInput!.WriteLine($"{e.Weight} {e.ToJson()}");
                 }
@@ -295,7 +296,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
             }
             else
             {
-                foreach (var e in msg.Events)
+                foreach (var e in debugEvents)
                 {
                     rightInput!.WriteLine($"{e.Weight} {e.ToJson()}");
                 }
@@ -1004,7 +1005,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MergeJoin
 
 #if DEBUG_WRITE
             allOutput!.WriteLine("Start batch");
-            foreach (var o in batch.Events)
+            foreach (var o in batch.DebugEvents)
             {
                 allOutput!.WriteLine($"{o.Weight} {o.ToJson()}");
             }

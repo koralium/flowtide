@@ -71,6 +71,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
 
         public ArrowTypeId Type => ArrowTypeId.Struct;
 
+        bool IDataColumn.HoldsRowReferences
+        {
+            get
+            {
+                for (int i = 0; i < _columns.Length; i++)
+                {
+                    if (_columns[i].HoldsRowReferences)
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
         public StructHeader StructHeader => _header;
 
         public int Add<T>(in T value, IMemoryAllocator memoryAllocator) where T : IDataValue
