@@ -16957,6 +16957,12 @@ references:
   commentId: F:FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RecordBatch
   fullName: FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RecordBatch
   nameWithType: ArrowTypeId.RecordBatch
+- uid: FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RowRef
+  name: RowRef
+  href: api/FlowtideDotNet.Core.ColumnStore.ArrowTypeId.html#FlowtideDotNet_Core_ColumnStore_ArrowTypeId_RowRef
+  commentId: F:FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RowRef
+  fullName: FlowtideDotNet.Core.ColumnStore.ArrowTypeId.RowRef
+  nameWithType: ArrowTypeId.RowRef
 - uid: FlowtideDotNet.Core.ColumnStore.ArrowTypeId.String
   name: String
   href: api/FlowtideDotNet.Core.ColumnStore.ArrowTypeId.html#FlowtideDotNet_Core_ColumnStore_ArrowTypeId_String
