@@ -114,7 +114,7 @@ namespace FlowtideDotNet.Core.Optimizer
                 {
                     throw new ArgumentOutOfRangeException(nameof(settings), "MultiJoinMaxInputs must be at least 3.");
                 }
-                Operators.Join.MultiJoin.MultiJoinMarker.Mark(plan, settings.MultiJoinMaxInputs);
+                Operators.Join.MultiJoin.MultiJoinMarker.Mark(plan, settings.MultiJoinMaxInputs, settings.MultiJoinPairConditions);
             }
 
             if (settings.DistributedPlanOptions != null)

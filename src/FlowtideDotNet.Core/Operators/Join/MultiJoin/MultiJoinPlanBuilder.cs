@@ -29,22 +29,35 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         private readonly int? _groupId;
         private int _joinBudget;
 
-        private MultiJoinPlanBuilder(int? groupId, int joinBudget)
+        // Off: no lookup takes a range into its key, for tests and measurements
+        internal static bool RangeKeys = true;
+
+        // Takes joins with a condition on both sides next to their key, and range keys as such conditions
+        private readonly bool _pairConditions;
+
+        // A join that is left in the group has a range key or a condition on both sides of a side it keeps
+        private static bool UsesPairConditions(MultiJoinNode node)
+        {
+            return !node.IsLeaf && (node.PadPerRow || node.RangeKey || UsesPairConditions(node.Left!) || UsesPairConditions(node.Right!));
+        }
+
+        private MultiJoinPlanBuilder(int? groupId, int joinBudget, bool pairConditions)
         {
             _groupId = groupId;
             _joinBudget = joinBudget;
+            _pairConditions = pairConditions;
         }
 
         /// <summary>
         /// The group a root would form under the input cap, existing marks are ignored.
         /// </summary>
-        public static MultiJoinPlan? Discover(MergeJoinRelation root, int maxInputs, List<MultiJoinLeftOut>? leftOut = null)
+        public static MultiJoinPlan? Discover(MergeJoinRelation root, int maxInputs, List<MultiJoinLeftOut>? leftOut = null, bool pairConditions = false)
         {
             if (maxInputs < MinInputs)
             {
                 throw new ArgumentOutOfRangeException(nameof(maxInputs), $"A multi join needs room for at least {MinInputs} inputs.");
             }
-            var builder = new MultiJoinPlanBuilder(null, maxInputs - 1);
+            var builder = new MultiJoinPlanBuilder(null, maxInputs - 1, pairConditions);
             var result = builder.Flatten(root);
             MultiJoinPlan? plan = null;
             if (result.Node.IsLeaf)
@@ -73,7 +86,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             {
                 throw new InvalidOperationException("The merge join is not marked as part of a multi join.");
             }
-            var builder = new MultiJoinPlanBuilder(markedRoot.MultiJoinGroup, int.MaxValue);
+            // The marks say which joins are in, whatever setting they were found with
+            var builder = new MultiJoinPlanBuilder(markedRoot.MultiJoinGroup, int.MaxValue, true);
             var result = builder.Flatten(markedRoot);
             if (builder._plan.Inputs.Count < MinInputs)
             {
@@ -119,6 +133,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             public List<Expression> LeftFilters = new List<Expression>();
             public List<Expression> KeptOnly = new List<Expression>();
             public List<Expression> Checks = new List<Expression>();
+            // A check reads both sides of a join that keeps unmatched rows
+            public bool PadPerRow;
+            // A key with a range comparison was read as a condition
+            public bool RangeKey;
         }
 
         private Flattened AddLeaf(Relation relation)
@@ -203,7 +221,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
             }
 
-            var reason = ReadConditions(join, extra, out var conditions);
+            var reason = ReadConditions(join, extra, _pairConditions, out var conditions);
             if (reason != null)
             {
                 return LeaveOut(join, reason, filters);
@@ -251,6 +269,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             {
                 reason = "condition on a mark";
             }
+            if (reason == null && conditions.PadPerRow && !(node.PadRight ? right.Node : left.Node).IsLeaf)
+            {
+                // The change of that side is kept with the columns the condition reads, which is done for one input
+                reason = "condition on both sides, the side filled with nulls is a join";
+            }
             if (reason != null)
             {
                 _plan.Inputs.RemoveRange(inputsBefore, _plan.Inputs.Count - inputsBefore);
@@ -267,6 +290,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             {
                 node.Checks.Add(new MultiJoinCheck() { Condition = check, Columns = concat });
             }
+            node.PadPerRow = conditions.PadPerRow;
+            node.RangeKey = conditions.RangeKey;
             if (conditions.KeptOnly.Count > 0)
             {
                 node.KeptOnlyCheck = new MultiJoinCheck() { Condition = And(conditions.KeptOnly), Columns = concat };
@@ -366,6 +391,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 bool isKey = false;
                 for (int i = 0; i < join.LeftKeys.Count && !isKey; i++)
                 {
+                    if (join.GetComparisonType(i) != JoinComparisonType.Equal)
+                    {
+                        continue;
+                    }
                     if (right)
                     {
                         isKey = TryGetField(join.RightKeys[i], out var rightField) && BeforeEmit(filter, rightField - leftSize) == field;
@@ -411,7 +440,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// <summary>
         /// Sorts the conditions of a join by the side they read, returns a reason when the join cannot be part of a group.
         /// </summary>
-        private static string? ReadConditions(MergeJoinRelation join, List<Expression>? extra, out Conditions conditions)
+        private static string? ReadConditions(MergeJoinRelation join, List<Expression>? extra, bool pairConditions, out Conditions conditions)
         {
             conditions = new Conditions();
             if (join.Type != JoinType.Inner && join.Type != JoinType.Left && join.Type != JoinType.Right &&
@@ -427,18 +456,43 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             {
                 return "no usable keys";
             }
+            var conjuncts = new List<Expression>();
+            int equalKeys = 0;
             for (int i = 0; i < join.LeftKeys.Count; i++)
             {
-                if (join.GetComparisonType(i) != JoinComparisonType.Equal)
-                {
-                    return "range key";
-                }
                 if (!TryGetField(join.LeftKeys[i], out _) || !TryGetField(join.RightKeys[i], out _))
                 {
                     return "nested or computed key";
                 }
+                var comparison = join.GetComparisonType(i);
+                if (comparison == JoinComparisonType.Equal)
+                {
+                    equalKeys++;
+                    continue;
+                }
+                if (!pairConditions)
+                {
+                    return "range key";
+                }
+                // The lookup goes by the equal keys, the range is a condition on the rows it finds
+                conditions.RangeKey = true;
+                conjuncts.Add(new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = comparison switch
+                    {
+                        JoinComparisonType.LessThan => FunctionsComparison.LessThan,
+                        JoinComparisonType.LessThanOrEqual => FunctionsComparison.LessThanOrEqual,
+                        JoinComparisonType.GreaterThan => FunctionsComparison.GreaterThan,
+                        _ => FunctionsComparison.GreaterThanOrEqual
+                    },
+                    Arguments = new List<Expression>() { join.LeftKeys[i], join.RightKeys[i] }
+                });
             }
-            var conjuncts = new List<Expression>();
+            if (equalKeys == 0)
+            {
+                return "range key";
+            }
             if (join.PostJoinFilter != null)
             {
                 SplitAnd(join.PostJoinFilter, conjuncts);
@@ -484,6 +538,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 {
                     conditions.KeptOnly.Add(conjunct);
                 }
+                else if (readsLeft && readsRight && pairConditions)
+                {
+                    conditions.Checks.Add(conjunct);
+                    conditions.PadPerRow = true;
+                }
                 else if (readsLeft || readsRight)
                 {
                     return isLeftJoin ? "condition on both sides of a left join" : "condition on both sides of a right join";
@@ -504,6 +563,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             var pairs = new List<(int leftField, int rightField)>();
             for (int i = 0; i < join.LeftKeys.Count; i++)
             {
+                if (join.GetComparisonType(i) != JoinComparisonType.Equal)
+                {
+                    // A range key is a condition of the join
+                    continue;
+                }
                 TryGetField(join.LeftKeys[i], out var leftField);
                 TryGetField(join.RightKeys[i], out var rightField);
                 if (leftField >= leftSize || rightField < leftSize || rightField >= concat.Count)
@@ -564,6 +628,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             _plan.Output = root.Output;
 
             CollectPadTables(root.Node);
+            // Only a group with a join the setting let in: the trees of every other group keep the order they have without it
+            _plan.PairConditions = UsesPairConditions(root.Node);
+            _plan.RangeKeys = RangeKeys && _plan.PairConditions;
             // The programs tell which column sets each input is looked up by
             var collected = MultiJoinProgram.Collect(_plan);
             var lookedUpBy = collected.Keys;
@@ -578,6 +645,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 foreach (var columns in InIndexOrder(sets[i]))
                 {
                     GetOrAddKeyList(_plan.Inputs[i], columns);
+                }
+            }
+            for (int i = 0; i < sets.Length; i++)
+            {
+                foreach (var (equal, column) in collected.Ranges[i])
+                {
+                    TryAddRange(_plan.Inputs[i], equal, column);
                 }
             }
 
@@ -687,6 +761,22 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
             }
             return false;
+        }
+
+        // A range is taken where the tree of the input is ordered by it already, or can be ordered further without a second index storing the column too
+        private static void TryAddRange(MultiJoinInput input, int[] equal, int column)
+        {
+            int equalList = input.FindKeyList(equal);
+            var primary = input.PrimaryOrder;
+            if (equalList < 0 || input.SecondaryOf[equalList] >= 0)
+            {
+                return;
+            }
+            if (primary.Count > equal.Length ? primary[equal.Length] != column : input.SecondaryLayouts.Count > 0)
+            {
+                return;
+            }
+            GetOrAddKeyList(input, equal.Append(column).ToArray());
         }
 
         private static int GetOrAddKeyList(MultiJoinInput input, int[] columns)

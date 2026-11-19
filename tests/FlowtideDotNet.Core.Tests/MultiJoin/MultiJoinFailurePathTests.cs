@@ -28,6 +28,7 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using FlowtideDotNet.Substrait;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -130,9 +131,11 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             return batch;
         }
 
-        private async Task<(StateManagerSync<StreamState> stateManager, StreamMemoryManager streamMemory)> CreateStateManager(string folder)
+        private async Task<(StateManagerSync<StreamState> stateManager, StreamMemoryManager streamMemory)> CreateStateManager(string folder, bool reservoir = false)
         {
-            var storage = new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = $"{_directory}/{folder}/persistent" });
+            FlowtideDotNet.Storage.Persistence.IPersistentStorage storage = reservoir
+                ? new FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage(new FlowtideDotNet.Storage.Persistence.Reservoir.ReservoirStorageOptions() { FileProvider = new FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk.MemoryFileProvider() })
+                : new FileCachePersistentStorage(new FileCacheOptions() { DirectoryPath = $"{_directory}/{folder}/persistent" });
             _disposables.Add(storage);
             var meter = new Meter("statemanager");
             _disposables.Add(meter);
@@ -248,6 +251,805 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             finally
             {
                 MultiJoinOperator.RowBudget = budgetBefore;
+                MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task CutShortSpilledEntriesOfAConditionOnBothSidesAreClearedAndTheTableWorksAgain()
+        {
+            int budgetBefore = MultiJoinOperator.RowBudget;
+            int memoryKeysBefore = MultiJoinPadTable.MemoryKeys;
+            MultiJoinOperator.RowBudget = 1;
+            MultiJoinPadTable.MemoryKeys = 0;
+            try
+            {
+                // (a join b) left join c on a.k = c.k and a.v >= c.v
+                var root = Join(JoinType.Left, Join(JoinType.Inner, Read("a", 2), Read("b", 2), (0, 2)), Read("c", 2), (0, 4));
+                root.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                    Arguments = new List<Expression>() { Field(1), Field(5) }
+                };
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                async Task<MultiJoinOperator> Loaded(string folder)
+                {
+                    var (stateManager, streamMemory) = await CreateStateManager(folder);
+                    var loaded = CreateOperator(plan);
+                    await InitOperator(loaded, stateManager, streamMemory, 0);
+                    await Send(loaded, 0, Batch(new[] { (1L, 10L), (2L, 20L), (3L, 30L) }, new[] { 1, 1, 1 }));
+                    await Send(loaded, 1, Batch(new[] { (1L, 100L), (2L, 200L), (3L, 300L) }, new[] { 1, 1, 1 }));
+                    return loaded;
+                }
+
+                // The rows a message gives, with the sum of their weights
+                async Task<Dictionary<string, int>> Send(MultiJoinOperator to, int input, StreamEventBatch batch, int take = int.MaxValue)
+                {
+                    var rows = new Dictionary<string, int>();
+                    try
+                    {
+                        await using var enumerator = to.OnRecieve(input, batch, 0).GetAsyncEnumerator();
+                        for (int i = 0; i < take && await enumerator.MoveNextAsync(); i++)
+                        {
+                            var part = enumerator.Current.Data;
+                            part.Rent(1);
+                            for (int r = 0; r < part.Weights.Count; r++)
+                            {
+                                var text = string.Join(",", part.EventBatchData.Columns.Select(x => x.GetValueAt(r, default).IsNull ? "null" : x.GetValueAt(r, default).AsLong.ToString()));
+                                rows[text] = rows.GetValueOrDefault(text) + part.Weights[r];
+                            }
+                            part.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+                    return rows;
+                }
+
+                var op = await Loaded("pair_abandon");
+                // Every key gets its first match: three joined rows, then the three padded rows leave. Cut short among the padded rows
+                await Send(op, 2, Batch(new[] { (1L, 5L), (2L, 5L), (3L, 5L) }, new[] { 1, 1, 1 }), take: 4);
+                Assert.False(op.PadTables[0].HasRows);
+
+                // A message that is cut short is not stored. The next one gives what it gives an operator that never saw the first.
+                // It takes a row of the cut message away again: an entry left behind would cancel it and no row would turn
+                var after = await Send(op, 2, Batch(new[] { (1L, 5L), (2L, 99L) }, new[] { -1, 1 }));
+                var untouched = await Send(await Loaded("pair_abandon_reference"), 2, Batch(new[] { (1L, 5L), (2L, 99L) }, new[] { -1, 1 }));
+                Assert.NotEmpty(untouched);
+                Assert.Equal(untouched.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"), after.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"));
+                Assert.False(op.PadTables[0].HasRows);
+            }
+            finally
+            {
+                MultiJoinOperator.RowBudget = budgetBefore;
+                MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task ALookupThatTakesTheRangeReadsOnlyTheRowsInsideIt()
+        {
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            try
+            {
+                // 300 rows of one key in b, a row of a with the value 50 matches the 50 rows whose value is from 1 to 50
+                async Task<(long scanned, int rows)> Run(bool range, string folder)
+                {
+                    MultiJoinPlanBuilder.RangeKeys = range;
+                    // (a left join b on a.k = b.k and a.v >= b.v and a.k <= b.v) left join c on a.k = c.k
+                    var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                    periods.PostJoinFilter = new ScalarFunction()
+                    {
+                        ExtensionUrn = FunctionsBoolean.Urn,
+                        ExtensionName = FunctionsBoolean.And,
+                        Arguments = new List<Expression>()
+                        {
+                            new ScalarFunction()
+                            {
+                                ExtensionUrn = FunctionsComparison.Urn,
+                                ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                                Arguments = new List<Expression>() { Field(1), Field(3) }
+                            },
+                            new ScalarFunction()
+                            {
+                                ExtensionUrn = FunctionsComparison.Urn,
+                                ExtensionName = FunctionsComparison.LessThanOrEqual,
+                                Arguments = new List<Expression>() { Field(0), Field(3) }
+                            }
+                        }
+                    };
+                    var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                    var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                    Assert.Equal(range, plan.RangeKeys);
+                    var (stateManager, streamMemory) = await CreateStateManager(folder);
+                    var op = CreateOperator(plan);
+                    await InitOperator(op, stateManager, streamMemory, 0);
+
+                    async Task<int> Send(int input, StreamEventBatch batch)
+                    {
+                        int rows = 0;
+                        try
+                        {
+                            await foreach (var part in op.OnRecieve(input, batch, 0))
+                            {
+                                part.Data.Rent(1);
+                                rows += part.Data.Weights.Count;
+                                part.Data.Return();
+                            }
+                        }
+                        finally
+                        {
+                            batch.Data.Return();
+                        }
+                        return rows;
+                    }
+
+                    await Send(1, Batch(Enumerable.Range(0, 300).Select(x => (1L, (long)x)).ToArray(), Enumerable.Repeat(1, 300).ToArray()));
+                    long before = Interlocked.Read(ref MultiJoinTreeLookup.ScannedForTests);
+                    int rows = await Send(0, Batch(new[] { (1L, 50L) }, new[] { 1 }));
+                    return (Interlocked.Read(ref MultiJoinTreeLookup.ScannedForTests) - before, rows);
+                }
+
+                var equal = await Run(false, "pair_range_off");
+                var range = await Run(true, "pair_range_on");
+
+                Assert.Equal(50, equal.rows);
+                Assert.Equal(50, range.rows);
+                // Without the range every row of the key is met, with it only the ones up to the bound
+                Assert.Equal(300, equal.scanned);
+                Assert.Equal(51, range.scanned);
+            }
+            finally
+            {
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task ALookupWithARangeReadsTheRestoredTreesAfterTheOperatorIsInitializedAgain()
+        {
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            try
+            {
+                MultiJoinPlanBuilder.RangeKeys = true;
+                // (a left join b on a.k = b.k and a.v >= b.v) left join c on a.k = c.k
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                    Arguments = new List<Expression>() { Field(1), Field(3) }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                var (stateManager, streamMemory) = await CreateStateManager("pair_range_restore", reservoir: true);
+                var op = CreateOperator(plan);
+                await InitOperator(op, stateManager, streamMemory, 0);
+
+                async Task<int> Send(int input, StreamEventBatch batch)
+                {
+                    int rows = 0;
+                    try
+                    {
+                        await foreach (var part in op.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            rows += part.Data.Weights.Count;
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+                    return rows;
+                }
+
+                await Send(1, Batch(Enumerable.Range(0, 300).Select(x => (1L, (long)x)).ToArray(), Enumerable.Repeat(1, 300).ToArray()));
+                long rangesBefore = Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests);
+                Assert.Equal(51, await Send(0, Batch(new[] { (1L, 50L) }, new[] { 1 })));
+                Assert.True(Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests) > rangesBefore);
+
+                await op.OnCheckpoint();
+                stateManager.Metadata = new StreamState(1, "hash");
+                await stateManager.CheckpointAsync(false);
+                // Stored after the checkpoint, gone when the state is set back to it
+                await Send(1, Batch(Enumerable.Range(0, 20).Select(x => (1L, -100L + x)).ToArray(), Enumerable.Repeat(1, 20).ToArray()));
+                await stateManager.InitializeAsync();
+                await InitOperator(op, stateManager, streamMemory, 1);
+
+                // A row of b that came after the state was set back is found by the next lookup with a range
+                await Send(1, Batch(new[] { (1L, -5L) }, new[] { 1 }));
+                rangesBefore = Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests);
+                Assert.Equal(41, await Send(0, Batch(new[] { (1L, 39L) }, new[] { 1 })));
+                Assert.True(Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests) > rangesBefore);
+            }
+            finally
+            {
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+            }
+        }
+
+        // b is looked up by k with a range on v, and by v alone through its second index
+        [Fact]
+        public async Task ARangeOnAnInputWithASecondIndexGivesTheRowsOfTheJoins()
+        {
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            int budgetBefore = MultiJoinOperator.RowBudget;
+            try
+            {
+                MultiJoinOperator.RowBudget = 7;
+                // (a(k, v) left join b(k, v) on a.k = b.k and a.v >= b.v) left join c(x, y) on b.v = c.x
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                    Arguments = new List<Expression>() { Field(1), Field(3) }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (3, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                var b = plan.Inputs[1];
+                Assert.True(plan.RangeKeys);
+                Assert.NotEmpty(b.SecondaryLayouts);
+                int rangeList = b.FindKeyList(new[] { 0, 1 });
+                Assert.True(rangeList >= 0 && b.SecondaryOf[rangeList] < 0, $"key lists {string.Join(" ", b.KeyLists.Select(x => "[" + string.Join(",", x) + "]"))}");
+
+                var (stateManager, streamMemory) = await CreateStateManager("pair_range_second");
+                var op = CreateOperator(plan);
+                await InitOperator(op, stateManager, streamMemory, 0);
+
+                var inputs = new[] { new List<(long, long)>(), new List<(long, long)>(), new List<(long, long)>() };
+                var actual = new Dictionary<string, int>();
+                async Task Send(int input, (long c0, long c1)[] rows, int[] weights)
+                {
+                    for (int i = 0; i < rows.Length; i++)
+                    {
+                        if (weights[i] > 0)
+                        {
+                            inputs[input].Add(rows[i]);
+                        }
+                        else
+                        {
+                            Assert.True(inputs[input].Remove(rows[i]));
+                        }
+                    }
+                    var batch = Batch(rows, weights);
+                    try
+                    {
+                        await foreach (var part in op.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            for (int r = 0; r < part.Data.Weights.Count; r++)
+                            {
+                                var text = string.Join(",", part.Data.EventBatchData.Columns.Select(x => x.GetValueAt(r, default).IsNull ? "null" : x.GetValueAt(r, default).AsLong.ToString()));
+                                actual[text] = actual.GetValueOrDefault(text) + part.Data.Weights[r];
+                                if (actual[text] == 0)
+                                {
+                                    actual.Remove(text);
+                                }
+                            }
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+
+                    var expected = new Dictionary<string, int>();
+                    foreach (var ra in inputs[0])
+                    {
+                        var bs = inputs[1].Where(rb => rb.Item1 == ra.Item1 && ra.Item2 >= rb.Item2).ToList();
+                        if (bs.Count == 0)
+                        {
+                            var text = $"{ra.Item1},{ra.Item2},null,null,null,null";
+                            expected[text] = expected.GetValueOrDefault(text) + 1;
+                            continue;
+                        }
+                        foreach (var rb in bs)
+                        {
+                            var cs = inputs[2].Where(rc => rc.Item1 == rb.Item2).ToList();
+                            var texts = cs.Count == 0 ? new List<string>() { $"{ra.Item1},{ra.Item2},{rb.Item1},{rb.Item2},null,null" } : cs.Select(rc => $"{ra.Item1},{ra.Item2},{rb.Item1},{rb.Item2},{rc.Item1},{rc.Item2}").ToList();
+                            foreach (var text in texts)
+                            {
+                                expected[text] = expected.GetValueOrDefault(text) + 1;
+                            }
+                        }
+                    }
+                    Assert.Equal(expected.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"), actual.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"));
+                }
+
+                long rangesBefore = Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests);
+                // 60 rows per key in b, c for every third value
+                await Send(1, Enumerable.Range(0, 120).Select(x => ((long)(x % 2), (long)(x / 2))).ToArray(), Enumerable.Repeat(1, 120).ToArray());
+                await Send(2, Enumerable.Range(0, 20).Select(x => ((long)(x * 3), (long)(x * 100))).ToArray(), Enumerable.Repeat(1, 20).ToArray());
+                await Send(0, new[] { (0L, 10L), (1L, 25L), (0L, -1L), (2L, 5L), (1L, 59L) }, new[] { 1, 1, 1, 1, 1 });
+                // A c row whose value b has, found through the second index of b
+                await Send(2, new[] { (10L, 7L), (0L, 0L) }, new[] { 1, -1 });
+                // b rows inside and outside the bounds of the a rows
+                await Send(1, new[] { (0L, 4L), (0L, 11L), (1L, 30L), (2L, 5L), (2L, 6L) }, new[] { -1, 1, -1, 1, 1 });
+                // a rows move their bound
+                await Send(0, new[] { (0L, 10L), (0L, 3L), (1L, 25L), (1L, 2L), (0L, -1L), (0L, 100L) }, new[] { -1, 1, -1, 1, -1, 1 });
+                await Send(2, new[] { (3L, 100L), (3L, 101L), (11L, 1L) }, new[] { -1, 1, 1 });
+                Assert.True(Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests) > rangesBefore);
+            }
+            finally
+            {
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+                MultiJoinOperator.RowBudget = budgetBefore;
+            }
+        }
+
+        private static StreamEventBatch NullableBatch((long? c0, long? c1)[] rows, int[] weights)
+        {
+            var col0 = Column.Create(GlobalMemoryManager.Instance);
+            var col1 = Column.Create(GlobalMemoryManager.Instance);
+            var weightList = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+            var iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+            for (int i = 0; i < rows.Length; i++)
+            {
+                if (rows[i].c0 == null) { col0.Add(NullValue.Instance); } else { col0.Add(new Int64Value(rows[i].c0!.Value)); }
+                if (rows[i].c1 == null) { col1.Add(NullValue.Instance); } else { col1.Add(new Int64Value(rows[i].c1!.Value)); }
+                weightList.Add(weights[i]);
+                iterations.Add(0);
+            }
+            var batch = new StreamEventBatch(new EventBatchWeighted(weightList, iterations, new EventBatchData(new IColumn[] { col0, col1 })));
+            batch.Data.Rent(1);
+            return batch;
+        }
+
+        // One row per key, keys without rows, nulls in the bound and in the key, every comparison type: the range gives what the chain gives
+        [Theory]
+        [InlineData(FunctionsComparison.GreaterThanOrEqual, true)]
+        [InlineData(FunctionsComparison.GreaterThan, true)]
+        [InlineData(FunctionsComparison.LessThanOrEqual, true)]
+        [InlineData(FunctionsComparison.LessThan, true)]
+        [InlineData(FunctionsComparison.GreaterThanOrEqual, false)]
+        [InlineData(FunctionsComparison.LessThan, false)]
+        public async Task ARangeAtOneRowPerKeyEmptyKeysAndNullBoundsGivesTheRowsOfTheJoins(string op, bool range)
+        {
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            try
+            {
+                MultiJoinPlanBuilder.RangeKeys = range;
+                Func<long, long, bool> holds = op switch
+                {
+                    FunctionsComparison.GreaterThanOrEqual => (x, y) => x >= y,
+                    FunctionsComparison.GreaterThan => (x, y) => x > y,
+                    FunctionsComparison.LessThanOrEqual => (x, y) => x <= y,
+                    _ => (x, y) => x < y
+                };
+                // (a(k, v) left join b(k, v) on a.k = b.k and a.v OP b.v) left join c(k, x) on a.k = c.k
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = op,
+                    Arguments = new List<Expression>() { Field(1), Field(3) }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                Assert.Equal(range, plan.RangeKeys);
+                var (stateManager, streamMemory) = await CreateStateManager($"pair_range_edges_{op}_{range}");
+                var multi = CreateOperator(plan);
+                await InitOperator(multi, stateManager, streamMemory, 0);
+
+                var inputs = new[] { new List<(long?, long?)>(), new List<(long?, long?)>(), new List<(long?, long?)>() };
+                var actual = new Dictionary<string, int>();
+                static string Text(long? v) => v == null ? "null" : v.Value.ToString();
+                async Task Send(int input, (long? c0, long? c1)[] rows, int[] weights)
+                {
+                    for (int i = 0; i < rows.Length; i++)
+                    {
+                        if (weights[i] > 0)
+                        {
+                            inputs[input].Add(rows[i]);
+                        }
+                        else
+                        {
+                            Assert.True(inputs[input].Remove(rows[i]));
+                        }
+                    }
+                    var batch = NullableBatch(rows, weights);
+                    try
+                    {
+                        await foreach (var part in multi.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            for (int r = 0; r < part.Data.Weights.Count; r++)
+                            {
+                                var text = string.Join(",", part.Data.EventBatchData.Columns.Select(x => x.GetValueAt(r, default).IsNull ? "null" : x.GetValueAt(r, default).AsLong.ToString()));
+                                actual[text] = actual.GetValueOrDefault(text) + part.Data.Weights[r];
+                                if (actual[text] == 0)
+                                {
+                                    actual.Remove(text);
+                                }
+                            }
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+
+                    var expected = new Dictionary<string, int>();
+                    foreach (var ra in inputs[0])
+                    {
+                        var bs = inputs[1].Where(rb => ra.Item1 != null && rb.Item1 == ra.Item1 && ra.Item2 != null && rb.Item2 != null && holds(ra.Item2.Value, rb.Item2.Value)).ToList();
+                        var cs = inputs[2].Where(rc => ra.Item1 != null && rc.Item1 == ra.Item1).ToList();
+                        var bTexts = bs.Count == 0 ? new List<string>() { "null,null" } : bs.Select(rb => $"{Text(rb.Item1)},{Text(rb.Item2)}").ToList();
+                        var cTexts = cs.Count == 0 ? new List<string>() { "null,null" } : cs.Select(rc => $"{Text(rc.Item1)},{Text(rc.Item2)}").ToList();
+                        foreach (var bt in bTexts)
+                        {
+                            foreach (var ct in cTexts)
+                            {
+                                var text = $"{Text(ra.Item1)},{Text(ra.Item2)},{bt},{ct}";
+                                expected[text] = expected.GetValueOrDefault(text) + 1;
+                            }
+                        }
+                    }
+                    Assert.Equal(expected.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"), actual.OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"));
+                }
+
+                long rangesBefore = Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests);
+                // One row per key, a key with a null bound only, a row with a null key
+                await Send(1, new (long?, long?)[] { (1, 5), (2, null), (3, 5), (null, 5), (5, 5), (5, null) }, new[] { 1, 1, 1, 1, 1, 1 });
+                await Send(2, new (long?, long?)[] { (1, 0), (4, 0) }, new[] { 1, 1 });
+                // Below, at and above the bound, a null bound, keys without rows in b, a null key
+                await Send(0, new (long?, long?)[] { (1, 4), (1, 5), (1, 6), (2, 1), (3, null), (4, 5), (6, 5), (null, 5), (5, 5), (5, 4) }, new[] { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 });
+                // b rows move across the bound, a key gets its first and loses its last row
+                await Send(1, new (long?, long?)[] { (1, 5), (1, 6), (3, 5), (4, 4), (2, null), (2, 1) }, new[] { -1, 1, -1, 1, -1, 1 });
+                // a rows move their bound, a bound becomes null
+                await Send(0, new (long?, long?)[] { (1, 4), (1, 7), (4, 5), (4, null), (5, 4), (5, 6) }, new[] { -1, 1, -1, 1, -1, 1 });
+                // A row whose bound is null in b next to rows that match
+                await Send(1, new (long?, long?)[] { (1, null), (4, null), (4, 4) }, new[] { 1, 1, -1 });
+                if (range)
+                {
+                    Assert.True(Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests) > rangesBefore);
+                }
+            }
+            finally
+            {
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task SpilledEntriesOfAConditionOnBothSidesAreSortedByTheirKeyAndNumberOnly()
+        {
+            int memoryKeysBefore = MultiJoinPadTable.MemoryKeys;
+            MultiJoinPadTable.MemoryKeys = 0;
+            try
+            {
+                // (a left join b on a.k = b.k and a.v >= b.v) left join c on a.k = c.k
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                    Arguments = new List<Expression>() { Field(1), Field(3) }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                var (stateManager, streamMemory) = await CreateStateManager("pair_entry_sort");
+                var op = CreateOperator(plan);
+                await InitOperator(op, stateManager, streamMemory, 0);
+
+                async Task Send(int input, StreamEventBatch batch)
+                {
+                    try
+                    {
+                        await foreach (var part in op.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+                }
+
+                await Send(0, Batch(new[] { (1L, 5L), (2L, 5L) }, new[] { 1, 1 }));
+                await Send(1, Batch(new[] { (1L, 1L), (1L, 2L), (2L, 3L) }, new[] { 1, 1, 1 }));
+
+                var writer = (MultiJoinTreeWriter?)typeof(MultiJoinPadTable)
+                    .GetField("_entryWriter", BindingFlags.Instance | BindingFlags.NonPublic)!
+                    .GetValue(op.PadTables[0]);
+                Assert.NotNull(writer);
+                // The key column and the number of the entry: the column the condition reads is not sorted by
+                Assert.Equal(2, writer!.SortCount);
+                Assert.True(writer.Comparer.ColumnOrder.Count > 2);
+            }
+            finally
+            {
+                MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task AGroupWithoutAConditionOnBothSidesOfAKeptSideComparesNothingBeforeTheCopy()
+        {
+            // (a join b on a.k = b.k and a.v < b.v) join c on a.k = c.k
+            var ab = Join(JoinType.Inner, Read("a", 2), Read("b", 2), (0, 2));
+            ab.PostJoinFilter = new ScalarFunction()
+            {
+                ExtensionUrn = FunctionsComparison.Urn,
+                ExtensionName = FunctionsComparison.LessThan,
+                Arguments = new List<Expression>() { Field(1), Field(3) }
+            };
+            var root = Join(JoinType.Inner, ab, Read("c", 2), (0, 4));
+            var plan = MultiJoinPlanBuilder.Discover(root, 5)!;
+            Assert.False(plan.PairConditions);
+            var (stateManager, streamMemory) = await CreateStateManager("inner_no_filter");
+            var op = CreateOperator(plan);
+            await InitOperator(op, stateManager, streamMemory, 0);
+
+            async Task<int> Send(int input, StreamEventBatch batch)
+            {
+                int rows = 0;
+                try
+                {
+                    await foreach (var part in op.OnRecieve(input, batch, 0))
+                    {
+                        part.Data.Rent(1);
+                        rows += part.Data.Weights.Count;
+                        part.Data.Return();
+                    }
+                }
+                finally
+                {
+                    batch.Data.Return();
+                }
+                return rows;
+            }
+
+            await Send(1, Batch(Enumerable.Range(0, 10).Select(x => (1L, (long)x)).ToArray(), Enumerable.Repeat(1, 10).ToArray()));
+            await Send(2, Batch(new[] { (1L, 1L) }, new[] { 1 }));
+            // The four rows of b above 5
+            Assert.Equal(4, await Send(0, Batch(new[] { (1L, 5L) }, new[] { 1 })));
+            Assert.Equal(0, op.FilteredRunsForTests);
+        }
+
+        // Rows stored before a checkpoint are there after the state is set back to it, rows stored after it are not
+        [Fact]
+        public async Task RowsOfACheckpointAreFoundAfterTheStateIsSetBackToIt()
+        {
+            // (a join b on a.k = b.k) join c on a.k = c.k
+            var root = Join(JoinType.Inner, Join(JoinType.Inner, Read("a", 2), Read("b", 2), (0, 2)), Read("c", 2), (0, 4));
+            var plan = MultiJoinPlanBuilder.Discover(root, 5)!;
+            // The file cache storage does not bring a checkpoint back
+            var (stateManager, streamMemory) = await CreateStateManager("rollback", reservoir: true);
+            var op = CreateOperator(plan);
+            await InitOperator(op, stateManager, streamMemory, 0);
+
+            async Task<int> Send(int input, StreamEventBatch batch)
+            {
+                int rows = 0;
+                try
+                {
+                    await foreach (var part in op.OnRecieve(input, batch, 0))
+                    {
+                        part.Data.Rent(1);
+                        rows += part.Data.Weights.Count;
+                        part.Data.Return();
+                    }
+                }
+                finally
+                {
+                    batch.Data.Return();
+                }
+                return rows;
+            }
+
+            await Send(1, Batch(Enumerable.Range(0, 300).Select(x => (1L, (long)x)).ToArray(), Enumerable.Repeat(1, 300).ToArray()));
+            await Send(2, Batch(new[] { (1L, 1L) }, new[] { 1 }));
+            Assert.Equal(300, await Send(0, Batch(new[] { (1L, 50L) }, new[] { 1 })));
+
+            await op.OnCheckpoint();
+            stateManager.Metadata = new StreamState(1, "hash");
+            await stateManager.CheckpointAsync(false);
+
+            // Stored after the checkpoint
+            await Send(1, Batch(Enumerable.Range(0, 20).Select(x => (1L, 1000L + x)).ToArray(), Enumerable.Repeat(1, 20).ToArray()));
+            Assert.Equal(320, await Send(0, Batch(new[] { (1L, 51L) }, new[] { 1 })));
+
+            await stateManager.InitializeAsync();
+            await InitOperator(op, stateManager, streamMemory, 1);
+
+            // The row of a from before the checkpoint joins a new row of b, and a new row of a joins the 300 rows of b
+            Assert.Equal(1, await Send(1, Batch(new[] { (1L, 2000L) }, new[] { 1 })));
+            Assert.Equal(301, await Send(0, Batch(new[] { (1L, 60L) }, new[] { 1 })));
+        }
+
+        // Runs of steps that compared before the copy, over messages of one row of a each. b holds ten rows of the key
+        private async Task<long[]> FilteredRuns(string folder, bool lists, params (int count, Func<int, long> value)[] phases)
+        {
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            try
+            {
+                MultiJoinPlanBuilder.RangeKeys = false;
+                // (a left join b on a.k = b.k and a.v >= b.v) left join c on a.k = c.k
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsComparison.Urn,
+                    ExtensionName = FunctionsComparison.GreaterThanOrEqual,
+                    Arguments = new List<Expression>() { Field(1), Field(3) }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                var (stateManager, streamMemory) = await CreateStateManager(folder);
+                var op = CreateOperator(plan);
+                await InitOperator(op, stateManager, streamMemory, 0);
+
+                StreamEventBatch Rows((long c0, long c1)[] rows)
+                {
+                    if (!lists)
+                    {
+                        return Batch(rows, Enumerable.Repeat(1, rows.Length).ToArray());
+                    }
+                    var col0 = Column.Create(GlobalMemoryManager.Instance);
+                    var col1 = Column.Create(GlobalMemoryManager.Instance);
+                    var weightList = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                    var iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                    for (int i = 0; i < rows.Length; i++)
+                    {
+                        col0.Add(new Int64Value(rows[i].c0));
+                        col1.Add(new ListValue(new Int64Value(rows[i].c1)));
+                        weightList.Add(1);
+                        iterations.Add(0);
+                    }
+                    var batch = new StreamEventBatch(new EventBatchWeighted(weightList, iterations, new EventBatchData(new IColumn[] { col0, col1 })));
+                    batch.Data.Rent(1);
+                    return batch;
+                }
+
+                async Task Send(int input, StreamEventBatch batch)
+                {
+                    try
+                    {
+                        await foreach (var part in op.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+                }
+
+                await Send(1, Rows(Enumerable.Range(0, 10).Select(x => (1L, (long)x)).ToArray()));
+                var runs = new long[phases.Length];
+                for (int p = 0; p < phases.Length; p++)
+                {
+                    long before = op.FilteredRunsForTests;
+                    for (int i = 0; i < phases[p].count; i++)
+                    {
+                        await Send(0, Rows(new[] { (1L, phases[p].value(i)) }));
+                    }
+                    runs[p] = op.FilteredRunsForTests - before;
+                }
+                return runs;
+            }
+            finally
+            {
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+            }
+        }
+
+        [Fact]
+        public async Task ComparingBeforeTheCopyStopsWhileNearlyEveryRowPassesAndComesBackWhenRowsFail()
+        {
+            // Every row of b passes, passes again, then none does
+            var runs = await FilteredRuns("pair_filter_guard", false, (40, i => 100 + i), (40, i => 200 + i), (200, i => -1 - i));
+
+            Assert.True(runs[0] > 0, "The comparison was never made before the copy");
+            Assert.True(runs[1] <= 2, $"Still compared before the copy on {runs[1]} of 40 runs where every row passes");
+            Assert.True(runs[2] > 100, $"Compared before the copy on {runs[2]} of 200 runs where no row passes");
+        }
+
+        [Fact]
+        public async Task ComparingBeforeTheCopyStopsForValuesItCannotCompare()
+        {
+            // Lists are left to the compiled condition
+            var runs = await FilteredRuns("pair_filter_lists", true, (40, i => -1 - i), (40, i => -100 - i));
+
+            Assert.True(runs[0] <= 2, $"Counted {runs[0]} of 40 runs for values the comparison is not made on");
+            Assert.True(runs[1] <= 2, $"Counted {runs[1]} of 40 runs for values the comparison is not made on");
+        }
+
+        // The condition holds for a kept row whose column is null: such a row turns like any other
+        [Theory]
+        [InlineData(1024)]
+        [InlineData(0)]
+        public async Task AKeptRowWithANullInTheConditionLosesItsPaddedRowWhenItGetsAMatch(int memoryKeys)
+        {
+            int memoryKeysBefore = MultiJoinPadTable.MemoryKeys;
+            MultiJoinPadTable.MemoryKeys = memoryKeys;
+            try
+            {
+                // (a left join b on a.k = b.k and (a.v is null or a.v < b.v)) left join c on a.k = c.k
+                var periods = Join(JoinType.Left, Read("a", 2), Read("b", 2), (0, 2));
+                periods.PostJoinFilter = new ScalarFunction()
+                {
+                    ExtensionUrn = FunctionsBoolean.Urn,
+                    ExtensionName = FunctionsBoolean.Or,
+                    Arguments = new List<Expression>()
+                    {
+                        new ScalarFunction() { ExtensionUrn = FunctionsComparison.Urn, ExtensionName = FunctionsComparison.IsNull, Arguments = new List<Expression>() { Field(1) } },
+                        new ScalarFunction() { ExtensionUrn = FunctionsComparison.Urn, ExtensionName = FunctionsComparison.LessThan, Arguments = new List<Expression>() { Field(1), Field(3) } }
+                    }
+                };
+                var root = Join(JoinType.Left, periods, Read("c", 2), (0, 4));
+                var plan = MultiJoinPlanBuilder.Discover(root, 5, null, pairConditions: true)!;
+                var (stateManager, streamMemory) = await CreateStateManager("pair_null_" + memoryKeys);
+                var op = CreateOperator(plan);
+                await InitOperator(op, stateManager, streamMemory, 0);
+
+                var rows = new Dictionary<string, int>();
+                async Task Send(int input, long key, long? value, int weight)
+                {
+                    var keys = Column.Create(GlobalMemoryManager.Instance);
+                    var values = Column.Create(GlobalMemoryManager.Instance);
+                    keys.Add(new Int64Value(key));
+                    if (value == null)
+                    {
+                        values.Add(NullValue.Instance);
+                    }
+                    else
+                    {
+                        values.Add(new Int64Value(value.Value));
+                    }
+                    var weights = new PrimitiveList<int>(GlobalMemoryManager.Instance);
+                    var iterations = new PrimitiveList<uint>(GlobalMemoryManager.Instance);
+                    weights.Add(weight);
+                    iterations.Add(0);
+                    var batch = new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(new IColumn[] { keys, values })));
+                    batch.Data.Rent(1);
+                    try
+                    {
+                        await foreach (var part in op.OnRecieve(input, batch, 0))
+                        {
+                            part.Data.Rent(1);
+                            for (int r = 0; r < part.Data.Weights.Count; r++)
+                            {
+                                var text = string.Join(",", part.Data.EventBatchData.Columns.Select(x => x.GetValueAt(r, default).IsNull ? "null" : x.GetValueAt(r, default).AsLong.ToString()));
+                                rows[text] = rows.GetValueOrDefault(text) + part.Data.Weights[r];
+                            }
+                            part.Data.Return();
+                        }
+                    }
+                    finally
+                    {
+                        batch.Data.Return();
+                    }
+                }
+                string Current() => string.Join("; ", rows.Where(x => x.Value != 0).OrderBy(x => x.Key).Select(x => $"{x.Key} x{x.Value}"));
+
+                await Send(0, 1, null, 1);
+                await Send(0, 2, 9, 1);
+                Assert.Equal("1,null,null,null,null,null x1; 2,9,null,null,null,null x1", Current());
+
+                // The first match of the row with the null, and one that fails for the other row
+                await Send(1, 1, 5, 1);
+                await Send(1, 2, 5, 1);
+                Assert.Equal("1,null,1,5,null,null x1; 2,9,null,null,null,null x1", Current());
+
+                // The match goes again
+                await Send(1, 1, 5, -1);
+                Assert.Equal("1,null,null,null,null,null x1; 2,9,null,null,null,null x1", Current());
+            }
+            finally
+            {
                 MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
             }
         }

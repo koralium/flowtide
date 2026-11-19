@@ -64,6 +64,11 @@ namespace FlowtideDotNet.Core.Optimizer
         public int MultiJoinMaxInputs { get; set; } = 5;
 
         /// <summary>
+        /// Takes joins with a condition on both sides next to their key into multi joins when <see cref="MultiJoin"/> is set, on by default. Changing it changes the state of the stream.
+        /// </summary>
+        public bool MultiJoinPairConditions { get; set; } = true;
+
+        /// <summary>
         /// If set, the plan is split into substreams for distributed mode as the last
         /// optimization step. Merge joins, aggregates and window functions are partitioned
         /// with one partition per substream. Plans that already contain substream statements

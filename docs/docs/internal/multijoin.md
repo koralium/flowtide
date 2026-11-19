@@ -51,6 +51,7 @@ flowtideBuilder.AddPlan(optimized, optimize: false);
 | --- | --- | --- |
 | `MultiJoin` | `true` | Runs chains of joins as multi joins. |
 | `MultiJoinMaxInputs` | `5` | The most tables one multi join takes. A longer chain is split into several multi joins in a row. The lowest value is 3. |
+| `MultiJoinPairConditions` | `true` | Takes joins that compare their two sides next to the key, for example a date between a start and an end date. |
 
 A higher `MultiJoinMaxInputs` saves more state, since every split stores the joined rows that pass from one multi join to the next. How a higher value affects speed depends on the query, so measure before you raise it.
 
@@ -63,14 +64,23 @@ What a join can have next to its equal keys depends on its type:
 | Join | Extra conditions |
 | --- | --- |
 | Inner | Any. |
-| Left, right | Each condition reads columns from one of its two sides only. |
+| Left, right | Any, when the side that can be filled with nulls is one table. |
 | Full outer | None. |
 | `IN`, `EXISTS` | Each condition reads columns from the subquery only. |
 
-These joins stay ordinary joins, also with the setting on:
+A left or right join can compare its two sides, for example:
 
-- A left, right or full outer join with a condition the table above does not allow, for example `LEFT JOIN c ON a.k = c.k AND a.x <> c.x`.
-- A join that compares its two sides with `<`, `<=`, `>` or `>=`, for example `ON a.k = b.k AND a.time < b.time`.
+```sql
+FROM orders o
+LEFT JOIN prices p ON o.product = p.product AND o.date >= p.startDate AND o.date < p.endDate
+```
+
+With `MultiJoinPairConditions` off, such a join stays an ordinary join, and so does any join that compares its two sides with `<`, `<=`, `>` or `>=`.
+
+These joins stay ordinary joins, also with the settings on:
+
+- A full outer join with an extra condition.
+- A left or right join that compares its two sides when the side that can be filled with nulls is itself a join, for example a subquery or a view with a join in it.
 - A join whose key or condition reads a value inside a struct, a map or a list of the rows joined before it. Reading inside a column of a table that is joined directly is fine.
 - A join whose key takes columns from more than one of the tables joined before it, for example `ON c.x = a.x AND c.y = b.y`.
 - Joins inside a recursive query.
@@ -88,7 +98,7 @@ Multi join needs the column store, which is on by default. A stream that has tur
 
 ## Changing the setting on an existing stream
 
-Turning `MultiJoin` on or off, or changing `MultiJoinMaxInputs`, changes how the joins store their rows. A stream cannot continue on the state it had before.
+Turning `MultiJoin` or `MultiJoinPairConditions` on or off, or changing `MultiJoinMaxInputs`, changes how the joins store their rows. A stream cannot continue on the state it had before.
 
 - If the stream takes its version from the plan (`AddVersioningFromPlanHash()`) or has no version set, and keeps its state in Reservoir storage on disk or in a blob store, it gets a new version and reads its sources again from the start. Reservoir storage keeps the state of every version apart.
 - If the stream has a version you set yourself (`AddVersioningFromString("v1")`), it refuses to start and reports that the stored plan hash is different. Give the stream a new version to start it again.

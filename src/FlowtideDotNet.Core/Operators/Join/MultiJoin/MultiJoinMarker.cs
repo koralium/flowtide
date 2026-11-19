@@ -24,10 +24,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// <summary>
         /// Returns the number of groups marked, marks the plan carried before are replaced. Run it on a plan that is not parallelized or distributed.
         /// </summary>
-        public static int Mark(Plan plan, int maxInputs)
+        public static int Mark(Plan plan, int maxInputs, bool pairConditions = false)
         {
             Clear(plan);
-            var visitor = new Visitor(maxInputs);
+            var visitor = new Visitor(maxInputs, pairConditions);
             var loopBodies = MultiJoinLoopBodies.Find(plan);
             for (int i = 0; i < plan.Relations.Count; i++)
             {
@@ -94,16 +94,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 
             public int Groups { get; private set; }
 
-            public Visitor(int maxInputs)
+            private readonly bool _pairConditions;
+
+            public Visitor(int maxInputs, bool pairConditions)
             {
                 _maxInputs = maxInputs;
+                _pairConditions = pairConditions;
             }
 
             public override Relation VisitMergeJoinRelation(MergeJoinRelation mergeJoinRelation, object state)
             {
                 if (_loopDepth == 0)
                 {
-                    var plan = MultiJoinPlanBuilder.Discover(mergeJoinRelation, _maxInputs);
+                    var plan = MultiJoinPlanBuilder.Discover(mergeJoinRelation, _maxInputs, null, _pairConditions);
                     if (plan != null)
                     {
                         Groups++;
