@@ -15,6 +15,7 @@ using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
 using FlowtideDotNet.Core.Optimizer.EmitPushdown;
 using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
@@ -81,6 +82,74 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             return ColumnBooleanCompiler.Compile(copy, functionsRegister);
         }
 
+        // The condition reads a value inside a column, a field of a struct or a key of a map
+        public bool ReadsInside => _readsInside ??= InsideFinder.Find(Condition);
+
+        private bool? _readsInside;
+
+        private sealed class InsideFinder : ExpressionVisitor<object?, object?>
+        {
+            private bool _found;
+
+            public static bool Find(Expression expression)
+            {
+                var finder = new InsideFinder();
+                finder.Visit(expression, null);
+                return finder._found;
+            }
+
+            public override object? VisitDirectFieldReference(DirectFieldReference directFieldReference, object? state)
+            {
+                _found |= directFieldReference.ReferenceSegment.Child != null;
+                return base.VisitDirectFieldReference(directFieldReference, state);
+            }
+        }
+
+        // Set when the condition is one comparison of two columns
+        public MultiJoinCompare? Compare
+        {
+            get
+            {
+                if (!_compareLooked)
+                {
+                    _compareLooked = true;
+                    _compare = FindCompare();
+                }
+                return _compare;
+            }
+        }
+
+        private bool _compareLooked;
+        private MultiJoinCompare? _compare;
+
+        private MultiJoinCompare? FindCompare()
+        {
+            if (Condition is not ScalarFunction function || function.ExtensionUrn != FunctionsComparison.Urn || function.Arguments.Count != 2 ||
+                function.Arguments[0] is not DirectFieldReference { ReferenceSegment: StructReferenceSegment left } ||
+                function.Arguments[1] is not DirectFieldReference { ReferenceSegment: StructReferenceSegment right } ||
+                left.Child != null || right.Child != null)
+            {
+                // Also when it reads a value inside a column: only the compiled condition knows how
+                return null;
+            }
+            MultiJoinCompareOp op;
+            switch (function.ExtensionName)
+            {
+                case FunctionsComparison.Equal: op = MultiJoinCompareOp.Equal; break;
+                case FunctionsComparison.NotEqual: op = MultiJoinCompareOp.NotEqual; break;
+                case FunctionsComparison.LessThan: op = MultiJoinCompareOp.LessThan; break;
+                case FunctionsComparison.LessThanOrEqual: op = MultiJoinCompareOp.LessThanOrEqual; break;
+                case FunctionsComparison.GreaterThan: op = MultiJoinCompareOp.GreaterThan; break;
+                case FunctionsComparison.GreaterThanOrEqual: op = MultiJoinCompareOp.GreaterThanOrEqual; break;
+                default: return null;
+            }
+            if (left.Field >= Columns.Count || right.Field >= Columns.Count || Columns[left.Field].IsMark || Columns[right.Field].IsMark)
+            {
+                return null;
+            }
+            return new MultiJoinCompare(Columns[left.Field], op, Columns[right.Field]);
+        }
+
         private MultiJoinColumn[] FindReads()
         {
             var usage = new ExpressionFieldUsageVisitor(int.MaxValue);
@@ -94,6 +163,21 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             return reads;
         }
     }
+
+    internal enum MultiJoinCompareOp
+    {
+        Equal,
+        NotEqual,
+        LessThan,
+        LessThanOrEqual,
+        GreaterThan,
+        GreaterThanOrEqual
+    }
+
+    /// <summary>
+    /// A condition that compares one column with another.
+    /// </summary>
+    internal readonly record struct MultiJoinCompare(MultiJoinColumn Left, MultiJoinCompareOp Op, MultiJoinColumn Right);
 
     /// <summary>
     /// A node of the flattened join tree, a leaf is one input.
@@ -114,6 +198,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 
         // Rows of the right side without a match come out with nulls for the left side
         public bool PadLeft { get; init; }
+
+        // A condition reads both sides: whether a kept row has a match is decided per row, not per key
+        public bool PadPerRow { get; set; }
+
+        // A key of the join with a range comparison was read as a condition
+        public bool RangeKey { get; set; }
 
         // Rows of the left side come out once, with a column telling whether they have a match
         public bool IsMark { get; init; }
@@ -185,6 +275,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
     internal sealed class MultiJoinPlan
     {
         public List<MultiJoinInput> Inputs { get; } = new List<MultiJoinInput>();
+
+        // A lookup may take a range comparison of its join into its key, which orders the tree by that column too
+        public bool RangeKeys { get; set; }
+
+        // A join of the group has a range key, or keeps unmatched rows with a condition on both sides
+        public bool PairConditions { get; set; }
 
         public MultiJoinNode Root { get; set; } = null!;
 

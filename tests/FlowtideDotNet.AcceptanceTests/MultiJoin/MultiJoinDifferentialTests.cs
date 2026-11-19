@@ -13,6 +13,7 @@
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core.Operators.Join.MultiJoin;
+using FlowtideDotNet.Core.Optimizer;
 using Xunit.Abstractions;
 using Xunit.Sdk;
 
@@ -189,7 +190,45 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
                 FROM companies c
                 LEFT JOIN users u ON c.companyId = u.companyId AND u.visits > 3
                 LEFT JOIN orders o ON u.userkey = o.userkey",
+            // A range on both sides next to the key: several users per key, visits is the start of a period of 40 order keys
+            ["pairLeft3"] = @"
+                INSERT INTO output
+                SELECT o.orderkey, u.userkey, c.name
+                FROM orders o
+                LEFT JOIN users u ON o.userkey = u.managerKey AND o.orderkey >= u.visits AND o.orderkey < u.visits + 40
+                LEFT JOIN companies c ON u.companyId = c.companyId",
+            ["pairInner3"] = @"
+                INSERT INTO output
+                SELECT o.orderkey, u.userkey, c.name
+                FROM orders o
+                INNER JOIN users u ON o.userkey = u.managerKey AND o.orderkey >= u.visits AND o.orderkey < u.visits + 40
+                LEFT JOIN companies c ON u.companyId = c.companyId",
+            // The same with the kept side on the right
+            ["pairRight3"] = @"
+                INSERT INTO output
+                SELECT o.orderkey, u.userkey, pm.projectMemberKey
+                FROM users u
+                RIGHT JOIN orders o ON o.userkey = u.managerKey AND o.orderkey >= u.visits AND o.orderkey < u.visits + 40
+                LEFT JOIN projectmembers pm ON pm.userkey = o.userkey",
+            // The kept side is a join: the key is on one of its inputs and the range reads the other
+            ["pairJoinedKept4"] = @"
+                INSERT INTO output
+                SELECT pm.projectMemberKey, o.orderkey, u.userkey, c.name
+                FROM projectmembers pm
+                INNER JOIN orders o ON o.userkey = pm.userkey
+                LEFT JOIN users u ON pm.userkey = u.managerKey AND o.orderkey >= u.visits AND o.orderkey < u.visits + 40
+                LEFT JOIN companies c ON u.companyId = c.companyId",
+            // A condition on both sides that is no range, with an inner join keyed on the padded side above it
+            ["pairNotEqual3"] = @"
+                INSERT INTO output
+                SELECT o.orderkey, u.userkey, c.name
+                FROM orders o
+                LEFT JOIN users u ON o.userkey = u.managerKey AND o.orderkey <> u.visits
+                INNER JOIN companies c ON u.companyId = c.companyId",
         };
+
+        // These templates need the setting that is not finished
+        private static bool HasPairCondition(string template) => template.StartsWith("pair", StringComparison.Ordinal);
 
         // More seeds for a qualification run: FLOWTIDE_MULTIJOIN_SEEDS=200
         private static int SeedCount => int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_MULTIJOIN_SEEDS"), out var seeds) ? seeds : 2;
@@ -280,6 +319,19 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
             // The other seeds look every later join up beside the one before it, as when a lookup waits for a page
             bool lookupsBefore = MultiJoinOperator.ParallelLookupsAlways;
             MultiJoinOperator.ParallelLookupsAlways = seed % 2 == 1;
+            bool pair = HasPairCondition(template);
+            // Half the seeds keep no entry of a pad table in memory
+            int memoryKeysBefore = MultiJoinPadTable.MemoryKeys;
+            if (pair && seed % 2 == 0)
+            {
+                MultiJoinPadTable.MemoryKeys = 0;
+            }
+            // With these templates every third seed runs without a range in the keys, the others with it as a stream does
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            if (pair && seed % 3 == 0)
+            {
+                MultiJoinPlanBuilder.RangeKeys = false;
+            }
             await using var chain = new FlowtideTestStream(name + "/chain") { MultiJoinMaxInputs = 0 };
             await using var multi = new FlowtideTestStream(name + "/multi") { MultiJoinMaxInputs = maxInputs };
             try
@@ -290,6 +342,14 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
                 var companies = InArrivalOrder(source.Companies, arrival, random);
                 var projects = InArrivalOrder(source.Projects, arrival, random);
                 var members = InArrivalOrder(source.ProjectMembers, arrival, random);
+                if (pair)
+                {
+                    // The periods lie among the keys the orders have, some users have none
+                    foreach (var user in users)
+                    {
+                        user.Visits = random.Next(5) == 0 ? null : orders[random.Next(orders.Count)].OrderKey - random.Next(30);
+                    }
+                }
                 foreach (var stream in streams)
                 {
                     foreach (var company in companies) stream.AddOrUpdateCompany(company);
@@ -301,7 +361,7 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
 
                 await Task.WhenAll(
                     chain.StartStream(Templates[template], ignoreSameDataCheck: true),
-                    multi.StartStream(Templates[template], ignoreSameDataCheck: true));
+                    multi.StartStream(Templates[template], ignoreSameDataCheck: true, planOptimizerSettings: pair ? new PlanOptimizerSettings() { MultiJoinPairConditions = true } : null));
                 Assert.True(multi.MultiJoinGroupsMarked > 0, "The query did not become a multi join");
                 Assert.Equal(0, chain.MultiJoinGroupsMarked);
                 await WaitForEqualResults(chain, multi, "the initial load");
@@ -321,6 +381,11 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
                                 {
                                     var user = users[random.Next(users.Count)];
                                     user.FirstName = "name" + random.Next(1000);
+                                    if (pair)
+                                    {
+                                        // The period moves, to nothing now and then
+                                        user.Visits = random.Next(4) == 0 ? null : orders[random.Next(orders.Count)].OrderKey - random.Next(30);
+                                    }
                                     foreach (var stream in streams) stream.AddOrUpdateUser(user);
                                     steps.Add("user payload");
                                     break;
@@ -412,12 +477,30 @@ namespace FlowtideDotNet.AcceptanceTests.MultiJoin
                     await WaitForEqualResults(chain, multi, description);
                 }
                 Assert.True(chain.GetActualRowsAsVectors().Count > 0, "The query gave no rows, the comparison says nothing");
+                if (pair)
+                {
+                    // Orders inside a period and, for the joins that keep them, orders outside every period
+                    var rows = chain.GetActualRowsAsVectors();
+                    int userColumn = template == "pairJoinedKept4" ? 2 : 1;
+                    int matched = 0;
+                    for (int r = 0; r < rows.Count; r++)
+                    {
+                        if (!rows.Columns[userColumn].GetValueAt(r, default).IsNull)
+                        {
+                            matched++;
+                        }
+                    }
+                    Assert.True(matched > 0, "No order was in a period");
+                    Assert.True(template == "pairInner3" || template == "pairNotEqual3" || matched < rows.Count, "No order was outside every period");
+                }
             }
             finally
             {
                 MultiJoinOperator.RowBudget = budgetBefore;
                 MultiJoinOperator.ParallelInsertMinRows = minRowsBefore;
                 MultiJoinOperator.ParallelLookupsAlways = lookupsBefore;
+                MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
             }
         }
     }

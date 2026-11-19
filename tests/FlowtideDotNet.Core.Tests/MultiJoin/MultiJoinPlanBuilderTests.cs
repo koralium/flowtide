@@ -565,12 +565,12 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                 SELECT o.orderkey, u.name, c.name
                 FROM orders o
                 INNER JOIN users u ON o.userkey = u.userkey
-                LEFT JOIN companies c ON u.companyid = c.companyid AND o.amount <> c.name;"));
+                FULL OUTER JOIN companies c ON u.companyid = c.companyid AND o.amount <> c.name;"));
             root.MultiJoinGroup = 1;
             ((MergeJoinRelation)root.Left).MultiJoinGroup = 1;
 
             var exception = Assert.Throws<InvalidOperationException>(() => MultiJoinPlanBuilder.Build(root));
-            Assert.Contains("condition on both sides of a left join", exception.Message);
+            Assert.Contains("condition on a Outer join", exception.Message);
         }
 
         [Fact]

@@ -53,9 +53,9 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             INNER JOIN d7 a7 ON f.k7 = a7.k
             INNER JOIN d8 a8 ON f.k8 = a8.k;";
 
-        private MultiJoinReport Report(string sql, int maxInputs = 5, string tables = MultiJoinPlanBuilderTests.Tables)
+        private MultiJoinReport Report(string sql, int maxInputs = 5, string tables = MultiJoinPlanBuilderTests.Tables, bool pairConditions = false)
         {
-            var report = MultiJoinReport.Create(MultiJoinPlanBuilderTests.Optimized(sql, tables), maxInputs);
+            var report = MultiJoinReport.Create(MultiJoinPlanBuilderTests.Optimized(sql, tables), maxInputs, pairConditions);
             _output.WriteLine(report.ToString());
             return report;
         }
@@ -230,6 +230,32 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             Assert.Equal(2, report.LeftOut.Values.Sum());
             Assert.Equal(1, report.LeftOut["key from several inputs"]);
             Assert.Equal(1, report.LeftOut["fewer than three inputs"]);
+        }
+
+        private const string PeriodTables = @"
+            CREATE TABLE table1 (key any, date any, other any, v any);
+            CREATE TABLE table2 (key any, startDate any, endDate any, v any);
+            CREATE TABLE table3 (other any, v any);
+        ";
+
+        [Theory]
+        [InlineData("LEFT", "t1.date >= t2.startDate AND t1.date < t2.endDate")]
+        [InlineData("INNER", "t1.date >= t2.startDate AND t1.date < t2.endDate")]
+        [InlineData("LEFT", "t1.v <> t2.v")]
+        public void AJoinWithAConditionOnBothSidesNextToItsKeyIsTakenIntoAGroup(string type, string condition)
+        {
+            string sql = $@"
+                INSERT INTO output
+                SELECT t1.v, t2.v, t3.v FROM table1 t1
+                {type} JOIN table2 t2 ON t1.key = t2.key AND {condition}
+                LEFT JOIN table3 t3 ON t1.other = t3.other;";
+            // Without the setting the join stays an ordinary one
+            Assert.Empty(Report(sql, 5, PeriodTables).Groups);
+            var report = Report(sql, 5, PeriodTables, pairConditions: true);
+
+            Assert.Equal(2, report.MergeJoinCount);
+            Assert.Empty(report.LeftOut);
+            Assert.Equal(3, Assert.Single(report.Groups).InputCount);
         }
 
         [Fact]

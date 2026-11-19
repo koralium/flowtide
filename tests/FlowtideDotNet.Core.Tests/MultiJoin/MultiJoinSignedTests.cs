@@ -624,9 +624,9 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
             Assert.True(differences.Count == 0, $"After {step}: {differences.Count} rows differ, first ones: {string.Join("; ", differences.Take(5))}");
         }
 
-        private async Task Run(MergeJoinRelation root, int seed, int rowBudget, int keyDomain)
+        private async Task Run(MergeJoinRelation root, int seed, int rowBudget, int keyDomain, bool pairConditions = false)
         {
-            var plan = MultiJoinPlanBuilder.Discover(root, 9);
+            var plan = MultiJoinPlanBuilder.Discover(root, 9, null, pairConditions);
             Assert.NotNull(plan);
             int budgetBefore = MultiJoinOperator.RowBudget;
             MultiJoinOperator.RowBudget = rowBudget;
@@ -1235,6 +1235,112 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                     (0, new[] { Row(-1, 1, 7) }));
                 Assert.InRange(op.MaxPartRows, 1, rowBudget);
             });
+        }
+
+        // a(k, v), b(k, j, v), c(j, v). A condition reads both sides of a join that keeps unmatched rows
+        private static MergeJoinRelation PairPlan(string name)
+        {
+            switch (name)
+            {
+                case "pairLeft":
+                    // The join above is keyed on the padded side
+                    return LeftJoin(On(LeftJoin(Read("a", 2), Read("b", 3), (0, 2)), (1, FunctionsComparison.GreaterThanOrEqual, 4)), Read("c", 2), (3, 5));
+                case "pairLeftTwice":
+                    return LeftJoin(On(LeftJoin(Read("a", 2), Read("b", 3), (0, 2)), (1, FunctionsComparison.GreaterThanOrEqual, 4), (1, FunctionsComparison.NotEqual, 3)), Read("c", 2), (3, 5));
+                case "pairLeftUnderInner":
+                    // The join above is keyed on the kept side
+                    return Join(On(LeftJoin(Read("a", 2), Read("b", 3), (0, 2)), (1, FunctionsComparison.LessThan, 4)), Read("c", 2), (0, 5));
+                case "pairRight":
+                    // b is filled with nulls, a is kept
+                    return Join(On(Typed(JoinType.Right, Read("b", 3), Read("a", 2), (0, 3)), (2, FunctionsComparison.NotEqual, 4)), Read("c", 2), (3, 5));
+                case "pairJoinedKept":
+                    // The kept side is a join, the key is on a and the condition reads c
+                    return On(LeftJoin(Join(Read("a", 2), Read("c", 2), (0, 2)), Read("b", 3), (0, 4)), (3, FunctionsComparison.GreaterThanOrEqual, 6));
+                case "pairOverLeft":
+                    // The kept side holds padded rows of the join below
+                    return On(LeftJoin(LeftJoin(Read("a", 2), Read("c", 2), (0, 2)), Read("b", 3), (0, 4)), (3, FunctionsComparison.LessThan, 6));
+                default:
+                    throw new ArgumentException(name);
+            }
+        }
+
+        public static IEnumerable<object[]> PairPlans()
+        {
+            int count = int.TryParse(Environment.GetEnvironmentVariable("FLOWTIDE_MULTIJOIN_SEEDS"), out var seeds) ? seeds : 5;
+            foreach (var plan in new[] { "pairLeft", "pairLeftTwice", "pairLeftUnderInner", "pairRight", "pairJoinedKept", "pairOverLeft" })
+            {
+                foreach (var rowBudget in new[] { MultiJoinOperator.DefaultRowBudget, 1 })
+                {
+                    for (int seed = 1; seed <= count; seed++)
+                    {
+                        // Half the seeds keep no entry of a pad table in memory
+                        yield return new object[] { plan, rowBudget, seed, seed % 2 == 0 ? 0 : MultiJoinPadTable.MemoryKeys };
+                    }
+                }
+            }
+        }
+
+        [Theory]
+        [MemberData(nameof(PairPlans))]
+        public async Task ConditionsOnBothSidesOfAJoinThatKeepsUnmatchedRows(string plan, int rowBudget, int seed, int memoryKeys)
+        {
+            var root = PairPlan(plan);
+            var leftOut = new List<MultiJoinLeftOut>();
+            Assert.Null(MultiJoinPlanBuilder.Discover(PairPlan(plan), 9));
+            var discovered = MultiJoinPlanBuilder.Discover(root, 9, leftOut, pairConditions: true);
+            Assert.NotNull(discovered);
+            Assert.Empty(leftOut);
+            Assert.Equal(3, discovered.Inputs.Count);
+            int memoryKeysBefore = MultiJoinPadTable.MemoryKeys;
+            bool rangeKeysBefore = MultiJoinPlanBuilder.RangeKeys;
+            MultiJoinPadTable.MemoryKeys = memoryKeys;
+            // Seeds 1, 2 and 5 take the range into the key as a stream does, the others run without it
+            MultiJoinPlanBuilder.RangeKeys = !(seed % 3 == 0 || seed == 4);
+            long rangeLookupsBefore = Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests);
+            try
+            {
+                await Run(root, seed, rowBudget, 4, pairConditions: true);
+                if (MultiJoinPlanBuilder.RangeKeys && plan.StartsWith("pairLeft", StringComparison.Ordinal))
+                {
+                    // In these plans the bound is on a column of the input that holds the key, so a lookup can take it
+                    Assert.True(Interlocked.Read(ref MultiJoinCursor.RangeLookupsForTests) > rangeLookupsBefore, "No lookup took the range into its key");
+                }
+            }
+            finally
+            {
+                MultiJoinPadTable.MemoryKeys = memoryKeysBefore;
+                MultiJoinPlanBuilder.RangeKeys = rangeKeysBefore;
+            }
+        }
+
+        [Fact]
+        public void AComparisonOfValuesInsideColumnsIsNotCheckedBeforeTheCopy()
+        {
+            Expression Inside(int field) => new DirectFieldReference()
+            {
+                ReferenceSegment = new StructReferenceSegment() { Field = field, Child = new StructReferenceSegment() { Field = 0 } }
+            };
+            Expression Whole(int field) => new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = field } };
+            var columns = new List<MultiJoinColumn>() { new MultiJoinColumn(0, 0), new MultiJoinColumn(0, 1), new MultiJoinColumn(1, 0), new MultiJoinColumn(1, 1) };
+            MultiJoinCheck Check(Expression left, Expression right) => new MultiJoinCheck()
+            {
+                Condition = new ScalarFunction() { ExtensionUrn = FunctionsComparison.Urn, ExtensionName = FunctionsComparison.NotEqual, Arguments = new List<Expression>() { left, right } },
+                Columns = columns
+            };
+
+            Assert.NotNull(Check(Whole(1), Whole(3)).Compare);
+            Assert.Null(Check(Inside(1), Whole(3)).Compare);
+            Assert.Null(Check(Whole(1), Inside(3)).Compare);
+        }
+
+        [Fact]
+        public void AConditionOnBothSidesLeavesTheJoinOutWhenTheSideFilledWithNullsIsAJoin()
+        {
+            // l left join (b join c), the condition compares l with c
+            var root = On(LeftJoin(Read("l", 2), Join(Read("b", 3), Read("c", 2), (1, 3)), (0, 2)), (1, FunctionsComparison.LessThan, 6));
+            var leftOut = new List<MultiJoinLeftOut>();
+            Assert.Null(MultiJoinPlanBuilder.Discover(root, 9, leftOut, pairConditions: true));
+            Assert.Contains(leftOut, x => x.Join == root && x.Reason == "condition on both sides, the side filled with nulls is a join");
         }
 
         [Fact]

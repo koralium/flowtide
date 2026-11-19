@@ -59,12 +59,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// </summary>
         public static MultiJoinReport Create(Plan plan, int maxInputs)
         {
+            return Create(plan, maxInputs, true);
+        }
+
+        /// <summary>
+        /// The same with the joins the setting for conditions on both sides lets in.
+        /// </summary>
+        public static MultiJoinReport Create(Plan plan, int maxInputs, bool pairConditions)
+        {
             if (maxInputs < MultiJoinPlanBuilder.MinInputs)
             {
                 throw new ArgumentOutOfRangeException(nameof(maxInputs), $"A multi join needs room for at least {MultiJoinPlanBuilder.MinInputs} inputs.");
             }
             var report = new MultiJoinReport();
-            var visitor = new Visitor(report, maxInputs);
+            var visitor = new Visitor(report, maxInputs, pairConditions);
             var loopBodies = MultiJoinLoopBodies.Find(plan);
             for (int i = 0; i < plan.Relations.Count; i++)
             {
@@ -106,9 +114,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             private readonly int _maxInputs;
             private int _loopDepth;
 
-            public Visitor(MultiJoinReport report, int maxInputs)
+            private readonly bool _pairConditions;
+
+            public Visitor(MultiJoinReport report, int maxInputs, bool pairConditions)
             {
                 _report = report;
+                _pairConditions = pairConditions;
                 _maxInputs = maxInputs;
             }
 
@@ -136,7 +147,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
 
                 var leftOut = new List<MultiJoinLeftOut>();
-                var plan = MultiJoinPlanBuilder.Discover(mergeJoinRelation, _maxInputs, leftOut);
+                var plan = MultiJoinPlanBuilder.Discover(mergeJoinRelation, _maxInputs, leftOut, _pairConditions);
                 foreach (var entry in leftOut)
                 {
                     AddLeftOut(entry.Join, entry.Reason);

@@ -20,6 +20,7 @@ using FlowtideDotNet.Storage.Serializers;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using System.Runtime.InteropServices;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 {
@@ -95,17 +96,132 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// </summary>
         public bool IsExhausted => _exhausted;
 
+        // Rows of the tree met for the key rows since the count was taken, before any comparison
+        private long _scanned;
+
+        // Of the rows that were compared before the copy, how many, and how many passed
+        private long _compared;
+        private long _passed;
+
+        public long TakeScanned()
+        {
+            long scanned = _scanned;
+            _scanned = 0;
+            return scanned;
+        }
+
+        // The share of compared rows that passed since the last call, -1 when none was compared
+        public float TakePassRate()
+        {
+            float rate = _compared == 0 ? -1 : (float)_passed / _compared;
+            _compared = 0;
+            _passed = 0;
+            return rate;
+        }
+
+        /// <summary>
+        /// Rows scanned by lookups that count, summed over every lookup, for tests.
+        /// </summary>
+        internal static long ScannedForTests;
+
+        // Comparisons a row of the tree has to pass with the key row it was found for, checked before it is copied
+        private IColumn[]? _filterColumns;
+        private MultiJoinStepCompare[]? _filter;
+        private readonly DataValueContainer _filterLeft = new DataValueContainer();
+        private readonly DataValueContainer _filterRight = new DataValueContainer();
+
+        /// <summary>
+        /// Per comparison a column with one value per key row. Null for a lookup without comparisons.
+        /// </summary>
+        public void SetFilter(IColumn[]? columns, MultiJoinStepCompare[]? compares)
+        {
+            _filterColumns = columns;
+            _filter = columns == null ? null : compares;
+        }
+
+        // The rows of a leaf for one key row, for a step that compares before it copies
+        private int CollectCounted(MultiJoinFrame target, EventBatchData leafData, MultiJoinWeightContainer values, int lower, int take, int leafCount)
+        {
+            _scanned += take;
+            bool filter = _filter != null && FilterReadsPlain(leafData);
+            int before = target.Count;
+            for (int k = lower; k < lower + take; k++)
+            {
+                if (filter && !Passes(leafData, k, _keyRow))
+                {
+                    continue;
+                }
+                _leafIndices[leafCount++] = k;
+                target.Parent[target.Count] = _keyRow;
+                target.Weight[target.Count] = values.Get(k).Value;
+                target.Count++;
+            }
+            if (filter)
+            {
+                _compared += take;
+                _passed += target.Count - before;
+            }
+            return leafCount;
+        }
+
+        // Lists, maps, structs and columns of several types are read as an object per value, they are left to the compiled condition
+        private bool FilterReadsPlain(EventBatchData leafData)
+        {
+            var filter = _filter!;
+            for (int i = 0; i < filter.Length; i++)
+            {
+                if (!IsPlain(leafData.Columns[filter[i].Column].Type) || !IsPlain(_filterColumns![i].Type))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // A null on either side fails, as it does in the compiled comparison
+        private bool Passes(EventBatchData leafData, int leafRow, int keyRow)
+        {
+            var filter = _filter!;
+            var columns = _filterColumns!;
+            for (int i = 0; i < filter.Length; i++)
+            {
+                columns[i].GetValueAt(keyRow, _filterLeft, default);
+                leafData.Columns[filter[i].Column].GetValueAt(leafRow, _filterRight, default);
+                if (_filterLeft.IsNull || _filterRight.IsNull)
+                {
+                    return false;
+                }
+                int compared = FlowtideDotNet.Core.ColumnStore.Comparers.DataValueComparer.CompareTo(_filterLeft, _filterRight);
+                bool passes;
+                switch (filter[i].Op)
+                {
+                    case MultiJoinCompareOp.Equal: passes = compared == 0; break;
+                    case MultiJoinCompareOp.NotEqual: passes = compared != 0; break;
+                    case MultiJoinCompareOp.LessThan: passes = compared < 0; break;
+                    case MultiJoinCompareOp.LessThanOrEqual: passes = compared <= 0; break;
+                    case MultiJoinCompareOp.GreaterThan: passes = compared > 0; break;
+                    default: passes = compared >= 0; break;
+                }
+                if (!passes)
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public MultiJoinTreeLookup(
             IBPlusTree<ColumnRowReference, MultiJoinWeight, ColumnKeyStorageContainer, MultiJoinWeightContainer> tree,
             List<int> treeColumns,
-            bool matchNulls = false)
+            bool matchNulls = false,
+            List<JoinComparisonType>? comparisonTypes = null)
         {
             var keyPositions = new List<int>(treeColumns.Count);
             for (int i = 0; i < treeColumns.Count; i++)
             {
                 keyPositions.Add(i);
             }
-            _searcher = tree.CreateBulkSearcher(new MultiJoinSearchComparer(treeColumns, keyPositions) { MatchNulls = matchNulls });
+            _searcher = tree.CreateBulkSearcher(new MultiJoinSearchComparer(treeColumns, keyPositions, comparisonTypes) { MatchNulls = matchNulls });
             _sorter = new BatchSorter(treeColumns.Count);
             _keyColumns = new IColumn[treeColumns.Count];
             // The key rows are addressed through one batch object, its columns are swapped per lookup
@@ -348,12 +464,19 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                         Array.Resize(ref _leafIndices, Math.Max(leafCount + take, _leafIndices.Length * 2));
                     }
                     target.EnsureCapacity(target.Count + take);
-                    for (int k = lower; k < lower + take; k++)
+                    if (_filter != null)
                     {
-                        _leafIndices[leafCount++] = k;
-                        target.Parent[target.Count] = _keyRow;
-                        target.Weight[target.Count] = values.Get(k).Value;
-                        target.Count++;
+                        leafCount = CollectCounted(target, leaf.keys._data, values, lower, take, leafCount);
+                    }
+                    else
+                    {
+                        for (int k = lower; k < lower + take; k++)
+                        {
+                            _leafIndices[leafCount++] = k;
+                            target.Parent[target.Count] = _keyRow;
+                            target.Weight[target.Count] = values.Get(k).Value;
+                            target.Count++;
+                        }
                     }
                     if (lower + take > upper)
                     {
@@ -438,6 +561,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             _exhausted = true;
             Array.Clear(_refs, 0, _count);
             Array.Clear(_keyColumns);
+            _filterColumns = null;
+            _filter = null;
             return target.Count > 0;
         }
 
@@ -449,6 +574,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             _searcher.Dispose();
             _leafOpen = false;
             _exhausted = true;
+            _filterColumns = null;
+            _filter = null;
             Array.Clear(_refs, 0, _count);
             Array.Clear(_keyColumns);
         }
@@ -465,6 +592,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         public required BatchSorter Sorter { get; init; }
         public required IColumn[] SortColumns { get; init; }
         public required int ColumnCount { get; init; }
+
+        // The leading columns of the order a batch is sorted by. Fewer than all when they already tell every row apart
+        public required int SortCount { get; init; }
 
         public ColumnRowReference[] Refs = Array.Empty<ColumnRowReference>();
         public MultiJoinWeight[] Values = Array.Empty<MultiJoinWeight>();
@@ -494,7 +624,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 Refs[i] = new ColumnRowReference() { referenceBatch = batch, RowIndex = i };
                 Sorted[i] = i;
             }
-            for (int i = 0; i < Comparer.ColumnOrder.Count; i++)
+            for (int i = 0; i < SortCount; i++)
             {
                 SortColumns[i] = batch.Columns[Comparer.ColumnOrder[i]];
             }
@@ -654,6 +784,26 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// </summary>
         public IColumn[] KeyColumns => _secondary != null ? _secondary.Lookup.KeyColumns : _primary.KeyColumns;
 
+        // Through a second index the rows of the tree are found for its entries, not for the key rows the columns are for
+        public bool TakesFilter => _secondary == null;
+
+        public void SetFilter(IColumn[]? columns, MultiJoinStepCompare[]? compares)
+        {
+            _primary.SetFilter(_secondary == null ? columns : null, compares);
+        }
+
+        public long TakeScanned()
+        {
+            long scanned = _primary.TakeScanned();
+            if (scanned != 0)
+            {
+                Interlocked.Add(ref MultiJoinTreeLookup.ScannedForTests, scanned);
+            }
+            return scanned;
+        }
+
+        public float TakePassRate() => _primary.TakePassRate();
+
         public ValueTask Start(int count)
         {
             _primaryActive = false;
@@ -780,9 +930,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             _index = index;
         }
 
-        internal static async Task<MultiJoinTreeWriter> CreateWriter(IStateManagerClient client, string name, List<int> order, int columnCount, IMemoryAllocator allocator, bool ephemeral = false)
+        internal static async Task<MultiJoinTreeWriter> CreateWriter(IStateManagerClient client, string name, List<int> order, int columnCount, IMemoryAllocator allocator, bool ephemeral = false, bool orderIsUnique = false)
         {
             var comparer = new MergeJoinInsertComparer(order, columnCount);
+            // Columns after an order that is unique are never compared between two rows, and a sort would read them comparing a row with itself
+            int sortCount = orderIsUnique ? order.Count : comparer.ColumnOrder.Count;
             var options = new BPlusTreeOptions<ColumnRowReference, MultiJoinWeight, ColumnKeyStorageContainer, MultiJoinWeightContainer>()
             {
                 Comparer = comparer,
@@ -797,8 +949,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 Tree = tree,
                 Inserter = tree.CreateBulkInserter(),
                 Comparer = comparer,
-                Sorter = new BatchSorter(comparer.ColumnOrder.Count),
-                SortColumns = new IColumn[comparer.ColumnOrder.Count],
+                Sorter = new BatchSorter(sortCount),
+                SortColumns = new IColumn[sortCount],
+                SortCount = sortCount,
                 ColumnCount = columnCount
             };
         }
@@ -829,6 +982,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 };
             }
 
+            // They read the trees of the start before this one
+            _rangeLookups.Clear();
             _lookups = new MultiJoinInputLookup[Plan.KeyLists.Count];
             _besideLookups = new MultiJoinInputLookup[Plan.KeyLists.Count];
             for (int j = 0; j < _lookups.Length; j++)
@@ -838,11 +993,21 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             }
         }
 
-        internal MultiJoinInputLookup CreateLookup(int j)
+        internal MultiJoinInputLookup CreateLookup(int j, JoinComparisonType? range = null, bool matchNulls = false)
         {
             int secondary = Plan.SecondaryOf[j];
+            List<JoinComparisonType>? types = null;
+            if (range != null)
+            {
+                if (secondary >= 0)
+                {
+                    throw new InvalidOperationException("A lookup with a range goes straight to the tree of its input.");
+                }
+                // The last key column is the bound, the ones before it are equal
+                types = Enumerable.Repeat(JoinComparisonType.Equal, Plan.PrefixLengths[j] - 1).Append(range.Value).ToList();
+            }
             // Coming from a secondary entry the key is the stored values of the row, nulls among them
-            var primaryLookup = new MultiJoinTreeLookup(_primary!.Tree, Plan.PrimaryOrder.GetRange(0, Plan.PrefixLengths[j]), matchNulls: secondary >= 0);
+            var primaryLookup = new MultiJoinTreeLookup(_primary!.Tree, Plan.PrimaryOrder.GetRange(0, Plan.PrefixLengths[j]), matchNulls: secondary >= 0 || matchNulls, types);
             MultiJoinSecondaryLookup? secondaryLookup = null;
             if (secondary >= 0)
             {
@@ -855,7 +1020,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
                 secondaryLookup = new MultiJoinSecondaryLookup()
                 {
-                    Lookup = new MultiJoinTreeLookup(index.Writer.Tree, index.AllColumns.GetRange(0, Plan.KeyLists[j].Length)),
+                    Lookup = new MultiJoinTreeLookup(index.Writer.Tree, index.AllColumns.GetRange(0, Plan.KeyLists[j].Length), matchNulls),
                     PrefixPositions = prefixPositions,
                     AllColumns = index.AllColumns
                 };
@@ -868,6 +1033,24 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// </summary>
         public MultiJoinInputLookup GetLookup(int keyList) => _lookups[keyList];
 
+        // Lookups with a range or that find nulls, made when a step asks for one
+        private readonly Dictionary<(int, int, bool, bool), MultiJoinInputLookup> _rangeLookups = new Dictionary<(int, int, bool, bool), MultiJoinInputLookup>();
+
+        public MultiJoinInputLookup GetLookup(int keyList, JoinComparisonType? range, bool beside, bool matchNulls = false)
+        {
+            if (range == null && !matchNulls)
+            {
+                return beside ? _besideLookups[keyList] : _lookups[keyList];
+            }
+            var key = (keyList, range == null ? -1 : (int)range.Value, beside, matchNulls);
+            if (!_rangeLookups.TryGetValue(key, out var lookup))
+            {
+                lookup = CreateLookup(keyList, range, matchNulls);
+                _rangeLookups.Add(key, lookup);
+            }
+            return lookup;
+        }
+
         // A second lookup per key list, for a step that is looked up while another lookup waits
         private MultiJoinInputLookup[] _besideLookups = Array.Empty<MultiJoinInputLookup>();
 
@@ -876,6 +1059,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         public void AbandonLookups()
         {
             foreach (var lookup in _lookups)
+            {
+                lookup.Abandon();
+            }
+            foreach (var lookup in _rangeLookups.Values)
             {
                 lookup.Abandon();
             }

@@ -145,6 +145,28 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         /// </summary>
         internal IReadOnlyList<MultiJoinPadTable> PadTables => _tables;
 
+        // Tests: step runs that compared before the copy, over every cursor
+        internal long FilteredRunsForTests
+        {
+            get
+            {
+                long runs = 0;
+                foreach (var cursor in _cursors)
+                {
+                    runs += cursor.FilteredRuns;
+                }
+                foreach (var cursor in _roundCursors)
+                {
+                    runs += cursor.FilteredRuns;
+                }
+                foreach (var table in _tables)
+                {
+                    runs += table.MatchTotals.FilteredRuns + table.PaddedRows.FilteredRuns;
+                }
+                return runs;
+            }
+        }
+
         /// <summary>
         /// Whether a batch is held back for a later flush, for tests.
         /// </summary>

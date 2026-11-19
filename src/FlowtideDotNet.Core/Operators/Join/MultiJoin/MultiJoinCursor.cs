@@ -14,6 +14,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 {
@@ -40,12 +41,32 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         // With PadLast, entering the right side of a mark join: every row goes on once, marked when it has a match
         public bool Mark { get; init; }
 
+        // With PadLast: the rows found are only counted, with what the change adds. A row goes on padded when that turns it
+        public bool Turn { get; init; }
+
         // Set on the step entering a side whose unmatched rows are kept, coming from the other side with a change.
         public int TableJoin { get; init; }
 
         // With TableJoin: the last step of the side entered, a key is remembered once a row of the whole side is found for it
         public int TableEnd { get; init; }
+
+        // Comparisons of the join between a column the program already has and a column of the input, checked before a row is copied
+        public MultiJoinStepCompare[]? Compares { get; init; }
+
+        // With TableJoin, when the pad table looks only at the kept rows a change joined: where the columns it keeps of them stand in the frame of the step
+        public int[]? AffectedPositions { get; init; }
+
+        // The last key column is a bound: the rows whose column stands so to the key value are found, the columns before it are equal
+        public JoinComparisonType? Range { get; init; }
+
+        // A null in the key finds the rows that hold null there
+        public bool MatchNulls { get; init; }
     }
+
+    /// <summary>
+    /// The value at a position of a frame, compared with a column of the tree a step reads.
+    /// </summary>
+    internal readonly record struct MultiJoinStepCompare(int Frame, int Position, MultiJoinCompareOp Op, int Column);
 
     /// <summary>
     /// A condition of a join as one program reads it. The scratch is its own, a program serves one cursor.
@@ -126,6 +147,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             // Set while a plan is made: per input the columns a program reads from its copied rows
             public HashSet<int>[]? Read { get; init; }
 
+            // Set while a plan is made: per input the equal key columns with a column a lookup would take a range on
+            public List<(int[] Equal, int Column)>[]? Ranges { get; init; }
+
             private readonly record struct KeySource(int Column, int Frame, int Position);
 
             // The input frame 0 holds, -1 when frame 0 is a set of keys
@@ -141,6 +165,57 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 
             // The rows carried up cancel out per key, no pad table above is told about them
             public bool TotalsUnchanged;
+
+            // The join whose padded rows the program gives one by one
+            public MultiJoinNode? TurnJoin;
+
+            // Frames read by comparisons that are checked before a row is copied
+            public List<int> CompareFrames { get; } = new List<int>();
+
+            // The comparisons of a join that have the input on one side and a column the program already has on the other
+            private MultiJoinStepCompare[]? ComparesFor(MultiJoinNode join, int input)
+            {
+                List<MultiJoinStepCompare>? result = null;
+                foreach (var check in join.Checks)
+                {
+                    var compare = check.Compare;
+                    if (compare == null)
+                    {
+                        continue;
+                    }
+                    var (left, op, right) = compare.Value;
+                    if (op == MultiJoinCompareOp.NotEqual)
+                    {
+                        // Nearly every row passes it, checking it twice only costs
+                        continue;
+                    }
+                    if (left.Input == input && right.Input != input)
+                    {
+                        // The column of the input goes on the right
+                        (left, right) = (right, left);
+                        op = op switch
+                        {
+                            MultiJoinCompareOp.LessThan => MultiJoinCompareOp.GreaterThan,
+                            MultiJoinCompareOp.LessThanOrEqual => MultiJoinCompareOp.GreaterThanOrEqual,
+                            MultiJoinCompareOp.GreaterThan => MultiJoinCompareOp.LessThan,
+                            MultiJoinCompareOp.GreaterThanOrEqual => MultiJoinCompareOp.LessThanOrEqual,
+                            _ => op
+                        };
+                    }
+                    else if (right.Input != input || left.Input == input)
+                    {
+                        continue;
+                    }
+                    int frame = FrameOfInput[left.Input];
+                    if (frame < 0)
+                    {
+                        continue;
+                    }
+                    CompareFrames.Add(frame);
+                    (result ??= new List<MultiJoinStepCompare>()).Add(new MultiJoinStepCompare(frame, Position(left.Input, left.Column), op, right.Column));
+                }
+                return result?.ToArray();
+            }
 
             // Conditions with the step their join is entered at and the step its side ends at
             public List<(int End, int Entry, MultiJoinCheck Check)> Checks { get; } = new();
@@ -158,9 +233,11 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
             }
 
-            private int AddStep(int input, List<KeySource> sources, int tableJoin, int[]? joinColumns)
+            private int AddStep(int input, List<KeySource> sources, int tableJoin, int[]? joinColumns, (int Column, int Position, JoinComparisonType Type)? range = null)
             {
                 int keyList = 0;
+                int equalKeyList = 0;
+                JoinComparisonType? rangeType = null;
                 if (sources.Count > 0)
                 {
                     var columns = sources.Select(x => x.Column).ToArray();
@@ -170,10 +247,33 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                         {
                             Collected[input].Add(columns);
                         }
+                        if (range != null && !Ranges![input].Exists(x => x.Column == range.Value.Column && x.Equal.Length == columns.Length && columns.All(x.Equal.Contains)))
+                        {
+                            // Wanted, not needed: the planner takes it only where it costs no index
+                            Ranges[input].Add((columns, range.Value.Column));
+                        }
                     }
                     else
                     {
-                        keyList = Plan.Inputs[input].FindKeyList(columns);
+                        keyList = -1;
+                        if (range != null)
+                        {
+                            var planInput = Plan.Inputs[input];
+                            int candidate = planInput.FindKeyList(columns.Append(range.Value.Column).ToArray());
+                            // Only straight in the tree of the input, with the bound as its last key column
+                            equalKeyList = planInput.FindKeyList(columns);
+                            if (candidate >= 0 && equalKeyList >= 0 && planInput.SecondaryOf[candidate] < 0 && planInput.SecondaryOf[equalKeyList] < 0 &&
+                                planInput.KeyLists[candidate][^1] == range.Value.Column)
+                            {
+                                keyList = candidate;
+                                rangeType = range.Value.Type;
+                                sources.Add(new KeySource(range.Value.Column, sources[0].Frame, range.Value.Position));
+                            }
+                        }
+                        if (keyList < 0)
+                        {
+                            keyList = Plan.Inputs[input].FindKeyList(columns);
+                        }
                         if (keyList < 0)
                         {
                             throw new InvalidOperationException("A lookup of the multi join has no index for its key.");
@@ -201,7 +301,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     TableOrder = tableOrder,
                     PadLast = -1,
                     TableEnd = Steps.Count,
-                    TableJoin = tableJoin
+                    TableJoin = tableJoin,
+                    Range = rangeType
                 });
                 return Steps.Count - 1;
             }
@@ -221,14 +322,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 return Plan.Inputs[input].NeededColumns.IndexOf(column);
             }
 
-            public void AddEntry(MultiJoinKeySide entry)
+            public void AddEntry(MultiJoinKeySide entry, bool matchNulls = false)
             {
                 var sources = new List<KeySource>();
                 for (int i = 0; i < entry.Columns.Length; i++)
                 {
                     sources.Add(new KeySource(entry.Columns[i], 0, i));
                 }
-                AddStep(entry.Input, sources, -1, null);
+                int index = AddStep(entry.Input, sources, -1, null);
+                if (matchNulls)
+                {
+                    Steps[index] = Steps[index] with { MatchNulls = true };
+                }
                 FrameOfInput[entry.Input] = Steps.Count;
             }
 
@@ -257,7 +362,54 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                         tableJoin = Plan.PadTableIds[(parent, !fromLeft)];
                         TableJoins.Add(tableJoin);
                     }
-                    int index = AddStep(otherKey.Input, sources, tableJoin, otherKey.Columns);
+                    // Only a group with a condition on both sides of a kept side, or a range key, compares before the copy
+                    var compares = Plan.PairConditions ? ComparesFor(parent, otherKey.Input) : null;
+                    (int Column, int Position, JoinComparisonType Type)? range = null;
+                    int rangeAt = -1;
+                    for (int c = 0; Plan.RangeKeys && compares != null && keyFrame >= 0 && c < compares.Length && range == null; c++)
+                    {
+                        // A bound on a column of the input, read from the frame the key is read from
+                        var compare = compares[c];
+                        if (compare.Frame != keyFrame || otherKey.Columns.Contains(compare.Column) ||
+                            compare.Op == MultiJoinCompareOp.Equal || compare.Op == MultiJoinCompareOp.NotEqual)
+                        {
+                            continue;
+                        }
+                        // The comparison is value OP column, the type is column OP value
+                        var type = compare.Op switch
+                        {
+                            MultiJoinCompareOp.LessThan => JoinComparisonType.GreaterThan,
+                            MultiJoinCompareOp.LessThanOrEqual => JoinComparisonType.GreaterThanOrEqual,
+                            MultiJoinCompareOp.GreaterThan => JoinComparisonType.LessThan,
+                            _ => JoinComparisonType.LessThanOrEqual
+                        };
+                        range = (compare.Column, compare.Position, type);
+                        rangeAt = c;
+                    }
+                    int index = AddStep(otherKey.Input, sources, tableJoin, otherKey.Columns, range);
+                    if (Steps[index].Range != null)
+                    {
+                        // The bound does what the comparison before the copy did
+                        compares = compares!.Where((_, i) => i != rangeAt).ToArray();
+                        if (compares.Length == 0)
+                        {
+                            compares = null;
+                        }
+                    }
+                    if (compares != null)
+                    {
+                        Steps[index] = Steps[index] with { Compares = compares };
+                    }
+                    if (tableJoin >= 0 && parent.PadPerRow)
+                    {
+                        var start = MultiJoinPadTable.StartColumnsOf(parent, !fromLeft);
+                        if (start.Fast)
+                        {
+                            // The frame of the step is copied for them
+                            CompareFrames.Add(Steps.Count);
+                            Steps[index] = Steps[index] with { AffectedPositions = start.Columns.Select(x => Position(otherKey.Input, x)).ToArray() };
+                        }
+                    }
                     FrameOfInput[otherKey.Input] = Steps.Count;
                     if (!fromLeft && parent.IsMark)
                     {
@@ -277,7 +429,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     }
                     if (ownKept)
                     {
-                        Steps[index] = Steps[index] with { PadLast = Steps.Count - 1, Mark = parent.IsMark };
+                        Steps[index] = Steps[index] with { PadLast = Steps.Count - 1, Mark = parent.IsMark, Turn = parent == TurnJoin };
                         if (parent.IsMark)
                         {
                             FrameOfMark[parent.MarkId] = index + 1;
@@ -358,6 +510,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     settles[s] = new List<MultiJoinSettle>();
                 }
                 var readFrames = new bool[Steps.Count + 1];
+                foreach (int frame in CompareFrames)
+                {
+                    readFrames[frame] = true;
+                }
                 // A join's own condition comes before its match count: a row failing it is no match
                 for (int s = Steps.Count - 1; s >= 0; s--)
                 {
@@ -380,7 +536,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 {
                     // Only rows that are sent on, tested by a condition or the key of a later step are copied
                     copyColumns[s] = (!noOutput && frameOutputs[s + 1].Count > 0) || readFrames[s + 1] || Steps.Exists(x => x.KeyFrame == s + 1);
-                    if (Steps[s].Mark)
+                    if (Steps[s].Mark || Steps[s].Turn)
                     {
                         firstMark[Steps[s].PadLast] = Math.Min(firstMark[Steps[s].PadLast], s);
                     }
@@ -407,7 +563,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
 
         private static Builder NewBuilder(MultiJoinPlan plan, int startInput, MultiJoinCollected? collected)
         {
-            var builder = new Builder() { Plan = plan, StartInput = startInput, Collected = collected?.Keys, Read = collected?.Read };
+            var builder = new Builder() { Plan = plan, StartInput = startInput, Collected = collected?.Keys, Read = collected?.Read, Ranges = collected?.Ranges };
             builder.FrameOfInput = new int[plan.Inputs.Count];
             Array.Fill(builder.FrameOfInput, -1);
             builder.FrameOfMark = new int[plan.Marks.Count];
@@ -439,12 +595,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             var collected = new MultiJoinCollected()
             {
                 Keys = new List<int[]>[plan.Inputs.Count],
-                Read = new HashSet<int>[plan.Inputs.Count]
+                Read = new HashSet<int>[plan.Inputs.Count],
+                Ranges = new List<(int[] Equal, int Column)>[plan.Inputs.Count]
             };
             for (int i = 0; i < plan.Inputs.Count; i++)
             {
                 collected.Keys[i] = new List<int[]>();
                 collected.Read[i] = new HashSet<int>();
+                collected.Ranges[i] = new List<(int[] Equal, int Column)>();
             }
             for (int i = 0; i < plan.Inputs.Count; i++)
             {
@@ -488,8 +646,18 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         {
             var key = keptLeft ? join.LeftKey! : join.RightKey!;
             var builder = NewBuilder(plan, -1, collected);
-            builder.AddEntry(key);
+            // With a condition on both sides the start rows may carry the columns of the key input the conditions read
+            // The columns next to the key name rows, a null among them is a value like any other
+            var start = MultiJoinPadTable.StartColumnsOf(join, keptLeft);
+            builder.AddEntry(join.PadPerRow ? new MultiJoinKeySide() { Input = key.Input, Columns = start.Columns } : key, start.Fast);
             builder.Climb(plan.Inputs[key.Input].Node, keptLeft ? join.Left! : join.Right!, false);
+            if (join.PadPerRow)
+            {
+                // The rows of the kept side enter the join as a change of that side would, its conditions decide per row
+                builder.TurnJoin = join;
+                builder.Climb(keptLeft ? join.Left! : join.Right!, plan.Root, true);
+                return builder;
+            }
             if (join.KeptOnlyCheck != null)
             {
                 // A row failing it is padded whatever the other side holds, it is no row that turns
@@ -513,6 +681,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
     {
         public required List<int[]>[] Keys { get; init; }
         public required HashSet<int>[] Read { get; init; }
+        public required List<(int[] Equal, int Column)>[] Ranges { get; init; }
     }
 
     /// <summary>
@@ -536,6 +705,47 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         // Per padding step the weight its rows have matched so far
         private readonly int[]?[] _totals;
 
+        // A step that turns rows: what the entries of the pad table add per row, and where its parts of them are
+        private int[] _deltas = Array.Empty<int>();
+        private int[] _deltaRows = Array.Empty<int>();
+        private int _deltaPhase;
+        private int _deltaRow;
+        private int _deltaEntry;
+
+        // The pad table whose entries a step that turns rows reads
+        public MultiJoinPadTable? TurnTable { get; set; }
+
+        // Reading the entries from their tree: the key columns of the step in the order of the table, and where the columns read go
+        private IColumn[] _turnKeyColumns = Array.Empty<IColumn>();
+
+        // Per step with comparisons before the copy: whether this run makes them, the share of rows that passed lately, and the runs so far
+        private readonly bool[] _filtered;
+        private readonly float[] _passRate;
+        private readonly int[] _filterRuns;
+
+        // Per step: the rows of this run came from a lookup that ran beside another, the lookup of the step met none
+        private readonly bool[] _fromKept;
+
+        // Tests: lookups begun with a range
+        internal static long RangeLookupsForTests;
+
+
+        // Step runs of this cursor that compared before the copy
+        internal long FilteredRuns;
+
+        // Above this share of rows passing, comparing before the copy is left out
+        private const float MaxPassRate = 0.9f;
+
+        // The lookup of the entries in their tree while it runs, let go of when the run is cut short
+        private MultiJoinTreeLookup? _entryLookup;
+
+        // Kept rows told to a pad table, and the table that holds more of them than it keeps in memory
+        private int[] _affectedRows = Array.Empty<int>();
+        private MultiJoinPadTable? _spill;
+        private readonly MultiJoinFrame _deltaFrame = new MultiJoinFrame();
+        private List<int>? _deltaCopy;
+        private int[] _deltaTarget = Array.Empty<int>();
+
         // Per step feeding a pad table: the key rows that met a row, and the key columns
         private readonly bool[]?[] _found;
         private readonly bool[] _anyFound;
@@ -544,6 +754,10 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         // Per step the row indexes its key views read through
         private readonly PrimitiveList<int>?[] _keyOffsets;
         private readonly PrimitiveList<int>?[][] _keyOwnOffsets;
+
+        // Per step with comparisons: one column per comparison with a value per key row, and the row indexes they are read through
+        private readonly IColumn[]?[] _compareColumns;
+        private readonly PrimitiveList<int>?[][] _compareOffsets;
 
         // Offsets composed with the offsets of a view in the start rows, per output batch
         private readonly List<(PrimitiveList<int> Source, PrimitiveList<int> Composed)> _composed = new();
@@ -634,6 +848,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             _tableKeys = new IColumn[]?[steps];
             _keyOffsets = new PrimitiveList<int>?[steps];
             _keyOwnOffsets = new PrimitiveList<int>?[steps][];
+            _filtered = new bool[steps];
+            _passRate = new float[steps];
+            _filterRuns = new int[steps];
+            _fromKept = new bool[steps];
+            _compareColumns = new IColumn[]?[steps];
+            _compareOffsets = new PrimitiveList<int>?[steps][];
             _checkOffsets = new PrimitiveList<int>?[steps + 1];
         }
 
@@ -740,6 +960,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     LookupOf(level).Abandon();
                 }
             }
+            _spill = null;
+            if (_entryLookup != null)
+            {
+                // The lookup of the entries was cut short too
+                _entryLookup.Abandon();
+                _entryLookup = null;
+            }
+            _deltaPhase = 0;
+            var deltaColumns = _deltaFrame.Columns;
+            for (int i = 0; i < deltaColumns.Length; i++)
+            {
+                deltaColumns[i]?.Dispose();
+                deltaColumns[i] = null!;
+            }
             Array.Clear(_keptTooMany);
             if (_anyKept)
             {
@@ -758,6 +992,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     Array.Clear(_tableKeys[s]!);
                 }
             }
+            for (int s = 0; s < _compareColumns.Length; s++)
+            {
+                if (_compareColumns[s] != null)
+                {
+                    Array.Clear(_compareColumns[s]!);
+                }
+            }
             _startColumns = null;
             _startIterations = null;
             _level = -1;
@@ -767,6 +1008,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         public void Dispose()
         {
             Reset();
+            for (int s = 0; s < _compareOffsets.Length; s++)
+            {
+                var lists = _compareOffsets[s];
+                for (int i = 0; lists != null && i < lists.Length; i++)
+                {
+                    lists[i]?.Dispose();
+                    lists[i] = null;
+                }
+            }
             for (int s = 0; s < _keyOffsets.Length; s++)
             {
                 _keyOffsets[s]?.Dispose();
@@ -855,7 +1105,8 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 return false;
             }
             var keyColumns = lookup.KeyColumns;
-            var positions = step.KeyPositions;
+            // The equal columns come first, a bound is the last
+            var positions = step.KeyPositions.AsSpan(0, keyColumns.Length);
             int count = _frames[level].Count;
 
             // The key rows of the frame the step starts from are its rows as they are
@@ -893,7 +1144,7 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 if (inner is ColumnWithOffset view)
                 {
                     // Views are not nested, this key reads the column the view is over
-                    var own = _keyOwnOffsets[level] ??= new PrimitiveList<int>?[positions.Length];
+                    var own = _keyOwnOffsets[level] ??= new PrimitiveList<int>?[step.KeyPositions.Length];
                     var list = own[i] ??= new PrimitiveList<int>(_allocator);
                     list.Clear();
                     list.EnsureCapacity(count);
@@ -915,6 +1166,32 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 keyColumns[i] = new ColumnWithOffset(inner, _keyOffsets[level]!);
             }
 
+            var compares = step.Compares;
+            // Comparing before the copy pays when rows fail. When nearly all passed lately it is left out, and tried again now and then
+            _filtered[level] = compares != null && lookup.TakesFilter && !(_passRate[level] > MaxPassRate && (_filterRuns[level]++ & 63) != 63);
+            if (_filtered[level])
+            {
+                FilteredRuns++;
+                lookup.SetFilter(CompareColumns(level, compares!, count), compares);
+            }
+            else
+            {
+                lookup.SetFilter(null, null);
+            }
+            if (step.Turn && TurnTable != null)
+            {
+                // Kept for the lookup of the entries, which comes after the one in the rows stored
+                var paddedKey = TurnTable.PaddedKey;
+                var order = _plan.Inputs[step.Input].KeyLists[step.KeyList];
+                if (_turnKeyColumns.Length != paddedKey.Length)
+                {
+                    _turnKeyColumns = new IColumn[paddedKey.Length];
+                }
+                for (int i = 0; i < paddedKey.Length; i++)
+                {
+                    _turnKeyColumns[i] = keyColumns[Array.IndexOf(order, paddedKey[i])];
+                }
+            }
             if (step.TableJoin >= 0)
             {
                 // The lookup lets go of its key columns when it ends, the pad table needs them after that
@@ -926,6 +1203,56 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
             }
             return true;
+        }
+
+        // Per comparison the column it reads from a frame, with one value per row of the frame the step starts from
+        private IColumn[] CompareColumns(int level, MultiJoinStepCompare[] compares, int count)
+        {
+            int most = compares.Length;
+            var columns = _compareColumns[level] ??= new IColumn[most];
+            var offsets = _compareOffsets[level] ??= new PrimitiveList<int>?[most];
+            for (int c = 0; c < compares.Length; c++)
+            {
+                int f = compares[c].Frame;
+                if (f > 0 && _frames[f].IsNull)
+                {
+                    // The rows of that frame are padded
+                    columns[c] = Nulls(count);
+                    continue;
+                }
+                var inner = f == 0 ? _startColumns![compares[c].Position] : _frames[f].Columns[compares[c].Position];
+                if (f == level && (level > 0 || _identity))
+                {
+                    columns[c] = inner;
+                    continue;
+                }
+                var rows = Scratch(count);
+                for (int i = 0; i < count; i++)
+                {
+                    rows[i] = i;
+                }
+                for (int at = level; at > f; at--)
+                {
+                    Through(rows, _frames[at].Parent);
+                }
+                if (f == 0 && !_identity)
+                {
+                    Through(rows, _frames[0].Parent);
+                }
+                if (inner is ColumnWithOffset view)
+                {
+                    // Views are not nested, the comparison reads the column the view is over
+                    var viewOffsets = view.Offsets.Span;
+                    for (int r = 0; r < count; r++)
+                    {
+                        rows[r] = viewOffsets[rows[r]];
+                    }
+                    inner = view.InnerColumn;
+                }
+                Fill(ref offsets[c], rows);
+                columns[c] = new ColumnWithOffset(inner, offsets[c]!);
+            }
+            return columns;
         }
 
         private void BeginStep(int level, int sourceCount)
@@ -940,6 +1267,17 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     totals = _totals[level] = new int[Math.Max(sourceCount, (totals?.Length ?? 0) * 2)];
                 }
                 Array.Clear(totals, 0, sourceCount);
+            }
+            if (step.Turn)
+            {
+                if (_deltas.Length < sourceCount)
+                {
+                    _deltas = new int[Math.Max(sourceCount, _deltas.Length * 2)];
+                }
+                Array.Clear(_deltas, 0, sourceCount);
+                _deltaPhase = 0;
+                _deltaRow = 0;
+                _deltaEntry = -1;
             }
             if (step.TableJoin >= 0)
             {
@@ -995,6 +1333,36 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                 }
             }
             _anyFound[entry] = true;
+            var positions = _program.Steps[entry].AffectedPositions;
+            if (positions != null)
+            {
+                AddAffected(entry, end, count, positions);
+            }
+        }
+
+        // The kept rows a change joined, for a pad table that looks only at them
+        private void AddAffected(int entry, int end, int count, int[] positions)
+        {
+            if (_affectedRows.Length < count)
+            {
+                _affectedRows = new int[Math.Max(count, _affectedRows.Length * 2)];
+            }
+            var rows = _affectedRows.AsSpan(0, count);
+            for (int r = 0; r < count; r++)
+            {
+                int row = r;
+                for (int f = end + 1; f > entry + 1; f--)
+                {
+                    row = _frames[f].Parent[row];
+                }
+                rows[r] = row;
+            }
+            var table = _tables[_program.Steps[entry].TableJoin];
+            table.AddAffected(_frames[entry + 1].Columns, positions, rows);
+            if (table.NeedsSpill)
+            {
+                _spill = table;
+            }
         }
 
         private Column Nulls(int count)
@@ -1183,13 +1551,14 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     Through(rows, _frames[at].Parent);
                     at--;
                 }
-                var totals = _totals[start]!;
+                bool turn = _program.Steps[start].Turn;
+                var totals = turn && _deltaPhase == 1 ? _deltas : _totals[start]!;
                 var weight = frame.Weight.AsSpan(0, count);
                 for (int i = 0; i < count; i++)
                 {
                     totals[rows[i]] += weight[i];
                 }
-                if (_program.Steps[start].Mark)
+                if (_program.Steps[start].Mark || turn)
                 {
                     // Rows of a mark join's right side are no rows of the joins around it: the marked row comes later and is settled then
                     return true;
@@ -1228,6 +1597,21 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     first.Mark[r] = totals[r] != 0;
                 }
                 count = source.Count;
+            }
+            else if (_program.Steps[level].Turn)
+            {
+                for (int r = 0; r < source.Count; r++)
+                {
+                    int before = totals[r];
+                    if ((before != 0) == (before + _deltas[r] != 0))
+                    {
+                        continue;
+                    }
+                    // A row that lost its last match gets its padded row, one that got its first match loses it
+                    first.Parent[count] = r;
+                    first.Weight[count] = before != 0 ? source.Weight[r] : -source.Weight[r];
+                    count++;
+                }
             }
             else
             {
@@ -1635,11 +2019,15 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
         private MultiJoinInputLookup LookupOf(int level)
         {
             var step = _program.Steps[level];
+            if (step.Range != null && !_active[level])
+            {
+                Interlocked.Increment(ref RangeLookupsForTests);
+            }
             if (_ownLookups == null)
             {
-                return _inputs[step.Input].GetLookup(step.KeyList);
+                return _inputs[step.Input].GetLookup(step.KeyList, step.Range, false, step.MatchNulls);
             }
-            return _ownLookups[level] ??= _inputs[step.Input].CreateLookup(step.KeyList);
+            return _ownLookups[level] ??= _inputs[step.Input].CreateLookup(step.KeyList, step.Range, step.MatchNulls);
         }
 
         private MultiJoinInputLookup BesideLookupOf(int level)
@@ -1647,9 +2035,9 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             var step = _program.Steps[level];
             if (_ownBesideLookups == null)
             {
-                return _inputs[step.Input].GetBesideLookup(step.KeyList);
+                return _inputs[step.Input].GetLookup(step.KeyList, step.Range, true, step.MatchNulls);
             }
-            return _ownBesideLookups[level] ??= _inputs[step.Input].CreateLookup(step.KeyList);
+            return _ownBesideLookups[level] ??= _inputs[step.Input].CreateLookup(step.KeyList, step.Range, step.MatchNulls);
         }
 
         /// <summary>
@@ -1679,9 +2067,191 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             return true;
         }
 
+        // A part of what the change itself gives the kept rows: per kept row the entries of its key, read as rows of the padded input
+        private bool FillDeltaPart(int level, MultiJoinFrame frame)
+        {
+            var table = TurnTable!;
+            var source = _frames[level];
+            var groupStart = table.TurnGroupStart;
+            var entryRows = table.TurnEntryRows;
+            var sums = table.TurnEntrySums;
+            frame.EnsureCapacity(_rowBudget);
+            if (_deltaRows.Length < _rowBudget)
+            {
+                _deltaRows = new int[_rowBudget];
+            }
+            int count = 0;
+            while (_deltaRow < source.Count && count < _rowBudget)
+            {
+                // The start rows are the keys in the order of the table
+                int group = _deltaRow;
+                for (int f = level; f > 0; f--)
+                {
+                    group = _frames[f].Parent[group];
+                }
+                group = table.TurnGroupOf[group];
+                int end = groupStart[group + 1];
+                int entry = _deltaEntry < 0 ? groupStart[group] : _deltaEntry;
+                while (entry < end && count < _rowBudget)
+                {
+                    frame.Parent[count] = _deltaRow;
+                    frame.Weight[count] = sums[entry];
+                    _deltaRows[count] = entryRows[entry];
+                    count++;
+                    entry++;
+                }
+                if (entry < end)
+                {
+                    _deltaEntry = entry;
+                    break;
+                }
+                _deltaEntry = -1;
+                _deltaRow++;
+            }
+            if (count == 0)
+            {
+                return false;
+            }
+            frame.Count = count;
+            if (!_program.CopyColumns[level])
+            {
+                frame.Columns = Array.Empty<Column>();
+                return true;
+            }
+            var needed = _plan.Inputs[table.PaddedInput].NeededColumns;
+            if (frame.Columns.Length != needed.Count)
+            {
+                frame.Columns = new Column[needed.Count];
+            }
+            var rows = _deltaRows.AsSpan(0, count);
+            try
+            {
+                for (int c = 0; c < needed.Count; c++)
+                {
+                    var column = Column.Create(_allocator);
+                    frame.Columns[c] = column;
+                    var kept = table.TurnColumn(needed[c]);
+                    if (kept == null)
+                    {
+                        // Nothing of the join reads it
+                        column.InsertNullRange(0, count);
+                    }
+                    else
+                    {
+                        table.CopyEntries(column, kept, rows);
+                    }
+                }
+            }
+            catch
+            {
+                DisposeUnheld(frame);
+                throw;
+            }
+            return true;
+        }
+
+        // Nobody has rented the columns of a part that could not be made in full
+        private static void DisposeUnheld(MultiJoinFrame frame)
+        {
+            var columns = frame.Columns;
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i]?.Dispose();
+                columns[i] = null!;
+            }
+            frame.Count = 0;
+        }
+
+        // The same from the tree of entries, for a change that did not fit in memory
+        private async ValueTask<bool> FillDeltaPartFromTree(int level, MultiJoinFrame frame)
+        {
+            var table = TurnTable!;
+            var lookup = table.EntryLookup;
+            var needed = _plan.Inputs[table.PaddedInput].NeededColumns;
+            if (_deltaCopy == null)
+            {
+                _deltaCopy = new List<int>();
+                _deltaTarget = new int[needed.Count];
+                for (int c = 0; c < needed.Count; c++)
+                {
+                    int treeColumn = table.TurnTreeColumn(needed[c]);
+                    _deltaTarget[c] = treeColumn < 0 ? -1 : _deltaCopy.Count;
+                    if (treeColumn >= 0)
+                    {
+                        _deltaCopy.Add(treeColumn);
+                    }
+                }
+            }
+            if (_deltaEntry < 0)
+            {
+                for (int i = 0; i < _turnKeyColumns.Length; i++)
+                {
+                    lookup.KeyColumns[i] = _turnKeyColumns[i];
+                }
+                _deltaEntry = 0;
+                _entryLookup = lookup;
+                await lookup.Start(_frames[level].Count);
+            }
+            bool copy = _program.CopyColumns[level];
+            var scratch = _deltaFrame;
+            if (!await lookup.NextPart(scratch, copy ? _deltaCopy : Array.Empty<int>(), _rowBudget, _allocator))
+            {
+                lookup.Abandon();
+                _entryLookup = null;
+                return false;
+            }
+            int count = scratch.Count;
+            frame.EnsureCapacity(count);
+            frame.Count = count;
+            scratch.Parent.AsSpan(0, count).CopyTo(frame.Parent);
+            scratch.Weight.AsSpan(0, count).CopyTo(frame.Weight);
+            if (!copy)
+            {
+                frame.Columns = Array.Empty<Column>();
+                return true;
+            }
+            if (frame.Columns.Length != needed.Count)
+            {
+                frame.Columns = new Column[needed.Count];
+            }
+            try
+            {
+                for (int c = 0; c < needed.Count; c++)
+                {
+                    int at = _deltaTarget[c];
+                    if (at >= 0)
+                    {
+                        frame.Columns[c] = scratch.Columns[at];
+                        scratch.Columns[at] = null!;
+                        continue;
+                    }
+                    // Nothing of the join reads it
+                    var column = Column.Create(_allocator);
+                    frame.Columns[c] = column;
+                    column.InsertNullRange(0, count);
+                }
+            }
+            catch
+            {
+                // What is still in the scratch frame goes when the cursor is reset
+                DisposeUnheld(frame);
+                throw;
+            }
+            return true;
+        }
+
         private ValueTask AddToTable(int level)
         {
             var source = _frames[level];
+            var table = _tables[_program.Steps[level].TableJoin];
+            if (table.Join.PadPerRow)
+            {
+                if (level != 0)
+                {
+                    throw new InvalidOperationException("A join with a condition on both sides is told of a change from the rows of the change.");
+                }
+                return table.Add(_tableKeys[level]!, source.Count, _found[level]!, source.Weight, _startColumns!, _identity ? null : _frames[0].Parent);
+            }
             return _tables[_program.Steps[level].TableJoin].Add(_tableKeys[level]!, source.Count, _found[level]!, source.Weight);
         }
 
@@ -1699,6 +2269,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
             {
                 while (_level >= 0)
                 {
+                    if (_spill != null)
+                    {
+                        var spill = _spill;
+                        _spill = null;
+                        await spill.Spill();
+                    }
                     int level = _level;
                     if (_passThrough[level])
                     {
@@ -1712,6 +2288,13 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     var lookup = step.KeyFrame < 0 ? null : LookupOf(level);
                     if (!_active[level])
                     {
+                        if (lookup != null && step.Compares != null)
+                        {
+                            // Other steps share the lookup, what they met is not counted for this one
+                            lookup.TakeScanned();
+                            lookup.TakePassRate();
+                        }
+                        _fromKept[level] = false;
                         BeginStep(level, _frames[level].Count);
                         _skip[level] = lookup == null || !SetKeys(level, lookup);
                         // Set first: a lookup that fails while it starts is let go of like any other
@@ -1762,10 +2345,12 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                     }
                     Release(level + 1);
                     bool got = false;
-                    if (!_skip[level] && !_padded[level])
+                    bool turn = step.Turn && !_skip[level] && !_padded[level];
+                    if (!_skip[level] && !_padded[level] && !(turn && _deltaPhase > 0))
                     {
                         if (_keptReady[level])
                         {
+                            _fromKept[level] = true;
                             got = NextKept(level, frame);
                         }
                         else
@@ -1792,6 +2377,16 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                             {
                                 _turns[step.Input].Release(_turnPlace);
                             }
+                        }
+                    }
+                    if (!got && turn && _deltaPhase < 2)
+                    {
+                        // After the rows stored: the rows the change adds, counted apart
+                        _deltaPhase = 1;
+                        got = TurnTable!.TurnInTree ? await FillDeltaPartFromTree(level, frame) : FillDeltaPart(level, frame);
+                        if (!got)
+                        {
+                            _deltaPhase = 2;
                         }
                     }
                     if (!got)
@@ -1836,6 +2431,20 @@ namespace FlowtideDotNet.Core.Operators.Join.MultiJoin
                         {
                             _frames[f].IsNull = false;
                             _frames[f].HasMark = false;
+                        }
+                        if (lookup != null && !_skip[level] && !_fromKept[level] && _filtered[level])
+                        {
+                            long scanned = lookup.TakeScanned();
+                            float passed = lookup.TakePassRate();
+                            if (passed >= 0)
+                            {
+                                _passRate[level] = _passRate[level] * 0.75f + passed * 0.25f;
+                            }
+                            else if (scanned > 0)
+                            {
+                                // The values are no plain ones, nothing was compared
+                                _passRate[level] = 1;
+                            }
                         }
                         _active[level] = false;
                         _level--;

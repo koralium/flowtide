@@ -63,6 +63,7 @@ namespace FlowtideDotNet.Core.Tests.MultiJoin
                 Comparer = new MergeJoinInsertComparer(new List<int> { 0 }, 1),
                 Sorter = new BatchSorter(1),
                 SortColumns = new IColumn[1],
+                SortCount = 1,
                 ColumnCount = 1
             };
             var secondary = new MultiJoinSecondaryIndex
