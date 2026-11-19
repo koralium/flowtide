@@ -240,7 +240,7 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
                     Reads = (long)readers * reads,
                     Wrong = wrong,
                     Seconds = seconds,
-                    PagesPerSecond = (long)readers * reads / seconds
+                    PagesPerSecond = (double)readers * reads / seconds
                 }));
                 return wrong == 0 ? 0 : 1;
             }

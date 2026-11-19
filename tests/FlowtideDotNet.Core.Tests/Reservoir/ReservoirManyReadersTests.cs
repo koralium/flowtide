@@ -458,7 +458,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 return;
             }
             using var folder = new Folder();
-            var path = Path.Combine(folder.Path, "file.data");
+            var path = Path.Join(folder.Path, "file.data");
             var bytes = Bytes(5, 3_000_000);
             using var manager = new LocalDiskReadManager(GlobalMemoryManager.Instance);
             await manager.Write(path, PipeReader.Create(new ReadOnlySequence<byte>(bytes)));
@@ -483,7 +483,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 return;
             }
             using var folder = new Folder();
-            var path = Path.Combine(folder.Path, "file.data");
+            var path = Path.Join(folder.Path, "file.data");
             var allocator = new TestAllocator();
             using var manager = new LocalDiskReadManager(allocator);
             await manager.Write(path, PipeReader.Create(new ReadOnlySequence<byte>(Bytes(1, 4096))));
@@ -738,9 +738,9 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         {
             using var folder = new Folder();
             using var memory = await Open(new MemoryFileProvider());
-            using var disk = await Open(new LocalDiskProvider(Path.Combine(folder.Path, "disk")));
+            using var disk = await Open(new LocalDiskProvider(Path.Join(folder.Path, "disk")));
             using var other = await Open(new HookedMemoryProvider());
-            using var cached = await Open(new MemoryFileProvider(), cache: new LocalDiskProvider(Path.Combine(folder.Path, "cache")));
+            using var cached = await Open(new MemoryFileProvider(), cache: new LocalDiskProvider(Path.Join(folder.Path, "cache")));
 
             Assert.True(memory.ReadsPagesWithoutFileLock);
             Assert.Equal(OperatingSystem.IsLinux(), disk.ReadsPagesWithoutFileLock);
@@ -758,8 +758,8 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 return;
             }
             using var folder = new Folder();
-            var store = Path.Combine(folder.Path, "store");
-            var cache = Path.Combine(folder.Path, "cache");
+            var store = Path.Join(folder.Path, "store");
+            var cache = Path.Join(folder.Path, "cache");
             using (var storage = await Open(new LocalDiskProvider(store), 256, new LocalDiskProvider(cache)))
             {
                 using var session = storage.CreateSession();
