@@ -18,5 +18,6 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
     {
         public ReadOnlySequence<byte> data;
         public BlobFileWriter file;
+        public uint crc32;
     }
 }

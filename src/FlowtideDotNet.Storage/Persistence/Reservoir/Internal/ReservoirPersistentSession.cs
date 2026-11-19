@@ -208,7 +208,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             lock (_writeLock)
             {
                 var fileWriter = _fileWriter;
-                var sequence = fileWriter.Write(key, value);
+                var sequence = fileWriter.Write(key, value, out var crc32);
                 var roll = false;
                 lock (_lock)
                 {
@@ -223,7 +223,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         throw new FlowtidePersistentStorageException($"Key '{key}' has already been written.");
                     }
                     // Add info to lookup so reads can find the written data before its flushed to storage
-                    _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter });
+                    _persistentStorage.AddTemporaryLocation(key, new PageWriteLocation() { data = sequence, file = fileWriter, crc32 = crc32 });
 
                     if (fileWriter.WrittenLength >= _maxFileSize)
                     {

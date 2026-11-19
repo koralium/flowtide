@@ -31,6 +31,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public bool SupportsFileListing => _internalProvider.SupportsFileListing;
 
+        internal IReservoirStorageProvider InternalProvider => _internalProvider;
+
         private void AddRead()
         {
             Interlocked.Increment(ref _numberOfReads);

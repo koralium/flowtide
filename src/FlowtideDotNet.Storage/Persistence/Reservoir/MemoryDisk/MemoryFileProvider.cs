@@ -76,31 +76,36 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk
 
         public virtual ValueTask<ReadOnlyMemory<byte>> GetMemoryAsync(ulong fileId, int offset, int length, uint crc32, CancellationToken cancellationToken = default)
         {
+            byte[]? data;
             lock (_lock)
             {
-                if (_dataFiles.TryGetValue(fileId, out var data))
-                {
-                    var memory = data.AsMemory(offset, length);
-                    CrcUtils.CheckCrc32(memory.Span, crc32);
-                    return new ValueTask<ReadOnlyMemory<byte>>(memory);
-                }
+                _dataFiles.TryGetValue(fileId, out data);
             }
-
-            throw new InvalidOperationException("File not found");
+            if (data == null)
+            {
+                throw new InvalidOperationException("File not found");
+            }
+            // A stored file never changes, no lock needed
+            var memory = data.AsMemory(offset, length);
+            CrcUtils.CheckCrc32(memory.Span, crc32);
+            return new ValueTask<ReadOnlyMemory<byte>>(memory);
         }
 
         public virtual ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
         {
+            byte[]? data;
             lock (_lock)
             {
-                if (_dataFiles.TryGetValue(fileId, out var data))
-                {
-                    var bytes = new ReadOnlySequence<byte>(data, offset, length);
-                    CrcUtils.CheckCrc32(bytes, crc32);
-                    return new ValueTask<T>(stateSerializer.Deserialize(bytes, length));
-                }
+                _dataFiles.TryGetValue(fileId, out data);
             }
-            throw new InvalidOperationException("File not found");
+            if (data == null)
+            {
+                throw new InvalidOperationException("File not found");
+            }
+            // A stored file never changes, no lock needed
+            var bytes = new ReadOnlySequence<byte>(data, offset, length);
+            CrcUtils.CheckCrc32(bytes, crc32);
+            return new ValueTask<T>(stateSerializer.Deserialize(bytes, length));
         }
 
         public virtual Task<PipeReader> ReadCheckpointFileAsync(CheckpointId checkpointVersion, CancellationToken cancellationToken = default)
