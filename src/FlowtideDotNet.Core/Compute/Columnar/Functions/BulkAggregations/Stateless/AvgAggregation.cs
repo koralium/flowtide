@@ -85,7 +85,11 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions.BulkAggregations.Statel
                 }
             }
 
-            if (currentCount <= 0 || _sumContainer.Type == ArrowTypeId.Null)
+            // Keep the state whatever the count is. A retraction can reach the group before the insert
+            // it cancels (another input of an upstream join ran ahead), so the count and the sum may be
+            // zero or negative between batches. Resetting here threw that pending retraction away and the
+            // later insert was counted twice. GetValuesAsync already returns null while count <= 0.
+            if (_sumContainer.Type == ArrowTypeId.Null)
             {
                 _dataValueContainer._type = ArrowTypeId.Null;
             }

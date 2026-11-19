@@ -292,6 +292,68 @@ namespace FlowtideDotNet.AcceptanceTests
         }
 
         /// <summary>
+        /// A retraction can reach an aggregate before the insert it cancels, for instance when the inputs
+        /// of a multi join work side by side and one of them emits -row before another emits +row. The
+        /// net change is still right, but between batches a group can hold a negative weight.
+        ///
+        /// sum and avg reset their state to null as soon as the contributor count was zero or below. That
+        /// threw the pending retraction away, so when the insert came the row was counted twice.
+        ///
+        /// An immutable source has no normalization step, so deleting a user that was never added sends a
+        /// plain -1 to the aggregate. Filler rows close the source batch right after it, so the -1 and the
+        /// inserts reach the aggregate as two batches within one watermark, the way the multi join
+        /// delivers them. The fillers share one group, a batch with few groups never turns on the
+        /// aggregate's buffering, which would merge the two batches again.
+        /// </summary>
+        [Fact]
+        public async Task AggregateSumAndAvgRetractionBeforeInsert()
+        {
+            SourceImmutable();
+            AddUser(new Entities.User { UserKey = 1, CompanyId = "baseline", Visits = 1 });
+
+            await StartStream(@"
+                INSERT INTO output
+                SELECT
+                    companyId, sum(visits), avg(visits), count(*)
+                FROM users
+                GROUP BY companyId");
+            await WaitForUpdate();
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "baseline", Sum = 1, Avg = 1.0, Count = 1 }
+            });
+
+            // One source fetch: the lock keeps the source from reading halfway
+            EnterDataWriteLock();
+
+            // Batch 1: the retraction of user 2 before user 2 was ever added, group "early" ends the
+            // batch at weight -1. The source closes a batch after 101 rows, so the 100 fillers end it.
+            var early = new Entities.User { UserKey = 2, CompanyId = "early", Visits = 10 };
+            DeleteUsers(new[] { early });
+            for (int i = 0; i < 100; i++)
+            {
+                AddUser(new Entities.User { UserKey = 1_000 + i, CompanyId = "filler", Visits = 1 });
+            }
+
+            // Batch 2: the insert the retraction cancels, the row that stays, and one more user.
+            // Net for "early": users 2 and 4, so sum 40, avg 20, count 2. With the reset the -10 was
+            // lost and the result was sum 50, avg 16.67.
+            AddUser(early);
+            AddUser(early);
+            AddUser(new Entities.User { UserKey = 4, CompanyId = "early", Visits = 30 });
+
+            ExitDataWriteLock();
+            await WaitForUpdate();
+
+            AssertCurrentDataEqual(new[]
+            {
+                new { CompanyId = "baseline", Sum = 1, Avg = 1.0, Count = 1 },
+                new { CompanyId = "early", Sum = 40, Avg = 20.0, Count = 2 },
+                new { CompanyId = "filler", Sum = 100, Avg = 1.0, Count = 100 }
+            });
+        }
+
+        /// <summary>
         /// An empty batch must not crash a grouped bulk aggregate. Empty batches are normally absorbed
         /// by the upstream normalization operator, but an immutable source has no normalization step, so
         /// the empty batch reaches the operator directly. With dataCount == 0 the operator applies a
