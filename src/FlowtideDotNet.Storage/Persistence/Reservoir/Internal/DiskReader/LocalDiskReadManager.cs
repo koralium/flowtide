@@ -20,13 +20,27 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
     {
         private readonly Dictionary<string, ILocalDiskFile> _fileReaders = new Dictionary<string, ILocalDiskFile>();
         private readonly IMemoryAllocator memoryAllocator;
+        private readonly AlignedBufferPool _readBuffers;
         private object _lock = new object();
         private bool _disposed;
 
         public LocalDiskReadManager(IMemoryAllocator memoryAllocator)
         {
             this.memoryAllocator = memoryAllocator;
+            _readBuffers = new AlignedBufferPool(memoryAllocator);
         }
+
+        /// <summary>
+        /// Test hook, runs right before a page is read.
+        /// </summary>
+        internal Action? ReadHookForTests { get; set; }
+
+        internal AlignedBufferPool ReadBuffers => _readBuffers;
+
+        /// <summary>
+        /// True when page reads of one file run side by side.
+        /// </summary>
+        public static bool ReadsWithoutFileLock => Environment.OSVersion.Platform == PlatformID.Unix;
 
         private ILocalDiskFile GetOrCreateReader(string fileName)
         {
@@ -37,7 +51,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                 {
                     if (Environment.OSVersion.Platform == PlatformID.Unix)
                     {
-                        reader = new LocalDiskReaderUnix(fileName, 4096, memoryAllocator);
+                        reader = new LocalDiskReaderUnix(fileName, 4096, memoryAllocator, this);
                         _fileReaders.Add(fileName, reader);
                         return reader;
                     }
@@ -103,6 +117,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
                 _fileReaders.Clear();
                 _disposed = true;
             }
+            _readBuffers.Dispose();
         }
 
     }

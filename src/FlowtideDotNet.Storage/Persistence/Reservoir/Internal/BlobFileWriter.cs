@@ -46,6 +46,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         private readonly System.IO.Hashing.Crc32 crc = new System.IO.Hashing.Crc32();
         private ulong _crc64;
         private bool _layoutFinished;
+        // Odd while the layout is being rewritten
+        private int _layoutVersion;
 
         private int _rentCounter;
 
@@ -99,7 +101,27 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         /// </summary>
         internal Action? ChecksumHookForTests { get; set; }
 
+        /// <summary>
+        /// Test hook, runs inside a page copy.
+        /// </summary>
+        internal Action? CopyHookForTests { get; set; }
+
+        /// <summary>
+        /// Test hook, runs while the layout version is odd.
+        /// </summary>
+        internal Action? LayoutHookForTests { get; set; }
+
+        /// <summary>
+        /// Test hook, runs when a copy must wait.
+        /// </summary>
+        internal Action? CopyWaitHookForTests { get; set; }
+
         public ReadOnlySequence<byte> Write(long key, SerializableObject value)
+        {
+            return Write(key, value, out _);
+        }
+
+        public ReadOnlySequence<byte> Write(long key, SerializableObject value, out uint crc32)
         {
             lock (_lock)
             {
@@ -121,7 +143,59 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 _pageIds.Add(key);
                 _pageOffset.Add(position);
                 _crc32s.Add(crcNumber);
+                crc32 = crcNumber;
                 return new ReadOnlySequence<byte>(startSegment, segmentPosition, endSegment, endSegmentPosition);
+            }
+        }
+
+        // Keeps the earlier reads before this one
+        private int LayoutVersionAfterReads()
+        {
+            Interlocked.MemoryBarrier();
+            return Volatile.Read(ref _layoutVersion);
+        }
+
+        /// <summary>
+        /// Copies a page to a pooled array, also during a roll.
+        /// </summary>
+        /// <remarks>
+        /// Hold a rent on the file, return the array to the shared pool.
+        /// </remarks>
+        internal byte[] CopyPage(ReadOnlySequence<byte> page, out int length)
+        {
+            var spin = new SpinWait();
+            while (true)
+            {
+                int version = Volatile.Read(ref _layoutVersion);
+                if ((version & 1) == 0)
+                {
+                    byte[]? copy = null;
+                    try
+                    {
+                        // The length comes from segment indices that a roll rewrites
+                        length = checked((int)page.Length);
+                        CopyHookForTests?.Invoke();
+                        copy = ArrayPool<byte>.Shared.Rent(length);
+                        page.CopyTo(copy);
+                        if (LayoutVersionAfterReads() == version)
+                        {
+                            return copy;
+                        }
+                    }
+                    catch (Exception) when (LayoutVersionAfterReads() != version)
+                    {
+                        // The layout changed under the copy
+                    }
+                    if (copy != null)
+                    {
+                        ArrayPool<byte>.Shared.Return(copy);
+                    }
+                }
+                else
+                {
+                    CopyWaitHookForTests?.Invoke();
+                }
+                spin.SpinOnce();
             }
         }
 
@@ -190,9 +264,26 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         }
 
         /// <summary>
-        /// Builds the header and settles the segment indices, readers of the pages must be held out.
+        /// Finishes the layout, readers see an odd version meanwhile.
         /// </summary>
         internal void FinishLayout()
+        {
+            lock (_lock)
+            {
+                Interlocked.Increment(ref _layoutVersion);
+                try
+                {
+                    LayoutHookForTests?.Invoke();
+                    SettleLayout();
+                }
+                finally
+                {
+                    Interlocked.Increment(ref _layoutVersion);
+                }
+            }
+        }
+
+        private void SettleLayout()
         {
             lock (_lock)
             {

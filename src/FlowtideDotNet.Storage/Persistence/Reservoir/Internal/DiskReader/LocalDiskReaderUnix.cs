@@ -30,8 +30,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         private readonly int fileDescriptor;
         private readonly int alignment;
         private readonly IMemoryAllocator memoryAllocator;
-        private bool disposedValue;
+        private readonly LocalDiskReadManager owner;
+        private int disposed;
+        // Owner plus page reads in flight, closes at zero
+        private int rents = 1;
         private readonly object _lock = new object();
+        // Only writes use this buffer
         private IMemoryOwner<byte>? alignedBuffer;
 
         public int Alignment => alignment;
@@ -57,10 +61,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         public LocalDiskReaderUnix(
             string fileName, 
             int sectorSize, 
-            IMemoryAllocator memoryAllocator)
+            IMemoryAllocator memoryAllocator,
+            LocalDiskReadManager owner)
         {
             this.alignment = sectorSize;
             this.memoryAllocator = memoryAllocator;
+            this.owner = owner;
             var directoryName = Path.GetDirectoryName(fileName);
             if (directoryName != null && !Directory.Exists(directoryName))
             {
@@ -198,9 +204,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             }
         }
 
-        private unsafe ReadOnlyMemory<byte> Read(long logicalOffset, int length)
+        /// <summary>
+        /// Reads a page into a rented buffer, without a lock.
+        /// </summary>
+        private unsafe ReadOnlyMemory<byte> Read(long logicalOffset, int length, out IMemoryOwner<byte> buffer)
         {
-            const int AlignSize = 4096;
+            const int AlignSize = AlignedBufferPool.Alignment;
 
             long physicalOffset = (logicalOffset / AlignSize) * AlignSize;
 
@@ -210,58 +219,110 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
             long physicalEnd = ((endPosition + AlignSize - 1) / AlignSize) * AlignSize;
             int readLength = (int)(physicalEnd - physicalOffset);
 
-            if (alignedBuffer == null || alignedBuffer.Memory.Length < readLength)
+            if (!TryRent())
             {
-                alignedBuffer?.Dispose();
-                alignedBuffer = memoryAllocator.Allocate(readLength, AlignSize);
+                throw new ObjectDisposedException(nameof(LocalDiskReaderUnix));
             }
-
-            fixed (byte* ptr = alignedBuffer.Memory.Span)
+            IMemoryOwner<byte>? rented = null;
+            try
             {
-                int  bytesRead = (int)pread(fileDescriptor, (nint)ptr, (IntPtr)readLength, (IntPtr)physicalOffset);
+                rented = owner.ReadBuffers.Rent(readLength);
+                owner.ReadHookForTests?.Invoke();
+                fixed (byte* ptr = rented.Memory.Span)
+                {
+                    int bytesRead = (int)pread(fileDescriptor, (nint)ptr, (IntPtr)readLength, (IntPtr)physicalOffset);
 
-                if (bytesRead == -1)
-                    throw new IOException($"pread failed with errno {Marshal.GetLastPInvokeError()}");
+                    if (bytesRead == -1)
+                        throw new IOException($"pread failed with errno {Marshal.GetLastPInvokeError()}");
 
-                int availableData = Math.Max(0, bytesRead - relativeOffset);
-                int bytesToCopy = Math.Min(length, availableData);
+                    int availableData = Math.Max(0, bytesRead - relativeOffset);
+                    int bytesToCopy = Math.Min(length, availableData);
 
-                return alignedBuffer.Memory.Slice(relativeOffset, bytesToCopy);
+                    buffer = rented;
+                    return rented.Memory.Slice(relativeOffset, bytesToCopy);
+                }
+            }
+            catch
+            {
+                if (rented != null)
+                {
+                    owner.ReadBuffers.Return(rented);
+                }
+                throw;
+            }
+            finally
+            {
+                Return();
             }
         }
 
         public ValueTask<ReadOnlyMemory<byte>> Read(long position, int length, uint crc32)
         {
-            lock (_lock)
+            var span = Read(position, length, out var buffer).Span;
+            try
             {
-                var span = Read(position, length).Span;
                 CrcUtils.CheckCrc32(span, crc32);
                 var bytes = new byte[length];
                 span.CopyTo(bytes);
                 return ValueTask.FromResult<ReadOnlyMemory<byte>>(bytes);
             }
-            
+            finally
+            {
+                owner.ReadBuffers.Return(buffer);
+            }
         }
 
         public ValueTask<T> Read<T>(long position, int length, uint crc32, IStateSerializer<T> serializer) where T : ICacheObject
         {
-            lock (_lock)
+            var mem = Read(position, length, out var buffer);
+            try
             {
-                var mem = Read(position, length);
                 CrcUtils.CheckCrc32(mem.Span, crc32);
                 var result = serializer.Deserialize(new ReadOnlySequence<byte>(mem), length);
                 return ValueTask.FromResult<T>(result);
             }
+            finally
+            {
+                owner.ReadBuffers.Return(buffer);
+            }
         }
 
-        public void Dispose()
+        private bool TryRent()
         {
-            if (!disposedValue)
+            int current = Volatile.Read(ref rents);
+            while (true)
+            {
+                if (current == 0)
+                {
+                    return false;
+                }
+                int old = Interlocked.CompareExchange(ref rents, current + 1, current);
+                if (old == current)
+                {
+                    return true;
+                }
+                current = old;
+            }
+        }
+
+        private void Return()
+        {
+            if (Interlocked.Decrement(ref rents) == 0)
             {
                 close(fileDescriptor);
-                disposedValue = true;
+                alignedBuffer?.Dispose();
             }
-            alignedBuffer?.Dispose();
+        }
+
+        /// <summary>
+        /// Closes the file once no page read is in flight.
+        /// </summary>
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+            {
+                Return();
+            }
         }
 
         public Task<PipeReader> ReadFile(CancellationToken cancellationToken = default)

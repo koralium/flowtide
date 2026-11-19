@@ -26,6 +26,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         private string _dataFileDirectory;
         private string _checkpointFileDirectory;
         private LocalDiskReadManager? localDiskReadManager;
+        private Action? _readHookForTests;
         private string? _streamVersion;
 
         public bool SupportsFileListing => true;
@@ -132,6 +133,25 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
             localDiskReadManager.DropFile(filePath);
             File.Delete(filePath);
             return Task.CompletedTask;
+        }
+
+        /// <summary>
+        /// Test hook, runs right before a page is read.
+        /// </summary>
+        internal Action? ReadHookForTests
+        {
+            get
+            {
+                return _readHookForTests;
+            }
+            set
+            {
+                _readHookForTests = value;
+                if (localDiskReadManager != null)
+                {
+                    localDiskReadManager.ReadHookForTests = value;
+                }
+            }
         }
 
         public ValueTask<T> ReadAsync<T>(ulong fileId, int offset, int length, uint crc32, IStateSerializer<T> stateSerializer, CancellationToken cancellationToken = default) where T : ICacheObject
@@ -244,7 +264,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk
         {
             // A recovery initializes again, the manager before it still holds every file it read open.
             localDiskReadManager?.Dispose();
-            localDiskReadManager = new LocalDiskReadManager(context.MemoryAllocator);
+            localDiskReadManager = new LocalDiskReadManager(context.MemoryAllocator) { ReadHookForTests = _readHookForTests };
             _streamVersion = context.StreamVersion;
             SetDirectories(context.StreamName, context.StreamVersion);
             return Task.CompletedTask;

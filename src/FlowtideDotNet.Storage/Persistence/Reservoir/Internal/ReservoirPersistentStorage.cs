@@ -12,7 +12,10 @@
 
 using FlowtideDotNet.Storage.Exceptions;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader;
 using FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache;
+using FlowtideDotNet.Storage.Persistence.Reservoir.LocalDisk;
+using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -466,6 +469,123 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 return _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
             }
             throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+        }
+
+        /// <summary>
+        /// True when many readers can read pages side by side.
+        /// </summary>
+        internal bool ReadsPagesWithoutFileLock
+        {
+            get
+            {
+                var provider = _fileProvider is MetricsFileStorageProvider metrics ? metrics.InternalProvider : _fileProvider;
+                // Exact types only, a subclass may read differently
+                return provider.GetType() == typeof(MemoryFileProvider) ||
+                    (provider.GetType() == typeof(LocalDiskProvider) && LocalDiskReadManager.ReadsWithoutFileLock);
+            }
+        }
+
+        /// <summary>
+        /// The file map, for tests.
+        /// </summary>
+        internal ConcurrentDictionary<long, PageFileLocation> PageFileLocationsForTests => _checkpointHandler!.PageFileLocations_Test;
+
+        /// <summary>
+        /// Test hook, runs before the second lookup pass.
+        /// </summary>
+        internal Action? SecondReadPassHookForTests { get; set; }
+
+        /// <summary>
+        /// Reads a page for many readers, no lock over read or decode.
+        /// </summary>
+        /// <remarks>
+        /// Some providers still lock, see <see cref="ReadsPagesWithoutFileLock"/>.
+        /// Each reader needs its own serializer, or one safe to share.
+        /// A deleted page stays readable until a checkpoint, so read none.
+        /// </remarks>
+        internal ValueTask<T> ReadConcurrentAsync<T>(long key, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before reading data");
+
+            // Twice, a page moves between the maps when stored
+            for (int attempt = 0; attempt < 2; attempt++)
+            {
+                if (attempt == 1)
+                {
+                    SecondReadPassHookForTests?.Invoke();
+                }
+                if (_temporaryPageLocations.TryGetValue(key, out var written) && written.file.TryRent())
+                {
+                    byte[] copy;
+                    int length;
+                    try
+                    {
+                        copy = written.file.CopyPage(written.data, out length);
+                    }
+                    finally
+                    {
+                        written.file.Return();
+                    }
+                    try
+                    {
+                        if (Crc32.HashToUInt32(copy.AsSpan(0, length)) == written.crc32)
+                        {
+                            return ValueTask.FromResult(stateSerializer.Deserialize(new ReadOnlySequence<byte>(copy, 0, length), length));
+                        }
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(copy);
+                    }
+                    // Only an error if the page has not moved
+                    if (attempt == 1)
+                    {
+                        throw new FlowtideChecksumMismatchException("Invalid CRC32 for page.");
+                    }
+                    continue;
+                }
+                if (_checkpointHandler.TryGetPageFileLocation(key, out var location))
+                {
+                    return ReadStored(key, location, stateSerializer);
+                }
+            }
+            throw new FlowtidePersistentStorageException($"Key {key} not found in persistent storage.");
+        }
+
+        // Compaction can move a page after the lookup
+        private bool TryGetMovedLocation(long key, PageFileLocation read, out PageFileLocation moved)
+        {
+            Debug.Assert(_checkpointHandler != null);
+            return _checkpointHandler.TryGetPageFileLocation(key, out moved) && (moved.FileId != read.FileId || moved.Offset != read.Offset);
+        }
+
+        private ValueTask<T> ReadStored<T>(long key, PageFileLocation location, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            try
+            {
+                var read = _fileProvider.ReadAsync<T>(location.FileId, location.Offset, location.Size, location.Crc32, stateSerializer);
+                if (read.IsCompletedSuccessfully)
+                {
+                    return read;
+                }
+                return ReadStoredSlow(read, key, location, stateSerializer);
+            }
+            catch (Exception) when (TryGetMovedLocation(key, location, out var moved))
+            {
+                return _fileProvider.ReadAsync<T>(moved.FileId, moved.Offset, moved.Size, moved.Crc32, stateSerializer);
+            }
+        }
+
+        private async ValueTask<T> ReadStoredSlow<T>(ValueTask<T> read, long key, PageFileLocation location, IStateSerializer<T> stateSerializer) where T : ICacheObject
+        {
+            try
+            {
+                return await read;
+            }
+            catch (Exception) when (TryGetMovedLocation(key, location, out var moved))
+            {
+                return await _fileProvider.ReadAsync<T>(moved.FileId, moved.Offset, moved.Size, moved.Crc32, stateSerializer);
+            }
         }
 
         internal void DeletePages(IReadOnlySet<long> keys)
