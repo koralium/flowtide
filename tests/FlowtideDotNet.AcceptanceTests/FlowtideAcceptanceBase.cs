@@ -303,6 +303,15 @@ namespace FlowtideDotNet.AcceptanceTests
             flowtideTestStream.DeleteUser(user);
         }
 
+        /// <summary>
+        /// Deletes users whether or not they were added, so with an immutable source a delete can
+        /// reach the stream before the insert it cancels.
+        /// </summary>
+        public void DeleteUsers(IReadOnlyCollection<User> users)
+        {
+            flowtideTestStream.DeleteUsers(users);
+        }
+
         public void DeleteOrder(Order order)
         {
             flowtideTestStream.DeleteOrder(order);
