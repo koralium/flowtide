@@ -1572,7 +1572,8 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         public async Task AShrinkOfTheCacheKeepsRoomForReservedPages()
         {
             var memory = new FixedMemory();
-            using var table = new S3FifoTableSync(new CacheTableOptions("resize", NullLogger.Instance, new Meter("resize"), memory) { MaxSize = 2000, MinSize = 100, MaxMemoryUsageInBytes = 1_000_000 });
+            using var meter = new Meter("resize");
+            using var table = new S3FifoTableSync(new CacheTableOptions("resize", NullLogger.Instance, meter, memory) { MaxSize = 2000, MinSize = 100, MaxMemoryUsageInBytes = 1_000_000 });
             await table.StopCleanupTask();
             var handler = new DropHandler();
             for (int i = 1; i <= 50; i++)
@@ -1601,7 +1602,8 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         public async Task AResizeLeavesASmallCacheWithoutReservationsAlone()
         {
             var memory = new FixedMemory();
-            using var table = new S3FifoTableSync(new CacheTableOptions("small", NullLogger.Instance, new Meter("small"), memory) { MaxSize = 90, MinSize = 10, MaxMemoryUsageInBytes = 1_000_000 });
+            using var meter = new Meter("small");
+            using var table = new S3FifoTableSync(new CacheTableOptions("small", NullLogger.Instance, meter, memory) { MaxSize = 90, MinSize = 10, MaxMemoryUsageInBytes = 1_000_000 });
             await table.StopCleanupTask();
             var handler = new DropHandler();
             for (int i = 1; i <= 50; i++)

@@ -59,7 +59,8 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
                 {
                     pages[i] = new Page(empty);
                 }
-                using var table = new S3FifoTableSync(new CacheTableOptions("tableAdd", NullLogger.Instance, new Meter("tableAdd"), GlobalMemoryManager.Instance) { MaxSize = count * 2, MinSize = count * 2 });
+                using var meter = new Meter("tableAdd");
+                using var table = new S3FifoTableSync(new CacheTableOptions("tableAdd", NullLogger.Instance, meter, GlobalMemoryManager.Instance) { MaxSize = count * 2, MinSize = count * 2 });
                 var watch = Stopwatch.StartNew();
                 for (int i = 0; i < count; i++)
                 {
