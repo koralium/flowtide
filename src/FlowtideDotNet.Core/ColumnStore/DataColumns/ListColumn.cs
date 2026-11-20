@@ -458,7 +458,8 @@ namespace FlowtideDotNet.Core.ColumnStore
 
             if (startOffset == endOffset)
             {
-                return sizeof(int);
+                // Every row has an offset, also an empty list
+                return (end - start + 1) * sizeof(int);
             }
             return _internalColumn.GetByteSize(startOffset, endOffset - 1) + ((end - start + 1) * sizeof(int));
         }
