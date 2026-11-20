@@ -37,7 +37,7 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
     {
         private const long FirstPage = 1000;
 
-        private sealed class Page : ICacheObject
+        internal sealed class Page : ICacheObject
         {
             private int _rentCount = 1;
 
@@ -79,7 +79,7 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
             }
         }
 
-        private sealed class PageSerializer : IStateSerializer<Page>
+        internal sealed class PageSerializer : IStateSerializer<Page>
         {
             public Page Deserialize(ReadOnlySequence<byte> bytes, int length)
             {
@@ -120,14 +120,14 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
             }
         }
 
-        private static string Option(string[] args, string name, string fallback)
+        internal static string Option(string[] args, string name, string fallback)
         {
             int index = Array.IndexOf(args, "--" + name);
             return index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback;
         }
 
         // Wordlike text, compresses about as state pages do
-        private static byte[] PageBytes(long page, int size)
+        internal static byte[] PageBytes(long page, int size)
         {
             var random = new Random((int)page);
             var bytes = new byte[size];
@@ -148,7 +148,7 @@ namespace FlowtideDotNet.Benchmarks.ReservoirReaders
             return bytes;
         }
 
-        private static CompressedStateSerializer<Page> NewSerializer()
+        internal static CompressedStateSerializer<Page> NewSerializer()
         {
             return new CompressedStateSerializer<Page>(new PageSerializer(), 3, GlobalMemoryManager.Instance);
         }

@@ -49,6 +49,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private int _numberOfWrittenFiles;
         private bool _takingCheckpoint = false;
+        // Held by a checkpoint and by a file hand-over
+        private SemaphoreSlim _fileHandoverLock = new SemaphoreSlim(1, 1);
         private string? _streamVersion;
         private string? _streamName;
         private ReservoirStreamsMetadata? _storageMetadata;
@@ -155,8 +157,18 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
         internal async Task AddCompleteBlobFile(BlobFileWriter blobFileWriter)
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before adding blob files");
-            Interlocked.Increment(ref _numberOfWrittenFiles);
-            await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
+            // A file filled during a checkpoint goes into the next
+            var handover = _fileHandoverLock;
+            await handover.WaitAsync();
+            try
+            {
+                Interlocked.Increment(ref _numberOfWrittenFiles);
+                await _checkpointHandler.EnqueueFileAsync(blobFileWriter);
+            }
+            finally
+            {
+                handover.Release();
+            }
         }
 
         internal bool TryGetFileInformation(ulong fileId, [NotNullWhen(true)] out FileInformation? fileInformation)
@@ -342,6 +354,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             await _adminSession.Write(1, new SerializableObject(metadata));
             await _adminSession.Commit();
 
+            var handover = _fileHandoverLock;
+            await handover.WaitAsync();
             Volatile.Write(ref _takingCheckpoint, true);
             try
             {
@@ -404,6 +418,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 // Storage checkpoint teardown must always reset checkpoint flags.
                 Volatile.Write(ref _numberOfWrittenFiles, 0);
                 Volatile.Write(ref _takingCheckpoint, false);
+                handover.Release();
             }
             await TryDeleteOldStreamVersions(default);
         }
@@ -621,6 +636,18 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             return session;
         }
 
+        // Open sessions, read by tests
+        internal int SessionCount
+        {
+            get
+            {
+                lock (_sessionsLock)
+                {
+                    return _sessions.Count;
+                }
+            }
+        }
+
         /// <summary>
         /// Drops a disposed session, it must not be reset or committed again.
         /// </summary>
@@ -738,6 +765,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _checkpointHandler = new CheckpointHandler(_fileProvider, _memoryPool, _memoryAllocator, _blobStorageOptions.SnapshotCheckpointInterval, checkpointHandlerLogger, CacheProvider);
             // Reset taking checkpoint
             Volatile.Write(ref _takingCheckpoint, false);
+            // A new lock, an unfinished checkpoint may hold the old
+            _fileHandoverLock = new SemaphoreSlim(1, 1);
 
             _mergedBlobLock.Dispose();
             _mergedBlobLock = new SemaphoreSlim(1);

@@ -505,6 +505,42 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         internal int MaxHeldPages => Math.Max(1, Volatile.Read(ref maxSize) / 2);
 
+        // Readers and write queues may hold one entry in twenty
+        private const int HeldPagesShare = 20;
+        private readonly object m_reserveLock = new object();
+        private int m_reservedHeldPages;
+
+        internal int ReservedHeldPages => Volatile.Read(ref m_reservedHeldPages);
+
+        /// <summary>
+        /// The most pages that can be reserved at the current size.
+        /// </summary>
+        internal int HeldPagesBound => Volatile.Read(ref maxSize) / HeldPagesShare;
+
+        /// <summary>
+        /// Reserves pages held outside eviction, false when over the bound.
+        /// </summary>
+        internal bool TryReserveHeldPages(int pages)
+        {
+            lock (m_reserveLock)
+            {
+                if (m_reservedHeldPages + pages > maxSize / HeldPagesShare)
+                {
+                    return false;
+                }
+                m_reservedHeldPages += pages;
+                return true;
+            }
+        }
+
+        internal void ReleaseHeldPages(int pages)
+        {
+            lock (m_reserveLock)
+            {
+                m_reservedHeldPages -= pages;
+            }
+        }
+
         public bool Add(long key, ICacheObject value, ICacheEvictHandler evictHandler)
         {
             return Add(key, value, evictHandler, out _);
@@ -541,53 +577,87 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 var entry = new S3FifoCacheEntry(key, value, evictHandler, m_correlationClock);
                 if (m_cache.TryAdd(key, entry))
                 {
-                    if (value.RemovedFromCache)
-                    {
-                        // Defensive, take a new cache rent, the caller keeps its own.
-                        if (!value.TryRent())
-                        {
-                            // Withdraw the entry, an orphan would poison the key.
-                            m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(key, entry));
-                            throw new InvalidOperationException("Already disposed");
-                        }
-                        value.RemovedFromCache = false;
-                    }
-
-                    lock (m_queueLock)
-                    {
-                        // A hit can land before this stamp, the filter is a heuristic.
-                        entry.SetCountStamp(m_correlationClock.NextSequence());
-                        var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
-                        if (inGhost)
-                        {
-                            DropGhostMembership(ghostValue.FromMain);
-                            // Evidence only, the split moves once per pass.
-                            RecordGhostHit(ghostValue.FromMain);
-                        }
-                        if (inGhost && (ghostValue.Reused || ghostValue.FromMain))
-                        {
-                            // Two reuse events, which is what main admission requires.
-                            entry.Location = S3FifoQueueLocation.Main;
-                            m_mainQueue.Enqueue(entry);
-                        }
-                        else
-                        {
-                            if (inGhost)
-                            {
-                                // Bank the first event, small asks for one more.
-                                Volatile.Write(ref entry.Frequency, 1);
-                            }
-                            entry.Location = S3FifoQueueLocation.Small;
-                            m_smallQueue.Enqueue(entry);
-                        }
-                    }
-
-                    Interlocked.Increment(ref m_count);
+                    AdmitNewEntry(key, value, entry);
                     cacheEntry = entry;
                     return full;
                 }
                 // Lost the insert race, retry as an update.
             }
+        }
+
+        /// <summary>
+        /// Adds unless the key is cached, hands back the key's entry.
+        /// </summary>
+        public bool AddIfAbsent(long key, ICacheObject value, ICacheEvictHandler evictHandler, out S3FifoCacheEntry cacheEntry)
+        {
+            while (true)
+            {
+                if (m_cache.TryGetValue(key, out var existing))
+                {
+                    if (!Volatile.Read(ref existing.Removed))
+                    {
+                        cacheEntry = existing;
+                        return false;
+                    }
+                    // Removed by eviction, wait for it to leave.
+                    Thread.Yield();
+                    continue;
+                }
+
+                var entry = new S3FifoCacheEntry(key, value, evictHandler, m_correlationClock);
+                if (m_cache.TryAdd(key, entry))
+                {
+                    AdmitNewEntry(key, value, entry);
+                    cacheEntry = entry;
+                    return true;
+                }
+            }
+        }
+
+        private void AdmitNewEntry(long key, ICacheObject value, S3FifoCacheEntry entry)
+        {
+            if (value.RemovedFromCache)
+            {
+                // Defensive, take a new cache rent, the caller keeps its own.
+                if (!value.TryRent())
+                {
+                    // Withdraw the entry, an orphan would poison the key.
+                    m_cache.TryRemove(new KeyValuePair<long, S3FifoCacheEntry>(key, entry));
+                    throw new InvalidOperationException("Already disposed");
+                }
+                value.RemovedFromCache = false;
+            }
+
+            lock (m_queueLock)
+            {
+                // A hit can land before this stamp, the filter is a heuristic.
+                entry.SetCountStamp(m_correlationClock.NextSequence());
+                var inGhost = m_ghostKeys.Remove(key, out var ghostValue);
+                if (inGhost)
+                {
+                    DropGhostMembership(ghostValue.FromMain);
+                    // Evidence only, the split moves once per pass.
+                    RecordGhostHit(ghostValue.FromMain);
+                }
+                if (inGhost && (ghostValue.Reused || ghostValue.FromMain))
+                {
+                    // Two reuse events, which is what main admission requires.
+                    entry.Location = S3FifoQueueLocation.Main;
+                    m_mainQueue.Enqueue(entry);
+                }
+                else
+                {
+                    if (inGhost)
+                    {
+                        // Bank the first event, small asks for one more.
+                        Volatile.Write(ref entry.Frequency, 1);
+                    }
+                    entry.Location = S3FifoQueueLocation.Small;
+                    m_smallQueue.Enqueue(entry);
+                }
+            }
+
+            Interlocked.Increment(ref m_count);
         }
 
         /// <summary>

@@ -391,24 +391,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                     var rawIdealMaxSize = (int)Math.Floor(targetMemoryBytes / avgItemSizeBytes);
 
-                    var minAllowedSize = 100;
-                    var idealMaxSize = Math.Max(minAllowedSize, rawIdealMaxSize);
-
-                    var tolerance = idealMaxSize * 0.20;
-
-                    if (Math.Abs(maxSize - idealMaxSize) > tolerance)
+                    // Taken so a reservation cannot slip in under a shrink
+                    lock (m_reserveLock)
                     {
-                        Volatile.Write(ref maxSize, idealMaxSize);
-                        // The correlation window follows maxSize too.
-                        m_correlationClock.SetWindowSize(CorrelationWindowSize());
+                        // Reserved pages stay within their share of the cache
+                        var minAllowedSize = Math.Max(100, m_reservedHeldPages * HeldPagesShare);
+                        var idealMaxSize = Math.Max(minAllowedSize, rawIdealMaxSize);
 
-                        var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
+                        var tolerance = idealMaxSize * 0.20;
 
-                        var cleanupSize = Math.Max(1, rawCleanupSize);
-                        Volatile.Write(ref cleanupStart, cleanupSize);
+                        if (Math.Abs(maxSize - idealMaxSize) > tolerance)
+                        {
+                            Volatile.Write(ref maxSize, idealMaxSize);
+                            // The correlation window follows maxSize too.
+                            m_correlationClock.SetWindowSize(CorrelationWindowSize());
 
-                        // Replan on the new threshold, the old evicts a grow.
-                        toBeRemovedCount = currentCount - cleanupSize;
+                            var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
+
+                            var cleanupSize = Math.Max(1, rawCleanupSize);
+                            Volatile.Write(ref cleanupStart, cleanupSize);
+
+                            // Replan on the new threshold, the old evicts a grow.
+                            toBeRemovedCount = currentCount - cleanupSize;
+                        }
                     }
                 }
             }
