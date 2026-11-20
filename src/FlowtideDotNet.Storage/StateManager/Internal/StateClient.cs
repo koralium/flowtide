@@ -63,5 +63,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         internal virtual void RequestStopCommits()
         {
         }
+
+        /// <summary>
+        /// Called before the cache table is disposed, nothing is added after.
+        /// </summary>
+        internal virtual void StopCacheUse()
+        {
+        }
     }
 }

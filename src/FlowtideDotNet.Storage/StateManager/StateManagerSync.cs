@@ -14,6 +14,7 @@ using FlowtideDotNet.Storage.FileCache;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.CacheStorage;
+using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal;
 using FlowtideDotNet.Storage.StateManager.Internal.ObjectState;
 using FlowtideDotNet.Storage.StateManager.Internal.Sync;
@@ -267,6 +268,12 @@ namespace FlowtideDotNet.Storage.StateManager
             return TableForClients.Add(key, value, evictHandler, out entry);
         }
 
+        internal bool AddIfAbsent<V>(in long key, in V value, in ICacheEvictHandler evictHandler, out S3FifoCacheEntry entry)
+            where V : ICacheObject
+        {
+            return TableForClients.AddIfAbsent(key, value, evictHandler, out entry);
+        }
+
         internal Task WaitForNotFullAsync()
         {
             return TableForClients.Wait();
@@ -491,7 +498,7 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     throw LifecycleCollision(client);
                 }
-                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>((cachedClient as SyncStateClient<TValue, TMetadata>)!);
+                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(cachedClient as SyncStateClient<TValue, TMetadata> ?? throw LifecycleCollision(client));
             }
             if (m_metadata.ClientMetadataLocations.TryGetValue(client, out var location))
             {
@@ -539,6 +546,50 @@ namespace FlowtideDotNet.Storage.StateManager
                     var stateClient = NewSyncStateClient(ephemeral, client, clientMetadataPageId, clientMetadata, session, options, memoryAllocator);
                     _stateClients.Add(client, stateClient);
                     return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(stateClient);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The client for pages that never change, Reservoir storage only.
+        /// </summary>
+        internal ImmutablePageClient<TValue> CreateImmutablePageClient<TValue>(string client, ImmutablePageClientOptions<TValue> options)
+            where TValue : class, ICacheObject
+        {
+            Debug.Assert(m_metadata != null);
+            if (m_persistentStorage is not ReservoirPersistentStorage reservoir)
+            {
+                throw new NotSupportedException("Immutable pages need Reservoir storage.");
+            }
+            options.Validate();
+            lock (m_lock)
+            {
+                if (_stateClients.TryGetValue(client, out var cachedClient))
+                {
+                    return cachedClient as ImmutablePageClient<TValue> ?? throw LifecycleCollision(client);
+                }
+                // The id only binds the name, nothing is stored under it
+                bool newBinding = !m_metadata.ClientMetadataLocations.TryGetValue(client, out var metadataId);
+                if (newBinding)
+                {
+                    metadataId = GetNewPageId_Internal();
+                    m_metadata.ClientMetadataLocations.Add(client, metadataId);
+                }
+                var session = reservoir.CreateSession();
+                try
+                {
+                    var pageClient = new ImmutablePageClient<TValue>(TableForClients, GetNewPageId, client, metadataId, session, reservoir.ReadConcurrentAsync, options, meter);
+                    _stateClients.Add(client, pageClient);
+                    return pageClient;
+                }
+                catch
+                {
+                    session.Dispose();
+                    if (newBinding)
+                    {
+                        m_metadata.ClientMetadataLocations.Remove(client);
+                    }
+                    throw;
                 }
             }
         }
@@ -756,6 +807,7 @@ namespace FlowtideDotNet.Storage.StateManager
                     foreach (var stateClient in stateClients)
                     {
                         stateClient.RequestStopCommits();
+                        stateClient.StopCacheUse();
                     }
 
                     // Dispose the cache table first so it stops the cleanup task.

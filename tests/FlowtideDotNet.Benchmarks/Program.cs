@@ -47,6 +47,11 @@ if (args.FirstOrDefault() == "--checkpoint-finality")
     await CheckpointFinalityProbe.Run(args);
     return;
 }
+if (args.FirstOrDefault() == "--page-client")
+{
+    Environment.ExitCode = await FlowtideDotNet.Benchmarks.ReservoirReaders.PageClientBench.Run(args);
+    return;
+}
 if (args.FirstOrDefault() == "--reservoir-readers")
 {
     Environment.ExitCode = await FlowtideDotNet.Benchmarks.ReservoirReaders.ReservoirReaderBench.Run(args);
