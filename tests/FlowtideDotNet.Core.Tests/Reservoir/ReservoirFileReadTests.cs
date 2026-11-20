@@ -346,7 +346,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         [Fact]
         public async Task ARegistryReadThatFailsStillCompletesItsReader()
         {
-            var stream = new MemoryStream(new byte[200]);
+            using var stream = new MemoryStream(new byte[200]);
             var reader = PipeReader.Create(stream);
 
             await Assert.ThrowsAsync<InvalidOperationException>(async () => await BundleFileRegistryReader.ReadRegistryAsync(reader, GlobalMemoryManager.Instance, default));

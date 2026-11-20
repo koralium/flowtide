@@ -128,7 +128,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
 
         private static async Task<byte[]> ReadWhole(PipeReader reader)
         {
-            var bytes = new MemoryStream();
+            using var bytes = new MemoryStream();
             while (true)
             {
                 var result = await reader.ReadAsync();
