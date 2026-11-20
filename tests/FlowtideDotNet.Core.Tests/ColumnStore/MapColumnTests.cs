@@ -586,5 +586,42 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
             var val = column.GetValueAt(1, new MapKeyReferenceSegment() { Key = "k2" });
             Assert.Equal(42, val.AsLong);
         }
+
+        [Fact]
+        public void ARangeOfEmptyMapsCountsAnOffsetForEveryRow()
+        {
+            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 100; i++)
+            {
+                column.Add(new MapValue(Array.Empty<KeyValuePair<IDataValue, IDataValue>>()), GlobalMemoryManager.Instance);
+            }
+
+            Assert.Equal(sizeof(int), column.GetByteSize(0, 0));
+            Assert.Equal(100 * sizeof(int), column.GetByteSize(0, 99));
+            Assert.Equal(10 * sizeof(int), column.GetByteSize(40, 49));
+            column.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Fact]
+        public void AMapOfEmptyListsCountsEveryOffsetInside()
+        {
+            using var keys = new Column(GlobalMemoryManager.Instance);
+            var pairs = new KeyValuePair<IDataValue, IDataValue>[1000];
+            for (int i = 0; i < pairs.Length; i++)
+            {
+                keys.Add(new Int64Value(i));
+                pairs[i] = new KeyValuePair<IDataValue, IDataValue>(new Int64Value(i), new ListValue(Array.Empty<IDataValue>()));
+            }
+            int expected = keys.GetByteSize(0, 999) + 1001 * sizeof(int);
+            MapColumn column = new MapColumn(GlobalMemoryManager.Instance);
+            column.Add(new MapValue(pairs), GlobalMemoryManager.Instance);
+            var sizes = new int[1];
+
+            column.GetPrefixSumByteSizes(new int[] { 0 }, sizes);
+
+            Assert.True(column.GetByteSize(0, 0) >= expected, $"The row is counted as {column.GetByteSize(0, 0)} bytes, its parts are {expected}.");
+            Assert.True(sizes[0] >= expected, $"The row is counted as {sizes[0]} bytes, its parts are {expected}.");
+            column.Dispose(GlobalMemoryManager.Instance);
+        }
     }
 }

@@ -1290,5 +1290,44 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
 
             Assert.Equal(columnHash, valueHash);
         }
+
+        [Fact]
+        public void ARangeOfEmptyListsCountsAnOffsetForEveryRow()
+        {
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 100; i++)
+            {
+                column.Add(new ListValue(Array.Empty<IDataValue>()), GlobalMemoryManager.Instance);
+            }
+
+            Assert.Equal(sizeof(int), column.GetByteSize(0, 0));
+            Assert.Equal(100 * sizeof(int), column.GetByteSize(0, 99));
+            Assert.Equal(10 * sizeof(int), column.GetByteSize(40, 49));
+            column.Dispose(GlobalMemoryManager.Instance);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void AListOfEmptyListsOrMapsCountsEveryOffsetInside(bool maps)
+        {
+            IDataValue empty = maps ? new MapValue(Array.Empty<KeyValuePair<IDataValue, IDataValue>>()) : new ListValue(Array.Empty<IDataValue>());
+            var children = new IDataValue[1000];
+            Array.Fill(children, empty);
+            ListColumn column = new ListColumn(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 3; i++)
+            {
+                column.Add(new ListValue(children), GlobalMemoryManager.Instance);
+            }
+            var sizes = new int[3];
+
+            column.GetPrefixSumByteSizes(new int[] { 0, 1, 2 }, sizes);
+
+            Assert.True(column.GetByteSize(1, 1) >= 1001 * sizeof(int), $"One row is counted as {column.GetByteSize(1, 1)} bytes.");
+            Assert.True(column.GetByteSize(0, 2) >= 3003 * sizeof(int), $"Three rows are counted as {column.GetByteSize(0, 2)} bytes.");
+            Assert.True(sizes[0] >= 1001 * sizeof(int), $"The first row is counted as {sizes[0]} bytes.");
+            Assert.True(sizes[2] - sizes[1] >= 1001 * sizeof(int), $"The last row is counted as {sizes[2] - sizes[1]} bytes.");
+            column.Dispose(GlobalMemoryManager.Instance);
+        }
     }
 }
