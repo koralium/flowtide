@@ -118,6 +118,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             return stateClient;
         }
 
+        internal ImmutablePageClient<V> GetOrCreateImmutablePageClient<V>(string name, ImmutablePageClientOptions<V> options, IMemoryAllocator memoryAllocator)
+            where V : class, ICacheObject
+        {
+            var combinedName = $"{m_name}_{name}";
+            var pageOptions = options;
+            if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
+            {
+                int level = stateManager.SerializeOptions.CompressionLevel.HasValue ? stateManager.SerializeOptions.CompressionLevel.Value : 3;
+                var factory = options.SerializerFactory;
+                // Each reader gets its own compression context
+                pageOptions = new ImmutablePageClientOptions<V>(() => new CompressedStateSerializer<V>(factory(), level, memoryAllocator))
+                {
+                    WriteQueueCapacity = options.WriteQueueCapacity,
+                    WindowSize = options.WindowSize
+                };
+            }
+            return stateManager.CreateImmutablePageClient(combinedName, pageOptions);
+        }
+
         public ValueTask<IObjectState<T>> GetOrCreateObjectStateAsync<T>(string name)
         {
             var combinedName = $"{m_name}_{name}";
