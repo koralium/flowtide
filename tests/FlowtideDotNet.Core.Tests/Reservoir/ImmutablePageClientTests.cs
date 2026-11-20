@@ -681,6 +681,81 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         }
 
         [Fact]
+        public async Task AWaitingPublisherIsWokenWhenHalfTheQueueIsFree()
+        {
+            using var stream = await Open();
+            var client = stream.Client(queue: 4);
+            var gates = new Gate[] { new Gate(), new Gate(), new Gate() };
+            int encodes = 0;
+            stream.Hooks.Encode = () =>
+            {
+                int encode = Interlocked.Increment(ref encodes);
+                if (encode <= gates.Length)
+                {
+                    gates[encode - 1].Pass();
+                }
+            };
+            try
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    await Publish(client);
+                }
+                Assert.True(gates[0].Entered.Wait(Limit));
+                gates[0].Release.Set();
+                Assert.True(gates[1].Entered.Wait(Limit));
+                long id = client.NewPageId();
+                var waiting = client.PublishAsync(id, new Page(Bytes(id)));
+                bool admittedAfterOne = waiting.IsCompleted;
+                gates[1].Release.Set();
+                Assert.True(gates[2].Entered.Wait(Limit));
+                await waiting.AsTask().WaitAsync(Limit);
+                long waits = client.QueueFullWaits;
+                gates[2].Release.Set();
+                await client.DrainAsync().WaitAsync(Limit);
+
+                Assert.False(admittedAfterOne);
+                Assert.Equal(1, waits);
+                Assert.Equal(0, client.HeldPages);
+            }
+            finally
+            {
+                foreach (var gate in gates)
+                {
+                    gate.Release.Set();
+                }
+            }
+        }
+
+        [Fact]
+        public async Task EverySlotIsBackWhenTheQueueIsEmpty()
+        {
+            using var stream = await Open();
+            var client = stream.Client(queue: 4);
+            await Publish(client);
+            await client.DrainAsync().WaitAsync(Limit);
+            var gate = new Gate();
+            stream.Hooks.Encode = gate.Pass;
+            try
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    await Publish(client).WaitAsync(Limit);
+                }
+                long waits = client.QueueFullWaits;
+                gate.Release.Set();
+                await client.DrainAsync().WaitAsync(Limit);
+
+                Assert.Equal(0, waits);
+                Assert.Equal(0, client.HeldPages);
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
         public async Task APageThatWaitsToBeWrittenIsNotEvicted()
         {
             using var stream = await Open(cachePages: 400);
@@ -1365,6 +1440,51 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 window.Dispose();
 
                 Assert.Same(fault, error);
+                Assert.Equal(1, second.RentCount);
+            }
+            finally
+            {
+                first.BeforeReturn = null;
+                if (first.RentCount > 1)
+                {
+                    first.Return();
+                }
+                if (second.RentCount > 1)
+                {
+                    second.Return();
+                }
+            }
+        }
+
+        [Fact]
+        public async Task AFailedReleaseLeavesTheWindowEmptyAndUsable()
+        {
+            using var stream = await Open();
+            var client = stream.Client(window: 2);
+            var window = client.CreateWindow();
+            long firstId = client.NewPageId();
+            long secondId = client.NewPageId();
+            var first = new Page(Bytes(firstId));
+            var second = new Page(Bytes(secondId));
+            await client.PublishAsync(firstId, first);
+            await client.PublishAsync(secondId, second);
+            await client.DrainAsync().WaitAsync(Limit);
+            Assert.True(client.TryGet(firstId, window, out _));
+            Assert.True(client.TryGet(secondId, window, out _));
+            var fault = new InvalidOperationException("The first page cannot be returned in this test");
+            first.BeforeReturn = () => throw fault;
+            try
+            {
+                var error = Assert.Throws<InvalidOperationException>(() => window.ReleaseAll());
+                first.BeforeReturn = null;
+                Assert.Same(fault, error);
+                Assert.Equal(0, window.Count);
+                Assert.Equal(1, second.RentCount);
+
+                Assert.True(client.TryGet(secondId, window, out _));
+                window.Dispose();
+
+                Assert.Equal(0, window.Count);
                 Assert.Equal(1, second.RentCount);
             }
             finally

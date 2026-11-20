@@ -45,7 +45,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public Func<IStateSerializer<V>> SerializerFactory { get; }
 
         /// <summary>
-        /// Pages that can wait to be written.
+        /// Pages that can wait to be written. A publisher that waits goes on when half are written.
         /// </summary>
         public int WriteQueueCapacity { get; set; } = 16;
 
@@ -111,6 +111,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private readonly Func<IStateSerializer<V>> _serializerFactory;
         private readonly int _windowSize;
         private readonly int _writeQueueCapacity;
+        private readonly int _slotReleaseBatch;
         private readonly ConcurrentDictionary<long, Load> _loads = new ConcurrentDictionary<long, Load>();
         private readonly Channel<QueuedWrite> _writes;
         private readonly SemaphoreSlim _writeSlots;
@@ -134,6 +135,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int _loadsInFlight;
         private long _queueFullWaits;
         private bool _dropWrites;
+        private int _freedSlots;
         private bool _droppedPages;
         private bool _stopCommits;
 
@@ -155,6 +157,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             _serializerFactory = options.SerializerFactory;
             _windowSize = options.WindowSize;
             _writeQueueCapacity = options.WriteQueueCapacity;
+            _slotReleaseBatch = Math.Max(1, _writeQueueCapacity / 2);
             _writeSlots = new SemaphoreSlim(_writeQueueCapacity, _writeQueueCapacity);
             _writes = Channel.CreateUnbounded<QueuedWrite>(new UnboundedChannelOptions() { SingleReader = true });
             _writeSerializer = _serializerFactory();
@@ -614,8 +617,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 {
                     Interlocked.CompareExchange(ref _writeFault, e, null);
                 }
-                Interlocked.Decrement(ref _queuedPages);
-                _writeSlots.Release();
+                int left = Interlocked.Decrement(ref _queuedPages);
+                _freedSlots++;
+                // Half a queue at a time, a waiting publisher is woken less often
+                if (_freedSlots >= _slotReleaseBatch || left == 0)
+                {
+                    _writeSlots.Release(_freedSlots);
+                    _freedSlots = 0;
+                }
             }
         }
 
