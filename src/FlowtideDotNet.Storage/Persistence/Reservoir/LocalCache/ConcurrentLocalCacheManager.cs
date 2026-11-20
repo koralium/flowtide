@@ -23,6 +23,91 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 {
     internal class ConcurrentLocalCacheManager : IAsyncDisposable, IDisposable
     {
+        // Holds a cached file until its whole-file read is completed
+        private sealed class RentedFileReader : PipeReader
+        {
+            private readonly ConcurrentLocalCacheManager _manager;
+            private readonly CacheFileState _state;
+            private readonly PipeReader _reader;
+            private int _returned;
+
+            public RentedFileReader(ConcurrentLocalCacheManager manager, CacheFileState state, PipeReader reader)
+            {
+                _manager = manager;
+                _state = state;
+                _reader = reader;
+            }
+
+            public override void AdvanceTo(SequencePosition consumed)
+            {
+                _reader.AdvanceTo(consumed);
+            }
+
+            public override void AdvanceTo(SequencePosition consumed, SequencePosition examined)
+            {
+                _reader.AdvanceTo(consumed, examined);
+            }
+
+            public override void CancelPendingRead()
+            {
+                _reader.CancelPendingRead();
+            }
+
+            public override ValueTask<ReadResult> ReadAsync(CancellationToken cancellationToken = default)
+            {
+                return _reader.ReadAsync(cancellationToken);
+            }
+
+            public override bool TryRead(out ReadResult result)
+            {
+                return _reader.TryRead(out result);
+            }
+
+            public override void Complete(Exception? exception = null)
+            {
+                try
+                {
+                    _reader.Complete(exception);
+                }
+                finally
+                {
+                    // The cleanup must be done when this returns
+                    ReturnRent().GetAwaiter().GetResult();
+                }
+            }
+
+            public override async ValueTask CompleteAsync(Exception? exception = null)
+            {
+                try
+                {
+                    await _reader.CompleteAsync(exception).ConfigureAwait(false);
+                }
+                finally
+                {
+                    await ReturnRent().ConfigureAwait(false);
+                }
+            }
+
+            private Task ReturnRent()
+            {
+                if (Interlocked.Exchange(ref _returned, 1) == 0)
+                {
+                    GC.SuppressFinalize(this);
+                    return _manager.ReturnRentAsync(_state);
+                }
+                return Task.CompletedTask;
+            }
+
+            // An abandoned read leaves the delete to the eviction loop
+            ~RentedFileReader()
+            {
+                if (Interlocked.Exchange(ref _returned, 1) == 0 && _state.Return())
+                {
+                    _manager._abandonedFiles.Enqueue(_state);
+                }
+            }
+        }
+
         private class CacheFileState
         {
             public ulong FileId { get; }
@@ -136,6 +221,8 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
         private readonly object _spaceWaitRoot = new();
         private readonly Queue<TaskCompletionSource> _spaceWaiters = new();
+        // Files to delete whose last read was never completed
+        private readonly ConcurrentQueue<CacheFileState> _abandonedFiles = new();
         private readonly SemaphoreSlim _downloadSemaphore;
         
         private CancellationTokenSource _cts = new();
@@ -202,6 +289,12 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             Interlocked.Exchange(ref _currentSize, 0);
             _fileStates.Clear();
             while (_lruQueue.TryDequeue(out _)) { }
+            while (_abandonedFiles.TryDequeue(out var abandoned))
+            {
+                abandoned.MarkDeletionCompleted();
+            }
+            // No writer of the old cache is left to wait
+            WakeUpSpaceWaiters();
 
             await _localCache.InitializeAsync(storageProviderContext, cancellationToken);
             
@@ -259,7 +352,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         {
                             await HandlePhysicalDeletion(quickState);
                         }
-                        await quickState.DeletionTask;
+                        await WaitForDeletionAsync(quickState);
                         _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, quickState));
                     }
                     finally
@@ -322,7 +415,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         {
                             await HandlePhysicalDeletion(quickState);
                         }
-                        await quickState.DeletionTask;
+                        await WaitForDeletionAsync(quickState);
                         _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, quickState));
                     }
                     finally
@@ -374,7 +467,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     bool rentHeld = true;
                     try
                     {
-                        return await _localCache.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
+                        var reader = await _localCache.ReadDataFileAsync(fileId, fileSize, cancellationToken).ConfigureAwait(false);
+                        // The reader returns the rent when it is completed
+                        rentHeld = false;
+                        var rented = new RentedFileReader(this, state, reader);
+                        // This file cannot be evicted now, so waiters look again
+                        WakeUpSpaceWaiters();
+                        return rented;
                     }
                     catch (Exception e) when (e is FlowtideChecksumMismatchException || e is IOException)
                     {
@@ -385,7 +484,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         {
                             await HandlePhysicalDeletion(state);
                         }
-                        await state.DeletionTask;
+                        await WaitForDeletionAsync(state);
                         _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, state));
                         return default;
                     }
@@ -431,7 +530,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                             await HandlePhysicalDeletion(state);
                         }
                         
-                        await state.DeletionTask;
+                        await WaitForDeletionAsync(state);
                         continue;
                     }
 
@@ -445,7 +544,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                                 await HandlePhysicalDeletion(state);
                             }
    
-                            await state.DeletionTask;
+                            await WaitForDeletionAsync(state);
                             _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(fileId, state));
                             await state.DownloadTcs.Task; // always throws — exits the loop
                         }
@@ -505,7 +604,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                                 {
                                     await HandlePhysicalDeletion(state);
                                 }
-                                await state.DeletionTask;
+                                await WaitForDeletionAsync(state);
                                 _fileStates.TryRemove(new KeyValuePair<ulong, CacheFileState>(state.FileId, state));
                             }
                         });
@@ -525,7 +624,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                             {
                                 await HandlePhysicalDeletion(state);
                             }
-                            await state.DeletionTask;
+                            await WaitForDeletionAsync(state);
                             continue;
                         }
 
@@ -558,7 +657,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                     await HandlePhysicalDeletion(state);
                     return;
                 }
-                await state.DeletionTask;
+                await WaitForDeletionAsync(state);
+            }
+        }
+
+        // The eviction loop may be stopped, so look here
+        private async Task WaitForDeletionAsync(CacheFileState state)
+        {
+            while (!state.DeletionTask.IsCompleted)
+            {
+                await DeleteAbandonedFilesAsync();
+                await Task.WhenAny(state.DeletionTask, Task.Delay(_evictionInterval, _timeProvider));
             }
         }
 
@@ -654,7 +763,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
 
             try
             {
-                await _localCache.DeleteDataFileAsync(state.FileId);
+                await _localCache.DeleteDataFileAsync(state.FileId).ConfigureAwait(false);
             }
             catch(Exception e)
             {
@@ -677,6 +786,55 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
             }
         }
 
+        private bool HasSpaceWaiters()
+        {
+            lock (_spaceWaitRoot)
+            {
+                return _spaceWaiters.Count > 0;
+            }
+        }
+
+        private void WakeUpSpaceWaiters()
+        {
+            lock (_spaceWaitRoot)
+            {
+                while (_spaceWaiters.TryDequeue(out var tcs))
+                {
+                    tcs.TrySetResult();
+                }
+            }
+        }
+
+        private Task ReturnRentAsync(CacheFileState state)
+        {
+            if (!state.Return())
+            {
+                return Task.CompletedTask;
+            }
+            // Another caller may already be deleting the file
+            return state.TrySetDeleted() ? HandlePhysicalDeletion(state) : state.DeletionTask;
+        }
+
+        private async Task DeleteAbandonedFilesAsync()
+        {
+            while (_abandonedFiles.TryDequeue(out var state))
+            {
+                if (!state.TrySetDeleted())
+                {
+                    continue;
+                }
+                if (_fileStates.TryGetValue(state.FileId, out var current) && ReferenceEquals(current, state))
+                {
+                    await HandlePhysicalDeletion(state);
+                }
+                else
+                {
+                    // A state from before a restart is not ours
+                    state.MarkDeletionCompleted();
+                }
+            }
+        }
+
         private async Task ProactiveEvictionLoopAsync()
         {
             try
@@ -684,8 +842,9 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                 while (!_cts.Token.IsCancellationRequested)
                 {
                     await Task.Delay(_evictionInterval, _timeProvider, _cts.Token);
-                    
-                    while (Interlocked.Read(ref _currentSize) > _maxSizeBytes * 0.8)
+
+                    await DeleteAbandonedFilesAsync();
+                    while (Interlocked.Read(ref _currentSize) > _maxSizeBytes * 0.8 || HasSpaceWaiters())
                     {
                         if (!await TryEvictOneAsync())
                         {
@@ -693,11 +852,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.LocalCache
                         }
                     }
                     // This check is for testing, so its possible to wait until an eviction loop has passed
-                    if (_evictionLoopSignal != null)
-                    {
-                        _evictionLoopSignal.SetResult();
-                        _evictionLoopSignal = null;
-                    }
+                    Interlocked.Exchange(ref _evictionLoopSignal, null)?.SetResult();
                 }
             }
             catch (OperationCanceledException) 

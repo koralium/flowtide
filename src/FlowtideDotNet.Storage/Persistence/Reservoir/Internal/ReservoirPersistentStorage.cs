@@ -297,20 +297,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 {
                     throw new FlowtideChecksumMismatchException($"Missmatching file crc64 for fileId: '{fileId}'.");
                 }
-
-                if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
-                {
-                    _mergedBlobFileWriter.Finish();
-
-                    // Send the file to checkpoint handler
-                    Interlocked.Increment(ref _numberOfWrittenFiles);
-                    await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
-                    _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
-                }
             }
             finally
             {
                 await reader.CompleteAsync();
+            }
+
+            // After the read is completed, so no file is held
+            if (_mergedBlobFileWriter.FileSize >= _maxFileSize)
+            {
+                _mergedBlobFileWriter.Finish();
+
+                // Send the file to checkpoint handler
+                Interlocked.Increment(ref _numberOfWrittenFiles);
+                await _checkpointHandler.EnqueueFileAsync(_mergedBlobFileWriter);
+                _mergedBlobFileWriter = new MergedBlobFileWriter(_memoryPool, _memoryAllocator);
             }
         }
 

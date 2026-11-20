@@ -27,7 +27,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         private BufferSegment? _end;
         private int _endIndex = 0;
         private SequencePosition _advancedPosition;
-        private bool disposedValue;
+        private int disposedValue;
 
         private IMemoryOwner<byte>? _freeMemory;
 
@@ -158,24 +158,29 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (Interlocked.Exchange(ref disposedValue, 1) == 0)
             {
-                var segment = _head;
-
-                while (segment != null)
+                try
                 {
-                    var next = segment._next;
-                    segment.Dispose();
-                    segment = next;
-                }
+                    var segment = _head;
 
-                if (_freeMemory != null)
+                    while (segment != null)
+                    {
+                        var next = segment._next;
+                        segment.Dispose();
+                        segment = next;
+                    }
+
+                    if (_freeMemory != null)
+                    {
+                        _freeMemory.Dispose();
+                        _freeMemory = null;
+                    }
+                }
+                finally
                 {
-                    _freeMemory.Dispose();
-                    _freeMemory = null;
+                    localDiskReader.EndFileRead();
                 }
-
-                disposedValue = true;
             }
         }
 

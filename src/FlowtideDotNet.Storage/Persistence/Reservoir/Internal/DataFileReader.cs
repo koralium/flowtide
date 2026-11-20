@@ -193,6 +193,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 var result = await _pipeReader.ReadAsync();
                 if (result.Buffer.Length < toConsume)
                 {
+                    ThrowIfEnded(result);
                     toConsume -= (int)result.Buffer.Length;
                     _pipeReader.AdvanceTo(result.Buffer.End);
                 }
@@ -226,6 +227,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                 readResult = await _pipeReader.ReadAsync();
                 if (readResult.Buffer.Length < difference)
                 {
+                    ThrowIfEnded(readResult);
                     // If the difference is greater than the buffer, skip the entire buffer
                     _pipeReader.AdvanceTo(readResult.Buffer.End);
                     difference = (int)(difference - readResult.Buffer.Length);
@@ -235,6 +237,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     var slice = readResult.Buffer.Slice(difference);
                     if (slice.Length < length)
                     {
+                        ThrowIfEnded(readResult);
                         difference = 0;
                         _pipeReader.AdvanceTo(slice.Start, slice.End);
                     }
@@ -250,6 +253,14 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             _globalOffset = offset + length;
             _consumedEnd = dataSlice.End;
             return dataSlice;
+        }
+
+        private static void ThrowIfEnded(ReadResult readResult)
+        {
+            if (readResult.IsCompleted)
+            {
+                throw new InvalidOperationException("Data file ended before all expected data was read.");
+            }
         }
 
         public async ValueTask ReadToEnd(CancellationToken cancellationToken = default)

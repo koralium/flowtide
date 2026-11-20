@@ -261,44 +261,49 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public static async Task<CheckpointRegistryFile> DeserializeFromBundle(PipeReader reader, IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
         {
-            var headerResult = await reader.ReadAtLeastAsync(CheckpointRegistryBundleFile.HeaderSize);
-            // Read header to find out where the registry starts in the bundle file
-            var headerEnd = ReadBundleHeader(headerResult.Buffer, out long registryStart);
-            reader.AdvanceTo(headerEnd);
-
-            int globalOffset = 64;
-            ReadResult result;
-            while (true)
+            try
             {
-                result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                var headerResult = await reader.ReadAtLeastAsync(CheckpointRegistryBundleFile.HeaderSize);
+                // Read header to find out where the registry starts in the bundle file
+                var headerEnd = ReadBundleHeader(headerResult.Buffer, out long registryStart);
+                reader.AdvanceTo(headerEnd);
 
-                if ((globalOffset + result.Buffer.Length) > registryStart)
+                int globalOffset = 64;
+                ReadResult result;
+                while (true)
                 {
-                    // We have read past the checkpoint registry, we can stop reading
-                    // Advance to start of the registry
-                    var positionInSequence = registryStart - globalOffset;
-                    var pos = result.Buffer.GetPosition(positionInSequence);
-                    reader.AdvanceTo(pos);
-                    break;
+                    result = await reader.ReadAsync(cancellationToken).ConfigureAwait(false);
+
+                    if ((globalOffset + result.Buffer.Length) > registryStart)
+                    {
+                        // We have read past the checkpoint registry, we can stop reading
+                        // Advance to start of the registry
+                        var positionInSequence = registryStart - globalOffset;
+                        var pos = result.Buffer.GetPosition(positionInSequence);
+                        reader.AdvanceTo(pos);
+                        break;
+                    }
+                    else if (result.IsCompleted)
+                    {
+                        throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
+                    }
+                    globalOffset += (int)result.Buffer.Length;
+                    reader.AdvanceTo(result.Buffer.End);
                 }
-                else if (result.IsCompleted)
+
+                // Read all content of the file
+                ReadResult readResult;
+                do
                 {
-                    throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
-                }
-                globalOffset += (int)result.Buffer.Length;
-                reader.AdvanceTo(result.Buffer.End);
+                    readResult = await reader.ReadAsync(cancellationToken);
+                    reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                } while (!readResult.IsCompleted);
+                return Deserialize(readResult.Buffer, memoryAllocator);
             }
-
-            // Read all content of the file
-            ReadResult readResult;
-            do
+            finally
             {
-                readResult = await reader.ReadAsync(cancellationToken);
-                reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-            } while (!readResult.IsCompleted);
-            var registry = Deserialize(readResult.Buffer, memoryAllocator);
-            reader.Complete();
-            return registry;
+                reader.Complete();
+            }
         }
 
         private static SequencePosition ReadBundleHeader(ReadOnlySequence<byte> header, out long registryStart)
@@ -325,16 +330,21 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         public static async Task<CheckpointRegistryFile> Deserialize(PipeReader reader, IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
         {
-            // Read all content of the file
-            ReadResult readResult;
-            do
+            try
             {
-                readResult = await reader.ReadAsync(cancellationToken);
-                reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-            } while (!readResult.IsCompleted);
-            var registry = Deserialize(readResult.Buffer, memoryAllocator);
-            reader.Complete();
-            return registry;
+                // Read all content of the file
+                ReadResult readResult;
+                do
+                {
+                    readResult = await reader.ReadAsync(cancellationToken);
+                    reader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                } while (!readResult.IsCompleted);
+                return Deserialize(readResult.Buffer, memoryAllocator);
+            }
+            finally
+            {
+                reader.Complete();
+            }
         }
 
         public static CheckpointRegistryFile Deserialize(ReadOnlySequence<byte> fileData, IMemoryAllocator memoryAllocator)

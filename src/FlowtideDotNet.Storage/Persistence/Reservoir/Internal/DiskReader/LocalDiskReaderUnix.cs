@@ -32,7 +32,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         private readonly IMemoryAllocator memoryAllocator;
         private readonly LocalDiskReadManager owner;
         private int disposed;
-        // Owner plus page reads in flight, closes at zero
+        // Owner plus open reads, closes at zero
         private int rents = 1;
         private readonly object _lock = new object();
         // Only writes use this buffer
@@ -315,7 +315,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
         }
 
         /// <summary>
-        /// Closes the file once no page read is in flight.
+        /// Closes the file once no read holds it.
         /// </summary>
         public void Dispose()
         {
@@ -327,7 +327,17 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal.DiskReader
 
         public Task<PipeReader> ReadFile(CancellationToken cancellationToken = default)
         {
+            // Held open until the pipe reader is disposed
+            if (!TryRent())
+            {
+                throw new ObjectDisposedException(nameof(LocalDiskReaderUnix));
+            }
             return Task.FromResult<PipeReader>(new LocalDiskPipeReaderUnix(this, memoryAllocator));
+        }
+
+        internal void EndFileRead()
+        {
+            Return();
         }
     }
 }
