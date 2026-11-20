@@ -57,6 +57,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     _pipeReader.AdvanceTo(pos);
                     break;
                 }
+                else if (result.IsCompleted)
+                {
+                    throw new InvalidOperationException("Reached end of file before reaching checkpoint start offset.");
+                }
                 _globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.End);
             }
@@ -72,6 +76,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     var pos = result.Buffer.GetPosition(positionInSequence);
                     return result.Buffer.Slice(result.Buffer.Start, pos);
                 }
+                else if (result.IsCompleted)
+                {
+                    throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
+                }
 
                 //_globalOffset += (int)result.Buffer.Length;
                 _pipeReader.AdvanceTo(result.Buffer.Start, result.Buffer.End);
@@ -86,42 +94,48 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
 
         private async ValueTask<CheckpointRegistryFile> ReadRegistryAsync(IMemoryAllocator memoryAllocator, CancellationToken cancellationToken)
         {
-            var result = await _pipeReader.ReadAtLeastAsync(64, cancellationToken).ConfigureAwait(false);
-            ReadHeaderResult(result);
-
-            while (true)
+            try
             {
-                result = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                var result = await _pipeReader.ReadAtLeastAsync(64, cancellationToken).ConfigureAwait(false);
+                ReadHeaderResult(result);
 
-                if ((_globalOffset + result.Buffer.Length) > _checkpointRegistryStartOffset)
+                while (true)
                 {
-                    // We have read past the checkpoint registry, we can stop reading
-                    // Advance to start of the registry
-                    var positionInSequence = _checkpointRegistryStartOffset - _globalOffset;
-                    _globalOffset += (int)positionInSequence;
-                    var pos = result.Buffer.GetPosition(positionInSequence);
-                    _pipeReader.AdvanceTo(pos);
-                    break;
+                    result = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+
+                    if ((_globalOffset + result.Buffer.Length) > _checkpointRegistryStartOffset)
+                    {
+                        // We have read past the checkpoint registry, we can stop reading
+                        // Advance to start of the registry
+                        var positionInSequence = _checkpointRegistryStartOffset - _globalOffset;
+                        _globalOffset += (int)positionInSequence;
+                        var pos = result.Buffer.GetPosition(positionInSequence);
+                        _pipeReader.AdvanceTo(pos);
+                        break;
+                    }
+                    else if (result.IsCompleted)
+                    {
+                        throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
+                    }
+                    _globalOffset += (int)result.Buffer.Length;
+                    _pipeReader.AdvanceTo(result.Buffer.End);
                 }
-                else if (result.IsCompleted)
+
+                // Read the entire file that is left into a buffer
+                ReadResult readResult;
+                do
                 {
-                    throw new InvalidOperationException("Reached end of file before reaching checkpoint registry start offset.");
-                }
-                _globalOffset += (int)result.Buffer.Length;
-                _pipeReader.AdvanceTo(result.Buffer.End);
+                    readResult = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
+                    _pipeReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
+                } while (!readResult.IsCompleted);
+
+                var registry = CheckpointRegistryFile.Deserialize(readResult.Buffer, memoryAllocator);
+                return registry;
             }
-
-            // Read the entire file that is left into a buffer
-            ReadResult readResult;
-            do
+            finally
             {
-                readResult = await _pipeReader.ReadAsync(cancellationToken).ConfigureAwait(false);
-                _pipeReader.AdvanceTo(readResult.Buffer.Start, readResult.Buffer.End);
-            } while (!readResult.IsCompleted);
-
-            var registry = CheckpointRegistryFile.Deserialize(readResult.Buffer, memoryAllocator);
-            await _pipeReader.CompleteAsync().ConfigureAwait(false);
-            return registry;
+                await _pipeReader.CompleteAsync().ConfigureAwait(false);
+            }
         }
 
         private void ReadHeaderResult(ReadResult readResult)

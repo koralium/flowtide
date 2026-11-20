@@ -132,6 +132,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                     {
                         _logger.LogWarning(e, "Invalid data in checkpoint registry from bundle file with id {CheckpointId}", checkpoint);
                     }
+                    catch (ArgumentOutOfRangeException e)
+                    {
+                        _logger.LogWarning(e, "Checkpoint registry is cut short in bundle file with id {CheckpointId}", checkpoint);
+                    }
                 }
                 if (!foundRegistry)
                 {
@@ -192,8 +196,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         {
                             try
                             {
-                                var dataFilePipe = await _fileProvider.ReadDataFileAsync(bundledDataFileIds[i], 0, cancellationToken);
-                                _checkpointRegistryFile = await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
+                                _checkpointRegistryFile = await ReadBundleRegistry(bundledDataFileIds[i], cancellationToken);
                                 return;
                             }
                             catch(InvalidOperationException e)
@@ -204,6 +207,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                             {
                                 _logger.LogWarning(e, "Invalid data in checkpoint registry from bundle file with id {FileId}", bundledDataFileIds[i]);
                             }
+                            catch (ArgumentOutOfRangeException e)
+                            {
+                                _logger.LogWarning(e, "Checkpoint registry is cut short in bundle file with id {FileId}", bundledDataFileIds[i]);
+                            }
                         }
                         else
                         {
@@ -211,6 +218,28 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         }
                     }
                 }
+            }
+        }
+
+        private static bool IsDamagedFile(Exception e)
+        {
+            return e is InvalidOperationException || e is InvalidDataException || e is ArgumentOutOfRangeException || e is FlowtideChecksumMismatchException || e is IOException;
+        }
+
+        private async Task<CheckpointRegistryFile> ReadBundleRegistry(ulong fileId, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var dataFilePipe = await _fileProvider.ReadDataFileAsync(fileId, 0, cancellationToken);
+                return await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
+            }
+            catch (Exception e) when (IsDamagedFile(e) && cacheProvider != null)
+            {
+                // The cached copy may be the damaged one
+                _logger.LogWarning(e, "Failed to read checkpoint registry from the cached bundle file with id {FileId}, reading it from storage", fileId);
+                await cacheProvider.EvictDataFileAsync(fileId);
+                var dataFilePipe = await _fileProvider.ReadDataFileAsync(fileId, 0, cancellationToken);
+                return await BundleFileRegistryReader.ReadRegistryAsync(dataFilePipe, _memoryAllocator, cancellationToken);
             }
         }
 
@@ -400,10 +429,10 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         }
                         finally
                         {
-                            dataFileReader.Complete();
+                            await dataFileReader.CompleteAsync();
                         }
                     }
-                    catch (Exception e) when ((e is FlowtideChecksumMismatchException or InvalidOperationException) && cacheProvider != null)
+                    catch (Exception e) when (IsDamagedFile(e) && cacheProvider != null)
                     {
                         // If we got a checksum error, and we have a cache, try and evict it from cache and try again
                         // If this fails again, we fail the stream
@@ -416,7 +445,7 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
                         }
                         finally
                         {
-                            dataFileReader.Complete();
+                            await dataFileReader.CompleteAsync();
                         }
                     }
                     
