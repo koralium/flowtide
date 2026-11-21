@@ -903,6 +903,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 await Assert.ThrowsAsync<InvalidOperationException>(() => read.WaitAsync(Limit));
                 bool cached = stream.Manager.TryPeekCacheEntry(uncommitted, out _);
                 int entries = stream.Manager.CacheTable.Count;
+                client.NextPageId = uncommitted;
                 long again = client.NewPageId();
                 await client.PublishAsync(again, new Page(Bytes(again + 5)));
                 bool published = client.TryGet(again, window, out var page);
@@ -1128,6 +1129,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
             {
                 Assert.True(gate.Entered.Wait(Limit));
                 await stream.Manager.InitializeAsync().WaitAsync(Limit);
+                client.NextPageId = oldId;
                 long reusedId = client.NewPageId();
                 Assert.Equal(oldId, reusedId);
                 var current = new Page(Bytes(oldId + 1000));
@@ -1186,6 +1188,7 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 var old = await client.GetAsync(stored[0], window);
                 var oldBytes = old.Bytes;
                 window.ReleaseAll();
+                client.NextPageId = inFlight;
                 long after = client.NewPageId();
                 await client.PublishAsync(after, new Page(Bytes(after + 5)));
                 await client.CommitAsync().WaitAsync(Limit);
@@ -1971,8 +1974,10 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
                 Assert.Equal(Bytes(id), page.Bytes);
                 window.Release(page);
             }
+            restarted.NextPageId = ids[ids.Length - 1] + 1;
             long next = restarted.NewPageId();
-            Assert.True(next > ids[ids.Length - 1]);
+            Assert.Equal(restarted.FirstPageId, ids[0]);
+            Assert.False(restarted.IsStored(next));
             await Assert.ThrowsAsync<FlowtidePersistentStorageException>(async () => await restarted.GetAsync(next, window));
         }
 
@@ -2043,12 +2048,459 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
         }
 
         [Fact]
+        public async Task ADeletedPageLeavesTheCacheAtOnceAndStorageAtTheCommit()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var window = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 2);
+            var deleted = await client.GetAsync(ids[0], window);
+            window.ReleaseAll();
+
+            client.Delete(ids[0]);
+            bool cached = client.TryGet(ids[0], window, out _);
+            await client.DrainAsync().WaitAsync(Limit);
+            bool storedBeforeTheCommit = client.IsStored(ids[0]);
+            await client.CommitAsync().WaitAsync(Limit);
+            bool storedAfterTheCommit = client.IsStored(ids[0]);
+            await stream.Manager.CheckpointAsync();
+            var missing = await Record.ExceptionAsync(async () => await client.GetAsync(ids[0], window));
+            var other = await client.GetAsync(ids[1], window);
+
+            Assert.False(cached);
+            Assert.True(deleted.Disposed);
+            Assert.True(storedBeforeTheCommit);
+            Assert.False(storedAfterTheCommit);
+            Assert.IsType<FlowtidePersistentStorageException>(missing);
+            Assert.Equal(Bytes(ids[1]), other.Bytes);
+            Assert.True(client.IsStored(ids[1]));
+        }
+
+        [Fact]
+        public async Task ADeleteComesBehindThePagesOwnWrite()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var window = client.CreateWindow();
+            var gate = new Gate();
+            stream.Hooks.Encode = gate.Pass;
+            try
+            {
+                long id = await Publish(client);
+                Assert.True(gate.Entered.Wait(Limit));
+                client.Delete(id);
+                gate.Release.Set();
+                await client.CommitAsync().WaitAsync(Limit);
+                bool stored = client.IsStored(id);
+                await stream.Manager.CheckpointAsync();
+                var missing = await Record.ExceptionAsync(async () => await client.GetAsync(id, window));
+
+                Assert.False(stored);
+                Assert.IsType<FlowtidePersistentStorageException>(missing);
+                Assert.Equal(0, client.HeldPages);
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
+        public async Task ADeleteDroppedByARestoreStopsTheCommitAndLeavesThePage()
+        {
+            using var stream = await Open();
+            var client = stream.Client(queue: 4);
+            var ids = await PublishStoredPages(stream, client, 1);
+            var gate = new Gate();
+            stream.Hooks.Encode = gate.Pass;
+            try
+            {
+                await Publish(client);
+                Assert.True(gate.Entered.Wait(Limit));
+                client.Delete(ids[0]);
+                var pause = client.PauseCommitsAsync(Limit);
+                gate.Release.Set();
+                await pause.WaitAsync(Limit);
+                stream.Hooks.Encode = null;
+                Assert.Throws<InvalidOperationException>(() => client.Delete(ids[0]));
+                client.ResumeCommits();
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.CommitAsync().WaitAsync(Limit));
+                await client.Reset(false);
+                await client.CommitAsync().WaitAsync(Limit);
+
+                Assert.True(client.IsStored(ids[0]));
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
+        public async Task ADeleteFromBeforeARestoreIsForgotten()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var window = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 1);
+
+            client.Delete(ids[0]);
+            await client.DrainAsync().WaitAsync(Limit);
+            await stream.Manager.InitializeAsync().WaitAsync(Limit);
+            await client.CommitAsync().WaitAsync(Limit);
+            await stream.Manager.CheckpointAsync();
+            var page = await client.GetAsync(ids[0], window);
+
+            Assert.True(client.IsStored(ids[0]));
+            Assert.Equal(Bytes(ids[0]), page.Bytes);
+        }
+
+        [Fact]
+        public async Task APageCountsAsStoredFromItsWriteOn()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            var gate = new Gate();
+            stream.Hooks.Encode = gate.Pass;
+            try
+            {
+                long id = await Publish(client);
+                Assert.True(gate.Entered.Wait(Limit));
+                bool storedWhileQueued = client.IsStored(id);
+                gate.Release.Set();
+                await client.DrainAsync().WaitAsync(Limit);
+                bool storedWhenWritten = client.IsStored(id);
+                await client.CommitAsync().WaitAsync(Limit);
+                await stream.Manager.CheckpointAsync();
+
+                Assert.False(storedWhileQueued);
+                Assert.True(storedWhenWritten);
+                Assert.True(client.IsStored(id));
+                Assert.False(client.IsStored(id + 1));
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
+        public async Task EveryPageClientHasPageIdsOfItsOwn()
+        {
+            using var stream = await Open();
+            var first = stream.Client("first");
+            var second = stream.Client("second");
+
+            long firstId = first.NewPageId();
+            long nextId = first.NewPageId();
+            long secondId = second.NewPageId();
+            long streamId = stream.Manager.GetNewPageId();
+            first.NextPageId = firstId;
+            long again = first.NewPageId();
+            first.NextPageId = first.LastReservedPageId + 1;
+
+            Assert.Equal(first.FirstPageId, firstId);
+            Assert.Equal(firstId + 1, nextId);
+            Assert.Equal(firstId, again);
+            Assert.Equal(first.FirstPageId + ImmutablePageIds.RangeSize - 1, first.LastReservedPageId);
+            Assert.Equal(second.FirstPageId, secondId);
+            Assert.True(secondId > first.LastReservedPageId);
+            Assert.True(streamId > second.LastReservedPageId);
+            Assert.Throws<InvalidOperationException>(() => first.NewPageId());
+            Assert.Equal(first.LastReservedPageId + 1, first.NextPageId);
+            Assert.Throws<ArgumentOutOfRangeException>(() => first.NextPageId = first.FirstPageId - 1);
+            Assert.Throws<ArgumentOutOfRangeException>(() => first.NextPageId = first.LastReservedPageId + 2);
+        }
+
+        [Fact]
+        public async Task AClientMadeAfterTheCheckpointKeepsItsPageIdsThroughARestore()
+        {
+            using var stream = await Open();
+            await stream.Manager.CheckpointAsync();
+            var client = stream.Client();
+            long id = await Publish(client);
+
+            await stream.Manager.InitializeAsync().WaitAsync(Limit);
+            long streamId = stream.Manager.GetNewPageId();
+
+            Assert.Equal(client.FirstPageId, id);
+            Assert.True(streamId > client.LastReservedPageId, $"The stream hands out page {streamId}, the client's ids end at {client.LastReservedPageId}.");
+        }
+
+        [Fact]
         public async Task ANameCannotBeBothATreeAndPages()
         {
             using var stream = await Open();
             stream.Client("pages");
+            await stream.Manager.CreateClientAsync<Page, TreeMetadata>("tree", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(stream.Hooks) }, GlobalMemoryManager.Instance);
 
-            await Assert.ThrowsAsync<InvalidOperationException>(async () => await stream.Manager.CreateClientAsync<Page, TreeMetadata>("pages", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(stream.Hooks) }, GlobalMemoryManager.Instance));
+            var asTree = await Assert.ThrowsAsync<InvalidOperationException>(async () => await stream.Manager.CreateClientAsync<Page, TreeMetadata>("pages", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(stream.Hooks) }, GlobalMemoryManager.Instance));
+            var asPages = Assert.Throws<InvalidOperationException>(() => stream.Client("tree"));
+
+            Assert.Contains("another kind of state", asTree.Message);
+            Assert.Contains("another kind of state", asPages.Message);
+        }
+
+        [Fact]
+        public async Task ADeletedPageIsNotCachedAgainByALoadThatWasUnderWay()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var window = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 1);
+            var gate = new Gate();
+            stream.Hooks.Decode = gate.Pass;
+            try
+            {
+                var load = Task.Run(async () => await client.GetAsync(ids[0], window));
+                Assert.True(gate.Entered.Wait(Limit));
+                client.Delete(ids[0]);
+                await client.CommitAsync().WaitAsync(Limit);
+                await stream.Manager.CheckpointAsync();
+                gate.Release.Set();
+                var loaded = await load.WaitAsync(Limit);
+                window.Release(loaded);
+                bool cached = client.TryGet(ids[0], window, out _);
+
+                Assert.False(client.IsStored(ids[0]));
+                Assert.False(cached);
+                Assert.True(loaded.Disposed);
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
+        public async Task ATreeStoredUnderANameCannotBeOpenedAsAPageClient()
+        {
+            var provider = new CountingProvider();
+            using (var first = await Open(provider: provider))
+            {
+                await first.Manager.CreateClientAsync<Page, TreeMetadata>("formerTree", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(first.Hooks) }, GlobalMemoryManager.Instance);
+                var other = await first.Manager.CreateClientAsync<Page, TreeMetadata>("otherTree", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(first.Hooks) }, GlobalMemoryManager.Instance);
+                other.AddOrUpdate(other.GetNewPageId(), new Page(new byte[] { 7 }));
+                await other.Commit();
+                await first.Manager.CheckpointAsync();
+            }
+            using var restarted = await Open(provider: provider);
+
+            var error = Assert.Throws<InvalidOperationException>(() => restarted.Client("formerTree"));
+
+            Assert.Contains("another kind of state", error.Message);
+        }
+
+        [Fact]
+        public async Task APageClientIsOpenedAgainAfterARestart()
+        {
+            var provider = new CountingProvider();
+            long firstPageId;
+            using (var first = await Open(provider: provider))
+            {
+                firstPageId = first.Client("pages").FirstPageId;
+                await first.Manager.CheckpointAsync();
+            }
+            using var restarted = await Open(provider: provider);
+
+            var client = restarted.Client("pages");
+
+            Assert.Equal(firstPageId, client.FirstPageId);
+        }
+
+        [Fact]
+        public async Task APageClientRefusesIdsThatAreNotItsOwn()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            long before = client.FirstPageId - 1;
+            long after = client.LastReservedPageId + 1;
+
+            var deletedBefore = Assert.Throws<ArgumentOutOfRangeException>(() => client.Delete(before));
+            var deletedAfter = Assert.Throws<ArgumentOutOfRangeException>(() => client.Delete(after));
+            var askedBefore = Assert.Throws<ArgumentOutOfRangeException>(() => client.IsStored(before));
+            var askedAfter = Assert.Throws<ArgumentOutOfRangeException>(() => client.IsStored(after));
+            bool lastStored = client.IsStored(client.LastReservedPageId);
+            using var window = client.CreateWindow();
+            var page = new Page(new byte[] { 1 });
+            Assert.Throws<ArgumentOutOfRangeException>(() => client.TryGet(before, window, out _));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await client.GetAsync(after, window));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(async () => await client.PublishAsync(before, page));
+            page.Return();
+
+            Assert.StartsWith($"Page id {before} is outside this client's ids, {client.FirstPageId} to {client.LastReservedPageId}.", deletedBefore.Message);
+            Assert.StartsWith($"Page id {after} is outside this client's ids", deletedAfter.Message);
+            Assert.StartsWith($"Page id {before} is outside this client's ids", askedBefore.Message);
+            Assert.StartsWith($"Page id {after} is outside this client's ids", askedAfter.Message);
+            Assert.False(lastStored);
+        }
+
+        [Fact]
+        public async Task APageClientThatHasUsedItsIdsKeepsItsCounterAtTheEnd()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            client.NextPageId = client.LastReservedPageId;
+
+            long last = client.NewPageId();
+            var first = Assert.Throws<InvalidOperationException>(() => client.NewPageId());
+            var second = Assert.Throws<InvalidOperationException>(() => client.NewPageId());
+
+            Assert.Equal(client.LastReservedPageId, last);
+            Assert.Equal(first.Message, second.Message);
+            Assert.Equal(client.LastReservedPageId + 1, client.NextPageId);
+        }
+
+        [Fact]
+        public async Task ADeletedPageReadByTwoReadersUnderWayEndsForBothAndIsNotCached()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var windowOne = client.CreateWindow();
+            using var windowTwo = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 1);
+            var gate = new Gate();
+            using var joined = new ManualResetEventSlim(false);
+            stream.Hooks.Decode = gate.Pass;
+            client.LoadJoinedHookForTests = joined.Set;
+            try
+            {
+                var firstRead = Task.Run(async () =>
+                {
+                    var loaded = await client.GetAsync(ids[0], windowOne);
+                    byte value = loaded.Bytes[0];
+                    windowOne.Release(loaded);
+                    return value;
+                });
+                Assert.True(gate.Entered.Wait(Limit));
+                var secondRead = Task.Run(async () =>
+                {
+                    var loaded = await client.GetAsync(ids[0], windowTwo);
+                    byte value = loaded.Bytes[0];
+                    windowTwo.Release(loaded);
+                    return (value, loaded.Disposed);
+                });
+                Assert.True(joined.Wait(Limit));
+                client.Delete(ids[0]);
+                await client.CommitAsync().WaitAsync(Limit);
+                await stream.Manager.CheckpointAsync();
+                gate.Release.Set();
+                byte firstByte = await firstRead.WaitAsync(Limit);
+                var (secondByte, disposed) = await secondRead.WaitAsync(Limit);
+                bool cached = client.TryGet(ids[0], windowOne, out _);
+
+                Assert.Equal(firstByte, secondByte);
+                Assert.False(client.IsStored(ids[0]));
+                Assert.False(cached);
+                Assert.True(disposed);
+            }
+            finally
+            {
+                gate.Release.Set();
+            }
+        }
+
+        [Fact]
+        public async Task APageClientStoredUnderANameCannotBeOpenedAsATreeOrObjectState()
+        {
+            var provider = new CountingProvider();
+            using (var first = await Open(provider: provider))
+            {
+                var pages = first.Client("pages");
+                await Publish(pages);
+                await pages.CommitAsync();
+                await Assert.ThrowsAsync<InvalidOperationException>(async () => await first.Manager.CreateObjectStateAsync<long>("pages"));
+                await first.Manager.CheckpointAsync();
+            }
+            using var restarted = await Open(provider: provider);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await restarted.Manager.CreateClientAsync<Page, TreeMetadata>("pages", new StateClientOptions<Page>() { ValueSerializer = new PageSerializer(restarted.Hooks) }, GlobalMemoryManager.Instance));
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await restarted.Manager.CreateObjectStateAsync<long>("pages"));
+        }
+
+        [Fact]
+        public async Task EveryReaderThatJoinedADeletedLoadCanFinishAfterTheLoaderReleasesItsPage()
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var loaderWindow = client.CreateWindow();
+            using var joinerWindow = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 1);
+            var decode = new Gate();
+            var joined = new Gate();
+            stream.Hooks.Decode = decode.Pass;
+            client.LoadJoinedHookForTests = joined.Pass;
+            try
+            {
+                var loader = Task.Run(async () => await client.GetAsync(ids[0], loaderWindow));
+                Assert.True(decode.Entered.Wait(Limit));
+                var joiner = Task.Run(async () => await client.GetAsync(ids[0], joinerWindow));
+                Assert.True(joined.Entered.Wait(Limit));
+                client.Delete(ids[0]);
+                await client.CommitAsync().WaitAsync(Limit);
+                await stream.Manager.CheckpointAsync();
+                decode.Release.Set();
+                var loaded = await loader.WaitAsync(Limit);
+                loaderWindow.Release(loaded);
+                joined.Release.Set();
+                var shared = await joiner.WaitAsync(Limit);
+
+                Assert.Equal(Bytes(ids[0]), shared.Bytes);
+                Assert.False(client.IsStored(ids[0]));
+                Assert.False(client.TryGet(ids[0], loaderWindow, out _));
+            }
+            finally
+            {
+                decode.Release.Set();
+                joined.Release.Set();
+            }
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task EveryReaderThatJoinedALoadFinishesWithoutCachingADeletedPage(bool checkpointed)
+        {
+            using var stream = await Open();
+            var client = stream.Client();
+            using var loaderWindow = client.CreateWindow();
+            using var joinerWindow = client.CreateWindow();
+            var ids = await PublishStoredPages(stream, client, 1);
+            var decode = new Gate();
+            var joined = new Gate();
+            stream.Hooks.Decode = decode.Pass;
+            client.LoadJoinedHookForTests = joined.Pass;
+            try
+            {
+                var loader = Task.Run(async () => await client.GetAsync(ids[0], loaderWindow));
+                Assert.True(decode.Entered.Wait(Limit));
+                var joiner = Task.Run(async () => await client.GetAsync(ids[0], joinerWindow));
+                Assert.True(joined.Entered.Wait(Limit));
+                decode.Release.Set();
+                var loaded = await loader.WaitAsync(Limit);
+                loaderWindow.Release(loaded);
+                stream.Hooks.Decode = null;
+                client.Delete(ids[0]);
+                if (checkpointed)
+                {
+                    await client.CommitAsync().WaitAsync(Limit);
+                    await stream.Manager.CheckpointAsync();
+                }
+                joined.Release.Set();
+                var shared = await joiner.WaitAsync(Limit);
+                byte[] bytes = shared.Bytes;
+                joinerWindow.Release(shared);
+
+                Assert.Equal(Bytes(ids[0]), bytes);
+                Assert.Equal(1, stream.Hooks.Decodes);
+                Assert.False(client.TryGet(ids[0], loaderWindow, out _));
+                Assert.True(shared.Disposed);
+            }
+            finally
+            {
+                decode.Release.Set();
+                joined.Release.Set();
+            }
         }
     }
 }

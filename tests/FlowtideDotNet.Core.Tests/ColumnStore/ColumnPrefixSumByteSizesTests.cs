@@ -20,6 +20,50 @@ namespace FlowtideDotNet.Core.Tests.ColumnStore
     public class ColumnPrefixSumByteSizesTests
     {
         [Fact]
+        public void TheValidityBytesAreTheWholeLessTheData()
+        {
+            using var column = new Column(GlobalMemoryManager.Instance);
+            for (int i = 0; i < 100; i++)
+            {
+                if (i % 3 == 0)
+                {
+                    column.Add(NullValue.Instance);
+                }
+                else
+                {
+                    column.Add(new Int64Value(i));
+                }
+            }
+            var indices = Enumerable.Range(0, 100).ToArray();
+            var whole = new int[100];
+            var data = new int[100];
+            var validity = new int[100];
+
+            column.GetPrefixSumByteSizes(indices, whole);
+            ((IColumn)column).DataColumn.GetPrefixSumByteSizes(indices, data);
+            column.GetValidityPrefixSumByteSizes(indices, validity);
+
+            Assert.True(validity[99] > 0);
+            for (int i = 0; i < 100; i++)
+            {
+                Assert.Equal(whole[i], data[i] + validity[i]);
+            }
+        }
+
+        [Fact]
+        public void NullOnlyColumnHasNoValidityBytes()
+        {
+            using var column = new Column(GlobalMemoryManager.Instance);
+            column.Add(NullValue.Instance);
+            column.Add(NullValue.Instance);
+            var sizes = new int[2];
+
+            column.GetValidityPrefixSumByteSizes(new int[] { 0, 1 }, sizes);
+
+            Assert.Equal(new int[] { 0, 0 }, sizes);
+        }
+
+        [Fact]
         public void NullOnlyColumnDoesNotModifySizes()
         {
             using var column = new Column(GlobalMemoryManager.Instance);

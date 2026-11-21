@@ -55,6 +55,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         public int WindowSize { get; set; } = 4;
     }
 
+    internal static class ImmutablePageIds
+    {
+        /// <summary>
+        /// Page ids a client keeps, right after its name's id.
+        /// </summary>
+        public const long RangeSize = 1L << 40;
+    }
+
     /// <summary>
     /// Pages that never change once published, for many readers.
     /// </summary>
@@ -79,6 +87,15 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 Commit = commit;
             }
 
+            // A delete, it has an id and no page
+            public QueuedWrite(long pageId)
+            {
+                PageId = pageId;
+                Page = null;
+                Drained = null;
+                Commit = false;
+            }
+
             public long PageId { get; }
 
             public V? Page { get; }
@@ -101,13 +118,22 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             public int Generation { get; }
 
             public TaskCompletionSource<V?> Completion { get; }
+
+            // Set under the admit lock when deleted during the load
+            public bool Deleted { get; set; }
+
+            // Readers that wait for this load, each gets a rent
+            public int Joiners { get; set; }
         }
 
         private readonly S3FifoTableSync _table;
-        private readonly Func<long> _newPageId;
+        private readonly Meter _meter;
+        private readonly Func<long> _hitCounter;
         private readonly long _metadataId;
+        private readonly long _firstPageId;
         private readonly IPersistentStorageSession _session;
         private readonly Func<long, IStateSerializer<V>, ValueTask<V>> _readPage;
+        private readonly Func<long, bool> _isStored;
         private readonly Func<IStateSerializer<V>> _serializerFactory;
         private readonly int _windowSize;
         private readonly int _writeQueueCapacity;
@@ -138,22 +164,25 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         private int _freedSlots;
         private bool _droppedPages;
         private bool _stopCommits;
+        private long _nextPageId;
 
         public ImmutablePageClient(
             S3FifoTableSync table,
-            Func<long> newPageId,
             string name,
             long metadataId,
             IPersistentStorageSession session,
             Func<long, IStateSerializer<V>, ValueTask<V>> readPage,
+            Func<long, bool> isStored,
             ImmutablePageClientOptions<V> options,
             Meter meter)
         {
             _table = table;
-            _newPageId = newPageId;
             _metadataId = metadataId;
+            _firstPageId = metadataId + 1;
+            _nextPageId = _firstPageId;
             _session = session;
             _readPage = readPage;
+            _isStored = isStored;
             _serializerFactory = options.SerializerFactory;
             _windowSize = options.WindowSize;
             _writeQueueCapacity = options.WriteQueueCapacity;
@@ -170,15 +199,41 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
             var tagList = new TagList();
             tagList.Add("state_client", name);
-            meter.CreateObservableGauge("flowtide_page_client_held_pages", () => new Measurement<int>(HeldPages, tagList));
-            meter.CreateObservableGauge("flowtide_page_client_loads_in_flight", () => new Measurement<int>(LoadsInFlight, tagList));
-            meter.CreateObservableCounter("flowtide_page_client_queue_full_waits", () => new Measurement<long>(QueueFullWaits, tagList));
+            // Its own meter, so the instruments go with the client
+            _meter = new Meter(meter.Name, meter.Version);
+            _meter.CreateObservableGauge("flowtide_page_client_held_pages", () => new Measurement<int>(HeldPages, tagList));
+            _meter.CreateObservableGauge("flowtide_page_client_loads_in_flight", () => new Measurement<int>(LoadsInFlight, tagList));
+            _meter.CreateObservableCounter("flowtide_page_client_queue_full_waits", () => new Measurement<long>(QueueFullWaits, tagList));
             // Hits are counted per reader and summed for the table
-            table.RegisterExternalHitCounter(CountHits);
+            _hitCounter = CountHits;
+            table.RegisterExternalHitCounter(_hitCounter);
             _writer = Task.Run(WriteLoop);
         }
 
         public override long MetadataId => _metadataId;
+
+        internal override long LastReservedPageId => _metadataId + ImmutablePageIds.RangeSize;
+
+        public long FirstPageId => _firstPageId;
+
+        /// <summary>
+        /// The id the next new page gets, the owner restores it.
+        /// </summary>
+        public long NextPageId
+        {
+            get
+            {
+                return Interlocked.Read(ref _nextPageId);
+            }
+            set
+            {
+                if (value < _firstPageId || value > LastReservedPageId + 1)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(value), $"Page id {value} is outside this client's ids, {_firstPageId} to {LastReservedPageId}.");
+                }
+                Interlocked.Exchange(ref _nextPageId, value);
+            }
+        }
 
         public int WindowSize => _windowSize;
 
@@ -239,7 +294,39 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         public long NewPageId()
         {
-            return _newPageId();
+            long id = Interlocked.Read(ref _nextPageId);
+            while (true)
+            {
+                if (id > LastReservedPageId)
+                {
+                    throw new InvalidOperationException($"The page client has used all {ImmutablePageIds.RangeSize} page ids it has.");
+                }
+                // A reader never sees the counter past the end
+                long seen = Interlocked.CompareExchange(ref _nextPageId, id + 1, id);
+                if (seen == id)
+                {
+                    return id;
+                }
+                id = seen;
+            }
+        }
+
+        /// <summary>
+        /// True when storage holds the page, written or checkpointed.
+        /// </summary>
+        public bool IsStored(long pageId)
+        {
+            ThrowIfNotOwn(pageId);
+            return _isStored(pageId);
+        }
+
+        // Another client's id is never deleted or probed here
+        private void ThrowIfNotOwn(long pageId)
+        {
+            if (pageId < _firstPageId || pageId > LastReservedPageId)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageId), $"Page id {pageId} is outside this client's ids, {_firstPageId} to {LastReservedPageId}.");
+            }
         }
 
         /// <summary>
@@ -308,6 +395,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         /// </summary>
         public ValueTask PublishAsync(long pageId, V page)
         {
+            ThrowIfNotOwn(pageId);
             // Read before any wait, a restore in between refuses the page
             int generation = Volatile.Read(ref _generation);
             // Slot first, so a waiting page is never cached
@@ -369,10 +457,37 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         }
 
         /// <summary>
+        /// Deletes a page, the owner must not read or reuse its id.
+        /// </summary>
+        public void Delete(long pageId)
+        {
+            ThrowIfNotOwn(pageId);
+            var fault = Volatile.Read(ref _writeFault);
+            if (fault != null)
+            {
+                throw new InvalidOperationException("An earlier page could not be written.", fault);
+            }
+            lock (_admitLock)
+            {
+                ThrowIfClosed();
+                if (_loads.TryGetValue(pageId, out var load))
+                {
+                    load.Deleted = true;
+                }
+                _table.Delete(pageId);
+                // Queued, so it comes behind the page's own write
+                bool queued = _writes.Writer.TryWrite(new QueuedWrite(pageId));
+                Debug.Assert(queued, "The queue is completed only after the cache is closed");
+            }
+        }
+
+        /// <summary>
         /// Rents a page that is in the cache, without waiting.
         /// </summary>
         public bool TryGet(long pageId, PageWindow<V> window, [NotNullWhen(true)] out V? page)
         {
+            // Checked before the cache, another id is other state's page
+            ThrowIfNotOwn(pageId);
             window.ThrowIfFull();
             // No counter that readers share is written on this path
             if (_table.TryPeekEntry(pageId, out var entry) && entry.TryRentValue())
@@ -410,36 +525,29 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             {
                 V? page = null;
                 Load? mine = null;
-                if (_loads.TryGetValue(pageId, out var load))
+                Load? joined = null;
+                // Under the lock, so a delete sees every earlier load
+                lock (_admitLock)
                 {
-                    if (load.Generation == generation)
+                    if (_loads.TryGetValue(pageId, out var load) && load.Generation == generation)
                     {
-                        // Someone else loads it, rent what they loaded
-                        LoadJoinedHookForTests?.Invoke();
-                        page = await load.Completion.Task.ConfigureAwait(false);
-                        if (page != null && !page.TryRent())
-                        {
-                            page = null;
-                        }
+                        load.Joiners++;
+                        joined = load;
                     }
                     else
                     {
                         ThrowIfReset(generation);
-                        // A load from before a reset adds nothing, take its place
+                        // A load from before a reset is replaced
                         mine = new Load(generation);
-                        if (!_loads.TryUpdate(pageId, mine, load))
-                        {
-                            continue;
-                        }
+                        _loads[pageId] = mine;
                     }
                 }
-                else
+                if (joined != null)
                 {
-                    mine = new Load(generation);
-                    if (!_loads.TryAdd(pageId, mine))
-                    {
-                        continue;
-                    }
+                    // Someone else loads it, rent what they loaded
+                    LoadJoinedHookForTests?.Invoke();
+                    // The load rented the page for this reader
+                    page = await joined.Completion.Task.ConfigureAwait(false);
                 }
                 if (mine != null)
                 {
@@ -492,6 +600,13 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     {
                         // A reset cannot come between this check and the add
                         ThrowIfClosedOrReset(load.Generation);
+                        if (load.Deleted)
+                        {
+                            // Deleted meanwhile: the caller gets the page, the cache does not
+                            rents = 1;
+                            result = page;
+                            return result;
+                        }
                         added = _table.AddIfAbsent(pageId, page, this, out entry);
                     }
                     if (added)
@@ -518,8 +633,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
             finally
             {
-                // Removed first, so no reader joins a finished load
-                _loads.TryRemove(new KeyValuePair<long, Load>(pageId, load));
+                lock (_admitLock)
+                {
+                    // Removed first, so no reader joins a finished load
+                    _loads.TryRemove(new KeyValuePair<long, Load>(pageId, load));
+                    if (result != null)
+                    {
+                        // The joined readers get their rents while this load holds one
+                        for (int i = 0; i < load.Joiners; i++)
+                        {
+                            result.TryRent();
+                        }
+                    }
+                }
                 if (failure != null)
                 {
                     load.Completion.SetException(failure);
@@ -591,7 +717,12 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     await ReachMarker(write.Drained, write.Commit).ConfigureAwait(false);
                     continue;
                 }
-                var page = write.Page!;
+                if (write.Page == null)
+                {
+                    await DeleteQueued(write.PageId).ConfigureAwait(false);
+                    continue;
+                }
+                var page = write.Page;
                 try
                 {
                     if (Volatile.Read(ref _dropWrites))
@@ -625,6 +756,26 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     _writeSlots.Release(_freedSlots);
                     _freedSlots = 0;
                 }
+            }
+        }
+
+        private async Task DeleteQueued(long pageId)
+        {
+            try
+            {
+                if (Volatile.Read(ref _dropWrites))
+                {
+                    // Remembered, no commit may go on without this delete
+                    Volatile.Write(ref _droppedPages, true);
+                }
+                else if (Volatile.Read(ref _writeFault) == null)
+                {
+                    await _session.Delete(pageId).ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                Interlocked.CompareExchange(ref _writeFault, e, null);
             }
         }
 
@@ -795,6 +946,9 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                 _generation++;
             }
             Volatile.Write(ref _dropWrites, true);
+            // The table and the meter keep nothing of this client
+            _table.UnregisterExternalHitCounter(_hitCounter);
+            _meter.Dispose();
             _writes.Writer.TryComplete();
             // The session goes when its writer has ended
             var disposal = _writer.ContinueWith(static (writer, state) => ((ImmutablePageClient<V>)state!).DisposeAfterWriter(writer), this, TaskScheduler.Default);

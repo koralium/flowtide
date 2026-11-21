@@ -23,6 +23,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         {
             PageCounter = 2;
             ClientMetadataLocations = new Dictionary<string, long>();
+            PageIdRanges = new Dictionary<string, long>();
         }
 
         public long CheckpointVersion { get; set; }
@@ -30,6 +31,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         public long PageCounter { get; set; }
 
         public Dictionary<string, long> ClientMetadataLocations { get; set; }
+
+        /// <summary>
+        /// Clients that own page ids after their binding, and how many.
+        /// </summary>
+        public Dictionary<string, long> PageIdRanges { get; set; }
 
         /// <summary>
         /// Incremental counter for all commited pages.

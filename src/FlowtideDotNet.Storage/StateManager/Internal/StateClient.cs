@@ -17,6 +17,11 @@ namespace FlowtideDotNet.Storage.StateManager.Internal
         internal virtual Task DisposalTask => Task.CompletedTask;
         public abstract ValueTask Reset(bool clearMetadata);
         public abstract long MetadataId { get; }
+
+        /// <summary>
+        /// Last page id of this client, the stream skips past it.
+        /// </summary>
+        internal virtual long LastReservedPageId => MetadataId;
         internal virtual bool HasCommitInFlight => false;
         internal virtual bool HasCommitFault => false;
         internal virtual Exception? CommitFault => null;
