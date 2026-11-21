@@ -47,6 +47,15 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             AssertRows(Kinds, Both, asked.Select(x => (long?)(firstRow + x)).ToArray(), fetched);
         }
 
+        internal static async Task CompactAll(RowHeap heap)
+        {
+            bool more = true;
+            while (more)
+            {
+                more = await heap.CompactAsync();
+            }
+        }
+
         internal static async Task Checkpoint(RowHeapTests.Stream stream, RowHeap heap)
         {
             await heap.CheckpointAsync();
@@ -1107,9 +1116,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             var read = Task.Run(async () => await Gather(reader, kept.Select(x => (ulong?)references[x]).ToArray(), Both));
             Assert.True(gate.Entered.Wait(Limit));
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             var newPages = Enumerable.Range(1, oldPages.Length).Select(x => PageId(heap, x)).ToArray();
             await Checkpoint(stream, heap);
             foreach (long page in oldPages)
@@ -1152,9 +1159,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     heap.Release(references[i]);
                 }
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             var pages = Enumerable.Range(1, sequences).Select(x => PageId(heap, x)).ToArray();
             int distinct = pages.Distinct().Count();
@@ -1347,9 +1352,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             await Checkpoint(stream, heap);
             long storedBefore = heap.StoredBytes;
 
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long mergedPages = heap.PageCount - 1000;
             long mergedBytes = heap.StoredBytes - storedBefore;
             await Checkpoint(stream, heap);
@@ -1398,9 +1401,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             long pagesBefore = heap.PageCount;
             long storedBefore = heap.StoredBytes;
 
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long mergedPages = heap.PageCount - pagesBefore;
             long mergedBytes = heap.StoredBytes - storedBefore;
             using var reader = heap.CreateReader();
@@ -1499,9 +1500,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             long readByTheFailedCall = heap.PagesRead;
             int budgetAfter = heap.CompactBudget;
             heap.Client.NextPageId = nextPageId;
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             int notMoved = Enumerable.Range(1, sequences).Count(x => heap.Directory.Get(x) != 0 && PageId(heap, x) < nextPageId);
 
             Assert.Equal(0, mergedByTheFailedCall);
@@ -1537,9 +1536,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 }
                 long before = heap.PageCount;
                 await Checkpoint(stream, heap);
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 merged = heap.PagesMerged;
                 mergedPages = heap.PageCount - before;
                 rowsMerged = heap.RowsMerged;
@@ -1577,17 +1574,13 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 heap.Release(references[row]);
             }
 
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long readInTheBurst = heap.PagesRead;
             int budgetLeft = heap.CompactBudget;
             bool moreWithoutABudget = await heap.CompactAsync();
             await Checkpoint(stream, heap);
             int budgetAfter = heap.CompactBudget;
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long readAfter = heap.PagesRead - readInTheBurst;
             int notMoved = Enumerable.Range(1, sequences).Count(x => heap.Directory.Get(x) != 0 && PageId(heap, x) < heap.Client.FirstPageId + sequences);
 

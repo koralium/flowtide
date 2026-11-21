@@ -636,7 +636,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 HighestBytes = highest,
                 HighestOverLive = highest / (double)liveBytes,
                 HighestBeforeCheckpointOverLive = highestBefore / (double)liveBytes,
-                Bound = (liveBytes * 3 / 2 + churnBytes) / (double)liveBytes,
+                Bound = (liveBytes * 1.5 + churnBytes) / liveBytes,
                 heap.StoredBytes,
                 HeapLiveBytes = heap.LiveBytes,
                 heap.DirectoryBytes,

@@ -215,9 +215,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     survivors.Add((ulong)references.GetValueAt(slot, default).AsLong);
                 }
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long mergedOnce = heap.PagesMerged;
             long measuredOnce = heap.PagesMeasured;
             int largeRowsInMergedPages = second.Count(x => PageId(heap, RowReference.Sequence(x)) >= heap.Client.FirstPageId + 8);
@@ -227,9 +225,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             {
                 heap.Release(reference);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
 
@@ -259,9 +255,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var restarted = await Open(provider);
             using var again = await restarted.Heap(1, pageTargetBytes: target);
             long takenAsLive = again.LiveBytes;
-            while (await again.CompactAsync())
-            {
-            }
+            await CompactAll(again);
             await Checkpoint(restarted, again);
             await Checkpoint(restarted, again);
 
@@ -284,21 +278,17 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             {
                 batch.Columns[0].Add(new StringValue("x"));
             }
-            var survivors = new List<ulong?>();
             for (int page = 0; page < 10; page++)
             {
                 using var references = Column.Create(GlobalMemoryManager.Instance);
                 await heap.AppendAsync(batch, 0, 100, references);
-                survivors.Add((ulong)references.GetValueAt(0, default).AsLong);
                 for (int slot = 1; slot < 100; slot++)
                 {
                     heap.Release((ulong)references.GetValueAt(slot, default).AsLong);
                 }
             }
 
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
 
             Assert.Equal(10, heap.RowCount);
             Assert.Equal(0, heap.PagesMerged);
@@ -369,9 +359,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                         survivors.Add((ulong)references.GetValueAt(slot, default).AsLong);
                     }
                 }
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
             }
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
@@ -380,13 +368,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             {
                 heap.Release(reference);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
 
@@ -423,9 +407,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 await heap.AppendAsync(oneRow, 0, 1, references);
                 released.Add((ulong)references.GetValueAt(0, default).AsLong);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
             Assert.True(heap.PagesMerged > 200, $"{heap.PagesMerged} pages were merged.");
@@ -434,9 +416,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             {
                 heap.Release(reference);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
 
@@ -474,9 +454,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     }
                 }
                 await Checkpoint(stream, heap);
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
                 await Checkpoint(stream, heap);
                 mergedBefore = heap.PagesMerged;
@@ -491,9 +469,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var again = await restarted.Heap(1, pageTargetBytes: target);
             for (int round = 0; round < 4; round++)
             {
-                while (await again.CompactAsync())
-                {
-                }
+                await CompactAll(again);
                 await Checkpoint(restarted, again);
             }
             using var reader = again.CreateReader();
@@ -534,18 +510,14 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 {
                     survivors.Add((ulong)smallReferences.GetValueAt(row, default).AsLong);
                 }
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
             }
             Assert.True(heap.PagesMerged > 0);
             foreach (ulong reference in toRelease)
             {
                 heap.Release(reference);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
             using var reader = heap.CreateReader();
@@ -589,14 +561,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 {
                     survivors.Add((ulong)references.GetValueAt(row, default).AsLong);
                 }
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
             }
             await Checkpoint(stream, heap);
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             using var reader = heap.CreateReader();
             var columns = await Gather(reader, survivors.ToArray(), new int[] { 0 });
@@ -628,9 +596,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
             for (int i = 0; i < 4; i++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
 
@@ -677,9 +643,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
             for (int checkpoint = 0; checkpoint < 2; checkpoint++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
             foreach (ulong reference in largeRows)
@@ -688,14 +652,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
             for (int checkpoint = 0; checkpoint < 2; checkpoint++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long mergedAfterTwoCheckpoints = heap.PagesMerged;
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
@@ -754,9 +714,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var again = await restarted.Heap(1, pageTargetBytes: target);
             for (int round = 0; round < 4; round++)
             {
-                while (await again.CompactAsync())
-                {
-                }
+                await CompactAll(again);
                 await Checkpoint(restarted, again);
             }
 
@@ -778,9 +736,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             await Checkpoint(stream, heap);
             for (int round = 0; round < 4; round++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
 
@@ -814,9 +770,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 }
             }
             await Checkpoint(stream, heap);
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
             return (release, keep);
@@ -826,9 +780,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         {
             for (int round = 0; round < 4; round++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
             using var reader = heap.CreateReader();
@@ -837,7 +789,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             long live = result.GetByteSize() + 100L * 24;
 
             Assert.Equal(10000, result.Count);
-            Assert.True(heap.StoredBytes <= live * 1.72 + 2L * target,
+            Assert.True(heap.StoredBytes <= live * 1.72 + 2.0 * target,
                 $"Stored {heap.StoredBytes} bytes for {live} live payload and slot-map bytes; estimated {heap.LiveBytes}; measured {heap.PagesMeasured}; merged {heap.PagesMerged}.");
         }
 
@@ -925,9 +877,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
             for (int round = 0; round < 4; round++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
             for (int i = 0; i < all.Count; i++)
@@ -952,9 +902,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             long readBefore = heap.PagesRead;
             for (int round = 0; round < 2; round++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
 
@@ -982,9 +930,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             int budget = again.CompactBudget;
             for (int round = 0; round < 2; round++)
             {
-                while (await again.CompactAsync())
-                {
-                }
+                await CompactAll(again);
                 await Checkpoint(restarted, again);
             }
 
@@ -1008,9 +954,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var again = await restarted.Heap(1, pageTargetBytes: target);
             for (int round = 0; round < 2; round++)
             {
-                while (await again.CompactAsync())
-                {
-                }
+                await CompactAll(again);
                 await Checkpoint(restarted, again);
             }
 
@@ -1035,9 +979,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             using var restarted = await Open(provider);
             using var again = await restarted.Heap(1, pageTargetBytes: 500);
-            while (await again.CompactAsync())
-            {
-            }
+            await CompactAll(again);
 
             Assert.True(again.PagesMerged > 500, $"{again.PagesMerged} of 1000 small pages were merged after the restart.");
             Assert.Equal(0, again.PagesMeasured);
@@ -1162,9 +1104,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 using var references = Column.Create(GlobalMemoryManager.Instance);
                 await heap.AppendAsync(batch, 0, batch.Count, references);
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
 
             Assert.True(heap.PagesMerged > 0,
                 $"Forty {batch.GetByteSize()}-byte nullable struct pages reached a 128-byte target, but {heap.PagesMerged} pages were merged; stored bytes {heap.StoredBytes}.");
@@ -1192,9 +1132,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
             for (int checkpoint = 0; checkpoint < 4; checkpoint++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
             long actualBytes = 0;
@@ -1286,9 +1224,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     references.Add((ulong)appended.GetValueAt(0, default).AsLong);
                 }
                 await Checkpoint(stream, heap);
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 using (var window = heap.Client.CreateWindow())
                 {
                     var page = await heap.Client.GetAsync(PageId(heap, 1), window);
@@ -1437,9 +1373,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         {
             for (int round = 0; round < 4; round++)
             {
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
             }
         }
@@ -1649,9 +1583,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     survivors.AddRange(second.Select(reference => (ulong?)reference));
                 }
                 await Checkpoint(stream, heap);
-                while (await heap.CompactAsync())
-                {
-                }
+                await CompactAll(heap);
                 await Checkpoint(stream, heap);
                 await Checkpoint(stream, heap);
                 using (var window = heap.Client.CreateWindow())
@@ -1676,9 +1608,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             Assert.True(again.StoredBytes < again.LiveBytes * options.MaxStoredRatio);
             for (int round = 0; round < 4; round++)
             {
-                while (await again.CompactAsync())
-                {
-                }
+                await CompactAll(again);
                 await Checkpoint(restarted, again);
             }
             using var reader = again.CreateReader();
@@ -1691,7 +1621,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             Assert.Equal(12.5, result.GetValueAt(0, default).AsDouble);
             Assert.Equal(((groups - 1) * 110 + 109) * 0.25, result.GetValueAt(result.Count - 1, default).AsDouble);
             Assert.True(again.PagesMeasured > 0, "Dead listed slots were not measured after the restart.");
-            Assert.True(again.StoredBytes <= liveBytes * options.MaxStoredRatio + 2 * options.PageTargetBytes,
+            Assert.True(again.StoredBytes <= liveBytes * options.MaxStoredRatio + 2.0 * options.PageTargetBytes,
                 $"Stored {again.StoredBytes} bytes for {liveBytes} live bytes; measured {again.PagesMeasured}, merged {again.PagesMerged}.");
         }
     }

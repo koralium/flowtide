@@ -90,9 +90,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     heap.Release(references[i]);
                 }
             }
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             long merged = heap.PagesMerged;
             await AssertReads(heap, references, kept);
             await Checkpoint(stream, heap);
@@ -242,9 +240,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 await Assert.ThrowsAnyAsync<Exception>(async () => await heap.CompactAsync());
             }
             disk.FailReads = false;
-            while (await heap.CompactAsync())
-            {
-            }
+            await CompactAll(heap);
             await Checkpoint(stream, heap);
             await Checkpoint(stream, heap);
             using var reader = heap.CreateReader();
