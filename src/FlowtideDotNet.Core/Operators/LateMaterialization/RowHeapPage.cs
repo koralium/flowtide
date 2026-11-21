@@ -19,19 +19,38 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
     {
         private readonly EventBatchData _data;
         private readonly int _count;
+        private readonly long _sequence;
+        private readonly RowHeapSlotMap? _map;
         private int _rentCount;
 
-        public RowHeapPage(EventBatchData data, int count)
+        // An appended page, the row of a slot is the slot
+        public RowHeapPage(EventBatchData data, int count, long sequence)
         {
             _data = data;
             _count = count;
+            _sequence = sequence;
             // The first rent is the creator's, later the cache's
+            _rentCount = 1;
+        }
+
+        // A page that took over the rows of other pages
+        public RowHeapPage(EventBatchData data, int count, RowHeapSlotMap map)
+        {
+            _data = data;
+            _count = count;
+            _map = map;
             _rentCount = 1;
         }
 
         public EventBatchData Data => _data;
 
         public int Count => _count;
+
+        // Zero on a merged page
+        public long Sequence => _sequence;
+
+        // Null on a page as it was appended
+        public RowHeapSlotMap? Map => _map;
 
         public bool RemovedFromCache { get; set; }
 

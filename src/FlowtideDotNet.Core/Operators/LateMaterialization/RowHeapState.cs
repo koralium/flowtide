@@ -23,5 +23,10 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         public long NextSequence { get; set; }
 
         public long RowCount { get; set; }
+
+        // Page ids used, counted from the client's first id
+        public long NextPage { get; set; }
+
+        public long StoredBytes { get; set; }
     }
 }

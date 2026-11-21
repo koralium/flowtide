@@ -291,6 +291,14 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             }
         }
 
+        internal void UnregisterExternalHitCounter(Func<long> hitCounter)
+        {
+            lock (m_externalHitCounters)
+            {
+                m_externalHitCounters.Remove(hitCounter);
+            }
+        }
+
         private long ExternalCacheHits()
         {
             long sum = 0;

@@ -18,10 +18,19 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
 
         public int WriteQueueCapacity { get; set; } = 16;
 
+        // Merge above this ratio of stored to live bytes, lower copies more
+        public double MaxStoredRatio { get; set; } = 1.5;
+
+        // One CompactAsync call reads at most this many pages, at least two
+        public int CompactPagesPerCall { get; set; } = 256;
+
         // A reader holds one page at a time
         public int WindowSize { get; set; } = 1;
 
         // Test hook, runs on the writer before a page is serialized
         internal Action? PageWriteHookForTests { get; set; }
+
+        // Test hook, runs once a gather knows its pages
+        internal Action? PagesResolvedHookForTests { get; set; }
     }
 }

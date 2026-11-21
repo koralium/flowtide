@@ -11,6 +11,7 @@
 // limitations under the License.
 
 using FlowtideDotNet.Core.ColumnStore;
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Storage.Comparers;
 using FlowtideDotNet.Storage.Memory;
@@ -22,25 +23,32 @@ using System.Runtime.ExceptionServices;
 
 namespace FlowtideDotNet.Core.Operators.LateMaterialization
 {
-    internal sealed class RowHeap : IDisposable
+    internal sealed partial class RowHeap : IDisposable
     {
-        private const int FormatVersion = 1;
+        private const int FormatVersion = 2;
+
+        // A directory value is the page and the sequence's live rows
+        private const int LiveBits = 20;
+        private const long LiveMask = (1L << LiveBits) - 1;
 
         private readonly string _name;
         private readonly int _columnCount;
         private readonly RowHeapOptions _options;
         private readonly IMemoryAllocator _memoryAllocator;
         private readonly ImmutablePageClient<RowHeapPage> _client;
-        private readonly IBPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> _directoryTree;
+        private readonly PageWindow<RowHeapPage> _window;
+        private readonly IBPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> _index;
         private readonly IObjectState<RowHeapState> _state;
         private readonly RowHeapDirectory _directory;
+        private readonly RowHeapPageTable _pages;
         private readonly List<RowHeapReader> _readers;
         private long _nextSequence;
-        private long _persistedSequence;
         private long _rowCount;
+        private long _storedBytes;
         private long _oversizedBytes;
         private int[] _rows;
-        private int[] _sizes;
+        private int[] _columnSizes;
+        private long[] _sizes;
         private bool _disposed;
 
         private RowHeap(
@@ -49,7 +57,8 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             RowHeapOptions options,
             IMemoryAllocator memoryAllocator,
             ImmutablePageClient<RowHeapPage> client,
-            IBPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> directoryTree,
+            PageWindow<RowHeapPage> window,
+            IBPlusTree<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>> index,
             IObjectState<RowHeapState> state)
         {
             _name = name;
@@ -57,12 +66,35 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             _options = options;
             _memoryAllocator = memoryAllocator;
             _client = client;
-            _directoryTree = directoryTree;
+            _window = window;
+            _index = index;
             _state = state;
             _directory = new RowHeapDirectory();
+            _pages = new RowHeapPageTable();
+            _released = new RowHeapReleasedRows();
+            _budget = options.CompactPagesPerCall;
+            _small = new Queue<long>();
+            // Above the ratio some page is always this sparse
+            _sparse = new Queue<long>[(int)Math.Ceiling(BucketsPerPage / options.MaxStoredRatio)];
+            for (int i = 0; i < _sparse.Length; i++)
+            {
+                _sparse[i] = new Queue<long>();
+            }
+            _unmeasured = new Queue<long>();
+            _readSequences = new List<long>();
+            _readCounts = new List<int>();
             _readers = new List<RowHeapReader>();
+            _changedSequences = new HashSet<long>();
+            _changedWords = new HashSet<long>();
+            _changedPages = new HashSet<long>();
+            _forgotten = new List<long>();
+            _retiredNow = new List<long>();
+            _retiredBefore = new List<long>();
             _rows = Array.Empty<int>();
-            _sizes = Array.Empty<int>();
+            _columnSizes = Array.Empty<int>();
+            _sizes = Array.Empty<long>();
+            _positions = Array.Empty<int>();
+            _slots = Array.Empty<ushort>();
             _nextSequence = 1;
             _persistedSequence = 1;
         }
@@ -71,11 +103,47 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
 
         public int ColumnCount => _columnCount;
 
-        public long PageCount => Volatile.Read(ref _nextSequence) - 1;
+        // Pages in storage, with those that wait to be deleted
+        public long PageCount => _pages.Count;
 
+        public long SequenceCount => Volatile.Read(ref _nextSequence) - 1;
+
+        // Rows that are not released
         public long RowCount => Volatile.Read(ref _rowCount);
 
+        // Bytes of stored pages before compression, with slot maps
+        public long StoredBytes => Volatile.Read(ref _storedBytes);
+
+        // Bytes of live rows, estimated per page until measured
+        public long LiveBytes => Volatile.Read(ref _liveBytes);
+
         public long DirectoryBytes => _directory.ByteSize;
+
+        public long PageTableBytes => _pages.ByteSize;
+
+        // Released rows, kept while their sequence has a row left
+        public long ReleasedSlotBytes => _released.ByteSize;
+
+        // Queues of pages to merge or measure, store's thread only
+        public long MergeQueueBytes => QueuedPages * sizeof(long);
+
+        public long RowsReleased => Volatile.Read(ref _rowsReleased);
+
+        // Rows copied into merged pages
+        public long RowsMerged => Volatile.Read(ref _rowsMerged);
+
+        public long PagesMerged => Volatile.Read(ref _pagesMerged);
+
+        public long PagesDeleted => Volatile.Read(ref _pagesDeleted);
+
+        // Pages whose live bytes were counted from the page
+        public long PagesMeasured => Volatile.Read(ref _pagesMeasured);
+
+        // Pages read to measure or to merge them
+        public long PagesRead => Volatile.Read(ref _pagesRead);
+
+        // Pages that may still be read before the next checkpoint
+        public int CompactBudget => Volatile.Read(ref _budget);
 
         internal RowHeapOptions Options => _options;
 
@@ -84,6 +152,21 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         internal ImmutablePageClient<RowHeapPage> Client => _client;
 
         internal RowHeapDirectory Directory => _directory;
+
+        internal static long Pack(long page, int live)
+        {
+            return ((page + 1) << LiveBits) | (uint)live;
+        }
+
+        internal static long PageOf(long entry)
+        {
+            return (entry >> LiveBits) - 1;
+        }
+
+        internal static int LiveOf(long entry)
+        {
+            return (int)(entry & LiveMask);
+        }
 
         public static async Task<RowHeap> CreateAsync(IStateManagerClient stateManagerClient, string name, int columnCount, RowHeapOptions options, IMemoryAllocator memoryAllocator)
         {
@@ -94,6 +177,15 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             if (options.PageTargetBytes < 1)
             {
                 throw new ArgumentOutOfRangeException(nameof(options), "The page target must be at least one byte.");
+            }
+            // Written so that NaN is refused too
+            if (!(options.MaxStoredRatio >= MinStoredRatio && options.MaxStoredRatio <= MaxStoredRatio))
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), $"The stored bytes may grow to between {MinStoredRatio} and {MaxStoredRatio} times the live rows, got {options.MaxStoredRatio}.");
+            }
+            if (options.CompactPagesPerCall < 2)
+            {
+                throw new ArgumentOutOfRangeException(nameof(options), "A call must be let read at least two pages.");
             }
             if (stateManagerClient is not StateManagerSyncClient syncClient)
             {
@@ -114,22 +206,46 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 WriteQueueCapacity = options.WriteQueueCapacity,
                 WindowSize = options.WindowSize
             };
-            var client = syncClient.GetOrCreateImmutablePageClient($"{name}_pages", pageOptions, memoryAllocator);
-            var directoryTree = await stateManagerClient.GetOrCreateTree($"{name}_directory", new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
+            var client = syncClient.GetOrCreateImmutablePageClient($"{name}_pages", pageOptions, memoryAllocator, out bool created);
+            PageWindow<RowHeapPage>? window = null;
+            try
             {
-                Comparer = new PrimitiveListComparer<long>(),
-                KeySerializer = new PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
-                ValueSerializer = new PrimitiveListValueContainerSerializer<long>(memoryAllocator),
-                MemoryAllocator = memoryAllocator
-            });
-            var heap = new RowHeap(name, columnCount, options, memoryAllocator, client, directoryTree, state);
-            await heap.RestoreAsync();
-            return heap;
+                try
+                {
+                    window = client.CreateWindow();
+                }
+                catch (InvalidOperationException e) when (e is not ObjectDisposedException)
+                {
+                    throw new InvalidOperationException($"Row heap '{name}' cannot be opened, the cache has no room for the pages it reads when it merges.", e);
+                }
+                var index = await stateManagerClient.GetOrCreateTree($"{name}_index", new BPlusTreeOptions<long, long, PrimitiveListKeyContainer<long>, PrimitiveListValueContainer<long>>()
+                {
+                    Comparer = new PrimitiveListComparer<long>(),
+                    KeySerializer = new PrimitiveListKeyContainerSerializer<long>(memoryAllocator),
+                    ValueSerializer = new PrimitiveListValueContainerSerializer<long>(memoryAllocator),
+                    MemoryAllocator = memoryAllocator
+                });
+                var heap = new RowHeap(name, columnCount, options, memoryAllocator, client, window, index, state);
+                await heap.RestoreAsync();
+                return heap;
+            }
+            catch
+            {
+                window?.Dispose();
+                if (created)
+                {
+                    // Removes the client and waits for it, the first failure is thrown
+                    syncClient.RemoveImmutablePageClient($"{name}_pages", client);
+                    await Task.WhenAny(client.DisposalTask).ConfigureAwait(false);
+                }
+                throw;
+            }
         }
 
         private async Task RestoreAsync()
         {
             var stored = _state.Value;
+            long nextPage = 0;
             if (stored == null)
             {
                 _state.Value = new RowHeapState()
@@ -139,29 +255,30 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                     ColumnCount = _columnCount,
                     NextSequence = 1
                 };
-                return;
             }
-            _nextSequence = stored.NextSequence;
-            _persistedSequence = stored.NextSequence;
-            _rowCount = stored.RowCount;
-
-            using var iterator = _directoryTree.CreateIterator();
-            await iterator.SeekFirst();
-            await foreach (var page in iterator)
+            else
             {
-                page.EnterWriteLock();
-                try
+                nextPage = stored.NextPage;
+                if (nextPage < 0 || nextPage > ImmutablePageIds.RangeSize)
                 {
-                    foreach (var entry in page)
-                    {
-                        _directory.Set(entry.Key, entry.Value);
-                    }
+                    throw new InvalidOperationException($"Row heap '{_name}' is stored with page counter {nextPage}, outside the ids of its pages.");
                 }
-                finally
-                {
-                    page.ExitWriteLock();
-                }
+                _nextSequence = stored.NextSequence;
+                _persistedSequence = stored.NextSequence;
+                _rowCount = stored.RowCount;
+                _storedBytes = stored.StoredBytes;
+                await ReadIndexAsync(nextPage);
             }
+            long pageId = _client.FirstPageId + nextPage;
+            // Pages stored after this state are swept, they have no gap
+            while (pageId <= _client.LastReservedPageId && _client.IsStored(pageId))
+            {
+                _client.Delete(pageId);
+                pageId++;
+            }
+            // Their ids are not used again
+            _client.NextPageId = pageId;
+            _persistedPage = pageId - _client.FirstPageId;
         }
 
         // Called by the store's own thread only
@@ -186,14 +303,21 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             int row = start;
             while (row < end)
             {
-                int pageEnd = NextPageEnd(start, row, end, out int byteSize);
+                int pageEnd = NextPageEnd(start, row, end, out long pageBytes);
+                if (pageBytes > int.MaxValue)
+                {
+                    throw new InvalidOperationException($"Row {row} of the batch is {pageBytes} bytes, more than a page of row heap '{_name}' can hold.");
+                }
+                int byteSize = (int)pageBytes;
                 int rows = pageEnd - row;
+                int maxRow = LargestRow(start, row, pageEnd);
                 long sequence = _nextSequence;
                 RowReference.ThrowIfExhausted(sequence, _name);
-                var page = BuildPage(payload, row, rows);
-                long pageId = _client.NewPageId();
+                var page = BuildPage(payload, row, rows, sequence);
+                long pageId;
                 try
                 {
+                    pageId = _client.NewPageId();
                     await _client.PublishAsync(pageId, page).ConfigureAwait(false);
                 }
                 catch
@@ -202,54 +326,130 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                     page.Return();
                     throw;
                 }
+                long number = pageId - _client.FirstPageId;
+                AddPage(number, rows, byteSize, false, maxRow, 1);
                 // The slot is written before a reference to it exists
-                _directory.Set(sequence, pageId);
+                _directory.Set(sequence, Pack(number, rows));
                 Volatile.Write(ref _nextSequence, sequence + 1);
                 Volatile.Write(ref _rowCount, _rowCount + rows);
                 for (int i = 0; i < rows; i++)
                 {
                     references.Add(new RowRefValue(RowReference.Pack(sequence, i)));
                 }
-                if (byteSize > _options.PageTargetBytes)
-                {
-                    _oversizedBytes += byteSize;
-                    if (_oversizedBytes > (long)_options.PageTargetBytes * _options.WriteQueueCapacity)
-                    {
-                        // Oversized pages wait to be written only up to a full queue's bytes
-                        await _client.DrainAsync().ConfigureAwait(false);
-                        _oversizedBytes = 0;
-                    }
-                }
+                await AfterPublishAsync(byteSize, _options.PageTargetBytes).ConfigureAwait(false);
                 row = pageEnd;
             }
         }
 
-        // Fills the byte size of the rows up to and with each row, one pass per column
+        // A page above its limit counts as oversized for the writer
+        private ValueTask AfterPublishAsync(int byteSize, long limit)
+        {
+            if (byteSize <= limit)
+            {
+                return ValueTask.CompletedTask;
+            }
+            _oversizedBytes += byteSize;
+            if (_oversizedBytes <= (long)_options.PageTargetBytes * _options.WriteQueueCapacity)
+            {
+                return ValueTask.CompletedTask;
+            }
+            // Oversized pages wait only up to a full queue's bytes
+            _oversizedBytes = 0;
+            return new ValueTask(_client.DrainAsync());
+        }
+
         private void MeasureRows(EventBatchData payload, int start, int count)
         {
             if (_rows.Length < count)
             {
                 int size = Math.Max(count, _rows.Length * 2);
                 _rows = new int[size];
-                _sizes = new int[size];
+                _columnSizes = new int[size];
+                _sizes = new long[size];
             }
             for (int i = 0; i < count; i++)
             {
                 _rows[i] = start + i;
             }
+            SumRowBytes(payload.Columns, count, out _);
+        }
+
+        // Sums the listed rows' bytes, also past a column's 32-bit wrap
+        private long SumRowBytes(IReadOnlyList<IColumn> columns, int count, out int maxRow)
+        {
+            maxRow = 0;
+            if (count == 0)
+            {
+                return 0;
+            }
             var sizes = _sizes.AsSpan(0, count);
             sizes.Clear();
-            ReadOnlySpan<int> rows = _rows.AsSpan(0, count);
-            for (int i = 0; i < _columnCount; i++)
+            for (int c = 0; c < columns.Count; c++)
             {
-                payload.Columns[i].GetPrefixSumByteSizes(rows, sizes);
+                AddColumnBytes(columns[c], count, sizes);
+            }
+            long last = 0;
+            long largest = 0;
+            for (int i = 0; i < count; i++)
+            {
+                largest = Math.Max(largest, sizes[i] - last);
+                last = sizes[i];
+            }
+            maxRow = (int)Math.Min(largest, int.MaxValue);
+            return last;
+        }
+
+        private void AddColumnBytes(IColumn column, int count, Span<long> sizes)
+        {
+            if (column is Column plain && column.DataColumn is StructColumn fields)
+            {
+                // Field by field, a struct adds its fields up in 32 bits
+                for (int i = 0; i < fields._columns.Length; i++)
+                {
+                    AddColumnBytes(fields._columns[i], count, sizes);
+                }
+                // The struct's own null bits
+                var own = _columnSizes.AsSpan(0, count);
+                own.Clear();
+                plain.GetValidityPrefixSumByteSizes(_rows.AsSpan(0, count), own);
+                for (int i = 0; i < count; i++)
+                {
+                    sizes[i] += own[i];
+                }
+                return;
+            }
+            int from = 0;
+            long before = 0;
+            while (from < count)
+            {
+                var part = _columnSizes.AsSpan(from, count - from);
+                part.Clear();
+                column.GetPrefixSumByteSizes(_rows.AsSpan(from, count - from), part);
+                int good = 0;
+                int previous = 0;
+                while (good < part.Length && part[good] >= previous)
+                {
+                    previous = part[good];
+                    sizes[from + good] += before + previous;
+                    good++;
+                }
+                if (good == part.Length)
+                {
+                    break;
+                }
+                if (good == 0)
+                {
+                    throw new InvalidOperationException($"A row of row heap '{_name}' is more than {int.MaxValue} bytes in one column.");
+                }
+                before += previous;
+                from += good;
             }
         }
 
-        private int NextPageEnd(int start, int row, int end, out int byteSize)
+        private int NextPageEnd(int start, int row, int end, out long byteSize)
         {
             int limit = Math.Min(end, row + RowReference.MaxRowsPerPage);
-            int before = row == start ? 0 : _sizes[row - start - 1];
+            long before = row == start ? 0 : _sizes[row - start - 1];
             byteSize = _sizes[limit - start - 1] - before;
             if (byteSize <= _options.PageTargetBytes)
             {
@@ -274,7 +474,20 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             return low;
         }
 
-        private RowHeapPage BuildPage(EventBatchData payload, int row, int rows)
+        // The largest row of a page that is being appended
+        private int LargestRow(int start, int row, int pageEnd)
+        {
+            long previous = row == start ? 0 : _sizes[row - start - 1];
+            long largest = 0;
+            for (int i = row; i < pageEnd; i++)
+            {
+                largest = Math.Max(largest, _sizes[i - start] - previous);
+                previous = _sizes[i - start];
+            }
+            return (int)largest;
+        }
+
+        private RowHeapPage BuildPage(EventBatchData payload, int row, int rows, long sequence)
         {
             var columns = new IColumn[_columnCount];
             try
@@ -294,7 +507,7 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 }
                 throw;
             }
-            return new RowHeapPage(new EventBatchData(columns), rows);
+            return new RowHeapPage(new EventBatchData(columns), rows, sequence);
         }
 
         public RowHeapReader CreateReader()
@@ -334,29 +547,16 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             }
         }
 
-        // Called in the host's OnCheckpoint, before the storage checkpoint
-        public async Task CheckpointAsync()
-        {
-            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
-            // Every page appended so far is written and committed first
-            await _client.CommitAsync();
-            for (long sequence = _persistedSequence; sequence < _nextSequence; sequence++)
-            {
-                await _directoryTree.Upsert(sequence, _directory.Get(sequence));
-            }
-            _persistedSequence = _nextSequence;
-            await _directoryTree.Commit();
-            _state.Value!.NextSequence = _nextSequence;
-            _state.Value.RowCount = _rowCount;
-            await _state.Commit();
-        }
-
         // Called when every reader and the store have stopped using the heap
         public void Dispose()
         {
             RowHeapReader[] readers;
             lock (_readers)
             {
+                if (_disposed)
+                {
+                    return;
+                }
                 Volatile.Write(ref _disposed, true);
                 readers = _readers.ToArray();
             }
@@ -372,6 +572,14 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                     // The other readers still give their windows back
                     failure ??= e;
                 }
+            }
+            try
+            {
+                _window.Dispose();
+            }
+            catch (Exception e)
+            {
+                failure ??= e;
             }
             if (failure != null)
             {

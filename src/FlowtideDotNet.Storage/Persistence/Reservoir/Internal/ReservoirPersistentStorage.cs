@@ -604,6 +604,13 @@ namespace FlowtideDotNet.Storage.Persistence.Reservoir.Internal
             }
         }
 
+        // Written since the last checkpoint, or in it and not deleted
+        internal bool IsStored(long key)
+        {
+            Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before looking up pages");
+            return _temporaryPageLocations.ContainsKey(key) || _checkpointHandler.TryGetReadablePageFileLocation(key, out _);
+        }
+
         internal void DeletePages(IReadOnlySet<long> keys)
         {
             Debug.Assert(_checkpointHandler != null, "Persistent storage must be initialized before deleting pages");

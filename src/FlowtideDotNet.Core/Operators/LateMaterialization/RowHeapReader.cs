@@ -25,6 +25,11 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         private ulong[] _keys;
         private int[] _lookup;
         private int[] _positions;
+        // Where each run of one sequence starts, and its page
+        private int[] _runStarts;
+        private long[] _runPages;
+        private ulong[] _movedKeys;
+        private int[] _movedOrder;
         private long _coldLoads;
         private int _disposed;
 
@@ -36,6 +41,10 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             _keys = Array.Empty<ulong>();
             _lookup = Array.Empty<int>();
             _positions = Array.Empty<int>();
+            _runStarts = new int[1];
+            _runPages = Array.Empty<long>();
+            _movedKeys = Array.Empty<ulong>();
+            _movedOrder = Array.Empty<int>();
         }
 
         public int HeldPages => _window.Count;
@@ -80,33 +89,32 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                     output[i].InsertNullRange(output[i].Count, nulls);
                 }
             }
+            int runs = FindPages(nulls, count, rowOrder);
+            _heap.Options.PagesResolvedHookForTests?.Invoke();
             // Resident pages are copied here, the first cold page goes on in the slow path
-            int position = nulls;
-            while (position < count)
+            int run = 0;
+            while (run < runs)
             {
-                long sequence = RowReference.Sequence(_keys[position]);
-                long pageId = PageId(sequence);
-                if (!_heap.Client.TryGet(pageId, _window, out var page))
+                if (!_heap.Client.TryGet(_heap.Client.FirstPageId + _runPages[run], _window, out var page))
                 {
-                    return GatherAsync_Slow(position, count, columns, output);
+                    return GatherAsync_Slow(run, runs, columns, output);
                 }
-                position = CopyPage(page, sequence, position, count, columns, output);
+                run = CopyPage(page, run, runs, columns, output);
             }
             return ValueTask.CompletedTask;
         }
 
-        private async ValueTask GatherAsync_Slow(int position, int count, IReadOnlyList<int> columns, Column[] output)
+        private async ValueTask GatherAsync_Slow(int run, int runs, IReadOnlyList<int> columns, Column[] output)
         {
-            while (position < count)
+            while (run < runs)
             {
-                long sequence = RowReference.Sequence(_keys[position]);
-                long pageId = PageId(sequence);
+                long pageId = _heap.Client.FirstPageId + _runPages[run];
                 if (!_heap.Client.TryGet(pageId, _window, out var page))
                 {
                     _coldLoads++;
                     page = await _heap.Client.GetAsync(pageId, _window).ConfigureAwait(false);
                 }
-                position = CopyPage(page, sequence, position, count, columns, output);
+                run = CopyPage(page, run, runs, columns, output);
             }
         }
 
@@ -119,6 +127,8 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 _keys = new ulong[size];
                 _lookup = new int[size];
                 _positions = new int[size];
+                _runStarts = new int[size + 1];
+                _runPages = new long[size];
             }
             int nulls = 0;
             bool sorted = true;
@@ -166,37 +176,103 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             return reference;
         }
 
-        private long PageId(long sequence)
+        // Finds the page of each run, before any page is read
+        private int FindPages(int position, int count, int[] rowOrder)
         {
-            long pageId = _heap.Directory.Get(sequence);
-            if (pageId == 0)
+            int runs = 0;
+            bool grouped = true;
+            long previous = -1;
+            while (position < count)
             {
-                throw new InvalidOperationException($"Row reference to page {sequence} in heap '{_heap.Name}' points at no page.");
+                long sequence = RowReference.Sequence(_keys[position]);
+                long entry = _heap.Directory.Get(sequence);
+                if (entry == 0)
+                {
+                    throw new InvalidOperationException($"Row reference to page {sequence} in heap '{_heap.Name}' points at no page.");
+                }
+                long page = RowHeap.PageOf(entry);
+                if (page < previous)
+                {
+                    grouped = false;
+                }
+                previous = page;
+                _runStarts[runs] = position;
+                _runPages[runs] = page;
+                runs++;
+                position++;
+                while (position < count && RowReference.Sequence(_keys[position]) == sequence)
+                {
+                    position++;
+                }
             }
-            return pageId;
+            _runStarts[runs] = count;
+            if (!grouped)
+            {
+                GroupByPage(runs, count, rowOrder);
+            }
+            return runs;
         }
 
-        // Copies the rows of one page and gives the page back, returns where the next page starts
-        private int CopyPage(RowHeapPage page, long sequence, int position, int count, IReadOnlyList<int> columns, Column[] output)
+        // Groups runs by page so a merged page is read once
+        private void GroupByPage(int runs, int count, int[] rowOrder)
+        {
+            if (_movedKeys.Length < _keys.Length)
+            {
+                _movedKeys = new ulong[_keys.Length];
+                _movedOrder = new int[_keys.Length];
+            }
+            var order = _lookup;
+            var starts = _positions;
+            for (int i = 0; i < runs; i++)
+            {
+                order[i] = i;
+            }
+            Array.Sort(_runPages, order, 0, runs);
+            int first = _runStarts[0];
+            int at = first;
+            for (int i = 0; i < runs; i++)
+            {
+                int start = _runStarts[order[i]];
+                int length = _runStarts[order[i] + 1] - start;
+                Array.Copy(_keys, start, _movedKeys, at, length);
+                Array.Copy(rowOrder, start, _movedOrder, at, length);
+                starts[i] = at;
+                at += length;
+            }
+            Array.Copy(_movedKeys, first, _keys, first, count - first);
+            Array.Copy(_movedOrder, first, rowOrder, first, count - first);
+            Array.Copy(starts, _runStarts, runs);
+        }
+
+        // Copies one page's rows, returns the run after its last
+        private int CopyPage(RowHeapPage page, int run, int runs, IReadOnlyList<int> columns, Column[] output)
         {
             try
             {
+                long number = _runPages[run];
+                var map = page.Map;
                 int length = 0;
-                while (position + length < count && RowReference.Sequence(_keys[position + length]) == sequence)
+                do
                 {
-                    int slot = RowReference.Slot(_keys[position + length]);
-                    if (slot >= page.Count)
+                    int start = _runStarts[run];
+                    int end = _runStarts[run + 1];
+                    if (map == null)
                     {
-                        throw new InvalidOperationException($"Row reference to slot {slot} of page {sequence} in heap '{_heap.Name}' is beyond the page's {page.Count} rows.");
+                        FindRows(page, start, end, length);
                     }
-                    _lookup[length] = slot;
-                    length++;
+                    else
+                    {
+                        FindMergedRows(map, start, end, length);
+                    }
+                    length += end - start;
+                    run++;
                 }
+                while (run < runs && _runPages[run] == number);
                 for (int i = 0; i < output.Length; i++)
                 {
-                    Append(output[i], page.Data.Columns[columns[i]], length);
+                    Append(output[i], page.Data.Columns[columns[i]], _lookup, _positions, length);
                 }
-                return position + length;
+                return run;
             }
             finally
             {
@@ -204,14 +280,54 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             }
         }
 
+        // An appended page, the row of a slot is the slot
+        private void FindRows(RowHeapPage page, int start, int end, int at)
+        {
+            long sequence = RowReference.Sequence(_keys[start]);
+            if (page.Sequence != sequence)
+            {
+                throw new InvalidOperationException($"Row heap '{_heap.Name}' read page {page.Sequence} where page {sequence} was asked for.");
+            }
+            for (int i = start; i < end; i++)
+            {
+                int slot = RowReference.Slot(_keys[i]);
+                if (slot >= page.Count)
+                {
+                    throw new InvalidOperationException($"Row reference to slot {slot} of page {sequence} in heap '{_heap.Name}' is beyond the page's {page.Count} rows.");
+                }
+                _lookup[at++] = slot;
+            }
+        }
+
+        // A merged page maps each sequence to its rows
+        private void FindMergedRows(RowHeapSlotMap map, int start, int end, int at)
+        {
+            long sequence = RowReference.Sequence(_keys[start]);
+            int hosted = map.Find(sequence);
+            if (hosted < 0)
+            {
+                throw new InvalidOperationException($"Row heap '{_heap.Name}' read a merged page without the rows of page {sequence}.");
+            }
+            for (int i = start; i < end; i++)
+            {
+                int slot = RowReference.Slot(_keys[i]);
+                int row = map.Row(hosted, slot);
+                if (row < 0)
+                {
+                    throw new InvalidOperationException($"Row reference to slot {slot} of page {sequence} in heap '{_heap.Name}' points at a row that was released.");
+                }
+                _lookup[at++] = row;
+            }
+        }
+
         // The same choice of copy as multi join makes for its output
-        private void Append(Column target, IColumn source, int length)
+        internal static void Append(Column target, IColumn source, int[] rows, int[] scratch, int length)
         {
             if (MultiJoinTreeLookup.AppendedAsNulls(target, source, length))
             {
                 return;
             }
-            ReadOnlySpan<int> lookup = _lookup.AsSpan(0, length);
+            ReadOnlySpan<int> lookup = rows.AsSpan(0, length);
             if (MultiJoinTreeLookup.TakesRowsAsObjects(target, source))
             {
                 MultiJoinTreeLookup.CopyRuns(target, source, lookup);
@@ -220,9 +336,9 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             int end = target.Count;
             for (int i = 0; i < length; i++)
             {
-                _positions[i] = end;
+                scratch[i] = end;
             }
-            ReadOnlySpan<int> positions = _positions.AsSpan(0, length);
+            ReadOnlySpan<int> positions = scratch.AsSpan(0, length);
             target.InsertFrom(source, in lookup, in positions, ColumnWithOffset.NullValueIndex);
         }
 

@@ -1079,6 +1079,16 @@ namespace FlowtideDotNet.Core.ColumnStore
             _validityList.GetPrefixSumByteSizes(indices, sizes);
         }
 
+        // Adds only the bytes of the null bits
+        internal void GetValidityPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                return;
+            }
+            _validityList.GetPrefixSumByteSizes(indices, sizes);
+        }
+
         private bool CompareOtherColumnType(Column otherColumn)
         {
             if (_type != otherColumn.Type)

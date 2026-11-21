@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.Comparers;
+using FlowtideDotNet.Core.ColumnStore.DataColumns;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Operators.LateMaterialization;
 using FlowtideDotNet.Storage;
@@ -26,8 +27,11 @@ using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Buffers;
+using System.Buffers.Binary;
 using System.Diagnostics.Metrics;
 using System.IO.Pipelines;
+using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace FlowtideDotNet.Core.Tests.LateMaterialization
@@ -38,24 +42,32 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
         private static readonly StructHeader StructColumns = StructHeader.Create("number", "text");
 
-        private sealed class Stream : IDisposable
+        internal sealed class Stream : IDisposable
         {
-            public Stream(StateManagerSync<object> manager, MemoryFileProvider provider)
+            public Stream(StateManagerSync<object> manager, ReservoirPersistentStorage storage, MemoryFileProvider provider)
             {
                 Manager = manager;
+                Storage = storage;
                 Provider = provider;
                 Client = manager.GetOrCreateClient("store");
             }
 
             public StateManagerSync<object> Manager { get; }
 
+            public ReservoirPersistentStorage Storage { get; }
+
             public MemoryFileProvider Provider { get; }
 
             public IStateManagerClient Client { get; }
 
-            public Task<RowHeap> Heap(int columns, int pageTargetBytes = 2000, int window = 1)
+            public Task<RowHeap> Heap(int columns, int pageTargetBytes = 2000, int window = 1, double maxStoredRatio = 1.5)
             {
-                var options = new RowHeapOptions() { PageTargetBytes = pageTargetBytes, WindowSize = window };
+                var options = new RowHeapOptions() { PageTargetBytes = pageTargetBytes, WindowSize = window, MaxStoredRatio = maxStoredRatio };
+                return RowHeap.CreateAsync(Client, "heap", columns, options, GlobalMemoryManager.Instance);
+            }
+
+            public Task<RowHeap> Heap(int columns, RowHeapOptions options)
+            {
                 return RowHeap.CreateAsync(Client, "heap", columns, options, GlobalMemoryManager.Instance);
             }
 
@@ -65,9 +77,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
         }
 
-        private static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan Limit = TimeSpan.FromSeconds(30);
 
-        private sealed class Gate
+        internal sealed class Gate
         {
             private int _armed = 1;
 
@@ -107,6 +119,39 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
         }
 
+        // Says its rows are as large as it is told
+        private sealed class HeavyColumn : Column, IColumn
+        {
+            private readonly int _rowBytes;
+
+            public HeavyColumn(int rowBytes) : base(GlobalMemoryManager.Instance)
+            {
+                _rowBytes = rowBytes;
+            }
+
+            void IColumn.GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] += (i + 1) * _rowBytes;
+                }
+            }
+        }
+
+        private static EventBatchData HeavyBatch(int columns, int rows, int rowBytes)
+        {
+            var heavy = new IColumn[columns];
+            for (int c = 0; c < columns; c++)
+            {
+                heavy[c] = new HeavyColumn(rowBytes);
+                for (int i = 0; i < rows; i++)
+                {
+                    heavy[c].Add(new Int64Value(c * 10 + i));
+                }
+            }
+            return new EventBatchData(heavy);
+        }
+
         private sealed class SizingProvider : MemoryFileProvider
         {
             private long _bytes;
@@ -120,14 +165,60 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
         }
 
-        private sealed class CountingAllocator : IMemoryAllocator
+        internal sealed class CountingAllocator : IMemoryAllocator
         {
             private long _outstandingBytes;
+            private long _allocations;
+            private long _bytesFreedByFinalizers;
+
+            // Finds the finalizer thread, a leaked column is freed on it
+            private static class FinalizerThread
+            {
+                public static int Id;
+            }
+
+            private sealed class Probe
+            {
+                ~Probe()
+                {
+                    Volatile.Write(ref FinalizerThread.Id, Environment.CurrentManagedThreadId);
+                }
+            }
+
+            public CountingAllocator()
+            {
+                if (Volatile.Read(ref FinalizerThread.Id) == 0)
+                {
+                    MakeProbe();
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
+            }
+
+            [MethodImpl(MethodImplOptions.NoInlining)]
+            private static void MakeProbe()
+            {
+                GC.KeepAlive(new Probe());
+            }
 
             public long OutstandingBytes => Interlocked.Read(ref _outstandingBytes);
 
+            public long Allocations => Interlocked.Read(ref _allocations);
+
+            // Collects first, so memory left to a finalizer is counted
+            public long BytesFreedByFinalizers
+            {
+                get
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    return Interlocked.Read(ref _bytesFreedByFinalizers);
+                }
+            }
+
             public IMemoryOwner<byte> Allocate(int size, int alignment)
             {
+                Interlocked.Increment(ref _allocations);
                 return GlobalMemoryManager.Instance.Allocate(size, alignment);
             }
 
@@ -143,6 +234,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             public void RegisterFreeToMetrics(int size)
             {
+                if (Environment.CurrentManagedThreadId == Volatile.Read(ref FinalizerThread.Id))
+                {
+                    Interlocked.Add(ref _bytesFreedByFinalizers, size);
+                }
                 Interlocked.Add(ref _outstandingBytes, -size);
             }
         }
@@ -185,10 +280,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
         }
 
-        private static async Task<Stream> Open(MemoryFileProvider? provider = null, int cachePages = 10000, bool compress = false)
+        internal static async Task<Stream> Open(MemoryFileProvider? provider = null, int cachePages = 10000, bool compress = false, int maxFileSize = 64 * 1024 * 1024, string meterName = "rowHeap")
         {
             provider ??= new MemoryFileProvider();
-            var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = provider });
+            var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = provider, MaxFileSize = maxFileSize });
             var manager = new StateManagerSync<object>(
                 new StateManagerOptions()
                 {
@@ -203,14 +298,14 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     TemporaryStorageOptions = new FileCacheOptions() { DirectoryPath = $"./data/rowHeap/{Guid.NewGuid():N}" }
                 },
                 NullLoggerFactory.Instance,
-                new Meter("rowHeap"),
+                new Meter(meterName),
                 "rowHeap",
                 GlobalMemoryManager.Instance);
             await manager.InitializeAsync();
-            return new Stream(manager, provider);
+            return new Stream(manager, storage, provider);
         }
 
-        private static IDataValue Value(string kind, long row)
+        internal static IDataValue Value(string kind, long row)
         {
             switch (kind)
             {
@@ -252,7 +347,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             }
         }
 
-        private static EventBatchData Batch(string[] kinds, long firstRow, int rows)
+        internal static EventBatchData Batch(string[] kinds, long firstRow, int rows)
         {
             var columns = new IColumn[kinds.Length];
             for (int c = 0; c < kinds.Length; c++)
@@ -267,7 +362,12 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             return new EventBatchData(columns);
         }
 
-        private static async Task<ulong[]> Append(RowHeap heap, string[] kinds, long firstRow, int rows)
+        internal static long PageId(RowHeap heap, long sequence)
+        {
+            return heap.Client.FirstPageId + RowHeap.PageOf(heap.Directory.Get(sequence));
+        }
+
+        internal static async Task<ulong[]> Append(RowHeap heap, string[] kinds, long firstRow, int rows)
         {
             using var batch = Batch(kinds, firstRow, rows);
             using var references = Column.Create(GlobalMemoryManager.Instance);
@@ -280,7 +380,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             return result;
         }
 
-        private static Column References(ulong?[] references)
+        internal static Column References(ulong?[] references)
         {
             var column = Column.Create(GlobalMemoryManager.Instance);
             for (int i = 0; i < references.Length; i++)
@@ -298,7 +398,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         }
 
         // Fetches and puts the rows back in the order they were asked for
-        private static async Task<Column[]> Gather(RowHeapReader reader, ulong?[] references, int[] columns)
+        internal static async Task<Column[]> Gather(RowHeapReader reader, ulong?[] references, int[] columns)
         {
             using var referenceColumn = References(references);
             var fetched = new Column[columns.Length];
@@ -327,7 +427,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             return output;
         }
 
-        private static void AssertRows(string[] kinds, int[] columns, long?[] rows, Column[] fetched)
+        internal static void AssertRows(string[] kinds, int[] columns, long?[] rows, Column[] fetched)
         {
             for (int c = 0; c < columns.Length; c++)
             {
@@ -596,7 +696,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             await heap.AppendAsync(batch, 0, batch.Count, references);
             using var window = heap.Client.CreateWindow();
-            bool cached = heap.Client.TryGet(heap.Directory.Get(1), window, out var page);
+            bool cached = heap.Client.TryGet(PageId(heap, 1), window, out var page);
 
             Assert.True(cached);
             Assert.True(heap.PageCount > 1, $"The heap has {heap.PageCount} pages.");
@@ -622,7 +722,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             await heap.AppendAsync(batch, 0, batch.Count, references);
             using var window = heap.Client.CreateWindow();
-            bool cached = heap.Client.TryGet(heap.Directory.Get(1), window, out var page);
+            bool cached = heap.Client.TryGet(PageId(heap, 1), window, out var page);
 
             Assert.True(cached);
             Assert.True(page!.Data.GetByteSize() > 1000);
@@ -731,7 +831,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             await heap.CheckpointAsync();
             await stream.Manager.CheckpointAsync();
             var lost = await Append(heap, kinds, 100, 100);
-            long lostPage = heap.Directory.Get(RowReference.Sequence(lost[0]));
+            long lostPage = PageId(heap, RowReference.Sequence(lost[0]));
+            await heap.Client.DrainAsync();
+            bool lostWritten = heap.Client.IsStored(lostPage);
             heap.Dispose();
 
             await stream.Manager.InitializeAsync();
@@ -740,18 +842,19 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             var keptRows = await Gather(reader, kept.Select(x => (ulong?)x).ToArray(), new int[] { 0 });
             var missing = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Gather(reader, new ulong?[] { lost[99] }, new int[] { 0 }));
             var reused = await Append(restored, kinds, 500, 100);
-            long reusedPage = restored.Directory.Get(RowReference.Sequence(reused[0]));
+            long reusedPage = PageId(restored, RowReference.Sequence(reused[0]));
             await restored.CheckpointAsync();
             await stream.Manager.CheckpointAsync();
-            for (long sequence = 1; sequence <= restored.PageCount; sequence++)
+            for (long sequence = 1; sequence <= restored.SequenceCount; sequence++)
             {
-                stream.Manager.DeleteFromCache(restored.Directory.Get(sequence));
+                stream.Manager.DeleteFromCache(PageId(restored, sequence));
             }
             long coldBefore = reader.ColdLoads;
             var reusedRows = await Gather(reader, reused.Select(x => (ulong?)x).ToArray(), new int[] { 0 });
 
             AssertRows(kinds, new int[] { 0 }, Enumerable.Range(0, 100).Select(x => (long?)x).ToArray(), keptRows);
             Assert.EndsWith("points at no page.", missing.Message);
+            Assert.True(lostWritten);
             Assert.Equal(lost, reused);
             Assert.Equal(lostPage, reusedPage);
             Assert.True(reader.ColdLoads > coldBefore);
@@ -773,7 +876,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var restarted = await Open(provider);
             var error = await Assert.ThrowsAsync<InvalidOperationException>(() => restarted.Heap(3));
 
-            Assert.Equal("Row heap 'heap' is stored with format 1, 16 slot bits and 2 columns, the stream expects format 1, 16 slot bits and 3 columns.", error.Message);
+            Assert.Equal("Row heap 'heap' is stored with format 2, 16 slot bits and 2 columns, the stream expects format 2, 16 slot bits and 3 columns.", error.Message);
         }
 
         [Fact]
@@ -886,9 +989,11 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             await Append(heap, new string[] { "int" }, 0, 5000);
 
-            Assert.Equal(16 * 8, empty);
+            Assert.Equal(16 * 12, empty);
             Assert.Equal(5000, heap.PageCount);
-            Assert.Equal((2 * RowHeapDirectory.ChunkSize + 16) * 8, heap.DirectoryBytes);
+            Assert.Equal(5000, heap.SequenceCount);
+            Assert.Equal(2 * RowHeapDirectory.ChunkSize * 8 + 16 * 12, heap.DirectoryBytes);
+            Assert.Equal(2 * (RowHeapPageTable.ChunkSize * RowHeapPageTable.EntrySize + RowHeapPageTable.ChunkOverhead), heap.PageTableBytes);
         }
 
         [Fact]
@@ -911,6 +1016,134 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         }
 
         [Fact]
+        public void AnOlderChunkWithFewSequencesLeftIsKeptAsAShortList()
+        {
+            var directory = new RowHeapDirectory();
+            const int chunk = RowHeapDirectory.ChunkSize;
+            const long table = 16 * 12;
+            for (long sequence = 1; sequence < 3 * chunk; sequence++)
+            {
+                directory.Set(sequence, sequence + 1000);
+            }
+            long full = directory.ByteSize;
+
+            for (long sequence = 66; sequence < chunk; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long with65 = directory.ByteSize;
+            directory.Set(65, 0);
+            long with64 = directory.ByteSize;
+            directory.Set(64, 77);
+            directory.Set(63, 0);
+            directory.Set(63, 0);
+            long with63 = directory.ByteSize;
+            var kept = new long[] { directory.Get(1), directory.Get(62), directory.Get(63), directory.Get(64), directory.Get(65), directory.Get(chunk - 1), directory.Get(chunk) };
+            directory.Set(200, 9);
+            long with64Again = directory.ByteSize;
+            long added = directory.Get(200);
+            for (long sequence = 1; sequence < chunk; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long without = directory.ByteSize;
+            for (long sequence = 2 * chunk + 1; sequence < 3 * chunk; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long newestWithOne = directory.ByteSize;
+            directory.Set(2 * chunk, 0);
+
+            Assert.Equal(table + 3 * chunk * 8, full);
+            Assert.Equal(table + 3 * chunk * 8, with65);
+            Assert.Equal(table + 2 * chunk * 8 + 64 * 10 + 64, with64);
+            Assert.Equal(table + 2 * chunk * 8 + 64 * 10 + 64, with63);
+            Assert.Equal(new long[] { 1001, 1062, 0, 77, 0, 0, chunk + 1000 }, kept);
+            Assert.Equal(table + 2 * chunk * 8 + 65 * 10 + 64, with64Again);
+            Assert.Equal(9, added);
+            Assert.Equal(table + 2 * chunk * 8, without);
+            Assert.Equal(table + 2 * chunk * 8, newestWithOne);
+            Assert.Equal(table + chunk * 8, directory.ByteSize);
+            Assert.Equal(0, directory.Get(2 * chunk));
+            Assert.Equal(chunk + 1005, directory.Get(chunk + 5));
+        }
+
+        [Fact]
+        public void AnOlderChunkOfThePageTableWithFewPagesLeftIsMoved()
+        {
+            var pages = new RowHeapPageTable();
+            const int chunk = RowHeapPageTable.ChunkSize;
+            const long chunkBytes = chunk * RowHeapPageTable.EntrySize + RowHeapPageTable.ChunkOverhead;
+            const long moved = RowHeapPageTable.MovedEntrySize;
+            long empty = pages.ByteSize;
+            for (long page = 0; page < 3 * chunk; page++)
+            {
+                pages.GetOrAdd(page).Rows = (int)page + 1;
+            }
+            long full = pages.ByteSize;
+
+            for (long page = 65; page < chunk; page++)
+            {
+                pages.Remove(page);
+            }
+            long with65 = pages.ByteSize;
+            pages.Remove(64);
+            pages.Remove(64);
+            long with64 = pages.ByteSize;
+            pages.GetOrAdd(10).Live = 7;
+            pages.GetOrAdd(500).Rows = 9;
+            long with65Again = pages.ByteSize;
+            var kept = new int[] { pages.Rows(0), pages.Rows(63), pages.Rows(64), pages.Rows(500), pages.Live(10), pages.Rows(chunk) };
+            var states = new RowHeapPageState[] { pages.State(63), pages.State(64), pages.State(500), pages.State(chunk), pages.State(-1), pages.State(100L * chunk) };
+            var unknown = Assert.Throws<InvalidOperationException>(() => pages.Get(64));
+            int known = pages.Get(63).Rows;
+            for (long page = 0; page < chunk; page++)
+            {
+                pages.Remove(page);
+            }
+            long without = pages.ByteSize;
+            for (long page = 2 * chunk + 1; page < 3 * chunk; page++)
+            {
+                pages.Remove(page);
+            }
+            long newestWithOne = pages.ByteSize;
+
+            Assert.Equal(0, empty);
+            Assert.Equal(3 * chunkBytes, full);
+            Assert.Equal(3 * chunkBytes, with65);
+            Assert.Equal(2 * chunkBytes + 64 * moved, with64);
+            Assert.Equal(2 * chunkBytes + 65 * moved, with65Again);
+            Assert.Equal(new int[] { 1, 64, 0, 9, 7, chunk + 1 }, kept);
+            Assert.Equal("The row heap knows no page 64.", unknown.Message);
+            Assert.Equal(64, known);
+            Assert.Equal(RowHeapPageState.None, pages.State(64));
+            Assert.Equal(new RowHeapPageState[] { RowHeapPageState.Stored, RowHeapPageState.None, RowHeapPageState.Stored, RowHeapPageState.Stored, RowHeapPageState.None, RowHeapPageState.None }, states);
+            Assert.Equal(2 * chunkBytes, without);
+            Assert.Equal(2 * chunkBytes, newestWithOne);
+            Assert.Equal(chunk + 1, pages.Count);
+        }
+
+        [Fact]
+        public void APageTableThatIsLoadedMovesNoChunkUntilItIsDone()
+        {
+            var pages = new RowHeapPageTable();
+            const int chunk = RowHeapPageTable.ChunkSize;
+            pages.Loading = true;
+            pages.GetOrAdd(3).Rows = 1;
+            pages.GetOrAdd(2 * chunk).Rows = 2;
+            pages.GetOrAdd(4).Rows = 3;
+            pages.GetOrAdd(chunk + 1).Rows = 4;
+            long loading = pages.ByteSize;
+
+            pages.Loading = false;
+
+            Assert.Equal(3 * (chunk * RowHeapPageTable.EntrySize + RowHeapPageTable.ChunkOverhead), loading);
+            Assert.Equal(chunk * RowHeapPageTable.EntrySize + RowHeapPageTable.ChunkOverhead + 3 * RowHeapPageTable.MovedEntrySize, pages.ByteSize);
+            Assert.Equal(new int[] { 1, 3, 4, 2 }, new int[] { pages.Rows(3), pages.Rows(4), pages.Rows(chunk + 1), pages.Rows(2 * chunk) });
+            Assert.Equal(4, pages.Count);
+        }
+
+        [Fact]
         public void TheDirectoryRefusesASequenceItCannotHold()
         {
             var directory = new RowHeapDirectory();
@@ -920,7 +1153,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             Assert.Equal("The row heap directory has no slot for page sequence 0.", zero.Message);
             Assert.Equal("The row heap directory has no slot for page sequence 281474976710655.", huge.Message);
-            Assert.Equal(16 * 8, directory.ByteSize);
+            Assert.Equal(16 * 12, directory.ByteSize);
         }
 
         [Fact]
@@ -978,7 +1211,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 await heap.CheckpointAsync();
                 await stream.Manager.CheckpointAsync();
                 lost = await Append(heap, kinds, 100, 100);
-                lostPage = heap.Directory.Get(RowReference.Sequence(lost[0]));
+                lostPage = PageId(heap, RowReference.Sequence(lost[0]));
                 await heap.CheckpointAsync();
             }
 
@@ -995,7 +1228,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 keptRows = await Gather(reader, kept.Select(x => (ulong?)x).ToArray(), new int[] { 0 });
                 missing = await Assert.ThrowsAsync<InvalidOperationException>(async () => await Gather(reader, new ulong?[] { lost[0] }, new int[] { 0 }));
                 reused = await Append(again, kinds, 300, 100);
-                reusedPage = again.Directory.Get(RowReference.Sequence(reused[0]));
+                reusedPage = PageId(again, RowReference.Sequence(reused[0]));
                 await again.CheckpointAsync();
                 await restarted.Manager.CheckpointAsync();
             }
@@ -1147,22 +1380,23 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             using var stream = await Open(cachePages: 500);
             var table = stream.Manager.CacheTable;
             var heap = await stream.Heap(1, window: 4);
-            int queueOnly = table.ReservedHeldPages;
+            int heapOnly = table.ReservedHeldPages;
             var first = heap.CreateReader();
-            var second = heap.CreateReader();
-            int withReaders = table.ReservedHeldPages;
+            int withReader = table.ReservedHeldPages;
             var refused = Assert.Throws<InvalidOperationException>(() => heap.CreateReader());
             first.Dispose();
             first.Dispose();
             int afterOne = table.ReservedHeldPages;
+            var second = heap.CreateReader();
+            heap.Dispose();
             heap.Dispose();
             int afterHeap = table.ReservedHeldPages;
             second.Dispose();
             Assert.Throws<ObjectDisposedException>(() => heap.CreateReader());
 
             Assert.Equal(25, table.HeldPagesBound);
-            Assert.Equal(16, queueOnly);
-            Assert.Equal(24, withReaders);
+            Assert.Equal(20, heapOnly);
+            Assert.Equal(24, withReader);
             Assert.Equal("Row heap 'heap' cannot take another reader, the cache has no room for a window of 4 pages.", refused.Message);
             Assert.Equal(20, afterOne);
             Assert.Equal(16, afterHeap);
@@ -1211,8 +1445,87 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RowHeap.CreateAsync(stream.Client, "none", 0, new RowHeapOptions(), GlobalMemoryManager.Instance));
             await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RowHeap.CreateAsync(stream.Client, "none", 1, new RowHeapOptions() { PageTargetBytes = 0 }, GlobalMemoryManager.Instance));
+            await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => RowHeap.CreateAsync(stream.Client, "none", 1, new RowHeapOptions() { CompactPagesPerCall = 0 }, GlobalMemoryManager.Instance));
+            using var opened = await RowHeap.CreateAsync(stream.Client, "some", 1, new RowHeapOptions(), GlobalMemoryManager.Instance);
 
-            Assert.False(stream.Client.StateExists("none_directory"));
+            Assert.False(stream.Client.StateExists("none_state"));
+            Assert.False(stream.Client.StateExists("none_pages"));
+            Assert.False(stream.Client.StateExists("none_index"));
+            Assert.True(stream.Client.StateExists("some_state"));
+            Assert.True(stream.Client.StateExists("some_pages"));
+            Assert.True(stream.Client.StateExists("some_index"));
+        }
+
+        [Fact]
+        public async Task AColumnWhoseRowsPassTwoGigabytesIsCountedOnPastTheWrap()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(1, pageTargetBytes: 32 * 1024);
+            using var batch = HeavyBatch(1, 6, 600_000_000);
+            using var references = Column.Create(GlobalMemoryManager.Instance);
+
+            await heap.AppendAsync(batch, 0, 6, references);
+
+            Assert.Equal(6, heap.SequenceCount);
+            Assert.Equal(6, heap.PageCount);
+            Assert.Equal(3_600_000_000, heap.StoredBytes);
+        }
+
+        [Fact]
+        public async Task SmallPagesAreMergedIntoOneAtATargetOfNearlyTwoGigabytes()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(1, pageTargetBytes: 1_800_000_000);
+            using var batch = HeavyBatch(1, 1, 600_000_000);
+            for (int page = 0; page < 4; page++)
+            {
+                using var references = Column.Create(GlobalMemoryManager.Instance);
+                await heap.AppendAsync(batch, 0, 1, references);
+            }
+
+            await heap.CompactAsync();
+
+            Assert.Equal(4, heap.PagesMerged);
+            Assert.Equal(5, heap.PageCount);
+        }
+
+        [Fact]
+        public async Task RowsWhoseColumnsAddUpPastTwoGigabytesAreCountedInFull()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(2, pageTargetBytes: 32 * 1024);
+            using var batch = HeavyBatch(2, 3, 600_000_000);
+            using var references = Column.Create(GlobalMemoryManager.Instance);
+
+            await heap.AppendAsync(batch, 0, 3, references);
+            using var reader = heap.CreateReader();
+            var asked = Enumerable.Range(0, 3).Select(x => (ulong?)(ulong)references.GetValueAt(x, default).AsLong).ToArray();
+            var fetched = await Gather(reader, asked, new int[] { 0, 1 });
+            var values = new long[] { fetched[0].GetValueAt(2, default).AsLong, fetched[1].GetValueAt(0, default).AsLong };
+            fetched[0].Dispose();
+            fetched[1].Dispose();
+
+            Assert.Equal(3, heap.SequenceCount);
+            Assert.Equal(3, heap.PageCount);
+            Assert.Equal(3_600_000_000, heap.StoredBytes);
+            Assert.Equal(3_600_000_000, heap.LiveBytes);
+            Assert.Equal(new long[] { 2, 10 }, values);
+        }
+
+        [Fact]
+        public async Task ARowThatIsMoreThanAPageCanHoldIsRefused()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(4, pageTargetBytes: 32 * 1024);
+            using var batch = HeavyBatch(4, 2, 600_000_000);
+            using var references = Column.Create(GlobalMemoryManager.Instance);
+
+            var refused = await Assert.ThrowsAsync<InvalidOperationException>(async () => await heap.AppendAsync(batch, 0, 2, references));
+
+            Assert.Equal("Row 0 of the batch is 2400000000 bytes, more than a page of row heap 'heap' can hold.", refused.Message);
+            Assert.Equal(0, heap.RowCount);
+            Assert.Equal(0, heap.PageCount);
+            Assert.Equal(0, references.Count);
         }
 
         [Fact]
@@ -1231,7 +1544,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
             var written = new ArrayBufferWriter<byte>();
             using var twoColumns = new RowHeapPageSerializer(2, GlobalMemoryManager.Instance);
             using var threeColumns = new RowHeapPageSerializer(3, GlobalMemoryManager.Instance);
-            var page = new RowHeapPage(new EventBatchData(new IColumn[] { batch.Columns[0].Copy(GlobalMemoryManager.Instance), batch.Columns[1].Copy(GlobalMemoryManager.Instance) }), 5);
+            var page = new RowHeapPage(new EventBatchData(new IColumn[] { batch.Columns[0].Copy(GlobalMemoryManager.Instance), batch.Columns[1].Copy(GlobalMemoryManager.Instance) }), 5, 7);
             twoColumns.Serialize(written, page);
             page.Return();
             var bytes = written.WrittenSpan.ToArray();
@@ -1240,15 +1553,235 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             var read = twoColumns.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
             int rows = read.Count;
+            long sequence = read.Sequence;
+            var map = read.Map;
             read.Return();
             var format = Assert.Throws<InvalidOperationException>(() => twoColumns.Deserialize(new ReadOnlySequence<byte>(otherFormat), otherFormat.Length));
             var shape = Assert.Throws<InvalidOperationException>(() => threeColumns.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length));
             var cut = Assert.Throws<InvalidOperationException>(() => twoColumns.Deserialize(new ReadOnlySequence<byte>(bytes, 0, 3), 3));
+            var cutSequence = Assert.Throws<InvalidOperationException>(() => twoColumns.Deserialize(new ReadOnlySequence<byte>(bytes, 0, 12), 12));
 
             Assert.Equal(5, rows);
-            Assert.Equal("Row heap page format 9 is not supported, expected 1.", format.Message);
+            Assert.Equal(7, sequence);
+            Assert.Null(map);
+            Assert.Equal("Row heap page format 9 is not supported, expected 2.", format.Message);
             Assert.Equal("A row heap page holds 5 rows in 2 columns, expected 5 rows in 3 columns.", shape.Message);
             Assert.Equal("A row heap page is shorter than its header.", cut.Message);
+            Assert.Equal("A row heap page is shorter than its header.", cutSequence.Message);
+        }
+
+        [Fact]
+        public void AMergedPageIsStoredWithItsSlotMap()
+        {
+            using var batch = Batch(new string[] { "int" }, 0, 5);
+            var written = new ArrayBufferWriter<byte>();
+            using var serializer = new RowHeapPageSerializer(1, GlobalMemoryManager.Instance);
+            var slotMap = new RowHeapSlotMap(new long[] { 3, 9 }, new int[] { 2, 0 }, new int[] { 3, 2 }, new ushort[]?[] { new ushort[] { 1, 40, 65535 }, null });
+            var page = new RowHeapPage(new EventBatchData(new IColumn[] { batch.Columns[0].Copy(GlobalMemoryManager.Instance) }), 5, slotMap);
+            serializer.Serialize(written, page);
+            page.Return();
+            var bytes = written.WrittenSpan.ToArray();
+
+            var read = serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
+            var map = read.Map!;
+            int rows = read.Count;
+            long sequence = read.Sequence;
+            read.Return();
+            var cut = Assert.Throws<InvalidOperationException>(() => serializer.Deserialize(new ReadOnlySequence<byte>(bytes, 0, 30), 30));
+            var cutSlots = Assert.Throws<InvalidOperationException>(() => serializer.Deserialize(new ReadOnlySequence<byte>(bytes, 0, 28), 28));
+
+            Assert.Equal(5, rows);
+            Assert.Equal(0, sequence);
+            Assert.Equal(2, map.Count);
+            Assert.Equal(0, map.Find(3));
+            Assert.Equal(1, map.Find(9));
+            Assert.True(map.Find(4) < 0);
+            Assert.Equal(new int[] { 2, 3, 4, -1, -1 }, new int[] { map.Row(0, 1), map.Row(0, 40), map.Row(0, 65535), map.Row(0, 0), map.Row(0, 41) });
+            Assert.Equal(new int[] { 0, 1, -1 }, new int[] { map.Row(1, 0), map.Row(1, 1), map.Row(1, 2) });
+            Assert.Equal(new int[] { 1, 40, 65535, 0, 1 }, new int[] { map.SlotAt(0, 0), map.SlotAt(0, 1), map.SlotAt(0, 2), map.SlotAt(1, 0), map.SlotAt(1, 1) });
+            Assert.Equal(2 * 24 + 3 * 2, map.ByteSize);
+            Assert.Equal("A row heap page is shorter than its slot map.", cut.Message);
+            Assert.Equal("A row heap page is shorter than its slot map.", cutSlots.Message);
+        }
+
+        [Theory]
+        [InlineData(26, 5L, "The slot map of a row heap page lists page sequence 5 after 5.")]
+        [InlineData(26, 4L, "The slot map of a row heap page lists page sequence 4 after 5.")]
+        [InlineData(21, 0, "The slot map of a row heap page puts 0 rows of page sequence 5 at row 0, the page has 4 rows.")]
+        [InlineData(21, -2, "The slot map of a row heap page puts -2 rows of page sequence 5 at row 0, the page has 4 rows.")]
+        [InlineData(34, 3, "The slot map of a row heap page puts 2 rows of page sequence 9 at row 3, the page has 4 rows.")]
+        [InlineData(34, -1, "The slot map of a row heap page puts 2 rows of page sequence 9 at row -1, the page has 4 rows.")]
+        [InlineData(38, int.MaxValue, "The slot map of a row heap page puts 2147483647 rows of page sequence 9 at row 2, the page has 4 rows.")]
+        [InlineData(21, 1, "The slot map of a row heap page has rows from 2 where row 1 comes next, the page has 4 rows.")]
+        [InlineData(34, 0, "The slot map of a row heap page has rows from 0 where row 2 comes next, the page has 4 rows.")]
+        [InlineData(34, 1, "The slot map of a row heap page has rows from 1 where row 2 comes next, the page has 4 rows.")]
+        [InlineData(42, (byte)2, "The slot map of a row heap page marks the slots of page sequence 9 with 2.")]
+        [InlineData(38, 1, "The slot map of a row heap page places 3 rows, the page has 4.")]
+        [InlineData(1, 0, "A row heap page says it holds 0 rows.")]
+        [InlineData(1, 70_000, "A row heap page says it holds 70000 rows.")]
+        [InlineData(43, (short)3, "The slot map of a row heap page lists the slots of page sequence 9 out of order.")]
+        [InlineData(45, (short)1, "The slot map of a row heap page lists the slots of page sequence 9 out of order.")]
+        public void ASlotMapThatDoesNotFitItsPageIsRefused(int offset, object value, string message)
+        {
+            using var batch = Batch(new string[] { "int" }, 0, 4);
+            var written = new ArrayBufferWriter<byte>();
+            using var serializer = new RowHeapPageSerializer(1, GlobalMemoryManager.Instance);
+            var slotMap = new RowHeapSlotMap(new long[] { 5, 9 }, new int[] { 0, 2 }, new int[] { 2, 2 }, new ushort[]?[] { null, new ushort[] { 1, 3 } });
+            var page = new RowHeapPage(new EventBatchData(new IColumn[] { batch.Columns[0].Copy(GlobalMemoryManager.Instance) }), 4, slotMap);
+            serializer.Serialize(written, page);
+            page.Return();
+            var bytes = written.WrittenSpan.ToArray();
+            var changed = (byte[])bytes.Clone();
+            switch (value)
+            {
+                case long sequence:
+                    BinaryPrimitives.WriteInt64LittleEndian(changed.AsSpan(offset), sequence);
+                    break;
+                case int number:
+                    BinaryPrimitives.WriteInt32LittleEndian(changed.AsSpan(offset), number);
+                    break;
+                case byte flag:
+                    changed[offset] = flag;
+                    break;
+                default:
+                    BinaryPrimitives.WriteInt16LittleEndian(changed.AsSpan(offset), (short)value);
+                    break;
+            }
+
+            var read = serializer.Deserialize(new ReadOnlySequence<byte>(bytes), bytes.Length);
+            int rows = read.Count;
+            read.Return();
+            var refused = Assert.Throws<InvalidOperationException>(() => serializer.Deserialize(new ReadOnlySequence<byte>(changed), changed.Length));
+
+            Assert.Equal(4, rows);
+            Assert.Equal(message, refused.Message);
+        }
+
+        [Fact]
+        public void AShortListCountsTheRoomItHasAndIsHalvedWhenHalfOfItIsFree()
+        {
+            var directory = new RowHeapDirectory();
+            const int chunk = RowHeapDirectory.ChunkSize;
+            for (long sequence = 1; sequence < 2 * chunk; sequence++)
+            {
+                directory.Set(sequence, 1);
+            }
+            for (long sequence = 1; sequence < chunk - 64; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long with64 = directory.ByteSize;
+            for (long sequence = chunk - 64; sequence < chunk - 33; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long with33 = directory.ByteSize;
+            directory.Set(chunk - 33, 0);
+            long with32 = directory.ByteSize;
+            for (long sequence = chunk - 32; sequence < chunk - 1; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            long withOne = directory.ByteSize;
+
+            Assert.Equal(16 * 12 + chunk * 8 + 64 * 10 + 64, with64);
+            Assert.Equal(with64, with33);
+            Assert.Equal(with64 - 32 * 10, with32);
+            Assert.Equal(with64 - 63 * 10, withOne);
+            Assert.Equal(1, directory.Get(chunk - 1));
+            Assert.Equal(0, directory.Get(chunk - 2));
+        }
+
+        [Fact]
+        public void TheDirectoryCountsEveryArrayItKeeps()
+        {
+            var directory = new RowHeapDirectory();
+            for (int sequence = 1; sequence <= RowHeapDirectory.SparseLimit; sequence++)
+            {
+                directory.Set(sequence, sequence);
+            }
+            directory.Set(RowHeapDirectory.ChunkSize, 1);
+            for (int sequence = 1; sequence < RowHeapDirectory.SparseLimit - 20; sequence++)
+            {
+                directory.Set(sequence, 0);
+            }
+            var chunks = (object?[])typeof(RowHeapDirectory).GetField("_chunks", BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(directory)!;
+            long kept = chunks.Length * (sizeof(long) + sizeof(int));
+            foreach (var chunk in chunks)
+            {
+                if (chunk is long[] dense)
+                {
+                    kept += dense.Length * sizeof(long);
+                }
+                else if (chunk != null)
+                {
+                    var slots = (ushort[])chunk.GetType().GetProperty("Slots")!.GetValue(chunk)!;
+                    var values = (long[])chunk.GetType().GetProperty("Values")!.GetValue(chunk)!;
+                    kept += slots.Length * sizeof(ushort) + values.Length * sizeof(long);
+                }
+            }
+
+            Assert.True(directory.ByteSize >= kept, $"The directory says {directory.ByteSize} bytes, its arrays alone are {kept}.");
+            Assert.True(directory.ByteSize <= kept + 64);
+        }
+
+        // Says each row is 600 MB, as a column in a struct
+        private sealed class HeavyStringColumn : StringColumn, IDataColumn
+        {
+            public HeavyStringColumn() : base(GlobalMemoryManager.Instance)
+            {
+            }
+
+            void IDataColumn.GetPrefixSumByteSizes(ReadOnlySpan<int> indices, Span<int> sizes)
+            {
+                for (int i = 0; i < indices.Length; i++)
+                {
+                    sizes[i] += unchecked((i + 1) * 600_000_000);
+                }
+            }
+        }
+
+        [Fact]
+        public async Task AStructColumnWhoseRowsPassTwoGigabytesIsCountedInFull()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(1, pageTargetBytes: 32 * 1024);
+            var children = new Column[2];
+            for (int child = 0; child < children.Length; child++)
+            {
+                children[child] = Column.Create(0, new HeavyStringColumn(), default, ArrowTypeId.String, GlobalMemoryManager.Instance);
+                for (int row = 0; row < 3; row++)
+                {
+                    children[child].Add(new StringValue("x"));
+                }
+            }
+            var data = new StructColumn(StructHeader.Create("left", "right"), children, 3);
+            using var batch = new EventBatchData(new IColumn[] { Column.Create(0, data, default, ArrowTypeId.Struct, GlobalMemoryManager.Instance) });
+            using var references = Column.Create(GlobalMemoryManager.Instance);
+
+            await heap.AppendAsync(batch, 0, 3, references);
+
+            Assert.Equal(3, heap.SequenceCount);
+            Assert.InRange(heap.StoredBytes, 3_600_000_000L, 3_600_000_100L);
+            Assert.Equal(heap.StoredBytes, heap.LiveBytes);
+        }
+
+        [Fact]
+        public async Task AStructRowWhoseChildrenExceedFourGigabytesIsRefused()
+        {
+            using var stream = await Open();
+            using var heap = await stream.Heap(1, pageTargetBytes: 32 * 1024);
+            var children = new Column[8];
+            for (int child = 0; child < children.Length; child++)
+            {
+                children[child] = Column.Create(0, new HeavyStringColumn(), default, ArrowTypeId.String, GlobalMemoryManager.Instance);
+                children[child].Add(new StringValue("x"));
+            }
+            var data = new StructColumn(StructHeader.Create("a", "b", "c", "d", "e", "f", "g", "h"), children, 1);
+            using var batch = new EventBatchData(new IColumn[] { Column.Create(0, data, default, ArrowTypeId.Struct, GlobalMemoryManager.Instance) });
+            using var references = Column.Create(GlobalMemoryManager.Instance);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(async () => await heap.AppendAsync(batch, 0, 1, references));
         }
     }
 }

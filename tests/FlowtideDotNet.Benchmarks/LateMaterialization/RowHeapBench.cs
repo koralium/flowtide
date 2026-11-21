@@ -32,9 +32,10 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 {
     /// <summary>
     /// The row heap against multi join's own storage, run with --row-heap.
-    /// Options: --mode gate|gather --arm heap|multijoin --rows --batch --order append|local|shuffled
+    /// Options: --mode gate|gather|churn --arm heap|multijoin --rows --batch --order append|local|shuffled
     /// --shape wide|mixed|nested --repeat --cache --compression zstd|none --rounds --seed --page-bytes --queue
-    /// --keys shuffled|sorted --permute 0|1
+    /// --keys shuffled|sorted --permute 0|1 --change (percent of the rows a round) --survivors none|page|chunk
+    /// --merge 0|1 (0 leaves the merging out, as a baseline) --stored-ratio (default 1.5)
     /// </summary>
     internal static class RowHeapBench
     {
@@ -87,8 +88,18 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             int queue = int.Parse(ReservoirReaderBench.Option(args, "queue", "16"), CultureInfo.InvariantCulture);
             string keys = ReservoirReaderBench.Option(args, "keys", "shuffled");
             bool permute = ReservoirReaderBench.Option(args, "permute", "0") == "1";
-            var options = new RowHeapOptions() { PageTargetBytes = pageBytes, WriteQueueCapacity = queue };
+            double storedRatio = double.Parse(ReservoirReaderBench.Option(args, "stored-ratio", "1.5"), CultureInfo.InvariantCulture);
+            int mergePages = int.Parse(ReservoirReaderBench.Option(args, "merge-pages", "256"), CultureInfo.InvariantCulture);
+            var options = new RowHeapOptions() { PageTargetBytes = pageBytes, WriteQueueCapacity = queue, MaxStoredRatio = storedRatio, CompactPagesPerCall = mergePages };
 
+            if (mode == "churn")
+            {
+                int change = int.Parse(ReservoirReaderBench.Option(args, "change", "10"), CultureInfo.InvariantCulture);
+                string survivors = ReservoirReaderBench.Option(args, "survivors", "none");
+                bool merge = ReservoirReaderBench.Option(args, "merge", "1") == "1";
+                bool drain = ReservoirReaderBench.Option(args, "compact", "all") == "all";
+                return await RunChurn(manager, client, options, shape, rows, batch, rounds, change, survivors, merge, drain, seed, new { Mode = mode, Shape = shape, Change = change, Survivors = survivors, Merge = merge, Drain = drain, MergePages = mergePages, StoredRatio = storedRatio, Rounds = rounds, Compression = compression, PageBytes = pageBytes });
+            }
             var data = new Data(rows, batch, shape, seed, keys == "sorted");
             var picks = Picks(rows, repeat, order, seed);
             if (mode == "gather")
@@ -217,7 +228,17 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 for (int c = 0; c < 4; c++)
                 {
                     bool mixed = shape == "mixed";
-                    if (mixed && c == 1 && random.Next(4) == 0)
+                    if (shape == "skewed" && c == 0 && i % 10 == 0)
+                    {
+                        // One row in ten is far larger than the others
+                        columns[c].Add(new StringValue(Text(random, 12_000)));
+                    }
+                    else if (shape == "varied")
+                    {
+                        // Rows from a quarter to seven quarters of a kilobyte
+                        columns[c].Add(new StringValue(Text(random, 60 + random.Next(380))));
+                    }
+                    else if (mixed && c == 1 && random.Next(4) == 0)
                     {
                         columns[c].Add(NullValue.Instance);
                     }
@@ -423,6 +444,225 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 Pages = pages,
                 QueueFullWaits = queueFullWaits
             }));
+        }
+
+        private static long Footprint(RowHeap heap)
+        {
+            return heap.StoredBytes + heap.DirectoryBytes + heap.PageTableBytes + heap.ReleasedSlotBytes + heap.MergeQueueBytes;
+        }
+
+        private static async Task Checkpoint(StateManagerSync<object> manager, RowHeap heap)
+        {
+            await heap.CheckpointAsync();
+            await manager.CheckpointAsync();
+        }
+
+        // Slot map bytes of the pages that hold live rows
+        private static async Task<long> SlotMapBytes(RowHeap heap, ulong[] live)
+        {
+            var pages = new HashSet<long>();
+            for (int i = 0; i < live.Length; i++)
+            {
+                if (live[i] != 0)
+                {
+                    pages.Add(RowHeap.PageOf(heap.Directory.Get(RowReference.Sequence(live[i]))));
+                }
+            }
+            using var window = heap.Client.CreateWindow();
+            long bytes = 0;
+            foreach (long page in pages)
+            {
+                var loaded = await heap.Client.GetAsync(heap.Client.FirstPageId + page, window);
+                bytes += loaded.Map?.ByteSize ?? 0;
+                window.Release(loaded);
+            }
+            return bytes;
+        }
+
+        // Steady churn, or one row kept of every page or chunk
+        private static async Task<int> RunChurn(StateManagerSync<object> manager, IStateManagerClient client, RowHeapOptions options, string shape, int rows, int batch, int rounds, int change, string survivors, bool merge, bool drain, int seed, object settings)
+        {
+            var random = new Random(seed);
+            using var pool = new EventBatchData(PayloadColumns(shape, random, rows));
+            using var heap = await RowHeap.CreateAsync(client, "heap", pool.Columns.Count, options, GlobalMemoryManager.Instance);
+            var live = new ulong[rows];
+            double longestCompact = 0;
+            int compactCalls = 0;
+            int lowestBudget = int.MaxValue;
+            // A host calls again while more is left, or waits
+            async Task CompactAll()
+            {
+                bool more = true;
+                while (more)
+                {
+                    var call = Stopwatch.StartNew();
+                    more = await heap.CompactAsync() && drain;
+                    longestCompact = Math.Max(longestCompact, call.Elapsed.TotalSeconds);
+                    compactCalls++;
+                }
+            }
+            for (int start = 0; start < rows; start += batch)
+            {
+                using var column = Column.Create(GlobalMemoryManager.Instance);
+                await heap.AppendAsync(pool, start, batch, column);
+                for (int i = 0; i < batch; i++)
+                {
+                    live[start + i] = (ulong)column.GetValueAt(i, default).AsLong;
+                }
+                if (merge)
+                {
+                    // As a host does after every batch
+                    await CompactAll();
+                }
+                if ((start / batch) % 50 == 49)
+                {
+                    // A stream takes checkpoints while it loads, the budget follows
+                    await Checkpoint(manager, heap);
+                }
+            }
+            for (int i = 0; i < 3; i++)
+            {
+                await Checkpoint(manager, heap);
+                if (merge)
+                {
+                    await CompactAll();
+                }
+            }
+            await Checkpoint(manager, heap);
+            longestCompact = 0;
+            long loadedBytes = heap.LiveBytes;
+            long rowsMergedAtLoad = heap.RowsMerged;
+            long loadedPages = heap.PageCount;
+            long liveRows = rows;
+            long highest = Footprint(heap);
+            long highestBefore = highest;
+            long changed = 0;
+            long changedPerRound = 0;
+            double changeSeconds = 0;
+            double compactSeconds = 0;
+            double checkpointSeconds = 0;
+            if (survivors != "none")
+            {
+                // The first row of every page stays, or of every 4,096th page
+                long step = survivors == "chunk" ? RowHeapDirectory.ChunkSize : 1;
+                var watch = Stopwatch.StartNew();
+                for (int i = 0; i < rows; i++)
+                {
+                    if (RowReference.Slot(live[i]) == 0 && RowReference.Sequence(live[i]) % step == 0)
+                    {
+                        continue;
+                    }
+                    heap.Release(live[i]);
+                    live[i] = 0;
+                    changed++;
+                }
+                changeSeconds = watch.Elapsed.TotalSeconds;
+                await CompactAll();
+                compactSeconds = watch.Elapsed.TotalSeconds - changeSeconds;
+                highestBefore = Footprint(heap);
+                // A burst is merged at the rate the checkpoints allow
+                for (int i = 0; i < 4; i++)
+                {
+                    await Checkpoint(manager, heap);
+                    await CompactAll();
+                }
+                await Checkpoint(manager, heap);
+                await Checkpoint(manager, heap);
+                checkpointSeconds = watch.Elapsed.TotalSeconds - changeSeconds - compactSeconds;
+                liveRows = rows - changed;
+                highest = Footprint(heap);
+            }
+            else
+            {
+                changedPerRound = (long)rows * change / 100;
+                var order = new int[rows];
+                for (int i = 0; i < rows; i++)
+                {
+                    order[i] = i;
+                }
+                int poolAt = 0;
+                for (int round = 0; round < rounds; round++)
+                {
+                    for (int i = 0; i < changedPerRound; i++)
+                    {
+                        int other = i + random.Next(rows - i);
+                        (order[i], order[other]) = (order[other], order[i]);
+                    }
+                    var watch = Stopwatch.StartNew();
+                    for (int start = 0; start < changedPerRound; start += batch)
+                    {
+                        int count = (int)Math.Min(batch, changedPerRound - start);
+                        if (poolAt + count > rows)
+                        {
+                            poolAt = 0;
+                        }
+                        using var column = Column.Create(GlobalMemoryManager.Instance);
+                        await heap.AppendAsync(pool, poolAt, count, column);
+                        for (int i = 0; i < count; i++)
+                        {
+                            int row = order[start + i];
+                            heap.Release(live[row]);
+                            live[row] = (ulong)column.GetValueAt(i, default).AsLong;
+                        }
+                        poolAt += count;
+                        if (merge)
+                        {
+                            var compact = Stopwatch.StartNew();
+                            await CompactAll();
+                            compactSeconds += compact.Elapsed.TotalSeconds;
+                        }
+                    }
+                    changeSeconds += watch.Elapsed.TotalSeconds;
+                    lowestBudget = Math.Min(lowestBudget, round < 2 ? int.MaxValue : heap.CompactBudget);
+                    // Storage peaks right before a checkpoint deletes pages
+                    highestBefore = Math.Max(highestBefore, Footprint(heap));
+                    var checkpoint = Stopwatch.StartNew();
+                    await Checkpoint(manager, heap);
+                    checkpointSeconds += checkpoint.Elapsed.TotalSeconds;
+                    changed += changedPerRound;
+                    highest = Math.Max(highest, Footprint(heap));
+                }
+            }
+            long liveBytes = loadedBytes * liveRows / rows;
+            long churnBytes = loadedBytes * changedPerRound / rows;
+            long slotMapBytes = await SlotMapBytes(heap, live);
+            Console.WriteLine(JsonSerializer.Serialize(new
+            {
+                Settings = settings,
+                Rows = rows,
+                LiveRows = liveRows,
+                LiveBytes = liveBytes,
+                ChurnBytesPerCheckpoint = churnBytes,
+                HighestBytes = highest,
+                HighestOverLive = highest / (double)liveBytes,
+                HighestBeforeCheckpointOverLive = highestBefore / (double)liveBytes,
+                Bound = (liveBytes * 3 / 2 + churnBytes) / (double)liveBytes,
+                heap.StoredBytes,
+                HeapLiveBytes = heap.LiveBytes,
+                heap.DirectoryBytes,
+                heap.PageTableBytes,
+                heap.ReleasedSlotBytes,
+                heap.MergeQueueBytes,
+                heap.PagesMeasured,
+                heap.PagesRead,
+                LowestBudgetLeft = lowestBudget == int.MaxValue ? -1 : lowestBudget,
+                LongestCompactMillis = longestCompact * 1000,
+                CompactCalls = compactCalls,
+                SlotMapBytes = slotMapBytes,
+                LoadedPages = loadedPages,
+                Pages = heap.PageCount,
+                Sequences = heap.SequenceCount,
+                heap.RowsReleased,
+                heap.RowsMerged,
+                RowsMergedAtLoad = rowsMergedAtLoad,
+                MergedPerReleased = (heap.RowsMerged - rowsMergedAtLoad) / (double)Math.Max(1, heap.RowsReleased),
+                heap.PagesMerged,
+                heap.PagesDeleted,
+                ChangeNanosPerRow = changeSeconds * 1e9 / Math.Max(1, changed),
+                CompactNanosPerRow = compactSeconds * 1e9 / Math.Max(1, changed),
+                CheckpointSeconds = checkpointSeconds
+            }));
+            return heap.RowCount == liveRows ? 0 : 1;
         }
 
         // Times the gather alone, several rounds over the same heap

@@ -121,6 +121,19 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         internal ImmutablePageClient<V> GetOrCreateImmutablePageClient<V>(string name, ImmutablePageClientOptions<V> options, IMemoryAllocator memoryAllocator)
             where V : class, ICacheObject
         {
+            return GetOrCreateImmutablePageClient(name, options, memoryAllocator, out _);
+        }
+
+        // Removes a just created client whose owner did not open
+        internal void RemoveImmutablePageClient<V>(string name, ImmutablePageClient<V> pageClient)
+            where V : class, ICacheObject
+        {
+            stateManager.RemoveImmutablePageClient($"{m_name}_{name}", pageClient);
+        }
+
+        internal ImmutablePageClient<V> GetOrCreateImmutablePageClient<V>(string name, ImmutablePageClientOptions<V> options, IMemoryAllocator memoryAllocator, out bool created)
+            where V : class, ICacheObject
+        {
             var combinedName = $"{m_name}_{name}";
             var pageOptions = options;
             if (stateManager.SerializeOptions.CompressionType == CompressionType.Zstd && stateManager.SerializeOptions.CompressionMethod == CompressionMethod.Page)
@@ -134,7 +147,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
                     WindowSize = options.WindowSize
                 };
             }
-            return stateManager.CreateImmutablePageClient(combinedName, pageOptions);
+            return stateManager.CreateImmutablePageClient(combinedName, pageOptions, out created);
         }
 
         public ValueTask<IObjectState<T>> GetOrCreateObjectStateAsync<T>(string name)

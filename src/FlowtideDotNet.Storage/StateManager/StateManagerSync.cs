@@ -411,13 +411,20 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     throw LifecycleCollision(client);
                 }
-                return ValueTask.FromResult((cachedClient as IObjectState<T>)!);
+                return ValueTask.FromResult(cachedClient as IObjectState<T> ?? throw KindCollision(client));
             }
 
             long location;
+            bool holdsPages;
             lock (m_lock)
             {
                 foundStateClient = m_metadata.ClientMetadataLocations.TryGetValue(client, out location);
+                holdsPages = m_metadata.PageIdRanges.ContainsKey(client);
+            }
+            if (holdsPages)
+            {
+                // The ids after this binding belong to its pages
+                throw KindCollision(client);
             }
 
             if (foundStateClient)
@@ -498,7 +505,13 @@ namespace FlowtideDotNet.Storage.StateManager
                 {
                     throw LifecycleCollision(client);
                 }
-                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(cachedClient as SyncStateClient<TValue, TMetadata> ?? throw LifecycleCollision(client));
+                return ValueTask.FromResult<IStateClient<TValue, TMetadata>>(cachedClient as SyncStateClient<TValue, TMetadata> ?? throw KindCollision(client));
+            }
+            if (m_metadata.PageIdRanges.ContainsKey(client))
+            {
+                Monitor.Exit(m_lock);
+                // The ids after this binding belong to its pages
+                throw KindCollision(client);
             }
             if (m_metadata.ClientMetadataLocations.TryGetValue(client, out var location))
             {
@@ -556,7 +569,30 @@ namespace FlowtideDotNet.Storage.StateManager
         internal ImmutablePageClient<TValue> CreateImmutablePageClient<TValue>(string client, ImmutablePageClientOptions<TValue> options)
             where TValue : class, ICacheObject
         {
+            return CreateImmutablePageClient(client, options, out _);
+        }
+
+        /// <summary>
+        /// Removes and disposes a just created page client that was not used.
+        /// </summary>
+        internal void RemoveImmutablePageClient<TValue>(string client, ImmutablePageClient<TValue> pageClient)
+            where TValue : class, ICacheObject
+        {
+            lock (m_lock)
+            {
+                if (_stateClients.TryGetValue(client, out var registered) && ReferenceEquals(registered, pageClient))
+                {
+                    _stateClients.Remove(client);
+                }
+            }
+            pageClient.Dispose();
+        }
+
+        internal ImmutablePageClient<TValue> CreateImmutablePageClient<TValue>(string client, ImmutablePageClientOptions<TValue> options, out bool created)
+            where TValue : class, ICacheObject
+        {
             Debug.Assert(m_metadata != null);
+            created = false;
             if (m_persistentStorage is not ReservoirPersistentStorage reservoir)
             {
                 throw new NotSupportedException("Immutable pages need Reservoir storage.");
@@ -566,20 +602,29 @@ namespace FlowtideDotNet.Storage.StateManager
             {
                 if (_stateClients.TryGetValue(client, out var cachedClient))
                 {
-                    return cachedClient as ImmutablePageClient<TValue> ?? throw LifecycleCollision(client);
+                    return cachedClient as ImmutablePageClient<TValue> ?? throw KindCollision(client);
                 }
                 // The id only binds the name, nothing is stored under it
                 bool newBinding = !m_metadata.ClientMetadataLocations.TryGetValue(client, out var metadataId);
                 if (newBinding)
                 {
                     metadataId = GetNewPageId_Internal();
+                    // The ids after it are the client's own, see ImmutablePageIds
+                    m_metadata.PageCounter += ImmutablePageIds.RangeSize;
                     m_metadata.ClientMetadataLocations.Add(client, metadataId);
+                    m_metadata.PageIdRanges.Add(client, ImmutablePageIds.RangeSize);
+                }
+                else if (!m_metadata.PageIdRanges.TryGetValue(client, out long range) || range != ImmutablePageIds.RangeSize)
+                {
+                    // The ids after this binding were handed out to other state
+                    throw new InvalidOperationException($"State '{client}' is stored as another kind of state, it cannot be opened for pages that never change.");
                 }
                 var session = reservoir.CreateSession();
                 try
                 {
-                    var pageClient = new ImmutablePageClient<TValue>(TableForClients, GetNewPageId, client, metadataId, session, reservoir.ReadConcurrentAsync, options, meter);
+                    var pageClient = new ImmutablePageClient<TValue>(TableForClients, client, metadataId, session, reservoir.ReadConcurrentAsync, reservoir.IsStored, options, meter);
                     _stateClients.Add(client, pageClient);
+                    created = true;
                     return pageClient;
                 }
                 catch
@@ -588,10 +633,21 @@ namespace FlowtideDotNet.Storage.StateManager
                     if (newBinding)
                     {
                         m_metadata.ClientMetadataLocations.Remove(client);
+                        m_metadata.PageIdRanges.Remove(client);
+                        // The ids go back when nobody took one since
+                        if (m_metadata.PageCounter == metadataId + 1 + ImmutablePageIds.RangeSize)
+                        {
+                            m_metadata.PageCounter = metadataId;
+                        }
                     }
                     throw;
                 }
             }
+        }
+
+        private static InvalidOperationException KindCollision(string client)
+        {
+            return new InvalidOperationException($"State '{client}' is stored or open as another kind of state.");
         }
 
         private static InvalidOperationException LifecycleCollision(string client)
@@ -759,7 +815,11 @@ namespace FlowtideDotNet.Storage.StateManager
                             throw new InvalidOperationException($"Restored metadata changed the page binding for state client '{name}'.");
                         }
                         m_metadata.ClientMetadataLocations[name] = client.MetadataId;
-                        m_metadata.PageCounter = Math.Max(m_metadata.PageCounter, client.MetadataId + 1);
+                        m_metadata.PageCounter = Math.Max(m_metadata.PageCounter, client.LastReservedPageId + 1);
+                        if (client.LastReservedPageId != client.MetadataId)
+                        {
+                            m_metadata.PageIdRanges[name] = client.LastReservedPageId - client.MetadataId;
+                        }
                     }
                 }
 
