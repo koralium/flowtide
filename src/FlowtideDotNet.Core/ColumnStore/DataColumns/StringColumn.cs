@@ -280,6 +280,20 @@ namespace FlowtideDotNet.Core.ColumnStore
             hashAlgorithm.Append(_binaryList.Get(in index));
         }
 
+        bool IDataColumn.AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                hashes[i] = RowIdentityHash.AddString(hashes[i], _binaryList.Get(start + i));
+            }
+            return true;
+        }
+
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return RowIdentityHash.AddString(hash, _binaryList.Get(index));
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             for (int i = 0; i < indices.Length; i++)

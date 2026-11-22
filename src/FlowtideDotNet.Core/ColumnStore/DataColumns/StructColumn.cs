@@ -640,6 +640,31 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             }
         }
 
+        // The children hash themselves, no value is made
+        private ulong IdentityHashOf(int index, ulong hash)
+        {
+            hash = RowIdentityHash.AddStructStart(hash, _header);
+            for (int i = 0; i < _columns.Length; i++)
+            {
+                hash = _columns[i].AddToIdentityHash(index, hash);
+            }
+            return hash;
+        }
+
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return IdentityHashOf(index, hash);
+        }
+
+        bool IDataColumn.AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                hashes[i] = IdentityHashOf(start + i, hashes[i]);
+            }
+            return true;
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             if (child != null)

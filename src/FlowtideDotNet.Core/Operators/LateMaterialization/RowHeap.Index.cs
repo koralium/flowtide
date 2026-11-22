@@ -49,6 +49,12 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         private const int SpareLimit = 1024;
         private long _persistedSequence;
         private long _persistedPage;
+        // Set at the barrier, the checkpoint stores that state
+        private bool _marked;
+        private long _markedSequence;
+        private long _markedPage;
+        private long _rowsAfterMark;
+        private long _bytesAfterMark;
 
         private async Task ReadIndexAsync(long nextPage)
         {
@@ -284,10 +290,29 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             return entry.Live;
         }
 
-        // Called in OnCheckpoint before the barrier is forwarded and the storage checkpoint
+        // Called at the barrier when the checkpoint is committed later
+        public void BeginCheckpoint()
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
+            if (_marked)
+            {
+                throw new InvalidOperationException($"Row heap '{_name}' has a checkpoint that is not committed yet.");
+            }
+            _marked = true;
+            _markedSequence = _nextSequence;
+            _markedPage = _client.NextPageId - _client.FirstPageId;
+            _rowsAfterMark = 0;
+            _bytesAfterMark = 0;
+        }
+
+        // Called once before the storage checkpoint is taken
         public async Task CheckpointAsync()
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
+            if (!_marked)
+            {
+                BeginCheckpoint();
+            }
             for (int i = 0; i < _retiredBefore.Count; i++)
             {
                 long page = _retiredBefore[i];
@@ -304,11 +329,13 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             await WriteIndexAsync();
             (_retiredBefore, _retiredNow) = (_retiredNow, _retiredBefore);
             await _index.Commit();
-            _state.Value!.NextSequence = _nextSequence;
-            _state.Value.RowCount = _rowCount;
-            _state.Value.NextPage = _client.NextPageId - _client.FirstPageId;
-            _state.Value.StoredBytes = _storedBytes;
+            // Later appends are left to the next checkpoint
+            _state.Value!.NextSequence = _markedSequence;
+            _state.Value.RowCount = _rowCount - _rowsAfterMark;
+            _state.Value.NextPage = _markedPage;
+            _state.Value.StoredBytes = _storedBytes - _bytesAfterMark;
             await _state.Commit();
+            _marked = false;
             TrimTracking();
             SetBudget();
         }
@@ -351,7 +378,7 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 await _index.Delete(Key(ReleasedKind, _forgotten[i]));
             }
             _forgotten.Clear();
-            for (long sequence = _persistedSequence; sequence < _nextSequence; sequence++)
+            for (long sequence = _persistedSequence; sequence < _markedSequence; sequence++)
             {
                 await WriteNewSequenceAsync(sequence);
             }
@@ -377,9 +404,9 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 }
             }
             _changedWords.Clear();
-            _persistedSequence = _nextSequence;
+            _persistedSequence = _markedSequence;
 
-            long nextPage = _client.NextPageId - _client.FirstPageId;
+            long nextPage = _markedPage;
             for (long page = _persistedPage; page < nextPage; page++)
             {
                 if (!PageRecord(page, out long record, out bool retired))

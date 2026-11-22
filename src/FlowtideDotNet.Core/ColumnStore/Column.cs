@@ -1405,6 +1405,63 @@ namespace FlowtideDotNet.Core.ColumnStore
             _dataColumn!.AddToHash(index, child, hashAlgorithm);
         }
 
+        // Adds each row's identity hash to its hash
+        internal void AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            if (_type == ArrowTypeId.Null)
+            {
+                for (int i = 0; i < hashes.Length; i++)
+                {
+                    hashes[i] = RowIdentityHash.AddNull(hashes[i]);
+                }
+                return;
+            }
+            if (_nullCounter == 0)
+            {
+                if (!_dataColumn!.AddToIdentityHash(start, hashes))
+                {
+                    for (int i = 0; i < hashes.Length; i++)
+                    {
+                        hashes[i] = _dataColumn.AddToIdentityHash(start + i, hashes[i]);
+                    }
+                }
+                return;
+            }
+            int row = 0;
+            while (row < hashes.Length)
+            {
+                if (!_validityList.Get(start + row))
+                {
+                    hashes[row] = RowIdentityHash.AddNull(hashes[row]);
+                    row++;
+                    continue;
+                }
+                int end = row + 1;
+                while (end < hashes.Length && _validityList.Get(start + end))
+                {
+                    end++;
+                }
+                if (!_dataColumn!.AddToIdentityHash(start + row, hashes.Slice(row, end - row)))
+                {
+                    for (int i = row; i < end; i++)
+                    {
+                        hashes[i] = _dataColumn.AddToIdentityHash(start + i, hashes[i]);
+                    }
+                }
+                row = end;
+            }
+        }
+
+        // Adds the identity hash of one row to a hash
+        internal ulong AddToIdentityHash(int index, ulong hash)
+        {
+            if (_type == ArrowTypeId.Null || (_nullCounter > 0 && !_validityList.Get(index)))
+            {
+                return RowIdentityHash.AddNull(hash);
+            }
+            return _dataColumn!.AddToIdentityHash(index, hash);
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states, Span<int> scratch)
         {
             if (_nullCounter > 0)

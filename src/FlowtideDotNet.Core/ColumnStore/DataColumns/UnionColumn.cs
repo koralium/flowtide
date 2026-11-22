@@ -988,6 +988,27 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             valueColumn.AppendXxHash32Single(_offsets.Get(index), child, ref state);
         }
 
+        // The children hash themselves, no value is made
+        private ulong IdentityHashOf(int index, ulong hash)
+        {
+            // The row lives in the column of its type
+            return _valueColumns[_typeList[index]].AddToIdentityHash(_offsets.Get(index), hash);
+        }
+
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return IdentityHashOf(index, hash);
+        }
+
+        bool IDataColumn.AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                hashes[i] = IdentityHashOf(start + i, hashes[i]);
+            }
+            return true;
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             for (int i = 0; i < indices.Length; i++)

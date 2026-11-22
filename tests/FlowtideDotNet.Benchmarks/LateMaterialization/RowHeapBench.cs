@@ -36,6 +36,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
     /// --shape wide|mixed|nested --repeat --cache --compression zstd|none --rounds --seed --page-bytes --queue
     /// --keys shuffled|sorted --permute 0|1 --change (percent of the rows a round) --survivors none|page|chunk
     /// --merge 0|1 (0 leaves the merging out, as a baseline) --stored-ratio (default 1.5)
+    /// --store 0|1 (1 retires through a keyed row store)
     /// </summary>
     internal static class RowHeapBench
     {
@@ -98,7 +99,8 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 string survivors = ReservoirReaderBench.Option(args, "survivors", "none");
                 bool merge = ReservoirReaderBench.Option(args, "merge", "1") == "1";
                 bool drain = ReservoirReaderBench.Option(args, "compact", "all") == "all";
-                return await RunChurn(manager, client, options, shape, rows, batch, rounds, change, survivors, merge, drain, seed, new { Mode = mode, Shape = shape, Change = change, Survivors = survivors, Merge = merge, Drain = drain, MergePages = mergePages, StoredRatio = storedRatio, Rounds = rounds, Compression = compression, PageBytes = pageBytes });
+                bool keyed = ReservoirReaderBench.Option(args, "store", "0") == "1";
+                return await RunChurn(manager, client, options, shape, rows, batch, rounds, change, survivors, merge, drain, keyed, seed, new { Store = keyed, Mode = mode, Shape = shape, Change = change, Survivors = survivors, Merge = merge, Drain = drain, MergePages = mergePages, StoredRatio = storedRatio, Rounds = rounds, Compression = compression, PageBytes = pageBytes });
             }
             var data = new Data(rows, batch, shape, seed, keys == "sorted");
             var picks = Picks(rows, repeat, order, seed);
@@ -451,9 +453,18 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             return heap.StoredBytes + heap.DirectoryBytes + heap.PageTableBytes + heap.ReleasedSlotBytes + heap.MergeQueueBytes;
         }
 
-        private static async Task Checkpoint(StateManagerSync<object> manager, RowHeap heap)
+        private static async Task Checkpoint(StateManagerSync<object> manager, RowHeap heap, RowStore? store = null)
         {
-            await heap.CheckpointAsync();
+            if (store != null)
+            {
+                // Barrier and commit together, no reader is in between here
+                await store.BeginCheckpointAsync();
+                await store.CheckpointAsync();
+            }
+            else
+            {
+                await heap.CheckpointAsync();
+            }
             await manager.CheckpointAsync();
         }
 
@@ -480,11 +491,14 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
         }
 
         // Steady churn, or one row kept of every page or chunk
-        private static async Task<int> RunChurn(StateManagerSync<object> manager, IStateManagerClient client, RowHeapOptions options, string shape, int rows, int batch, int rounds, int change, string survivors, bool merge, bool drain, int seed, object settings)
+        private static async Task<int> RunChurn(StateManagerSync<object> manager, IStateManagerClient client, RowHeapOptions options, string shape, int rows, int batch, int rounds, int change, string survivors, bool merge, bool drain, bool keyed, int seed, object settings)
         {
             var random = new Random(seed);
             using var pool = new EventBatchData(PayloadColumns(shape, random, rows));
-            using var heap = await RowHeap.CreateAsync(client, "heap", pool.Columns.Count, options, GlobalMemoryManager.Instance);
+            // A keyed store releases its rows at the checkpoint
+            using var store = keyed ? await RowStore.CreateAsync(client, "heap", pool.Columns.Count, new RowStoreOptions() { Mode = RowStoreMode.Keyed, Heap = options }, GlobalMemoryManager.Instance) : null;
+            using var ownHeap = keyed ? null : await RowHeap.CreateAsync(client, "heap", pool.Columns.Count, options, GlobalMemoryManager.Instance);
+            var heap = store != null ? store.Heap : ownHeap!;
             var live = new ulong[rows];
             double longestCompact = 0;
             int compactCalls = 0;
@@ -517,18 +531,18 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 if ((start / batch) % 50 == 49)
                 {
                     // A stream takes checkpoints while it loads, the budget follows
-                    await Checkpoint(manager, heap);
+                    await Checkpoint(manager, heap, store);
                 }
             }
             for (int i = 0; i < 3; i++)
             {
-                await Checkpoint(manager, heap);
+                await Checkpoint(manager, heap, store);
                 if (merge)
                 {
                     await CompactAll();
                 }
             }
-            await Checkpoint(manager, heap);
+            await Checkpoint(manager, heap, store);
             longestCompact = 0;
             long loadedBytes = heap.LiveBytes;
             long rowsMergedAtLoad = heap.RowsMerged;
@@ -552,7 +566,14 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                     {
                         continue;
                     }
-                    heap.Release(live[i]);
+                    if (store != null)
+                    {
+                        await store.RetireAsync(live[i]);
+                    }
+                    else
+                    {
+                        heap.Release(live[i]);
+                    }
                     live[i] = 0;
                     changed++;
                 }
@@ -563,11 +584,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 // A burst is merged at the rate the checkpoints allow
                 for (int i = 0; i < 4; i++)
                 {
-                    await Checkpoint(manager, heap);
+                    await Checkpoint(manager, heap, store);
                     await CompactAll();
                 }
-                await Checkpoint(manager, heap);
-                await Checkpoint(manager, heap);
+                await Checkpoint(manager, heap, store);
+                await Checkpoint(manager, heap, store);
                 checkpointSeconds = watch.Elapsed.TotalSeconds - changeSeconds - compactSeconds;
                 liveRows = rows - changed;
                 highest = Footprint(heap);
@@ -601,7 +622,14 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                         for (int i = 0; i < count; i++)
                         {
                             int row = order[start + i];
-                            heap.Release(live[row]);
+                            if (store != null)
+                            {
+                                await store.RetireAsync(live[row]);
+                            }
+                            else
+                            {
+                                heap.Release(live[row]);
+                            }
                             live[row] = (ulong)column.GetValueAt(i, default).AsLong;
                         }
                         poolAt += count;
@@ -617,7 +645,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                     // Storage peaks right before a checkpoint deletes pages
                     highestBefore = Math.Max(highestBefore, Footprint(heap));
                     var checkpoint = Stopwatch.StartNew();
-                    await Checkpoint(manager, heap);
+                    await Checkpoint(manager, heap, store);
                     checkpointSeconds += checkpoint.Elapsed.TotalSeconds;
                     changed += changedPerRound;
                     highest = Math.Max(highest, Footprint(heap));

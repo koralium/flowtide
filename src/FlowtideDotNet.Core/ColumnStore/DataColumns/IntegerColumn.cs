@@ -390,6 +390,50 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
+        // One loop for each width the integers are stored in
+        bool IDataColumn.AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            var bytes = _list.SlicedSpan;
+            switch (_list.ElementSize)
+            {
+                case 1:
+                    var int8 = MemoryMarshal.Cast<byte, sbyte>(bytes).Slice(start, hashes.Length);
+                    for (int i = 0; i < hashes.Length; i++)
+                    {
+                        hashes[i] = RowIdentityHash.AddInt64(hashes[i], int8[i]);
+                    }
+                    return true;
+                case 2:
+                    var int16 = MemoryMarshal.Cast<byte, short>(bytes).Slice(start, hashes.Length);
+                    for (int i = 0; i < hashes.Length; i++)
+                    {
+                        hashes[i] = RowIdentityHash.AddInt64(hashes[i], int16[i]);
+                    }
+                    return true;
+                case 4:
+                    var int32 = MemoryMarshal.Cast<byte, int>(bytes).Slice(start, hashes.Length);
+                    for (int i = 0; i < hashes.Length; i++)
+                    {
+                        hashes[i] = RowIdentityHash.AddInt64(hashes[i], int32[i]);
+                    }
+                    return true;
+                case 8:
+                    var int64 = MemoryMarshal.Cast<byte, long>(bytes).Slice(start, hashes.Length);
+                    for (int i = 0; i < hashes.Length; i++)
+                    {
+                        hashes[i] = RowIdentityHash.AddInt64(hashes[i], int64[i]);
+                    }
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return RowIdentityHash.AddInt64(hash, _list.Get(index));
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             for (int i = 0; i < indices.Length; i++)

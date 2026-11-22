@@ -159,6 +159,11 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(ByteArrayUtils.nullBytes);
         }
 
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return RowIdentityHash.AddNull(hash);
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             for (int i = 0; i < indices.Length; i++)
