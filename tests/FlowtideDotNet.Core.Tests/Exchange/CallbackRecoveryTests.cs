@@ -22,6 +22,7 @@ public class CallbackRecoveryTests
     [InlineData("dispose-row")]
     [InlineData("stop-finality")]
     [InlineData("stop-checkpoint")]
+    [InlineData("stop-before-save")]
     [InlineData("stop-checkpoint-done")]
     public async Task SelfRequestedFailureAcknowledgesThenDrainsBeforeRecovery(string phase)
     {
@@ -109,7 +110,7 @@ public class CallbackRecoveryTests
             Interlocked.Increment(ref Initializations);
             return MaybeFail("initialize");
         }
-        public override Task BeforeSaveCheckpoint() => MaybeFail("before-save");
+        public override Task BeforeSaveCheckpoint() => MaybeFail(Stopping ? "stop-before-save" : "before-save");
         public override Task CheckpointDone(long version) => MaybeFail(Stopping ? "stop-checkpoint-done" : "checkpoint-done");
         public override Task CommitVersion(long version) => MaybeFail(Stopping ? "stop-finality" : version == 0 ? "startup-finality" : "finality");
         public override Task Compact() { Interlocked.Increment(ref Compactions); return Task.CompletedTask; }

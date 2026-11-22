@@ -13,7 +13,7 @@ public class CallbackCancellationTests
 {
     public static IEnumerable<object[]> CancellationCases()
     {
-        foreach (var phase in new[] { "initialize", "startup-finality", "before-save", "checkpoint-done", "finality", "compact", "stop-checkpoint-done", "stop-finality", "stop-compact" })
+        foreach (var phase in new[] { "initialize", "startup-finality", "before-save", "checkpoint-done", "finality", "compact", "stop-before-save", "stop-checkpoint-done", "stop-finality", "stop-compact" })
         foreach (var interruption in new[] { "failure", "self-failure", "dispose" })
             yield return new object[] { phase, interruption };
     }
@@ -212,7 +212,7 @@ public class CallbackCancellationTests
             return Hold("initialize");
         }
         public override Task CommitVersion(long version) => Hold(Stopping ? "stop-finality" : version == 0 ? "startup-finality" : "finality");
-        public override Task BeforeSaveCheckpoint() => Hold("before-save");
+        public override Task BeforeSaveCheckpoint() => Hold(Stopping ? "stop-before-save" : "before-save");
         public override Task CheckpointDone(long version) => Hold(Stopping ? "stop-checkpoint-done" : "checkpoint-done");
         public override Task Compact() { Interlocked.Increment(ref Compactions); return Hold(Stopping ? "stop-compact" : "compact"); }
 

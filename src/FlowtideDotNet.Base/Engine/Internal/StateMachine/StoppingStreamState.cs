@@ -26,8 +26,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
         private int _stopAllStarted;
         private int _failureRequested;
         internal override bool AllowsPublication => Volatile.Read(ref _failureRequested) == 0;
-        // Drain minted cycles never commit, the peer never matches them.
-        private bool _stopCommitTaken;
+        // A stop sends one barrier and saves it once
+        private bool _stopCycleStarted;
         // Drain polls readiness, mints no cycles.
         private int _drainPollStarted;
         internal static TimeSpan DrainPollInterval = TimeSpan.FromMilliseconds(25);
@@ -77,10 +77,20 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
 
             lock (_context._checkpointLock)
             {
-                if (nonCheckpointedEgresses == null)
+                if (nonCheckpointedEgresses == null || _currentCheckpoint == null)
                 {
-                    // No stop cycle has started yet, the acknowledgement belongs to a cycle
-                    // of a previous state and is ignored.
+                    // No stop cycle is waiting for acknowledgements
+                    return;
+                }
+                if (_context.IsDisposed || Volatile.Read(ref _stopAllStarted) == 1)
+                {
+                    // Teardown began, it must not race a new save
+                    return;
+                }
+                if (lockingEvent is ICheckpointEvent checkpointEvent &&
+                    (checkpointEvent.CheckpointTime != _currentCheckpoint.CheckpointTime || checkpointEvent.NewTime != _currentCheckpoint.NewTime))
+                {
+                    // An acknowledgement of an earlier checkpoint
                     return;
                 }
                 nonCheckpointedEgresses.Remove(name);
@@ -88,6 +98,8 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 // Check if all egresses has done their checkpoint
                 if (nonCheckpointedEgresses.Count == 0)
                 {
+                    // The save is started once per stop cycle
+                    nonCheckpointedEgresses = null;
                     StartCheckpointDoneTask();
                 }
             }
@@ -121,7 +133,6 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 Debug.Assert(run._context != null, nameof(_context));
                 Debug.Assert(run._currentCheckpoint != null, nameof(_context));
 
-                bool committed = false;
                 try
                 {
                     // Holds the task in the window between being scheduled and starting its
@@ -132,48 +143,48 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                         await scheduledHook(run._context.streamName);
                     }
 
+                    var stopState = new StreamState(
+                        run._currentCheckpoint.CheckpointTime,
+                        _context._streamVersionInformation?.Hash ?? string.Empty);
+
+                    run._context._stateManager.Metadata = stopState;
+
+                    // Blocks commit here like in a running checkpoint
+                    await run._context.ForEachBlockAsync((key, block) =>
+                    {
+                        return run._context.IsCurrentState(run) ? block.BeforeSaveCheckpoint() : Task.CompletedTask;
+                    });
+
+                    if (!run._context.IsCurrentState(run)) return;
+
                     var commitHook = StreamContext.CheckpointCommitHookForTests;
                     if (commitHook != null)
                     {
                         await commitHook(run._context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
                     }
 
-                    if (run._stopCommitTaken)
+                    // Compacted before the stop checkpoint like on main, but only once the stop commits have landed and are counted.
+                    await run._context._stateManager.WaitForCommitsAsync();
+
+                    long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
+                    var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
+
+                    // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
+                    // An unagreed version can still be rolled back below.
+                    if (changesSinceLastCompaction > compactionThreshold && run._context.IsVersionAgreed(run._context._stateManager.LastCompletedCheckpointVersion))
                     {
-                        // Only the first stop cycle commits.
-                        _context._logger.LogDebug("Stop drain cycle on stream {stream} is waiting for the other substreams, keeping checkpoint version {version}.", _context.streamName, run._context._stateManager.LastCompletedCheckpointVersion);
+                        await run._context._stateManager.Compact();
                     }
-                    else
-                    {
-                        // Write the latest state
-                        run._context._lastState = new StreamState(
-                            run._currentCheckpoint.CheckpointTime,
-                            _context._streamVersionInformation?.Hash ?? string.Empty);
 
-                        run._context._stateManager.Metadata = run._context._lastState;
+                    // Take state checkpoint
+                    _context._logger.StartingStateManagerCheckpoint(_context.streamName);
+                    await run._context._stateManager.CheckpointAsync(false);
+                    _context._logger.StateManagerCheckpointDone(_context.streamName);
 
-                        // Compacted before the stop checkpoint like on main, but only once the stop commits have landed and are counted.
-                        await run._context._stateManager.WaitForCommitsAsync();
+                    // The latest state is the saved one
+                    run._context._lastState = stopState;
 
-                        long changesSinceLastCompaction = run._context._stateManager.PageCommitsSinceLastCompaction;
-                        var compactionThreshold = (long)(run._context._stateManager.PageCount * 0.3);
-
-                        // Compaction: if more than 30% of the pages has been changed since last compaction, do compaction
-                        // An unagreed version can still be rolled back below.
-                        if (changesSinceLastCompaction > compactionThreshold && run._context.IsVersionAgreed(run._context._stateManager.LastCompletedCheckpointVersion))
-                        {
-                            await run._context._stateManager.Compact();
-                        }
-
-                        // Take state checkpoint
-                        _context._logger.StartingStateManagerCheckpoint(_context.streamName);
-                        await run._context._stateManager.CheckpointAsync(false);
-                        _context._logger.StateManagerCheckpointDone(_context.streamName);
-
-                        run._stopCommitTaken = true;
-                        committed = true;
-                    }
-                    if (!committed || !run._context.IsCurrentState(run))
+                    if (!run._context.IsCurrentState(run))
                     {
                         return;
                     }
@@ -586,11 +597,12 @@ namespace FlowtideDotNet.Base.Engine.Internal.StateMachine
                 {
                     return _context.checkpointTask.Task;
                 }
-                if (Volatile.Read(ref _stopAllStarted) == 1)
+                if (_stopCycleStarted || Volatile.Read(ref _stopAllStarted) == 1)
                 {
-                    // Teardown began, a cycle now reaches nobody.
+                    // The stop barrier is sent once, or teardown began
                     return Task.CompletedTask;
                 }
+                _stopCycleStarted = true;
                 _context._logger.StartingShutdownCheckpoint(_context.streamName);
                 nonCheckpointedEgresses = new HashSet<string>();
                 foreach (var key in _context.egressBlocks.Keys)
