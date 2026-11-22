@@ -332,6 +332,11 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 _directory.Set(sequence, Pack(number, rows));
                 Volatile.Write(ref _nextSequence, sequence + 1);
                 Volatile.Write(ref _rowCount, _rowCount + rows);
+                if (_marked)
+                {
+                    _rowsAfterMark += rows;
+                    _bytesAfterMark += byteSize;
+                }
                 for (int i = 0; i < rows; i++)
                 {
                     references.Add(new RowRefValue(RowReference.Pack(sequence, i)));

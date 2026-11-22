@@ -181,6 +181,25 @@ namespace FlowtideDotNet.Core.ColumnStore
             innerColumn.GetValueAt(offset, dataValueContainer, child);
         }
 
+        // Hashes the rows behind the offsets, no value is made
+        internal void AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                hashes[i] = AddToIdentityHash(start + i, hashes[i]);
+            }
+        }
+
+        internal ulong AddToIdentityHash(int index, ulong hash)
+        {
+            var offset = offsets.Get(index);
+            if (offset == NullValueIndex)
+            {
+                return RowIdentityHash.AddNull(hash);
+            }
+            return RowIdentityHash.AddRow(innerColumn, offset, hash);
+        }
+
         public void InsertAt<T>(in int index, in T value) where T : IDataValue
         {
             throw new NotSupportedException("Column with offset does not support InsertAt.");

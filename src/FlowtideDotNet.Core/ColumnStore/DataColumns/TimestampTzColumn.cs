@@ -249,6 +249,21 @@ namespace FlowtideDotNet.Core.ColumnStore.DataColumns
             hashAlgorithm.Append(buffer);
         }
 
+        bool IDataColumn.AddToIdentityHash(int start, Span<ulong> hashes)
+        {
+            var values = _values.Span.Slice(start, hashes.Length);
+            for (int i = 0; i < hashes.Length; i++)
+            {
+                hashes[i] = RowIdentityHash.AddTimestamp(hashes[i], values[i].ticks);
+            }
+            return true;
+        }
+
+        ulong IDataColumn.AddToIdentityHash(int index, ulong hash)
+        {
+            return RowIdentityHash.AddTimestamp(hash, _values.Get(index).ticks);
+        }
+
         public void AppendToXxHash32(ReadOnlySpan<int> indices, ReferenceSegment? child, Span<Xxh32RowState> states)
         {
             for (int i = 0; i < indices.Length; i++)

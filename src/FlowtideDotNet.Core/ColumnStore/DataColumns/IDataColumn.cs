@@ -119,6 +119,12 @@ namespace FlowtideDotNet.Core.ColumnStore
         /// </summary>
         internal bool HoldsRowReferences => false;
 
+        // Hashes a run of rows for identity, false when unsupported
+        internal bool AddToIdentityHash(int start, Span<ulong> hashes) => false;
+
+        // Adds the identity hash of one row to a hash
+        internal ulong AddToIdentityHash(int index, ulong hash) => RowIdentityHash.AddValue(this, index, hash);
+
         void SetSelfComparePointers(ref SelfComparePointers selfComparePointers)
         {
             // Do nothing

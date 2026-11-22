@@ -123,6 +123,10 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             {
                 throw new InvalidOperationException($"Row reference to page {sequence} in heap '{_name}' points at no page, the row cannot be released.");
             }
+            if (_marked && sequence >= _markedSequence)
+            {
+                throw new InvalidOperationException($"The row at slot {slot} of page {sequence} in heap '{_name}' was appended after the barrier, it cannot be released before the commit.");
+            }
             int live = LiveOf(entry);
             long page = PageOf(entry);
             // Nothing is changed when the row is refused
@@ -184,6 +188,23 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 AddSlack(page, ref stored, Math.Max(slack, 0));
             }
             Sort(page, ref stored);
+        }
+
+        // Store's thread only, true for a row that is not released
+        public bool IsLive(ulong reference)
+        {
+            long sequence = RowReference.Sequence(reference);
+            int slot = RowReference.Slot(reference);
+            long entry = _directory.Get(sequence);
+            if (entry == 0)
+            {
+                return false;
+            }
+            if (_released.TryGet(sequence, out var released))
+            {
+                return slot < released.Rows && !released.IsReleased(slot);
+            }
+            return slot < LiveOf(entry);
         }
 
         private void NoteReleased(long bytes, int pageBytes)
@@ -331,7 +352,8 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         public ValueTask<bool> CompactAsync()
         {
             ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
-            if (_budget < 1 || (!MeasureIsDue() && _smallBytes < _options.PageTargetBytes && !GarbageIsHigh()))
+            // No merge between a barrier and its commit
+            if (_marked || _budget < 1 || (!MeasureIsDue() && _smallBytes < _options.PageTargetBytes && !GarbageIsHigh()))
             {
                 return new ValueTask<bool>(false);
             }
