@@ -252,8 +252,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         return GenericWrite_Internal_AfterGetNode_NodeTooSmall_AfterGetRightByteBased(in rightNode, in leafNode, in parentNode, in index, in result);
                     }
                 }
-                else
+                else if (result != GenericWriteOperation.None)
                 {
+                    // A call that changed nothing marks no page modified
                     var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
                     if (isFull)

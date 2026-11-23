@@ -12,6 +12,7 @@
 
 using FlowtideDotNet.Storage.Tree;
 using System.Buffers;
+using System.Buffers.Binary;
 
 namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 {
@@ -36,7 +37,15 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 
         public ListKeyContainerWithSize Deserialize(ref SequenceReader<byte> reader)
         {
-            throw new NotImplementedException();
+            var container = new ListKeyContainerWithSize(sizePerElement);
+            reader.TryReadLittleEndian(out int count);
+            for (int i = 0; i < count; i++)
+            {
+                reader.TryReadLittleEndian(out long key);
+                reader.TryReadLittleEndian(out long size);
+                container.Add(new KeyValuePair<long, long>(key, size));
+            }
+            return container;
         }
 
         public Task InitializeAsync(IBPlusTreeSerializerInitializeContext context)
@@ -46,7 +55,15 @@ namespace FlowtideDotNet.Storage.Tests.BPlusTreeByteBased
 
         public void Serialize(in IBufferWriter<byte> writer, in ListKeyContainerWithSize values)
         {
-            throw new NotImplementedException();
+            var span = writer.GetSpan(4 + values.Count * 16);
+            BinaryPrimitives.WriteInt32LittleEndian(span, values.Count);
+            for (int i = 0; i < values.Count; i++)
+            {
+                var key = values.Get(i);
+                BinaryPrimitives.WriteInt64LittleEndian(span.Slice(4 + i * 16), key.Key);
+                BinaryPrimitives.WriteInt64LittleEndian(span.Slice(12 + i * 16), key.Value);
+            }
+            writer.Advance(4 + values.Count * 16);
         }
     }
 }
