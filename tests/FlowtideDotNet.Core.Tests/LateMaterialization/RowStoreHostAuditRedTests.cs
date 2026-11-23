@@ -1443,19 +1443,16 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
 
             var result = await host.ApplyAsync(batch, weights, null);
             var (inserts, deletes) = host.CreateBatches(batch, result, [0, 1, 2]);
+            Assert.NotNull(inserts);
             try
             {
-                Assert.NotNull(inserts);
                 Assert.Null(deletes);
-                SortColumns(inserts!.EventBatchData.Columns[0], inserts.EventBatchData.Columns[1]);
+                SortColumns(inserts.EventBatchData.Columns[0], inserts.EventBatchData.Columns[1]);
             }
             finally
             {
-                if (inserts != null)
-                {
-                    inserts.Rent(1);
-                    inserts.Return();
-                }
+                inserts.Rent(1);
+                inserts.Return();
             }
         }
 

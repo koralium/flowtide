@@ -159,11 +159,11 @@ public class ReviewerCRound5Tests : OperatorTestBase
 
         var result = await host.ApplyAsync(batch, weights, null);
         var (inserts, deletes) = host.CreateBatches(batch, result, [0, 1, 2]);
+        Assert.NotNull(inserts);
         try
         {
-            Assert.NotNull(inserts);
             Assert.Null(deletes);
-            var nulls = inserts!.EventBatchData.Columns[1];
+            var nulls = inserts.EventBatchData.Columns[1];
             Assert.IsType<Column>(nulls);
             Assert.Equal(2, nulls.Count);
             Assert.Equal(ArrowTypeId.Null, nulls.GetValueAt(0, default).Type);
@@ -172,11 +172,8 @@ public class ReviewerCRound5Tests : OperatorTestBase
         }
         finally
         {
-            if (inserts != null)
-            {
-                inserts.Rent(1);
-                inserts.Return();
-            }
+            inserts.Rent(1);
+            inserts.Return();
         }
     }
 

@@ -102,7 +102,7 @@ public class ReviewerBRegressionTests : OperatorTestBase
     public async Task FailedSearchReleasesItsLeafWhenTheHostIsDisposed()
     {
         using var stream = await RowHeapTests.Open();
-        var host = await Host(stream);
+        using var host = await Host(stream);
         var initial = Batch(1, "old");
         var changed = Batch(1, "old");
         changed.EventBatchData.Columns[1].Dispose();
@@ -122,7 +122,6 @@ public class ReviewerBRegressionTests : OperatorTestBase
         }
         finally
         {
-            host.Dispose();
             DisposeBatch(initial);
             DisposeBatch(changed);
         }
