@@ -187,6 +187,25 @@ namespace FlowtideDotNet.SqlServer.SqlServer
                 return new FilterResult($"CAST({inner.Content} AS DATETIME)", false);
             }
 
+            // Lossless literal casts, sql server compares numerics by value
+            if (castExpression.Expression is NumericLiteral numericLiteral)
+            {
+                switch (castExpression.Type.Type)
+                {
+                    case Substrait.Type.SubstraitType.Decimal:
+                    case Substrait.Type.SubstraitType.Fp32:
+                    case Substrait.Type.SubstraitType.Fp64:
+                        return inner;
+                    case Substrait.Type.SubstraitType.Int32:
+                    case Substrait.Type.SubstraitType.Int64:
+                        if (numericLiteral.Value % 1 == 0)
+                        {
+                            return inner;
+                        }
+                        break;
+                }
+            }
+
             return default;
         }
 

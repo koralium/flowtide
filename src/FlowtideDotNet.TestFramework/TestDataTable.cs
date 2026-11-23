@@ -104,7 +104,7 @@ namespace FlowtideDotNet.TestFramework
             }
             else if (type == typeof(DateTime))
             {
-                return new Int64Type();
+                return new TimestampType();
             }
             else if (type == typeof(Guid))
             {

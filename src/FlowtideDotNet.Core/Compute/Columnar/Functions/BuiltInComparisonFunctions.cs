@@ -160,6 +160,45 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             functionsRegister.RegisterScalarMethod(FunctionsComparison.Urn, FunctionsComparison.IsNotDistinctFrom, typeof(BuiltInComparisonFunctions), nameof(IsNotDistinctFromImplementation));
         }
 
+        // Mixed numeric types compare by value, not type
+        private static int Compare<T1, T2>(in T1 x, in T2 y)
+            where T1 : IDataValue
+            where T2 : IDataValue
+        {
+            if (x.Type != y.Type && IsNumeric(x.Type) && IsNumeric(y.Type))
+            {
+                // Double widens all, decimal holds any long
+                if (x.Type == ArrowTypeId.Double || y.Type == ArrowTypeId.Double)
+                {
+                    return ToDouble(x).CompareTo(ToDouble(y));
+                }
+                return ToDecimal(x).CompareTo(ToDecimal(y));
+            }
+            return DataValueComparer.CompareTo(x, y);
+        }
+
+        private static bool IsNumeric(ArrowTypeId type)
+        {
+            return type == ArrowTypeId.Int64 || type == ArrowTypeId.Double || type == ArrowTypeId.Decimal128;
+        }
+
+        private static double ToDouble<T>(in T value)
+            where T : IDataValue
+        {
+            return value.Type switch
+            {
+                ArrowTypeId.Int64 => value.AsLong,
+                ArrowTypeId.Decimal128 => (double)value.AsDecimal,
+                _ => value.AsDouble
+            };
+        }
+
+        private static decimal ToDecimal<T>(in T value)
+            where T : IDataValue
+        {
+            return value.Type == ArrowTypeId.Int64 ? value.AsLong : value.AsDecimal;
+        }
+
         private static IDataValue EqualImplementation<T1, T2>(in T1 x, in T2 y, in DataValueContainer result)
             where T1 : IDataValue
             where T2 : IDataValue
@@ -170,7 +209,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) == 0)
+            else if (Compare(x, y) == 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -194,7 +233,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) != 0)
+            else if (Compare(x, y) != 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -218,7 +257,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) > 0)
+            else if (Compare(x, y) > 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -242,7 +281,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) >= 0)
+            else if (Compare(x, y) >= 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -266,7 +305,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) < 0)
+            else if (Compare(x, y) < 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -290,7 +329,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 result._type = ArrowTypeId.Null;
                 return result;
             }
-            else if (DataValueComparer.CompareTo(x, y) <= 0)
+            else if (Compare(x, y) <= 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -331,7 +370,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
                 return result;
             }
 
-            if (DataValueComparer.CompareTo(expr, low) >= 0 && DataValueComparer.CompareTo(expr, high) <= 0)
+            if (Compare(expr, low) >= 0 && Compare(expr, high) <= 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
@@ -457,7 +496,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (DataValueComparer.CompareTo(x, y) == 0)
+            if (Compare(x, y) == 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(false);
@@ -475,7 +514,7 @@ namespace FlowtideDotNet.Core.Compute.Columnar.Functions
             where T1 : IDataValue
             where T2 : IDataValue
         {
-            if (DataValueComparer.CompareTo(x, y) == 0)
+            if (Compare(x, y) == 0)
             {
                 result._type = ArrowTypeId.Boolean;
                 result._boolValue = new BoolValue(true);
