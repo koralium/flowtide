@@ -81,5 +81,11 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
            Level = LogLevel.Error,
            Message = "Exception fetching initial data from sql server. `{stream}`, operator: `{operatorId}`")]
         public static partial void ExceptionFetchingInitialData(this ILogger logger, Exception e, string stream, string operatorId);
+
+        [LoggerMessage(
+          EventId = 12,
+          Level = LogLevel.Warning,
+          Message = "'{tableName}' had no primary keys, using all columns as primary key, in stream: `{stream}`, operator: `{operatorId}`")]
+        public static partial void NoPrimaryKeysOnTable(this ILogger logger, string tableName, string stream, string operatorId);
     }
 }

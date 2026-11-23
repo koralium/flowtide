@@ -98,6 +98,14 @@ namespace FlowtideDotNet.Connector.SqlServer.SqlServer
             else
             {
                 PrimaryKeys = await SqlServerUtils.GetPrimaryKeys(connection, FullTableName);
+
+                // Special case for tables without primary keys, use all columns as primary keys
+                // Change tracking tables require primary keys, so this is only for tables without change tracking
+                if (PrimaryKeys.Count == 0 && !Options.IsChangeTrackingEnabled)
+                {
+                    Logger.NoPrimaryKeysOnTable(FullTableName, StreamName, Name);
+                    PrimaryKeys = ReadRelation.BaseSchema.Names;
+                }
             }
 
             PrimaryKeyToOrdinal = new Dictionary<string, int>();
