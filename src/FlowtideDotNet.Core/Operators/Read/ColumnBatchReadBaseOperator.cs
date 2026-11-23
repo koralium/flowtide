@@ -18,6 +18,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Operators.LateMaterialization;
 using FlowtideDotNet.Core.Operators.Normalization;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Serializers;
@@ -60,6 +61,10 @@ namespace FlowtideDotNet.Core.Operators.Read
         private ICounter<long>? _eventsCounter;
         private bool _waitingForFullLoad;
         private WatermarkOutputMode _watermarkOutputMode;
+        // Set when the relation stores columns behind references
+        private RowStoreHost? _host;
+        private RowStoreKeySet? _hostedTempKeys;
+        private RowStoreKeySet? _hostedDeleteKeys;
 
         public ColumnBatchReadBaseOperator(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions options) : base(options)
         {
@@ -181,7 +186,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
 
-            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, WatermarkModeKey);
+            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, WatermarkModeKey, RowStoreHost.DeferredColumnsHint);
             _watermarkOutputMode = GetWatermarkOutputMode();
 
             if (_eventsCounter == null)
@@ -229,12 +234,29 @@ namespace FlowtideDotNet.Core.Operators.Read
                 deleteTreeKeys.Add(i);
             }
 
+            _host?.Dispose();
+            _host = null;
+            _hostedTempKeys = null;
+            _hostedDeleteKeys = null;
+            var hostLayout = RowStoreHost.ReadLayout(_readRelation.Hint.Optimizations.Properties, _readRelation.BaseSchema.Names.Count, _primaryKeyColumns, _emitList);
+            if (hostLayout != null)
+            {
+                // Rows are stored behind references, every tree call is a batch
+                _host = await RowStoreHost.CreateAsync(stateManagerClient, "persistent_keyed", "rows", hostLayout, new RowStoreOptions() { Mode = AppendOnly ? RowStoreMode.Append : RowStoreMode.Keyed }, MemoryAllocator);
+                if (!_host.AppendOnly)
+                {
+                    _hostedTempKeys = await RowStoreKeySet.CreateAsync(stateManagerClient, "full_load_temp", _primaryKeyColumns.Count, MemoryAllocator);
+                    _hostedDeleteKeys = await RowStoreKeySet.CreateAsync(stateManagerClient, "delete_keys", _primaryKeyColumns.Count, MemoryAllocator);
+                }
+                return;
+            }
             _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {
                     Comparer = new NormalizeTreeComparer(_primaryKeyColumns),
                     KeySerializer = new NormalizeKeyStorageSerializer(_primaryKeyColumns, MemoryAllocator),
-                    ValueSerializer = new NormalizeValueSerializer(_otherColumns, MemoryAllocator),
+                    // Only its keys are read
+                    ValueSerializer = new NormalizeValueSerializer(new List<int>(), MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
@@ -260,11 +282,373 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected override async Task OnCheckpoint(long checkpointTime)
         {
-            Debug.Assert(_persistentTree != null);
             Debug.Assert(_initialSent != null);
-            await _persistentTree.Commit();
+            if (_host != null)
+            {
+                await _host.BeginCheckpointAsync();
+            }
+            else
+            {
+                Debug.Assert(_persistentTree != null);
+                await _persistentTree.Commit();
+            }
             await Checkpoint(checkpointTime).ConfigureAwait(false);
             await _initialSent.Commit();
+        }
+
+        public override Task BeforeSaveCheckpoint()
+        {
+            // The sinks are done, retired rows go with this checkpoint
+            if (_host != null)
+            {
+                return _host.CheckpointAsync();
+            }
+            return Task.CompletedTask;
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            _host?.Dispose();
+            _host = null;
+            await base.DisposeAsync();
+        }
+
+        // Applies a batch, the caller holds its rent
+        private async Task<bool> SendHosted(IngressOutput<StreamEventBatch> output, EventBatchWeighted data, bool zeroWeightIsRow)
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_emitList != null);
+
+            var result = await _host.ApplyAsync(data.EventBatchData, data.Weights, _filter, zeroWeightIsRow);
+            try
+            {
+                var (inserts, deletes) = _host.CreateBatches(data.EventBatchData, result, _emitList);
+                return await SendBoth(output, inserts, deletes);
+            }
+            catch
+            {
+                // Stored and not sent, the checkpoint must not keep it
+                _host.MarkFailed();
+                throw;
+            }
+        }
+
+        // Sends both batches, one that was not sent is released
+        private async Task<bool> SendBoth(IngressOutput<StreamEventBatch> output, EventBatchWeighted? inserts, EventBatchWeighted? deletes)
+        {
+            Debug.Assert(_eventsCounter != null);
+            bool sent = false;
+            try
+            {
+                if (inserts != null)
+                {
+                    _eventsCounter.Add(inserts.Count);
+                    await output.SendAsync(new StreamEventBatch(inserts));
+                    inserts = null;
+                    sent = true;
+                }
+                if (deletes != null)
+                {
+                    _eventsCounter.Add(deletes.Count);
+                    await output.SendAsync(new StreamEventBatch(deletes));
+                    deletes = null;
+                    sent = true;
+                }
+            }
+            finally
+            {
+                Release(inserts);
+                Release(deletes);
+            }
+            return sent;
+        }
+
+        // Frees a batch nobody took, a taken one keeps its rents
+        private static void Release(EventBatchWeighted? batch)
+        {
+            if (batch != null)
+            {
+                batch.Rent(1);
+                batch.Return();
+            }
+        }
+
+        private async Task DoDeltaLoadHosted(IngressOutput<StreamEventBatch> output)
+        {
+            await foreach (var e in DeltaLoad(output.EnterCheckpointLock, output.ExitCheckpointLock, output.CancellationToken))
+            {
+                if (e.BatchData != null)
+                {
+                    e.BatchData.Rent(1);
+                    try
+                    {
+                        await SendHosted(output, e.BatchData, false);
+                    }
+                    finally
+                    {
+                        e.BatchData.Weights.Dispose();
+                        e.BatchData.Iterations.Dispose();
+                        e.BatchData.Return();
+                    }
+                }
+
+                if (e.Watermark != null)
+                {
+                    await output.SendWatermark(e.Watermark);
+                }
+
+                ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+        }
+
+        // The key columns of a batch, in key order
+        private EventBatchData HostedKeys(EventBatchData batch)
+        {
+            Debug.Assert(_primaryKeyColumns != null);
+            var columns = new IColumn[_primaryKeyColumns.Count];
+            for (int k = 0; k < columns.Length; k++)
+            {
+                columns[k] = batch.Columns[_primaryKeyColumns[k]];
+            }
+            return new EventBatchData(columns);
+        }
+
+        private Column[] CreateKeyColumns()
+        {
+            Debug.Assert(_primaryKeyColumns != null);
+            var columns = new Column[_primaryKeyColumns.Count];
+            for (int k = 0; k < columns.Length; k++)
+            {
+                columns[k] = Column.Create(MemoryAllocator);
+            }
+            return columns;
+        }
+
+        private static void DisposeColumns(Column[] columns)
+        {
+            for (int k = 0; k < columns.Length; k++)
+            {
+                columns[k].Dispose();
+            }
+        }
+
+        private async Task DoFullLoadHosted(IngressOutput<StreamEventBatch> output)
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_initialSent != null);
+
+            if (_host.AppendOnly && _initialSent.Value)
+            {
+                throw new InvalidOperationException($"Source '{_readRelation.NamedTable.DotSeperated}' is append-only and stores its rows behind references, it is loaded once.");
+            }
+
+            // Lock checkpointing until the full load is complete
+            await output.EnterCheckpointLock();
+            bool sentData = false;
+            bool initialLoad = !_initialSent.Value;
+            try
+            {
+                long lastWatermark = -1;
+                long batchId = 0;
+
+                await foreach (var columnReadEvent in FullLoad(output.CancellationToken))
+                {
+                    lastWatermark = columnReadEvent.Watermark;
+                    var data = columnReadEvent.BatchData;
+                    data.Rent(1);
+                    try
+                    {
+                        for (int i = 0; i < data.Count; i++)
+                        {
+                            if (data.Weights[i] < 0)
+                            {
+                                throw new NotSupportedException("Full load does not support deletions");
+                            }
+                        }
+                        if (_hostedTempKeys != null && _initialSent.Value)
+                        {
+                            await _hostedTempKeys.AddAsync(HostedKeys(data.EventBatchData), data.Count);
+                        }
+                        // A loaded row of weight zero is a row
+                        if (await SendHosted(output, data, true))
+                        {
+                            sentData = true;
+                            if (_watermarkOutputMode == WatermarkOutputMode.OnEachBatch)
+                            {
+                                await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
+                                batchId++;
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        data.Weights.Dispose();
+                        data.Iterations.Dispose();
+                        data.Return();
+                    }
+                }
+
+                if (_hostedTempKeys != null && _initialSent.Value)
+                {
+                    await FindDeletedKeysHosted();
+                    await _hostedTempKeys.Clear();
+                    sentData |= await OutputDeletedRowsFromFullLoadHosted(output);
+                }
+
+                if (sentData && lastWatermark == -1)
+                {
+                    lastWatermark = 1;
+                }
+
+                if (lastWatermark >= 0 && sentData)
+                {
+                    await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
+                }
+                // Saved in the same checkpoint as the loaded rows
+                _initialSent.Value = true;
+            }
+            catch
+            {
+                // Half a load is never saved
+                _host.MarkFailed();
+                throw;
+            }
+            finally
+            {
+                output.ExitCheckpointLock();
+            }
+
+            if (sentData || initialLoad)
+            {
+                ScheduleCheckpoint(TimeSpan.FromMilliseconds(1));
+            }
+        }
+
+        // Keys the load lacked go to the delete keys
+        private async Task FindDeletedKeysHosted()
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_hostedTempKeys != null);
+            Debug.Assert(_hostedDeleteKeys != null);
+            Debug.Assert(_primaryKeyColumns != null);
+
+            const int BatchRows = 1024;
+            var value = new DataValueContainer();
+            var missing = CreateKeyColumns();
+            int count = 0;
+            try
+            {
+                using var tmpIterator = _hostedTempKeys.CreateIterator();
+                using var storedIterator = _host.CreateKeyIterator();
+                await tmpIterator.SeekFirst();
+                await storedIterator.SeekFirst();
+
+                var tmpEnumerator = IteratePerRow(tmpIterator).GetAsyncEnumerator();
+                var storedEnumerator = IteratePerRow(storedIterator).GetAsyncEnumerator();
+                var hasNew = await tmpEnumerator.MoveNextAsync();
+                var hasOld = await storedEnumerator.MoveNextAsync();
+
+                while (hasOld)
+                {
+                    int comparison = hasNew ? CompareKeys(tmpEnumerator.Current, storedEnumerator.Current) : 1;
+                    if (comparison < 0)
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                    }
+                    else if (comparison > 0)
+                    {
+                        var key = storedEnumerator.Current;
+                        for (int k = 0; k < missing.Length; k++)
+                        {
+                            key.referenceBatch.Columns[k].GetValueAt(key.RowIndex, value, default);
+                            missing[k].Add(value);
+                        }
+                        count++;
+                        hasOld = await storedEnumerator.MoveNextAsync();
+                        if (count == BatchRows)
+                        {
+                            await _hostedDeleteKeys.AddAsync(new EventBatchData(missing), count);
+                            DisposeColumns(missing);
+                            missing = CreateKeyColumns();
+                            count = 0;
+                        }
+                    }
+                    else
+                    {
+                        hasNew = await tmpEnumerator.MoveNextAsync();
+                        hasOld = await storedEnumerator.MoveNextAsync();
+                    }
+                }
+                if (count > 0)
+                {
+                    await _hostedDeleteKeys.AddAsync(new EventBatchData(missing), count);
+                }
+            }
+            finally
+            {
+                DisposeColumns(missing);
+            }
+        }
+
+        // Removes the delete keys a page at a time
+        private async Task<bool> OutputDeletedRowsFromFullLoadHosted(IngressOutput<StreamEventBatch> output)
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_hostedDeleteKeys != null);
+            Debug.Assert(_emitList != null);
+
+            bool sentData = false;
+            var value = new DataValueContainer();
+            using (var deleteIterator = _hostedDeleteKeys.CreateIterator())
+            {
+                await deleteIterator.SeekFirst();
+                await foreach (var page in deleteIterator)
+                {
+                    var keys = CreateKeyColumns();
+                    try
+                    {
+                        int count = 0;
+                        foreach (var kv in page)
+                        {
+                            for (int k = 0; k < keys.Length; k++)
+                            {
+                                kv.Key.referenceBatch.Columns[k].GetValueAt(kv.Key.RowIndex, value, default);
+                                keys[k].Add(value);
+                            }
+                            count++;
+                        }
+                        var result = _host.CreateResult();
+                        EventBatchWeighted? deletes;
+                        try
+                        {
+                            await _host.RemoveAsync(new EventBatchData(keys), count, result);
+                            deletes = _host.CreateDeleteBatch(keys, result, _emitList);
+                        }
+                        catch
+                        {
+                            // The rows may be gone and were not sent
+                            _host.MarkFailed();
+                            result.Dispose();
+                            throw;
+                        }
+                        try
+                        {
+                            sentData |= await SendBoth(output, null, deletes);
+                        }
+                        catch
+                        {
+                            _host.MarkFailed();
+                            throw;
+                        }
+                    }
+                    finally
+                    {
+                        DisposeColumns(keys);
+                    }
+                }
+            }
+            await _hostedDeleteKeys.Clear();
+            return sentData;
         }
 
         protected abstract Task Checkpoint(long checkpointTime);
@@ -281,6 +665,11 @@ namespace FlowtideDotNet.Core.Operators.Read
         protected abstract IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, CancellationToken enumeratorCancellationToken = default);
 
         protected abstract ValueTask<List<int>> GetPrimaryKeyColumns();
+
+        /// <summary>
+        /// True when the source only adds rows.
+        /// </summary>
+        protected virtual bool AppendOnly => false;
 
         private int CompareRowReference(ColumnRowReference x, ColumnRowReference y)
         {
@@ -329,6 +718,11 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected async Task DoDeltaLoad(IngressOutput<StreamEventBatch> output)
         {
+            if (_host != null)
+            {
+                await DoDeltaLoadHosted(output);
+                return;
+            }
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_otherColumns != null);
             Debug.Assert(_emitList != null);
@@ -527,8 +921,47 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected ValueTask<(bool found, ColumnRowReference value)> LookupRowValue(ColumnRowReference rowKeyReference)
         {
+            if (_host != null)
+            {
+                return LookupRowValueHosted(rowKeyReference);
+            }
             Debug.Assert(_persistentTree != null);
             return _persistentTree.GetValue(in rowKeyReference);
+        }
+
+        /// <summary>
+        /// True when the caller disposes a looked up row's batch.
+        /// </summary>
+        protected bool LookupRowIsOwned => _host != null;
+
+        private async ValueTask<(bool found, ColumnRowReference value)> LookupRowValueHosted(ColumnRowReference rowKeyReference)
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_otherColumns != null);
+            Debug.Assert(_primaryKeyColumns != null);
+
+            var columns = await _host.LookupAsync(rowKeyReference);
+            if (columns == null)
+            {
+                return (false, default);
+            }
+            // The value is the other columns, as the tree gives them
+            var value = new IColumn[_otherColumns.Count];
+            var used = new bool[columns.Length];
+            for (int i = 0; i < value.Length; i++)
+            {
+                // A column sent twice is two columns for the caller
+                value[i] = used[_otherColumns[i]] ? columns[_otherColumns[i]].Copy(MemoryAllocator) : columns[_otherColumns[i]];
+                used[_otherColumns[i]] = true;
+            }
+            for (int i = 0; i < columns.Length; i++)
+            {
+                if (!used[i])
+                {
+                    columns[i].Dispose();
+                }
+            }
+            return (true, new ColumnRowReference() { referenceBatch = new EventBatchData(value), RowIndex = 0 });
         }
 
         private Watermark CreateWatermark(long watermarkValue, long batchId = 0)
@@ -540,6 +973,11 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         protected async Task DoFullLoad(IngressOutput<StreamEventBatch> output)
         {
+            if (_host != null)
+            {
+                await DoFullLoadHosted(output);
+                return;
+            }
             Debug.Assert(_fullLoadTempTree != null);
             Debug.Assert(_persistentTree != null);
             Debug.Assert(_otherColumns != null);

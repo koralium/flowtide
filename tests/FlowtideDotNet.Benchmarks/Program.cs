@@ -62,6 +62,11 @@ if (args.FirstOrDefault() == "--row-heap")
     Environment.ExitCode = await FlowtideDotNet.Benchmarks.LateMaterialization.RowHeapBench.Run(args);
     return;
 }
+if (args.FirstOrDefault() == "--row-host")
+{
+    Environment.ExitCode = await FlowtideDotNet.Benchmarks.LateMaterialization.RowStoreHostBench.Run(args);
+    return;
+}
 if (args.FirstOrDefault() == "--row-hash")
 {
     Environment.ExitCode = FlowtideDotNet.Benchmarks.LateMaterialization.RowIdentityHashBench.Run(args);

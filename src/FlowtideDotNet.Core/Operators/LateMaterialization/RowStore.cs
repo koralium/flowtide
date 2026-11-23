@@ -84,6 +84,8 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             }
         }
 
+        public string Name => _name;
+
         public RowStoreMode Mode => _mode;
 
         public long RowCount => _heap.RowCount;
