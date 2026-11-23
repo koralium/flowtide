@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Operators.LateMaterialization;
 using FlowtideDotNet.Core.Operators.Read;
 using FlowtideDotNet.Storage.DataStructures;
@@ -25,6 +26,9 @@ using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
 using FlowtideDotNet.Storage.StateManager;
+using FlowtideDotNet.Substrait.Expressions;
+using FlowtideDotNet.Substrait.Expressions.Literals;
+using FlowtideDotNet.Substrait.FunctionExtensions;
 using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Substrait.Type;
 using System.Collections.Concurrent;
@@ -43,11 +47,18 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
 
             private readonly bool _appendOnly;
 
-            public Source(ReadRelation relation, List<Row> table, bool appendOnly = false)
-                : base(relation, new FunctionsRegister(), new DataflowBlockOptions())
+            public Source(ReadRelation relation, List<Row> table, bool appendOnly = false, FunctionsRegister? functions = null)
+                : base(relation, functions ?? Functions(), new DataflowBlockOptions())
             {
                 Table = table;
                 _appendOnly = appendOnly;
+            }
+
+            private static FunctionsRegister Functions()
+            {
+                var register = new FunctionsRegister();
+                BuiltinFunctions.RegisterFunctions(register);
+                return register;
             }
 
             protected override bool AppendOnly => _appendOnly;
@@ -198,6 +209,28 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             if (hosted)
             {
                 relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "2";
+            }
+            return relation;
+        }
+
+        // Sends k and text, keeps rows whose kept is 10
+        private static ReadRelation FilteredRelation(bool hosted)
+        {
+            var relation = Relation(false);
+            relation.Emit = new List<int>() { 0, 2 };
+            relation.Filter = new ScalarFunction()
+            {
+                ExtensionUrn = FunctionsComparison.Urn,
+                ExtensionName = FunctionsComparison.Equal,
+                Arguments = new List<Expression>()
+                {
+                    new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = 1 } },
+                    new NumericLiteral() { Value = 10 }
+                }
+            };
+            if (hosted)
+            {
+                relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "1";
             }
             return relation;
         }
@@ -375,6 +408,200 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             var reloaded = await Take(sink, 2, checkpoints);
             Assert.Equal(["-1: 1|10|a", "1: 3|30|c"], reloaded.Select(x => x.row));
             Assert.Equal("20|b", await source.Lookup(2));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AReloadedRowThatNowFailsAFilterOnAnUnsentColumnIsTakenBack(bool hosted)
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 10, "b") };
+            var source = new Source(FilteredRelation(hosted), table);
+            var sink = new Sink();
+            await using var stream = Build("filter-reload-" + Guid.NewGuid().ToString("N"), storage, source, sink);
+            await stream.StartAsync();
+            var loaded = await Take(sink, 2, 0);
+            Assert.Equal(2, loaded.Count);
+
+            lock (table)
+            {
+                table[0] = new Row(1, 11, "a");
+                table.Add(new Row(3, 10, "c"));
+            }
+            int checkpoints = sink.Checkpoints;
+            await stream.CallTrigger("full_load", null);
+            var reloaded = await Take(sink, 1, checkpoints);
+            Assert.Equal(hosted ? ["-1: 1|ref", "1: 3|ref"] : ["-1: 1|a", "1: 3|c"], reloaded.Select(x => x.row));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AChangedRowThatNowFailsAFilterOnAnUnsentColumnIsTakenBack(bool hosted)
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 10, "b") };
+            var source = new Source(FilteredRelation(hosted), table);
+            var sink = new Sink();
+            await using var stream = Build("filter-delta-" + Guid.NewGuid().ToString("N"), storage, source, sink);
+            await stream.StartAsync();
+            var loaded = await Take(sink, 2, 0);
+            Assert.Equal(2, loaded.Count);
+
+            source.Deltas.Enqueue([new Row(2, 11, "b"), new Row(3, 10, "c")]);
+            int checkpoints = sink.Checkpoints;
+            await stream.CallTrigger("delta_load", null);
+            var changed = await Take(sink, 1, checkpoints);
+            Assert.Equal(hosted ? ["-1: 2|ref", "1: 3|ref"] : ["-1: 2|b", "1: 3|c"], changed.Select(x => x.row));
+        }
+
+        [Theory]
+        [InlineData(false, false)]
+        [InlineData(false, true)]
+        [InlineData(true, false)]
+        [InlineData(true, true)]
+        public async Task AnEqualRowThatFailsItsFilterEvaluatesItOnce(bool hosted, bool fullReload)
+        {
+            int calls = 0;
+            var functions = new FunctionsRegister();
+            BuiltinFunctions.RegisterFunctions(functions);
+            functions.RegisterColumnScalarFunction("extension:test:counted", "counted",
+                (function, parameters, visitor, services) => System.Linq.Expressions.Expression.Block(
+                    System.Linq.Expressions.Expression.Invoke(
+                        System.Linq.Expressions.Expression.Constant((Action)(() => Interlocked.Increment(ref calls)))),
+                    visitor.Visit(function.Arguments[0], parameters)!));
+            var relation = FilteredRelation(hosted);
+            relation.Filter = new ScalarFunction()
+            {
+                ExtensionUrn = "extension:test:counted",
+                ExtensionName = "counted",
+                Arguments = new List<Expression>() { relation.Filter! }
+            };
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a") };
+            var source = new Source(relation, table, functions: functions);
+            var sink = new Sink();
+            await using var stream = Build("counted-filter-" + Guid.NewGuid().ToString("N"), storage, source, sink);
+            await stream.StartAsync();
+            Assert.Single(await Take(sink, 1, 0));
+            Assert.Equal(1, Volatile.Read(ref calls));
+            Interlocked.Exchange(ref calls, 0);
+
+            if (fullReload)
+            {
+                lock (table)
+                {
+                    table[0] = new Row(1, 11, "a");
+                }
+            }
+            else
+            {
+                source.Deltas.Enqueue([new Row(1, 11, "a")]);
+            }
+
+            int checkpoints = sink.Checkpoints;
+            await stream.CallTrigger(fullReload ? "full_load" : "delta_load", null);
+            var retracted = await Take(sink, 1, checkpoints);
+            Assert.Equal([hosted ? "-1: 1|ref" : "-1: 1|a"], retracted.Select(x => x.row));
+            Assert.Equal(1, Volatile.Read(ref calls));
+        }
+
+        // Sums weights per row and reference, drops zeros
+        private static List<string> Net(IEnumerable<(string row, ulong reference)> rows)
+        {
+            var sums = new Dictionary<(string, ulong), int>();
+            foreach (var (row, reference) in rows)
+            {
+                var split = row.IndexOf(": ");
+                var key = (row.Substring(split + 2), reference);
+                sums[key] = sums.GetValueOrDefault(key) + int.Parse(row.Substring(0, split));
+            }
+            return sums.Where(x => x.Value != 0).Select(x => $"{x.Value}: {x.Key.Item1}").OrderBy(x => x, StringComparer.Ordinal).ToList();
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AKeyTwiceInOneDeltaThatEndsFailingTheFilterIsTakenBack(bool hosted)
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 10, "b") };
+            var source = new Source(FilteredRelation(hosted), table);
+            var sink = new Sink();
+            await using var stream = Build("filter-twice-" + Guid.NewGuid().ToString("N"), storage, source, sink);
+            await stream.StartAsync();
+            var loaded = await Take(sink, 2, 0);
+            Assert.Equal(2, loaded.Count);
+
+            source.Deltas.Enqueue([new Row(2, 10, "c"), new Row(2, 11, "c")]);
+            var changed = await TriggerAndTake(stream, "delta_load", sink, 1);
+            Assert.Equal([hosted ? "-1: 2|ref" : "-1: 2|b"], Net(changed));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task ARowTakenBackByTheFilterIsSentAgainWhenItPassesAfterARestart(bool hosted)
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var name = "filter-restart-" + Guid.NewGuid().ToString("N");
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 10, "b") };
+            var source = new Source(FilteredRelation(hosted), table);
+            var sink = new Sink();
+            await using (var stream = Build(name, storage, source, sink))
+            {
+                await stream.StartAsync();
+                var loaded = await Take(sink, 2, 0);
+                Assert.Equal(2, loaded.Count);
+
+                source.Deltas.Enqueue([new Row(2, 11, "b")]);
+                var changed = await TriggerAndTake(stream, "delta_load", sink, 1);
+                Assert.Equal([hosted ? "-1: 2|ref" : "-1: 2|b"], changed.Select(x => x.row));
+                await stream.StopAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            }
+
+            var restartedSource = new Source(FilteredRelation(hosted), table);
+            var restartedSink = new Sink();
+            await using var restarted = Build(name, storage, restartedSource, restartedSink);
+            await restarted.StartAsync();
+            await WaitUntil(() => restarted.State == StreamStateValue.Running);
+            restartedSource.Deltas.Enqueue([new Row(2, 10, "b")]);
+            var back = await TriggerAndTake(restarted, "delta_load", restartedSink, 1);
+            Assert.Equal([hosted ? "1: 2|ref" : "1: 2|b"], back.Select(x => x.row));
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AReloadedRowThatFailsThenPassesTheFilterIsSentAgain(bool hosted)
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 10, "b") };
+            var source = new Source(FilteredRelation(hosted), table);
+            var sink = new Sink();
+            await using var stream = Build("filter-reload-back-" + Guid.NewGuid().ToString("N"), storage, source, sink);
+            await stream.StartAsync();
+            var loaded = await Take(sink, 2, 0);
+            Assert.Equal(2, loaded.Count);
+
+            lock (table)
+            {
+                table[0] = new Row(1, 11, "a");
+            }
+            int checkpoints = sink.Checkpoints;
+            await stream.CallTrigger("full_load", null);
+            var reloaded = await Take(sink, 1, checkpoints);
+            Assert.Equal([hosted ? "-1: 1|ref" : "-1: 1|a"], reloaded.Select(x => x.row));
+
+            lock (table)
+            {
+                table[0] = new Row(1, 10, "a");
+            }
+            checkpoints = sink.Checkpoints;
+            await stream.CallTrigger("full_load", null);
+            var back = await Take(sink, 1, checkpoints);
+            Assert.Equal([hosted ? "1: 1|ref" : "1: 1|a"], back.Select(x => x.row));
         }
     }
 }
