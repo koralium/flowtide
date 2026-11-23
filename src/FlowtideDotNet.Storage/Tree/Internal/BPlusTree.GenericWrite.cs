@@ -107,8 +107,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         return GenericWrite_SlowUpsert(result, m_stateClient.WaitForNotFullAsync());
                     }
                 }
-                else
+                else if (result != GenericWriteOperation.None)
                 {
+                    // A call that changed nothing marks no page modified
                     var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
                     if (isFull)
@@ -288,8 +289,9 @@ namespace FlowtideDotNet.Storage.Tree.Internal
                         return GenericWrite_Internal_AfterGetNode_NodeTooSmall_AfterGetRight(rightNode, leafNode, parentNode, index, result);
                     }
                 }
-                else
+                else if (result != GenericWriteOperation.None)
                 {
+                    // A call that changed nothing marks no page modified
                     var isFull = m_stateClient.AddOrUpdate(leafNode.Id, leafNode);
 
                     if (isFull)
