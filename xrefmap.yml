@@ -35273,6 +35273,32 @@ references:
   fullName.vb: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.New
   nameWithType: ColumnBatchReadBaseOperator.ColumnBatchReadBaseOperator
   nameWithType.vb: ColumnBatchReadBaseOperator.New
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly
+  name: AppendOnly
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_AppendOnly
+  commentId: P:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly
+  nameWithType: ColumnBatchReadBaseOperator.AppendOnly
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly*
+  name: AppendOnly
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_AppendOnly_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly
+  nameWithType: ColumnBatchReadBaseOperator.AppendOnly
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint
+  name: BeforeSaveCheckpoint()
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_BeforeSaveCheckpoint
+  commentId: M:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint()
+  nameWithType: ColumnBatchReadBaseOperator.BeforeSaveCheckpoint()
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint*
+  name: BeforeSaveCheckpoint
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_BeforeSaveCheckpoint_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint
+  nameWithType: ColumnBatchReadBaseOperator.BeforeSaveCheckpoint
 - uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.Checkpoint(System.Int64)
   name: Checkpoint(long)
   href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_Checkpoint_System_Int64_
@@ -35353,6 +35379,19 @@ references:
   commentId: F:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTriggerName
   fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTriggerName
   nameWithType: ColumnBatchReadBaseOperator.DeltaLoadTriggerName
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync
+  name: DisposeAsync()
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DisposeAsync
+  commentId: M:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync()
+  nameWithType: ColumnBatchReadBaseOperator.DisposeAsync()
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync*
+  name: DisposeAsync
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DisposeAsync_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync
+  nameWithType: ColumnBatchReadBaseOperator.DisposeAsync
 - uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoDeltaLoad(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})
   name: DoDeltaLoad(IngressOutput<StreamEventBatch>)
   href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoDeltaLoad_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__
@@ -35462,6 +35501,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.InitializeOrRestore
   nameWithType: ColumnBatchReadBaseOperator.InitializeOrRestore
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned
+  name: LookupRowIsOwned
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowIsOwned
+  commentId: P:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned
+  nameWithType: ColumnBatchReadBaseOperator.LookupRowIsOwned
+- uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned*
+  name: LookupRowIsOwned
+  href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowIsOwned_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned
+  nameWithType: ColumnBatchReadBaseOperator.LookupRowIsOwned
 - uid: FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowValue(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)
   name: LookupRowValue(ColumnRowReference)
   href: api/FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html#FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowValue_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_

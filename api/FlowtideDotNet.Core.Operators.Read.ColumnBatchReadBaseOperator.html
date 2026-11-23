@@ -91,7 +91,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator" class="text-break">
-Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L38"><i class="bi bi-code-slash"></i></a>
+Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L39"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -222,9 +222,6 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_RegisterTrigger_System_String_System_Nullable_System_TimeSpan__">IngressVertex&lt;StreamEventBatch&gt;.RegisterTrigger(string, TimeSpan?)</a>
     </div>
     <div>
-      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_DisposeAsync">IngressVertex&lt;StreamEventBatch&gt;.DisposeAsync()</a>
-    </div>
-    <div>
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Link">IngressVertex&lt;StreamEventBatch&gt;.Link()</a>
     </div>
     <div>
@@ -244,9 +241,6 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
     </div>
     <div>
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_Resume">IngressVertex&lt;StreamEventBatch&gt;.Resume()</a>
-    </div>
-    <div>
-      <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_BeforeSaveCheckpoint">IngressVertex&lt;StreamEventBatch&gt;.BeforeSaveCheckpoint()</a>
     </div>
     <div>
       <a class="xref" href="FlowtideDotNet.Base.Vertices.IngressVertex-1.html#FlowtideDotNet_Base_Vertices_IngressVertex_1_FailAndRollback_System_Exception_System_Nullable_System_Int64__">IngressVertex&lt;StreamEventBatch&gt;.FailAndRollback(Exception, long?)</a>
@@ -293,7 +287,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator__ctor_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Core_Compute_IFunctionsRegister_System_Threading_Tasks_Dataflow_DataflowBlockOptions_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.#ctor(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Core.Compute.IFunctionsRegister,System.Threading.Tasks.Dataflow.DataflowBlockOptions)">
   ColumnBatchReadBaseOperator(ReadRelation, IFunctionsRegister, DataflowBlockOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L64"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L69"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -331,7 +325,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadTriggerName" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTriggerName">
   DeltaLoadTriggerName
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L40"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L41"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -361,7 +355,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadTriggerName" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadTriggerName">
   FullLoadTriggerName
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L41"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L42"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -392,11 +386,43 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 </h2>
 
 
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_AppendOnly_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_AppendOnly" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.AppendOnly">
+  AppendOnly
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L672"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when the source only adds rows.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual bool AppendOnly { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadInterval_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadInterval*"></a>
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadInterval" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadInterval">
   DeltaLoadInterval
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L934"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L1372"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -427,7 +453,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadInterval" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadInterval">
   FullLoadInterval
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L936"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L1374"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -454,15 +480,80 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
 
 
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowIsOwned_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowIsOwned" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowIsOwned">
+  LookupRowIsOwned
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L935"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>True when the caller disposes a looked up row's batch.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected bool LookupRowIsOwned { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
+
+
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_BeforeSaveCheckpoint_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_BeforeSaveCheckpoint" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.BeforeSaveCheckpoint">
+  BeforeSaveCheckpoint()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L299"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Overridable lifecycle method invoked before the save checkpoint step completes.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override Task BeforeSaveCheckpoint()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.task">Task</a></dt>
+    <dd><p>A task representing the pre-checkpoint operations.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
 
 
   <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_Checkpoint_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.Checkpoint*"></a>
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_Checkpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.Checkpoint(System.Int64)">
   Checkpoint(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L270"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L654"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -498,7 +589,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeleteAsync" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeleteAsync">
   DeleteAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L77"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L82"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Deletes any persistent state associated with this vertex from the state storage.</p>
@@ -531,7 +622,7 @@ Class ColumnBatchReadBaseOperator  <a class="header-action link-secondary" title
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoad_System_Func_System_Threading_Tasks_Task__System_Action_System_Threading_CancellationToken_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoad(System.Func{System.Threading.Tasks.Task},System.Action,System.Threading.CancellationToken,System.Threading.CancellationToken)">
   DeltaLoad(Func&lt;Task&gt;, Action, CancellationToken, CancellationToken)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L281"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L665"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called when loading delta, the enterCheckpointLock must be called by the the source to make sure that the checkpoint lock is held.
@@ -575,7 +666,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DeltaLoadTrigger_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DeltaLoadTrigger(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch},System.Object)">
   DeltaLoadTrigger(IngressOutput&lt;StreamEventBatch&gt;, object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L153"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L158"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -609,11 +700,44 @@ The lock is released after the data has been sent out completely on the stream.<
 
 
 
+  <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DisposeAsync_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DisposeAsync" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DisposeAsync">
+  DisposeAsync()
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L309"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Asynchronously frees, releases, or resets unmanaged resources.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public override ValueTask DisposeAsync()</code></pre>
+  </div>
+
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.threading.tasks.valuetask">ValueTask</a></dt>
+    <dd><p>A task representing the asynchronous dispose operation.</p>
+</dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoDeltaLoad_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoDeltaLoad*"></a>
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoDeltaLoad_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoDeltaLoad(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
   DoDeltaLoad(IngressOutput&lt;StreamEventBatch&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L330"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L719"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -649,7 +773,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_DoFullLoad_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.DoFullLoad(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
   DoFullLoad(IngressOutput&lt;StreamEventBatch&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L541"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L974"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -685,7 +809,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoad_System_Threading_CancellationToken_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoad(System.Threading.CancellationToken,System.Threading.CancellationToken)">
   FullLoad(CancellationToken, CancellationToken)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L272"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L656"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -723,7 +847,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_FullLoadTrigger_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.FullLoadTrigger(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch},System.Object)">
   FullLoadTrigger(IngressOutput&lt;StreamEventBatch&gt;, object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L158"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L163"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -761,7 +885,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_GetPrimaryKeyColumns" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.GetPrimaryKeyColumns">
   GetPrimaryKeyColumns()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L283"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L667"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -792,7 +916,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.InitializeOrRestore(System.Int64,FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
   InitializeOrRestore(long, IStateManagerClient)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L180"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L185"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Performs the specific state initialization or restoration logic using the state manager.</p>
@@ -834,7 +958,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_LookupRowValue_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.LookupRowValue(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
   LookupRowValue(ColumnRowReference)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L528"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L922"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -870,7 +994,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnCheckpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnCheckpoint(System.Int64)">
   OnCheckpoint(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L261"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L283"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Invoked when a checkpoint is triggered. Allows the vertex to persist any required state.</p>
@@ -909,7 +1033,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_OnTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.OnTrigger(System.String,System.Object)">
   OnTrigger(string, object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L87"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Invoked when a trigger activates.</p>
@@ -951,7 +1075,7 @@ The lock is released after the data has been sent out completely on the stream.<
 
   <h3 id="FlowtideDotNet_Core_Operators_Read_ColumnBatchReadBaseOperator_SendInitial_FlowtideDotNet_Base_Vertices_IngressOutput_FlowtideDotNet_Core_StreamEventBatch__" data-uid="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.SendInitial(FlowtideDotNet.Base.Vertices.IngressOutput{FlowtideDotNet.Core.StreamEventBatch})">
   SendInitial(IngressOutput&lt;StreamEventBatch&gt;)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L918"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L1356"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Invoked after initialization has completed to send the initial data over the stream.</p>
@@ -990,7 +1114,7 @@ The lock is released after the data has been sent out completely on the stream.<
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L38" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Read/ColumnBatchReadBaseOperator.cs/#L39" class="edit-link">Edit this page</a>
         </div>
 
 
