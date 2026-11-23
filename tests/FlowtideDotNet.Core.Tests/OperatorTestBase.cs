@@ -127,6 +127,15 @@ namespace FlowtideDotNet.Core.Tests
             await @operator.Initialize("1", 0, 0, vertexHandler, null);
         }
 
+        // Saves the storage checkpoint, as a stream does after a barrier
+        public async Task SaveCheckpoint()
+        {
+            if (_stateManager != null)
+            {
+                await _stateManager.CheckpointAsync();
+            }
+        }
+
         public void ClearCache()
         {
             if (_stateManager != null)

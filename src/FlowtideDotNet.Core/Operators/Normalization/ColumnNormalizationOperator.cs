@@ -17,6 +17,7 @@ using FlowtideDotNet.Core.ColumnStore.Comparers;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Compute.Columnar;
+using FlowtideDotNet.Core.Operators.LateMaterialization;
 using FlowtideDotNet.Core.Utils;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.StateManager;
@@ -43,6 +44,8 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private ICounter<long>? _eventsProcessed;
 
         private List<int> _emitList;
+        private readonly RowStoreHostLayout? _hostLayout;
+        private RowStoreHost? _host;
 
         public ColumnNormalizationOperator(
             NormalizationRelation normalizationRelation,
@@ -81,6 +84,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     }
                 }
             }
+            _hostLayout = RowStoreHost.ReadLayout(normalizationRelation.Hint.Optimizations.Properties, normalizationRelation.Input.OutputLength, _keyColumns, _emitList);
         }
 
         public override string DisplayName => "Normalize";
@@ -102,10 +106,95 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             await allOutput!.FlushAsync();
 #endif
 
+            if (_host != null)
+            {
+                await _host.BeginCheckpointAsync();
+                return;
+            }
             await _tree!.Commit();
         }
 
-        public override async IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        public override Task BeforeSaveCheckpoint()
+        {
+            // The sinks are done, retired rows go with this checkpoint
+            if (_host != null)
+            {
+                return _host.CheckpointAsync();
+            }
+            return Task.CompletedTask;
+        }
+
+        public override async ValueTask DisposeAsync()
+        {
+            _host?.Dispose();
+            _host = null;
+            await base.DisposeAsync();
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ReceiveHosted(StreamEventBatch msg)
+        {
+            Debug.Assert(_host != null);
+            Debug.Assert(_eventsProcessed != null);
+            Debug.Assert(_eventsCounter != null);
+
+            _eventsProcessed.Add(msg.Data.Weights.Count);
+            var result = await _host.ApplyAsync(msg.Data.EventBatchData, msg.Data.Weights, _filter);
+            EventBatchWeighted? inserts;
+            EventBatchWeighted? deletes;
+            try
+            {
+                (inserts, deletes) = _host.CreateBatches(msg.Data.EventBatchData, result, _emitList);
+            }
+            catch
+            {
+                // Stored and not sent, the checkpoint must not keep it
+                _host.MarkFailed();
+                throw;
+            }
+            try
+            {
+                if (inserts != null)
+                {
+                    var batch = inserts;
+                    inserts = null;
+                    yield return new StreamEventBatch(batch);
+                }
+                if (deletes != null)
+                {
+                    var batch = deletes;
+                    deletes = null;
+                    yield return new StreamEventBatch(batch);
+                }
+            }
+            finally
+            {
+                if (inserts != null || deletes != null)
+                {
+                    // Stored and never read, no checkpoint keeps it
+                    _host.MarkFailed();
+                }
+                Release(inserts);
+                Release(deletes);
+            }
+            _eventsCounter.Add(msg.Data.Weights.Count);
+        }
+
+        private static void Release(EventBatchWeighted? batch)
+        {
+            if (batch != null)
+            {
+                batch.Rent(1);
+                batch.Return();
+            }
+        }
+
+        public override IAsyncEnumerable<StreamEventBatch> OnRecieve(StreamEventBatch msg, long time)
+        {
+            // Chosen at initialization, one branch per batch
+            return _host != null ? ReceiveHosted(msg) : ReceivePlain(msg);
+        }
+
+        private async IAsyncEnumerable<StreamEventBatch> ReceivePlain(StreamEventBatch msg)
         {
             Debug.Assert(_eventsProcessed != null);
             Debug.Assert(_eventsCounter != null);
@@ -340,6 +429,15 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _eventsProcessed = Metrics.CreateCounter<long>("events_processed");
             }
 
+            if (_hostLayout != null)
+            {
+                // Rows are stored behind references, by key
+                _host?.Dispose();
+                _host = null;
+                // A row that is not added leaves, also at weight zero
+                _host = await RowStoreHost.CreateAsync(stateManagerClient, "input_keyed", "rows", _hostLayout, new RowStoreOptions() { Mode = RowStoreMode.Keyed }, MemoryAllocator, zeroWeightDeletes: true);
+                return;
+            }
             _tree = await stateManagerClient.GetOrCreateTree("input",
                 new BPlusTreeOptions<ColumnRowReference, ColumnRowReference, NormalizeKeyStorage, NormalizeValueStorage>()
                 {

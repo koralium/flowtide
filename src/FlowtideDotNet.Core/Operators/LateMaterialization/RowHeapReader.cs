@@ -16,6 +16,13 @@ using FlowtideDotNet.Storage.StateManager.Internal.Sync;
 
 namespace FlowtideDotNet.Core.Operators.LateMaterialization
 {
+    // Sees stored rows in their page, while the page is held
+    internal interface IRowHeapVisitor
+    {
+        // pageRows[j] is the row at sorted position first + j
+        void VisitRows(EventBatchData page, int[] pageRows, int first, int length);
+    }
+
     // One per participant, used by one thread
     internal sealed class RowHeapReader : IDisposable
     {
@@ -102,6 +109,89 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                 run = CopyPage(page, run, runs, columns, output);
             }
             return ValueTask.CompletedTask;
+        }
+
+        // Shows each page's rows in place, by sorted position
+        public ValueTask VisitAsync(IColumn references, int count, int[] rowOrder, IRowHeapVisitor visitor)
+        {
+            if (count < 0 || count > references.Count)
+            {
+                throw new ArgumentException($"{count} references are asked for, the column holds {references.Count}.", nameof(count));
+            }
+            if (rowOrder.Length < count)
+            {
+                throw new ArgumentException($"The row order has room for {rowOrder.Length} rows, {count} are asked for.", nameof(rowOrder));
+            }
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            if (count == 0)
+            {
+                return ValueTask.CompletedTask;
+            }
+            int nulls = SortByPage(references, count, rowOrder);
+            if (nulls > 0)
+            {
+                throw new InvalidOperationException($"Row heap '{_heap.Name}' got {nulls} null references to visit, a visit needs a row for each.");
+            }
+            int runs = FindPages(0, count, rowOrder);
+            _heap.Options.PagesResolvedHookForTests?.Invoke();
+            int run = 0;
+            while (run < runs)
+            {
+                if (!_heap.Client.TryGet(_heap.Client.FirstPageId + _runPages[run], _window, out var page))
+                {
+                    return VisitAsync_Slow(run, runs, visitor);
+                }
+                run = VisitPage(page, run, runs, visitor);
+            }
+            return ValueTask.CompletedTask;
+        }
+
+        private async ValueTask VisitAsync_Slow(int run, int runs, IRowHeapVisitor visitor)
+        {
+            while (run < runs)
+            {
+                long pageId = _heap.Client.FirstPageId + _runPages[run];
+                if (!_heap.Client.TryGet(pageId, _window, out var page))
+                {
+                    _coldLoads++;
+                    page = await _heap.Client.GetAsync(pageId, _window).ConfigureAwait(false);
+                }
+                run = VisitPage(page, run, runs, visitor);
+            }
+        }
+
+        // Shows one page's rows, returns the run after its last
+        private int VisitPage(RowHeapPage page, int run, int runs, IRowHeapVisitor visitor)
+        {
+            try
+            {
+                long number = _runPages[run];
+                var map = page.Map;
+                int first = _runStarts[run];
+                int length = 0;
+                do
+                {
+                    int start = _runStarts[run];
+                    int end = _runStarts[run + 1];
+                    if (map == null)
+                    {
+                        FindRows(page, start, end, length);
+                    }
+                    else
+                    {
+                        FindMergedRows(map, start, end, length);
+                    }
+                    length += end - start;
+                    run++;
+                }
+                while (run < runs && _runPages[run] == number);
+                visitor.VisitRows(page.Data, _lookup, first, length);
+                return run;
+            }
+            finally
+            {
+                _window.Release(page);
+            }
         }
 
         private async ValueTask GatherAsync_Slow(int run, int runs, IReadOnlyList<int> columns, Column[] output)

@@ -41,6 +41,7 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
 
         private IColumn[]? _keyLookupColumns;
         private EventBatchData? _keyLookupBatch;
+        private readonly object _keyLookupLock = new object();
         /// <summary>
         /// Dictionary used for temporary object lookup before the objects
         /// have been passed to the underlying storage.
@@ -142,22 +143,66 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
                 return ValueTask.FromResult(val);
             }
 
-            _keyLookupColumns[_keyIndex].UpdateAt(0, new StringValue(key));
-            var lookupValueTask = LookupRowValue(new ColumnStore.TreeStorage.ColumnRowReference()
-            {
-                referenceBatch = _keyLookupBatch,
-                RowIndex = 0
-            });
+            var lookupValueTask = LookupRowIsOwned ? LookupHostedKey(key) : LookupSharedKey(key);
             if (lookupValueTask.IsCompletedSuccessfully)
             {
                 var value = lookupValueTask.Result;
                 if (value.found)
                 {
-                    return ValueTask.FromResult((T?)_lookupBatchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex));
+                    if (!LookupRowIsOwned)
+                    {
+                        return ValueTask.FromResult((T?)_lookupBatchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex));
+                    }
+                    return ValueTask.FromResult((T?)ConvertLookedUpRow(value.value));
                 }
                 return ValueTask.FromResult<T?>(default);
             }
             return LookupStoredObject_Slow(lookupValueTask);
+        }
+
+        private ValueTask<(bool found, ColumnRowReference value)> LookupSharedKey(string key)
+        {
+            Debug.Assert(_keyLookupColumns != null);
+            Debug.Assert(_keyLookupBatch != null);
+
+            _keyLookupColumns[_keyIndex].UpdateAt(0, new StringValue(key));
+            return LookupRowValue(new ColumnRowReference()
+            {
+                referenceBatch = _keyLookupBatch,
+                RowIndex = 0
+            });
+        }
+
+        // The row store copies the key before the call returns
+        private ValueTask<(bool found, ColumnRowReference value)> LookupHostedKey(string key)
+        {
+            Debug.Assert(_keyLookupColumns != null);
+
+            if (Monitor.TryEnter(_keyLookupLock))
+            {
+                try
+                {
+                    return LookupSharedKey(key);
+                }
+                finally
+                {
+                    Monitor.Exit(_keyLookupLock);
+                }
+            }
+            // Another lookup has the shared key, this one brings its own
+            var columns = new IColumn[_keyLookupColumns.Length];
+            for (int i = 0; i < columns.Length; i++)
+            {
+                columns[i] = _keyLookupColumns[i];
+            }
+            using var keyColumn = Column.Create(MemoryAllocator);
+            keyColumn.Add(new StringValue(key));
+            columns[_keyIndex] = keyColumn;
+            return LookupRowValue(new ColumnRowReference()
+            {
+                referenceBatch = new EventBatchData(columns),
+                RowIndex = 0
+            });
         }
 
         /// <summary>
@@ -172,7 +217,24 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             {
                 return default;
             }
-            return (T)_lookupBatchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex);
+            if (!LookupRowIsOwned)
+            {
+                return (T)_lookupBatchConverter.ConvertToDotNetObject(value.value.referenceBatch.Columns, value.value.RowIndex);
+            }
+            return (T?)ConvertLookedUpRow(value.value);
+        }
+
+        // A row fetched from the row store belongs to us
+        private object ConvertLookedUpRow(ColumnRowReference row)
+        {
+            try
+            {
+                return _lookupBatchConverter.ConvertToDotNetObject(row.referenceBatch.Columns, row.RowIndex);
+            }
+            finally
+            {
+                row.referenceBatch.Dispose();
+            }
         }
 
         protected override async IAsyncEnumerable<DeltaReadEvent> DeltaLoad(Func<Task> EnterCheckpointLock, Action ExitCheckpointLock, CancellationToken cancellationToken, [EnumeratorCancellation] CancellationToken enumeratorCancellationToken = default)
@@ -375,6 +437,14 @@ namespace FlowtideDotNet.Core.Sources.Generic.Internal
             }
             else
             {
+                // A delete has only its key, the rest is null
+                for (int i = 0; i < columnsWithKeyLast.Length; i++)
+                {
+                    if (i != _keyIndex)
+                    {
+                        columnsWithKeyLast[i].Add(NullValue.Instance);
+                    }
+                }
                 weights.Add(-1);
             }
             iterations.Add(0);

@@ -144,12 +144,26 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public void InsertFrom(ColumnRowReference[] keys, ReadOnlySpan<int> sortedLookup, ReadOnlySpan<int> targetPositions, Span<int> lookupBuffer)
         {
-            throw new NotImplementedException();
+            if (sortedLookup.Length == 0)
+            {
+                return;
+            }
+            // The rows to insert, all from one batch
+            var source = keys[sortedLookup[0]].referenceBatch;
+            for (int j = 0; j < sortedLookup.Length; j++)
+            {
+                lookupBuffer[j] = keys[sortedLookup[j]].RowIndex;
+            }
+            var rows = lookupBuffer.Slice(0, sortedLookup.Length);
+            NormalizeBulkInsert.InsertFrom(_data, source, _columnsToStore, rows, targetPositions);
         }
 
         public void DeleteBatch(ReadOnlySpan<int> positions)
         {
-            throw new NotImplementedException();
+            for (int i = 0; i < _data.Columns.Count; i++)
+            {
+                _data.Columns[i].DeleteBatch(positions);
+            }
         }
     }
 }
