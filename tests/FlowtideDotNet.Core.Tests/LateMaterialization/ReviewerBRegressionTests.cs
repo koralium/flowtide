@@ -317,6 +317,57 @@ public class ReviewerBRegressionTests : OperatorTestBase
     }
 
     [Fact]
+    public async Task APlainReloadKeepsItsKeyColumnUntilTheDeletesAreSent()
+    {
+        var source = new Source(hosted: false);
+        await InitializeOperator(source);
+        var target = new ImmediateTarget();
+        using var output = Output(source, target);
+        var sent = new List<string>();
+        target.BeforeReturn = message =>
+        {
+            var columns = message.Data.EventBatchData.Columns;
+            sent.Add($"{message.Data.Weights[0]}: {columns[0].GetValueAt(0, default).AsLong}|{columns[2].GetValueAt(0, default).AsString}");
+        };
+        source.Batches.Enqueue(Batch(1, "old"));
+        try
+        {
+            await source.RunFull(output);
+            source.MarkLoaded();
+            source.Batches.Enqueue(Batch(1, "new"));
+            await source.RunFull(output);
+            Assert.Equal(["1: 1|old", "1: 1|new", "-1: 1|old"], sent);
+        }
+        finally
+        {
+            await source.DisposeAsync();
+        }
+    }
+
+    [Fact]
+    public async Task APlainLoadWhoseSendFailsFreesItsInputColumns()
+    {
+        var source = new Source(hosted: false);
+        await InitializeOperator(source);
+        var target = new ImmediateTarget();
+        using var output = Output(source, target);
+        target.BeforeReturn = _ => throw new InvalidOperationException("the send failed");
+        var batch = Batch(1, "not sent");
+        source.Batches.Enqueue(batch);
+        try
+        {
+            var send = await Assert.ThrowsAsync<InvalidOperationException>(() => source.RunFull(output));
+            Assert.Equal("the send failed", send.Message);
+            Assert.All(batch.EventBatchData.Columns, column => Assert.True(IsDisposed(column)));
+        }
+        finally
+        {
+            await source.DisposeAsync();
+            DisposeBatch(batch);
+        }
+    }
+
+    [Fact]
     public async Task AFailedDeleteSendAfterAReloadClosesTheHost()
     {
         var source = new Source();
@@ -406,10 +457,12 @@ public class ReviewerBRegressionTests : OperatorTestBase
         Assert.False(disposedAtDelete);
     }
 
-    [Fact]
-    public async Task UnchangedFullLoadDisposesEveryInputColumn()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task UnchangedFullLoadDisposesEveryInputColumn(bool hosted)
     {
-        var source = new Source();
+        var source = new Source(hosted);
         await InitializeOperator(source);
         using var output = Output(source, new ImmediateTarget());
         source.Batches.Enqueue(Batch(1, "same"));

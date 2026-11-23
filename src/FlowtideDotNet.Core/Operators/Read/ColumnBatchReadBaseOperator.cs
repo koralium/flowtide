@@ -774,12 +774,14 @@ namespace FlowtideDotNet.Core.Operators.Read
                             {
                                 if (exists)
                                 {
-                                    if (CompareRowReference(input, current) == 0)
+                                    // The filter may read columns that are not stored
+                                    bool passes = _filter == null || _filter(input.referenceBatch, input.RowIndex);
+                                    if (passes && CompareRowReference(input, current) == 0)
                                     {
                                         return (current, GenericWriteOperation.None);
                                     }
                                     bool updated = false;
-                                    if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                                    if (passes)
                                     {
                                         weights.Add(1);
                                         iterations.Add(0);
@@ -997,157 +999,166 @@ namespace FlowtideDotNet.Core.Operators.Read
 
             await foreach (var columnReadEvent in FullLoad(output.CancellationToken))
             {
-                PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(MemoryAllocator);
-                PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
-                PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-                PrimitiveList<int> deleteBatchKeyOffsets = new PrimitiveList<int>(MemoryAllocator);
-
-                List<IColumn> deleteBatchColumns = new List<IColumn>();
-
-                lastWatermark = columnReadEvent.Watermark;
-
-                for (int i = 0; i < _otherColumns.Count; i++)
+                // Held until the inserts and the deletes are both sent
+                columnReadEvent.BatchData.Rent(1);
+                try
                 {
-                    deleteBatchColumns.Add(Column.Create(MemoryAllocator));
-                }
+                    PrimitiveList<int> toEmitOffsets = new PrimitiveList<int>(MemoryAllocator);
+                    PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
+                    PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
+                    PrimitiveList<int> deleteBatchKeyOffsets = new PrimitiveList<int>(MemoryAllocator);
 
-                for (int i = 0; i < columnReadEvent.BatchData.Count; i++)
-                {
-                    if (columnReadEvent.BatchData.Weights[i] < 0)
-                    {
-                        throw new NotSupportedException("Full load does not support deletions");
-                    }
-                    var columnRef = new ColumnRowReference() { referenceBatch = columnReadEvent.BatchData.EventBatchData, RowIndex = i };
+                    List<IColumn> deleteBatchColumns = new List<IColumn>();
 
-                    // Full load temp tree is only used to calculate deltas between full loads
-                    // Initial time there is no requirement to save it
-                    if (_initialSent.Value)
+                    lastWatermark = columnReadEvent.Watermark;
+
+                    for (int i = 0; i < _otherColumns.Count; i++)
                     {
-                        await _fullLoadTempTree.Upsert(columnRef, columnRef);
+                        deleteBatchColumns.Add(Column.Create(MemoryAllocator));
                     }
 
-                    await _persistentTree.RMWNoResult(columnRef, columnRef, (input, current, exists) =>
+                    for (int i = 0; i < columnReadEvent.BatchData.Count; i++)
                     {
-                        if (exists)
+                        if (columnReadEvent.BatchData.Weights[i] < 0)
                         {
-                            // TODO: Check that the data has changed
-                            if (CompareRowReference(input, current) != 0)
-                            {
-                                bool updated = false;
-                                if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
-                                {
-                                    weights.Add(1);
-                                    iterations.Add(0);
-                                    toEmitOffsets.Add(input.RowIndex);
-                                    updated = true;
-                                }
+                            throw new NotSupportedException("Full load does not support deletions");
+                        }
+                        var columnRef = new ColumnRowReference() { referenceBatch = columnReadEvent.BatchData.EventBatchData, RowIndex = i };
 
-                                deleteBatchKeyOffsets.Add(input.RowIndex);
-                                for (int k = 0; k < _otherColumns.Count; k++)
+                        // Full load temp tree is only used to calculate deltas between full loads
+                        // Initial time there is no requirement to save it
+                        if (_initialSent.Value)
+                        {
+                            await _fullLoadTempTree.Upsert(columnRef, columnRef);
+                        }
+
+                        await _persistentTree.RMWNoResult(columnRef, columnRef, (input, current, exists) =>
+                        {
+                            if (exists)
+                            {
+                                // An equal row that fails the filter is taken back
+                                bool passes = _filter == null || _filter(input.referenceBatch, input.RowIndex);
+                                if (!passes || CompareRowReference(input, current) != 0)
                                 {
-                                    deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                    bool updated = false;
+                                    if (passes)
+                                    {
+                                        weights.Add(1);
+                                        iterations.Add(0);
+                                        toEmitOffsets.Add(input.RowIndex);
+                                        updated = true;
+                                    }
+
+                                    deleteBatchKeyOffsets.Add(input.RowIndex);
+                                    for (int k = 0; k < _otherColumns.Count; k++)
+                                    {
+                                        deleteBatchColumns[k].Add(current.referenceBatch.Columns[k].GetValueAt(current.RowIndex, default));
+                                    }
+                                    return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
                                 }
-                                return (input, updated ? GenericWriteOperation.Upsert : GenericWriteOperation.Delete);
+                                return (input, GenericWriteOperation.None);
+                            }
+
+                            if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                            {
+                                weights.Add(1);
+                                iterations.Add(0);
+                                toEmitOffsets.Add(input.RowIndex);
+                                return (input, GenericWriteOperation.Upsert);
                             }
                             return (input, GenericWriteOperation.None);
-                        }
+                        });
+                    }
 
-                        if (_filter == null || _filter(input.referenceBatch, input.RowIndex))
+                    if (weights.Count > 0)
+                    {
+                        IColumn[] columns = new IColumn[_emitList.Count];
+                        bool shouldDisposeOffsets = true;
+                        for (int k = 0; k < _emitList.Count; k++)
                         {
-                            weights.Add(1);
-                            iterations.Add(0);
-                            toEmitOffsets.Add(input.RowIndex);
-                            return (input, GenericWriteOperation.Upsert);
-                        }
-                        return (input, GenericWriteOperation.None);
-                    });
-                }
-
-                if (weights.Count > 0)
-                {
-                    IColumn[] columns = new IColumn[_emitList.Count];
-                    bool shouldDisposeOffsets = true;
-                    for (int k = 0; k < _emitList.Count; k++)
-                    {
-                        columns[k] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, MemoryAllocator, out var offsetUsed);
-                        if (offsetUsed)
-                        {
-                            shouldDisposeOffsets = false;
-                        }
-                    }
-                    DisposeUnusedColumns(columnReadEvent.BatchData.EventBatchData);
-                    if (shouldDisposeOffsets)
-                    {
-                        toEmitOffsets.Dispose();
-                    }
-                    // Send out the data
-                    _eventsCounter.Add(weights.Count);
-                    await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
-                    sentData = true;
-
-                    if (_watermarkOutputMode == WatermarkOutputMode.OnEachBatch)
-                    {
-                        // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
-                        await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
-                        batchId++;
-                    }
-                }
-                else
-                {
-                    weights.Dispose();
-                    iterations.Dispose();
-                    toEmitOffsets.Dispose();
-                }
-
-                if (deleteBatchKeyOffsets.Count > 0)
-                {
-                    PrimitiveList<int> deleteWeights = new PrimitiveList<int>(MemoryAllocator);
-                    PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(MemoryAllocator);
-
-                    for (int i = 0; i < deleteBatchKeyOffsets.Count; i++)
-                    {
-                        deleteWeights.Add(-1);
-                        deleteIterations.Add(0);
-                    }
-                    bool shouldDisposeOffsets = true;
-                    IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
-                    for (int i = 0; i < _primaryKeyColumns.Count; i++)
-                    {
-                        var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);
-                        if (emitIndex >= 0)
-                        {
-                            deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, MemoryAllocator, out var offsetUsed);
+                            columns[k] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_emitList[k]], toEmitOffsets, MemoryAllocator, out var offsetUsed);
                             if (offsetUsed)
                             {
                                 shouldDisposeOffsets = false;
                             }
                         }
+                        DisposeUnusedColumns(columnReadEvent.BatchData.EventBatchData);
+                        if (shouldDisposeOffsets)
+                        {
+                            toEmitOffsets.Dispose();
+                        }
+                        // Send out the data
+                        _eventsCounter.Add(weights.Count);
+                        await output.SendAsync(new StreamEventBatch(new EventBatchWeighted(weights, iterations, new EventBatchData(columns))));
+                        sentData = true;
+
+                        if (_watermarkOutputMode == WatermarkOutputMode.OnEachBatch)
+                        {
+                            // If we are in ON_EACH_BATCH mode, we emit a watermark after each batch
+                            await output.SendWatermark(CreateWatermark(lastWatermark, batchId));
+                            batchId++;
+                        }
                     }
-                    if (shouldDisposeOffsets)
+                    else
+                    {
+                        weights.Dispose();
+                        iterations.Dispose();
+                        toEmitOffsets.Dispose();
+                    }
+
+                    if (deleteBatchKeyOffsets.Count > 0)
+                    {
+                        PrimitiveList<int> deleteWeights = new PrimitiveList<int>(MemoryAllocator);
+                        PrimitiveList<uint> deleteIterations = new PrimitiveList<uint>(MemoryAllocator);
+
+                        for (int i = 0; i < deleteBatchKeyOffsets.Count; i++)
+                        {
+                            deleteWeights.Add(-1);
+                            deleteIterations.Add(0);
+                        }
+                        bool shouldDisposeOffsets = true;
+                        IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
+                        for (int i = 0; i < _primaryKeyColumns.Count; i++)
+                        {
+                            var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);
+                            if (emitIndex >= 0)
+                            {
+                                deleteColumns[emitIndex] = ColumnWithOffset.CreateFlattened(columnReadEvent.BatchData.EventBatchData.Columns[_primaryKeyColumns[i]], deleteBatchKeyOffsets, MemoryAllocator, out var offsetUsed);
+                                if (offsetUsed)
+                                {
+                                    shouldDisposeOffsets = false;
+                                }
+                            }
+                        }
+                        if (shouldDisposeOffsets)
+                        {
+                            deleteBatchKeyOffsets.Dispose();
+                        }
+                        for (int i = 0; i < _otherColumns.Count; i++)
+                        {
+                            var emitIndex = _emitList.IndexOf(_otherColumns[i]);
+                            if (emitIndex >= 0)
+                            {
+                                deleteColumns[emitIndex] = deleteBatchColumns[i];
+                            }
+                        }
+
+                        _eventsCounter.Add(deleteWeights.Count);
+                        var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
+                        await output.SendAsync(outputBatch);
+                        sentData = true;
+                    }
+                    else
                     {
                         deleteBatchKeyOffsets.Dispose();
                     }
-                    for (int i = 0; i < _otherColumns.Count; i++)
-                    {
-                        var emitIndex = _emitList.IndexOf(_otherColumns[i]);
-                        if (emitIndex >= 0)
-                        {
-                            deleteColumns[emitIndex] = deleteBatchColumns[i];
-                        }
-                    }
-
-                    _eventsCounter.Add(deleteWeights.Count);
-                    var outputBatch = new StreamEventBatch(new EventBatchWeighted(deleteWeights, deleteIterations, new EventBatchData(deleteColumns)));
-                    await output.SendAsync(outputBatch);
-                    sentData = true;
                 }
-                else
+                finally
                 {
-                    deleteBatchKeyOffsets.Dispose();
+                    columnReadEvent.BatchData.Weights.Dispose();
+                    columnReadEvent.BatchData.Iterations.Dispose();
+                    columnReadEvent.BatchData.Return();
                 }
-
-                columnReadEvent.BatchData.Weights.Dispose();
-                columnReadEvent.BatchData.Iterations.Dispose();
             }
 
             // We only compute delta between full loads after the initial batch
