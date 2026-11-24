@@ -10,7 +10,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Compute;
+using FlowtideDotNet.Core.Compute.Internal;
 using FlowtideDotNet.Core.Optimizer;
+using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Engine.LateMaterialization
@@ -28,21 +31,37 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
 
         private readonly IReadOnlyList<Relation> _relations;
         private readonly Dictionary<string, Relation> _hosts;
+        private readonly IFunctionsRegister _functions;
+        private readonly int _parallelism;
         // The store behind each output column, null for a value
         private readonly Dictionary<Relation, string?[]> _columns = new Dictionary<Relation, string?[]>(ReferenceEqualityComparer.Instance);
         private readonly HashSet<Relation> _visiting = new HashSet<Relation>(ReferenceEqualityComparer.Instance);
         private readonly List<Frame> _stack = new List<Frame>();
 
-        private RowReferencePlanValidator(IReadOnlyList<Relation> relations, Dictionary<string, Relation> hosts)
+        private RowReferencePlanValidator(IReadOnlyList<Relation> relations, Dictionary<string, Relation> hosts, IFunctionsRegister functions, int parallelism)
         {
             _relations = relations;
             _hosts = hosts;
+            _functions = functions;
+            _parallelism = parallelism;
         }
 
         // Throws when a reference goes where it cannot be taken
-        public static void Validate(IReadOnlyList<Relation> relations)
+        public static void Validate(IReadOnlyList<Relation> relations, IFunctionsRegister? functions = null, int parallelism = 1, bool columnStore = true)
         {
-            var validator = new RowReferencePlanValidator(relations, RowStoreHostCollector.Collect(relations));
+            var hosts = RowStoreHostCollector.Collect(relations);
+            if (hosts.Count > 0 && !columnStore)
+            {
+                throw new InvalidOperationException("A plan with a row store needs the column store, the row operators cannot take row references.");
+            }
+            if (functions == null)
+            {
+                // Left out, the built-in functions are assumed
+                var builtIn = new FunctionsRegister();
+                BuiltinFunctions.RegisterFunctions(builtIn);
+                functions = builtIn;
+            }
+            var validator = new RowReferencePlanValidator(relations, hosts, functions, parallelism);
             for (int i = 0; i < relations.Count; i++)
             {
                 validator.Visit(relations[i], null!);
@@ -94,6 +113,18 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                     return FetchColumns(fetch);
                 case ReferenceRelation reference:
                     return ReferenceColumns(reference);
+                case FilterRelation filter:
+                    return FilterColumns(filter);
+                case ProjectRelation project:
+                    return ProjectColumns(project);
+                case MergeJoinRelation join:
+                    return JoinColumns(join);
+                case ExchangeRelation exchange:
+                    return ExchangeColumns(exchange);
+                case StandardOutputExchangeReferenceRelation exchangeOutput:
+                    return ExchangeOutputColumns(exchangeOutput);
+                case SetRelation set when set.Operation == SetOperation.UnionAll:
+                    return UnionColumns(set);
                 case RootRelation root:
                     return _columns.TryGetValue(root.Input, out var rootInput) ? rootInput : new string?[root.Input.OutputLength];
                 default:
@@ -109,6 +140,227 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                 throw new InvalidOperationException(
                     $"A {Name(relation)} gets row references of row store '{inputs.StoreName}' in column {inputs.Column} of an input, it cannot take them. Read the stored columns with a fetch before it.");
             }
+        }
+
+        private string?[] Input(Relation input)
+        {
+            return _columns.TryGetValue(input, out var known) ? known : new string?[input.OutputLength];
+        }
+
+        private static bool HasReferences(string?[] columns)
+        {
+            for (int i = 0; i < columns.Length; i++)
+            {
+                if (columns[i] != null)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // A carrier passes references on and never reads them
+        private string?[] FilterColumns(FilterRelation filter)
+        {
+            var input = Input(filter.Input);
+            if (!HasReferences(input))
+            {
+                return new string?[filter.OutputLength];
+            }
+            RowReferenceExpressionCheck.Check(filter, "condition", filter.Condition, input, _functions);
+            return Emitted(filter, input);
+        }
+
+        private string?[] ProjectColumns(ProjectRelation project)
+        {
+            var input = Input(project.Input);
+            if (!HasReferences(input))
+            {
+                return new string?[project.OutputLength];
+            }
+            var columns = new string?[input.Length + project.Expressions.Count];
+            Array.Copy(input, columns, input.Length);
+            for (int i = 0; i < project.Expressions.Count; i++)
+            {
+                // A plain field reference gives the reference on
+                if (project.Expressions[i] is DirectFieldReference direct &&
+                    direct.ReferenceSegment is StructReferenceSegment segment &&
+                    segment.Child == null &&
+                    segment.Field >= 0 && segment.Field < input.Length)
+                {
+                    columns[input.Length + i] = input[segment.Field];
+                }
+                else
+                {
+                    RowReferenceExpressionCheck.Check(project, "expressions", project.Expressions[i], input, _functions);
+                }
+            }
+            return Emitted(project, columns);
+        }
+
+        private string?[] JoinColumns(MergeJoinRelation join)
+        {
+            var left = Input(join.Left);
+            var right = Input(join.Right);
+            if (!HasReferences(left) && !HasReferences(right))
+            {
+                return new string?[join.OutputLength];
+            }
+            if (join.MultiJoinGroup == null && _parallelism > 1)
+            {
+                throw new InvalidOperationException(
+                    "A merge join gets row references and the stream runs with parallelism set on the builder, that partitions rows as row events and a row reference cannot be one. Fetch the stored columns before the join, or parallelize in the plan with exchanges.");
+            }
+            var both = new string?[left.Length + right.Length];
+            Array.Copy(left, both, left.Length);
+            Array.Copy(right, 0, both, left.Length, right.Length);
+            for (int i = 0; i < join.LeftKeys.Count; i++)
+            {
+                RowReferenceExpressionCheck.Check(join, "keys", join.LeftKeys[i], both, _functions);
+            }
+            for (int i = 0; i < join.RightKeys.Count; i++)
+            {
+                RowReferenceExpressionCheck.Check(join, "keys", join.RightKeys[i], both, _functions);
+            }
+            if (join.PostJoinFilter != null)
+            {
+                RowReferenceExpressionCheck.Check(join, "condition", join.PostJoinFilter, both, _functions);
+            }
+            if (join.Type == JoinType.LeftMark)
+            {
+                // The mark is a value
+                var marked = new string?[left.Length + 1];
+                Array.Copy(left, marked, left.Length);
+                return Emitted(join, marked);
+            }
+            return Emitted(join, both);
+        }
+
+        private string?[] ExchangeColumns(ExchangeRelation exchange)
+        {
+            var input = Input(exchange.Input);
+            if (!HasReferences(input))
+            {
+                return new string?[exchange.OutputLength];
+            }
+            for (int i = 0; i < exchange.Targets.Count; i++)
+            {
+                if (exchange.Targets[i] is not StandardOutputExchangeTarget)
+                {
+                    throw new InvalidOperationException(
+                        $"An exchange gets row references of row store '{First(input, out var column)}' in column {column} and sends them out of the stream, a reference is only good next to its store. Fetch the stored columns before it.");
+                }
+            }
+            if (exchange.ExchangeKind is ScatterExchangeKind scatter)
+            {
+                // Rows are routed on values, never on a reference
+                for (int i = 0; i < scatter.Fields.Count; i++)
+                {
+                    RowReferenceExpressionCheck.Check(exchange, "scatter fields", scatter.Fields[i], input, _functions);
+                }
+            }
+            else if (exchange.ExchangeKind is not BroadcastExchangeKind)
+            {
+                throw new InvalidOperationException(
+                    $"An exchange of kind {exchange.ExchangeKind.Type} gets row references of row store '{First(input, out var column)}' in column {column}, only scatter and broadcast exchanges pass them on.");
+            }
+            // At run time an exchange sends its input as it is
+            if (exchange.EmitSet)
+            {
+                throw new InvalidOperationException(
+                    $"An exchange gets row references of row store '{First(input, out var column)}' in column {column} and has an emit, the emit is not applied when the stream runs.");
+            }
+            return input;
+        }
+
+        private string?[] ExchangeOutputColumns(StandardOutputExchangeReferenceRelation output)
+        {
+            if (output.RelationId < 0 || output.RelationId >= _relations.Count)
+            {
+                return new string?[output.OutputLength];
+            }
+            var columns = RootColumns(_relations[output.RelationId]);
+            if (columns == null || !HasReferences(columns))
+            {
+                return new string?[output.OutputLength];
+            }
+            // At run time the exchange's output is linked as it is
+            if (output.EmitSet)
+            {
+                throw new InvalidOperationException($"A reference to exchange {output.RelationId} has an emit and that exchange gives row references, the emit is not applied when the stream runs.");
+            }
+            if (output.ReferenceOutputLength != columns.Length)
+            {
+                throw new InvalidOperationException($"A reference to exchange {output.RelationId} says it has {output.ReferenceOutputLength} columns, the exchange gives {columns.Length} with its row references.");
+            }
+            return columns;
+        }
+
+        private string?[] UnionColumns(SetRelation set)
+        {
+            var first = Input(set.Inputs[0]);
+            bool references = HasReferences(first);
+            for (int i = 1; i < set.Inputs.Count; i++)
+            {
+                references |= HasReferences(Input(set.Inputs[i]));
+            }
+            if (!references)
+            {
+                return new string?[set.OutputLength];
+            }
+            for (int i = 1; i < set.Inputs.Count; i++)
+            {
+                var other = Input(set.Inputs[i]);
+                for (int c = 0; c < first.Length || c < other.Length; c++)
+                {
+                    var here = c < first.Length ? first[c] : null;
+                    var there = c < other.Length ? other[c] : null;
+                    if (here != there)
+                    {
+                        throw new InvalidOperationException(
+                            $"A union gets {Describe(here)} in column {c} of input 0 and {Describe(there)} in column {c} of input {i}, one fetch must be able to read the column. Fetch the stored columns before the union.");
+                    }
+                }
+            }
+            return Emitted(set, first);
+        }
+
+        private static string Describe(string? store)
+        {
+            return store == null ? "values" : $"row references of row store '{store}'";
+        }
+
+        private static string First(string?[] columns, out int column)
+        {
+            for (int i = 0; i < columns.Length; i++)
+            {
+                if (columns[i] != null)
+                {
+                    column = i;
+                    return columns[i]!;
+                }
+            }
+            column = -1;
+            return "";
+        }
+
+        // Columns of a numbered relation, null inside a loop
+        private string?[]? RootColumns(Relation target)
+        {
+            if (!_columns.TryGetValue(target, out var columns))
+            {
+                if (_visiting.Contains(target))
+                {
+                    return null;
+                }
+                // Visited as a root, not as this relation's input
+                var stack = new List<Frame>(_stack);
+                _stack.Clear();
+                Visit(target, null!);
+                _stack.AddRange(stack);
+                columns = _columns[target];
+            }
+            return columns;
         }
 
         private static string Name(Relation relation)
@@ -150,7 +402,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
 
         private string?[] FetchColumns(FetchRequiredColumnsRelation fetch)
         {
-            var input = _columns.TryGetValue(fetch.Input, out var known) ? known : new string?[fetch.Input.OutputLength];
+            var input = Input(fetch.Input);
             int length = input.Length;
             for (int i = 0; i < fetch.Fetches.Count; i++)
             {
@@ -206,26 +458,8 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
             {
                 return new string?[reference.OutputLength];
             }
-            var target = _relations[reference.RelationId];
-            if (!_columns.TryGetValue(target, out var columns))
-            {
-                if (_visiting.Contains(target))
-                {
-                    return new string?[reference.OutputLength];
-                }
-                // Visited as a root, not as this relation's input
-                var stack = new List<Frame>(_stack);
-                _stack.Clear();
-                Visit(target, null!);
-                _stack.AddRange(stack);
-                columns = _columns[target];
-            }
-            bool references = false;
-            for (int i = 0; i < columns.Length; i++)
-            {
-                references |= columns[i] != null;
-            }
-            if (!references)
+            var columns = RootColumns(_relations[reference.RelationId]);
+            if (columns == null || !HasReferences(columns))
             {
                 return new string?[reference.OutputLength];
             }

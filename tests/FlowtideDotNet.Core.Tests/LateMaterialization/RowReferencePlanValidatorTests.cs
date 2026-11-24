@@ -89,26 +89,6 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         }
 
         [Fact]
-        public void AFilterBetweenTheStoreAndTheFetchIsRefused()
-        {
-            var filter = new FilterRelation() { Condition = new BoolLiteral() { Value = true }, Input = Read("t", "rows", 2) };
-            Assert.Equal(
-                "A Filter relation gets row references of row store 'rows' in column 2 of an input, it cannot take them. Read the stored columns with a fetch before it.",
-                Refused(Write(Fetch(filter, 2, "rows", [0], [0, 1, 3]))));
-        }
-
-        [Fact]
-        public void AProjectOverAReferenceIsRefused()
-        {
-            var project = new ProjectRelation()
-            {
-                Input = Read("t", "rows", 2),
-                Expressions = [new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = 2 } }]
-            };
-            Assert.StartsWith("A Project relation gets row references of row store 'rows' in column 2 of an input", Refused(project));
-        }
-
-        [Fact]
         public void AReferenceInTheRightInputOfAJoinIsRefused()
         {
             var join = new JoinRelation()
@@ -206,18 +186,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         }
 
         [Fact]
-        public void AReferenceInAUnionAnExchangeOrALoopIsRefused()
+        public void AReferenceInASetOperationOrALoopIsRefused()
         {
-            var set = new SetRelation() { Inputs = [Read("t", "rows", 2), Read("u", null)], Operation = SetOperation.UnionAll };
+            var set = new SetRelation() { Inputs = [Read("t", "rows", 2), Read("u", "other", 2)], Operation = SetOperation.MinusPrimary };
             Assert.StartsWith("A Set relation gets row references of row store 'rows' in column 2 of an input", Refused(set));
-
-            var exchange = new ExchangeRelation()
-            {
-                Input = Read("t", "rows", 2),
-                ExchangeKind = new BroadcastExchangeKind(),
-                Targets = [new StandardOutputExchangeTarget() { PartitionIds = [0] }]
-            };
-            Assert.StartsWith("A Exchange relation gets row references of row store 'rows' in column 2 of an input", Refused(exchange));
 
             var iteration = new IterationRelation()
             {

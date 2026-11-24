@@ -410,7 +410,7 @@ namespace FlowtideDotNet.Core.Engine
             }
 
             // A row reference only goes where it can be taken
-            LateMaterialization.RowReferencePlanValidator.Validate(_plan.Relations);
+            LateMaterialization.RowReferencePlanValidator.Validate(_plan.Relations, _functionsRegister, _parallelism, _useColumnStore);
 
             SubstraitVisitor visitor = new SubstraitVisitor(
                 _plan,

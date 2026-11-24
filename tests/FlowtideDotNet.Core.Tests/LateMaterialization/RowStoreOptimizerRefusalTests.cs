@@ -46,7 +46,7 @@ public class RowStoreOptimizerRefusalTests
             Emit = [0, 1, 3]
         };
         var plan = new Plan { Relations = [fetch] };
-        Assert.Throws<InvalidOperationException>(() => RowReferencePlanValidator.Validate(plan.Relations));
+        RowReferencePlanValidator.Validate(plan.Relations);
 
         var exception = Record.Exception(() => PlanOptimizer.Optimize(plan));
 
