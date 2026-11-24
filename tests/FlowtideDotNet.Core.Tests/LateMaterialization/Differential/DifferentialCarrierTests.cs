@@ -249,14 +249,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             int width = a.OutputLength;
             var first = new MergeJoinRelation() { Left = a, Right = b, Type = JoinType.Inner, LeftKeys = [Field(1)], RightKeys = [Field(width)] };
             var join = new MergeJoinRelation() { Left = first, Right = c, Type = second, LeftKeys = [Field(width + 1)], RightKeys = [Field(2 * width)] };
-            Plan plan;
-            if (!hosted)
+            Relation output = join;
+            if (hosted)
             {
-                plan = Write(join, 12);
-            }
-            else
-            {
-                plan = Write(new FetchRequiredColumnsRelation()
+                output = new FetchRequiredColumnsRelation()
                 {
                     Input = join,
                     Fetches =
@@ -266,8 +262,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                         new RowStoreFetch() { ReferenceColumn = 8, StoreName = "c", Columns = [0, 1] }
                     ],
                     Emit = [0, 1, 9, 10, 3, 4, 12, 11, 6, 7, 13, 14]
-                }, 12);
+                };
             }
+            var plan = Write(output, 12);
             Assert.Equal(1, Core.Operators.Join.MultiJoin.MultiJoinMarker.Mark(plan, 8));
             return plan;
         }
