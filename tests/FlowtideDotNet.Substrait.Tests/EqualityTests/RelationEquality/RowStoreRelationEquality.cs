@@ -47,9 +47,11 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
         [Fact]
         public void AReadWithTheSameRowStoreIsEqual()
         {
-            Assert.Equal(Read("rows", 1, 2), Read("rows", 1, 2));
-            Assert.Equal(Read("rows", 1, 2).GetHashCode(), Read("rows", 1, 2).GetHashCode());
-            Assert.True(Read("rows", 1, 2) == Read("rows", 1, 2));
+            var first = Read("rows", 1, 2);
+            var second = Read("rows", 1, 2);
+            Assert.Equal(first, second);
+            Assert.Equal(first.GetHashCode(), second.GetHashCode());
+            Assert.True(first == second);
         }
 
         [Fact]
@@ -105,9 +107,11 @@ namespace FlowtideDotNet.Substrait.Tests.EqualityTests.RelationEquality
         [Fact]
         public void FetchRequiredColumnsEquality()
         {
-            Assert.Equal(Fetch(1, "rows", 0, 1), Fetch(1, "rows", 0, 1));
-            Assert.Equal(Fetch(1, "rows", 0, 1).GetHashCode(), Fetch(1, "rows", 0, 1).GetHashCode());
-            Assert.True(Fetch(1, "rows", 0, 1) == Fetch(1, "rows", 0, 1));
+            var first = Fetch(1, "rows", 0, 1);
+            var second = Fetch(1, "rows", 0, 1);
+            Assert.Equal(first, second);
+            Assert.Equal(first.GetHashCode(), second.GetHashCode());
+            Assert.True(first == second);
             Assert.True(Fetch(1, "rows", 0, 1) != Fetch(1, "rows", 1, 0));
             Assert.NotEqual(Fetch(1, "rows", 0, 1), Fetch(0, "rows", 0, 1));
             Assert.NotEqual(Fetch(1, "rows", 0, 1), Fetch(1, "other", 0, 1));

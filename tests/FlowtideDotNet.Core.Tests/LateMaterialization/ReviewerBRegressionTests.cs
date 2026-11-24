@@ -146,8 +146,7 @@ public class ReviewerBRegressionTests : OperatorTestBase
         {
             var relation = (ReadRelation)typeof(ColumnBatchReadBaseOperator)
                 .GetField("_readRelation", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(this)!;
-            if (hosted) relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [2] };
-            else relation.RowStore = null;
+            relation.RowStore = hosted ? new RowStoreDefinition() { Name = "rows", StoredColumns = [2] } : null;
         }
 
         public Task Cut() => OnCheckpoint(1);
