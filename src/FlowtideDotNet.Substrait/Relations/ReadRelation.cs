@@ -23,15 +23,22 @@ namespace FlowtideDotNet.Substrait.Relations
 
         public Expression? Filter { get; set; }
 
+        /// <summary>
+        /// Set when columns are kept in a row store.
+        /// </summary>
+        public RowStoreDefinition? RowStore { get; set; }
+
+        /// <summary>
+        /// The output length before the row store is applied.
+        /// </summary>
+        public int OutputLengthWithoutRowStore => EmitSet ? Emit.Count : BaseSchema.Names.Count;
+
         public override int OutputLength
         {
             get
             {
-                if (EmitSet)
-                {
-                    return Emit.Count;
-                }
-                return BaseSchema.Names.Count;
+                int length = OutputLengthWithoutRowStore;
+                return RowStore != null ? RowStore.OutputLength(length) : length;
             }
         }
 
@@ -52,7 +59,8 @@ namespace FlowtideDotNet.Substrait.Relations
                 base.Equals(other) &&
                 Equals(BaseSchema, other.BaseSchema) &&
                 Equals(NamedTable, other.NamedTable) &&
-                Equals(Filter, other.Filter);
+                Equals(Filter, other.Filter) &&
+                Equals(RowStore, other.RowStore);
         }
 
         public override int GetHashCode()
@@ -62,6 +70,7 @@ namespace FlowtideDotNet.Substrait.Relations
             code.Add(BaseSchema);
             code.Add(NamedTable);
             code.Add(Filter);
+            code.Add(RowStore);
 
             return code.ToHashCode();
         }
@@ -99,6 +108,7 @@ namespace FlowtideDotNet.Substrait.Relations
                 },
                 Filter = Filter,
                 Emit = Emit,
+                RowStore = RowStore?.Clone(),
                 Hint = Hint.Clone()
             };
         }

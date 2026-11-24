@@ -15,6 +15,7 @@ using FlowtideDotNet.Base.Engine;
 using FlowtideDotNet.Base.Vertices;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Exceptions;
+using FlowtideDotNet.Core.Operators.LateMaterialization;
 using FlowtideDotNet.Core.Operators.Aggregate;
 using FlowtideDotNet.Core.Operators.Aggregate.Column;
 using FlowtideDotNet.Core.Operators.Buffer;
@@ -75,6 +76,7 @@ namespace FlowtideDotNet.Core.Engine
         private readonly TaskScheduler? _taskScheduler;
         private readonly DistributedOptions? _distributedOptions;
         private readonly int _queueSize;
+        private readonly Dictionary<string, RowStoreHandle> _rowStoreHandles = new Dictionary<string, RowStoreHandle>();
         private readonly SubstreamCommunicationPointFactory _communicationPointFactory;
 
         private ExecutionDataflowBlockOptions DefaultBlockOptions
@@ -100,6 +102,39 @@ namespace FlowtideDotNet.Core.Engine
             {
                 GetOrBuildRelation(i);
             }
+            foreach (var handle in _rowStoreHandles.Values)
+            {
+                if (!handle.HasHost)
+                {
+                    throw new InvalidOperationException($"A fetch reads from row store '{handle.Name}', no relation of the plan hosts it.");
+                }
+            }
+        }
+
+        // One handle per store, for its host and fetches
+        private RowStoreHandle GetRowStoreHandle(string name)
+        {
+            if (!_rowStoreHandles.TryGetValue(name, out var handle))
+            {
+                handle = new RowStoreHandle(name);
+                _rowStoreHandles.Add(name, handle);
+            }
+            return handle;
+        }
+
+        private void AttachRowStore(IStreamVertex vertex, RowStoreDefinition rowStore, string relationName)
+        {
+            if (vertex is not IRowStoreHostVertex host)
+            {
+                throw new NotSupportedException($"{relationName} asks for row store '{rowStore.Name}', its operator '{vertex.GetType().Name}' cannot keep columns in a row store.");
+            }
+            var handle = GetRowStoreHandle(rowStore.Name);
+            if (handle.HasHost)
+            {
+                throw new InvalidOperationException($"Row store '{rowStore.Name}' is hosted by more than one relation.");
+            }
+            handle.HasHost = true;
+            host.AttachRowStoreHandle(handle);
         }
 
         // Every check relation built in this stream with the ids its operator reports, filled by BuildPlan.
@@ -535,6 +570,10 @@ namespace FlowtideDotNet.Core.Engine
             {
                 throw new NotSupportedException("Read relation operator must implement ISourceBlock<IStreamEvent>");
             }
+            if (readRelation.RowStore != null)
+            {
+                AttachRowStore(op, readRelation.RowStore, $"The read of '{readRelation.NamedTable.DotSeperated}'");
+            }
             dataflowStreamBuilder.AddIngressBlock(id.ToString(), op);
             return op;
         }
@@ -618,6 +657,10 @@ namespace FlowtideDotNet.Core.Engine
                 op.LinkTo(state);
             }
 
+            if (normalizationRelation.RowStore != null)
+            {
+                AttachRowStore(op, normalizationRelation.RowStore, "A normalization");
+            }
             normalizationRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
@@ -703,6 +746,24 @@ namespace FlowtideDotNet.Core.Engine
                 op.LinkTo(state);
             }
             bufferRelation.Input.Accept(this, op);
+            dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
+            return op;
+        }
+
+        public override IStreamVertex VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, ITargetBlock<IStreamEvent>? state)
+        {
+            var id = _operatorId++;
+            var handles = new List<RowStoreHandle>(fetchRequiredColumnsRelation.Fetches.Count);
+            foreach (var fetch in fetchRequiredColumnsRelation.Fetches)
+            {
+                handles.Add(GetRowStoreHandle(fetch.StoreName));
+            }
+            var op = new FetchRequiredColumnsOperator(fetchRequiredColumnsRelation, handles, DefaultBlockOptions);
+            if (state != null)
+            {
+                op.LinkTo(state);
+            }
+            fetchRequiredColumnsRelation.Input.Accept(this, op);
             dataflowStreamBuilder.AddPropagatorBlock(id.ToString(), op);
             return op;
         }

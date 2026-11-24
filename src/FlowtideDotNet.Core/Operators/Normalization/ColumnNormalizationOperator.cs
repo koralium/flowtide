@@ -28,8 +28,10 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Normalization
 {
-    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch>
+    internal class ColumnNormalizationOperator : UnaryVertex<StreamEventBatch>, IRowStoreHostVertex
     {
+        private RowStoreHandle? _rowStoreHandle;
+
 #if DEBUG_WRITE
         private StreamWriter? allOutput;
 #endif
@@ -75,7 +77,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             else
             {
                 _emitList = new List<int>();
-                for (int i = 0; i < normalizationRelation.OutputLength; i++)
+                for (int i = 0; i < normalizationRelation.OutputLengthWithoutRowStore; i++)
                 {
                     _emitList.Add(i);
                     if (!_keyColumns.Contains(i))
@@ -84,7 +86,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     }
                 }
             }
-            _hostLayout = RowStoreHost.ReadLayout(normalizationRelation.Hint.Optimizations.Properties, normalizationRelation.Input.OutputLength, _keyColumns, _emitList);
+            _hostLayout = RowStoreHost.ReadLayout(normalizationRelation.RowStore, normalizationRelation.Input.OutputLength, _keyColumns, _emitList);
         }
 
         public override string DisplayName => "Normalize";
@@ -126,9 +128,18 @@ namespace FlowtideDotNet.Core.Operators.Normalization
 
         public override async ValueTask DisposeAsync()
         {
+            if (_rowStoreHandle != null)
+            {
+                await _rowStoreHandle.CloseAsync();
+            }
             _host?.Dispose();
             _host = null;
             await base.DisposeAsync();
+        }
+
+        public void AttachRowStoreHandle(RowStoreHandle handle)
+        {
+            _rowStoreHandle = handle;
         }
 
         private async IAsyncEnumerable<StreamEventBatch> ReceiveHosted(StreamEventBatch msg)
@@ -291,7 +302,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                     deleteIterations.Add(0);
                 }
                 bool shouldDisposeOffsets = true;
-                IColumn[] deleteColumns = new IColumn[_normalizationRelation.OutputLength];
+                IColumn[] deleteColumns = new IColumn[_emitList.Count];
                 for (int i = 0; i < _keyColumns.Count; i++)
                 {
                     var emitIndex = _emitList.IndexOf(_keyColumns[i]);
@@ -432,10 +443,17 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             if (_hostLayout != null)
             {
                 // Rows are stored behind references, by key
+                if (_rowStoreHandle != null)
+                {
+                    // A fetch that is reading the store ends first
+                    await _rowStoreHandle.CloseAsync();
+                }
                 _host?.Dispose();
                 _host = null;
                 // A row that is not added leaves, also at weight zero
                 _host = await RowStoreHost.CreateAsync(stateManagerClient, "input_keyed", "rows", _hostLayout, new RowStoreOptions() { Mode = RowStoreMode.Keyed }, MemoryAllocator, zeroWeightDeletes: true);
+                // Fetches may read the store from here on
+                _rowStoreHandle?.Open(_host);
                 return;
             }
             _tree = await stateManagerClient.GetOrCreateTree("input",

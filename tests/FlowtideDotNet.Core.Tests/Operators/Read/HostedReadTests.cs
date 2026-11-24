@@ -208,7 +208,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             };
             if (hosted)
             {
-                relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "2";
+                relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [2] };
             }
             return relation;
         }
@@ -230,7 +230,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             };
             if (hosted)
             {
-                relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "1";
+                relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [1] };
             }
             return relation;
         }
@@ -240,6 +240,30 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             source.LinkTo(sink, new DataflowLinkOptions() { PropagateCompletion = true });
             return new DataflowStreamBuilder(name)
                 .AddIngressBlock("source", source)
+                .AddEgressBlock("sink", sink)
+                .WithStateOptions(new StateManagerOptions() { PersistentStorage = storage })
+                .Build();
+        }
+
+        // Source stores its text, the fetch reads it
+        private static Base.Engine.DataflowStream BuildWithFetch(string name, ReservoirPersistentStorage storage, Source source, Sink sink, ReadRelation relation)
+        {
+            var handle = new RowStoreHandle(relation.RowStore!.Name) { HasHost = true };
+            ((IRowStoreHostVertex)source).AttachRowStoreHandle(handle);
+            var fetch = new FetchRequiredColumnsOperator(new FetchRequiredColumnsRelation()
+            {
+                Input = relation,
+                Fetches = new List<RowStoreFetch>()
+                {
+                    new RowStoreFetch() { ReferenceColumn = 2, StoreName = relation.RowStore.Name, Columns = new List<int>() { 0 } }
+                },
+                Emit = new List<int>() { 0, 1, 3 }
+            }, [handle], new ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
+            source.LinkTo(fetch, new DataflowLinkOptions() { PropagateCompletion = true });
+            fetch.LinkTo(sink, new DataflowLinkOptions() { PropagateCompletion = true });
+            return new DataflowStreamBuilder(name)
+                .AddIngressBlock("source", source)
+                .AddPropagatorBlock("fetch", fetch)
                 .AddEgressBlock("sink", sink)
                 .WithStateOptions(new StateManagerOptions() { PersistentStorage = storage })
                 .Build();
@@ -345,6 +369,123 @@ namespace FlowtideDotNet.Core.Tests.Operators.Read
             var afterRestart = await TriggerAndTake(restarted, "full_load", restartedSink, 1);
             Assert.Equal(["-1: 4|40|ref"], afterRestart.Select(x => x.row));
             Assert.Equal(third, afterRestart[0].reference);
+        }
+
+        [Fact]
+        public async Task AFetchGivesBackTheRowsAPlainSourceSends()
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var name = "fetched-read-" + Guid.NewGuid().ToString("N");
+            int checkpoints;
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 20, "b"), new Row(3, 30, "c") };
+
+            var relation = Relation(true);
+            var source = new Source(relation, table);
+            var sink = new Sink();
+            await using (var stream = BuildWithFetch(name, storage, source, sink, relation))
+            {
+                await stream.StartAsync();
+                var loaded = await Take(sink, 3, 0);
+                Assert.Equal(["1: 1|10|a", "1: 2|20|b", "1: 3|30|c"], loaded.Select(x => x.row));
+
+                source.Deltas.Enqueue([new Row(2, 20, "changed"), new Row(3, 0, "", -1)]);
+                checkpoints = sink.Checkpoints;
+                await stream.CallTrigger("delta_load", null);
+                var delta = await Take(sink, 3, checkpoints);
+                Assert.Equal(["-1: 2|20|b", "-1: 3|30|c", "1: 2|20|changed"], delta.Select(x => x.row));
+
+                lock (table)
+                {
+                    table.Clear();
+                    table.Add(new Row(2, 21, "changed"));
+                    table.Add(new Row(4, 40, "d"));
+                }
+                checkpoints = sink.Checkpoints;
+                await stream.CallTrigger("full_load", null);
+                var reloaded = await Take(sink, 4, checkpoints);
+                Assert.Equal(["-1: 1|10|a", "-1: 2|20|changed", "1: 2|21|changed", "1: 4|40|d"], reloaded.Select(x => x.row));
+
+                await stream.StopAsync().WaitAsync(TimeSpan.FromSeconds(20));
+            }
+
+            var restartedRelation = Relation(true);
+            var restartedSource = new Source(restartedRelation, table);
+            var restartedSink = new Sink();
+            await using var restarted = BuildWithFetch(name, storage, restartedSource, restartedSink, restartedRelation);
+            await restarted.StartAsync();
+            await WaitUntil(() => restarted.State == StreamStateValue.Running);
+
+            lock (table)
+            {
+                table.RemoveAll(x => x.Key == 4);
+            }
+            var afterRestart = await TriggerAndTake(restarted, "full_load", restartedSink, 1);
+            Assert.Equal(["-1: 4|40|d"], afterRestart.Select(x => x.row));
+        }
+
+        private sealed class TableSourceFactory(List<Row> table) : Core.Connectors.RegexConnectorSourceFactory("*")
+        {
+            public override IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions)
+            {
+                return new Source(readRelation, table);
+            }
+
+            public override Core.Lineage.TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
+            {
+                return new Core.Lineage.TableLineageMetadata("test", readRelation.NamedTable.DotSeperated, default);
+            }
+        }
+
+        private sealed class CapturingSinkFactory(Sink sink) : Core.Connectors.RegexConnectorSinkFactory("*")
+        {
+            public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
+            {
+                return sink;
+            }
+
+            public override Core.Lineage.TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
+            {
+                return new Core.Lineage.TableLineageMetadata("test", writeRelation.NamedObject.DotSeperated, default);
+            }
+        }
+
+        [Fact]
+        public async Task APlanBuiltByTheEngineFetchesThroughTheStoreItsSourceHosts()
+        {
+            using var storage = new ReservoirPersistentStorage(new ReservoirStorageOptions() { FileProvider = new MemoryFileProvider() });
+            var table = new List<Row>() { new Row(1, 10, "a"), new Row(2, 20, "b") };
+            var sink = new Sink();
+            var connectorManager = new Core.ConnectorManager();
+            connectorManager.AddSource(new TableSourceFactory(table));
+            connectorManager.AddSink(new CapturingSinkFactory(sink));
+            var plan = new Substrait.Plan()
+            {
+                Relations =
+                [
+                    new WriteRelation()
+                    {
+                        NamedObject = new NamedTable() { Names = ["output"] },
+                        TableSchema = new NamedStruct() { Names = ["k", "kept", "text"] },
+                        Input = new FetchRequiredColumnsRelation()
+                        {
+                            Input = Relation(true),
+                            Fetches = [new RowStoreFetch() { ReferenceColumn = 2, StoreName = "rows", Columns = [0] }],
+                            Emit = [0, 1, 3]
+                        }
+                    }
+                ]
+            };
+            await using var stream = new Core.Engine.FlowtideBuilder("built-fetch-" + Guid.NewGuid().ToString("N"))
+                .AddPlan(plan, false)
+                .AddConnectorManager(connectorManager)
+                .WithStateOptions(new StateManagerOptions() { PersistentStorage = storage })
+                .Build();
+            await stream.StartAsync();
+
+            var loaded = await Take(sink, 2, 0);
+            Assert.Equal(["1: 1|10|a", "1: 2|20|b"], loaded.Select(x => x.row));
+
+            await stream.StopAsync().WaitAsync(TimeSpan.FromSeconds(20));
         }
 
         [Fact]

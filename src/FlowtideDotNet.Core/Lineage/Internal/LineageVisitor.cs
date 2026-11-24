@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Engine.LateMaterialization;
 using FlowtideDotNet.Core.Lineage.Internal.Models;
 using FlowtideDotNet.Substrait.Expressions;
 using FlowtideDotNet.Substrait.Relations;
@@ -26,6 +27,7 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         private readonly HashSet<Relation> _expanding = new HashSet<Relation>(ReferenceEqualityComparer.Instance);
         private readonly Dictionary<ExchangeMemoKey, LineageVisitorResult> _exchangeMemo = new Dictionary<ExchangeMemoKey, LineageVisitorResult>();
         private int _cycleCuts;
+        private Dictionary<string, Relation>? _rowStoreHosts;
 
         public LineageVisitor(IReadOnlyList<Relation> relations, IReadOnlyDictionary<string, LineageInputTable> inputTables)
             : this(new LineagePlanIndex(relations), inputTables)
@@ -250,20 +252,111 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         public override LineageVisitorResult VisitReadRelation(ReadRelation readRelation, LineageVisitorState state)
         {
             var key = readRelation.NamedTable.DotSeperated;
-            if (!inputTables.TryGetValue(key, out var inputTable))
+            if (!inputTables.ContainsKey(key))
             {
                 return new LineageVisitorResult([]);
             }
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = readRelation.EmitSet ? readRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
-
-                // We have reached the source, we can return the lineage result
-                var columnName = readRelation.BaseSchema.Names[emitIndex];
-                
-                return new LineageVisitorResult([new LineageInputField(inputTable.Namespace, inputTable.TableName, columnName, state.Transformations)]);
+                if (readRelation.RowStore != null)
+                {
+                    return VisitRowStoreHostOutput(readRelation, readRelation.RowStore, structReferenceSegment.Field, state);
+                }
+                return VisitWithoutRowStore(readRelation, structReferenceSegment.Field, state);
             }
 
+            return new LineageVisitorResult([]);
+        }
+
+        // An output column, as if there were no row store
+        private LineageVisitorResult VisitWithoutRowStore(Relation relation, int position, LineageVisitorState state)
+        {
+            switch (relation)
+            {
+                case ReadRelation readRelation:
+                    {
+                        if (!inputTables.TryGetValue(readRelation.NamedTable.DotSeperated, out var inputTable))
+                        {
+                            return new LineageVisitorResult([]);
+                        }
+                        var emitIndex = readRelation.EmitSet ? readRelation.Emit[position] : position;
+
+                        // We have reached the source, we can return the lineage result
+                        var columnName = readRelation.BaseSchema.Names[emitIndex];
+
+                        return new LineageVisitorResult([new LineageInputField(inputTable.Namespace, inputTable.TableName, columnName, state.Transformations)]);
+                    }
+                case NormalizationRelation normalizationRelation:
+                    {
+                        var emitIndex = normalizationRelation.EmitSet ? normalizationRelation.Emit[position] : position;
+                        return Visit(normalizationRelation.Input, new LineageVisitorState(new DirectFieldReference()
+                        {
+                            ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
+                        }, state.Transformations));
+                    }
+                default:
+                    throw new InvalidOperationException($"{relation.GetType().Name} does not host a row store.");
+            }
+        }
+
+        private static int LengthWithoutRowStore(Relation relation)
+        {
+            switch (relation)
+            {
+                case ReadRelation readRelation:
+                    return readRelation.OutputLengthWithoutRowStore;
+                case NormalizationRelation normalizationRelation:
+                    return normalizationRelation.OutputLengthWithoutRowStore;
+                default:
+                    throw new InvalidOperationException($"{relation.GetType().Name} does not host a row store.");
+            }
+        }
+
+        // The reference stands for every stored column
+        private LineageVisitorResult VisitRowStoreHostOutput(Relation host, RowStoreDefinition rowStore, int outputPosition, LineageVisitorState state)
+        {
+            int position = rowStore.PositionWithoutStore(outputPosition, LengthWithoutRowStore(host));
+            if (position >= 0)
+            {
+                return VisitWithoutRowStore(host, position, state);
+            }
+            IReadOnlyList<LineageInputField> fields = [];
+            foreach (var stored in rowStore.StoredColumns)
+            {
+                fields = LineageMerge.MergeInputFields(fields, VisitWithoutRowStore(host, stored, state).InputFields);
+            }
+            return new LineageVisitorResult(fields);
+        }
+
+        public override LineageVisitorResult VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, LineageVisitorState state)
+        {
+            if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
+            {
+                var emitIndex = fetchRequiredColumnsRelation.EmitSet ? fetchRequiredColumnsRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
+                int position = fetchRequiredColumnsRelation.Input.OutputLength;
+                if (emitIndex < position)
+                {
+                    return Visit(fetchRequiredColumnsRelation.Input, new LineageVisitorState(new DirectFieldReference()
+                    {
+                        ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
+                    }, state.Transformations));
+                }
+                // A fetched column comes from the relation that hosts the store
+                _rowStoreHosts ??= RowStoreHostCollector.Collect(_index.Relations);
+                foreach (var fetch in fetchRequiredColumnsRelation.Fetches)
+                {
+                    if (emitIndex < position + fetch.Columns.Count)
+                    {
+                        if (!_rowStoreHosts.TryGetValue(fetch.StoreName, out var host))
+                        {
+                            return new LineageVisitorResult([]);
+                        }
+                        var rowStore = RowStoreHostCollector.RowStoreOf(host)!;
+                        return VisitWithoutRowStore(host, rowStore.StoredColumns[fetch.Columns[emitIndex - position]], state);
+                    }
+                    position += fetch.Columns.Count;
+                }
+            }
             return new LineageVisitorResult([]);
         }
 
@@ -457,12 +550,11 @@ namespace FlowtideDotNet.Core.Lineage.Internal
         {
             if (state.DirectFieldReference.ReferenceSegment is StructReferenceSegment structReferenceSegment)
             {
-                var emitIndex = normalizationRelation.EmitSet ? normalizationRelation.Emit[structReferenceSegment.Field] : structReferenceSegment.Field;
-
-                return Visit(normalizationRelation.Input, new LineageVisitorState(new DirectFieldReference()
+                if (normalizationRelation.RowStore != null)
                 {
-                    ReferenceSegment = new StructReferenceSegment() { Field = emitIndex }
-                }, state.Transformations));
+                    return VisitRowStoreHostOutput(normalizationRelation, normalizationRelation.RowStore, structReferenceSegment.Field, state);
+                }
+                return VisitWithoutRowStore(normalizationRelation, structReferenceSegment.Field, state);
             }
             return new LineageVisitorResult([]);
         }

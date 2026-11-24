@@ -35,6 +35,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
         private StreamWriter? allOutput;
 #endif
         private readonly NormalizationRelation normalizationRelation;
+        private readonly int _outputLength;
         private IBPlusTree<string, IngressData, ListKeyContainer<string>, ListValueContainer<IngressData>>? _tree;
         private readonly Func<RowEvent, bool>? _filter;
 
@@ -49,6 +50,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.normalizationRelation = normalizationRelation;
+            _outputLength = normalizationRelation.OutputLength;
             if (normalizationRelation.Filter != null)
             {
                 _filter = BooleanCompiler.Compile<RowEvent>(normalizationRelation.Filter, functionsRegister);
@@ -115,7 +117,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
             {
                 Debug.Assert(_eventsCounter != null, nameof(_eventsCounter));
                 _eventsCounter.Add(output.Count);
-                yield return new StreamEventBatch(output, normalizationRelation.OutputLength);
+                yield return new StreamEventBatch(output, _outputLength);
             }
 
         }

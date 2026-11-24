@@ -118,6 +118,12 @@ namespace FlowtideDotNet.Core.Optimizer
             return iterationReferenceReadRelation;
         }
 
+        public override Relation VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, object state)
+        {
+            fetchRequiredColumnsRelation.Input = Visit(fetchRequiredColumnsRelation.Input, state);
+            return fetchRequiredColumnsRelation;
+        }
+
         public override Relation VisitBufferRelation(BufferRelation bufferRelation, object state)
         {
             bufferRelation.Input = Visit(bufferRelation.Input, state);

@@ -69,6 +69,10 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
             {
                 return readRelation;
             }
+            if (readRelation.RowStore != null)
+            {
+                throw new InvalidOperationException($"The read of '{readRelation.NamedTable.DotSeperated}' has row store '{readRelation.RowStore.Name}' and a check in its filter, the check cannot be moved out of it.");
+            }
             var split = SplitCondition(readRelation.Filter!);
 
             // Base schema indexing: the emit moves above the checks
@@ -93,6 +97,10 @@ namespace FlowtideDotNet.Core.Optimizer.CheckExtraction
             if (!CheckFunctionMatcher.ContainsCheck(normalizationRelation.Filter))
             {
                 return normalizationRelation;
+            }
+            if (normalizationRelation.RowStore != null)
+            {
+                throw new InvalidOperationException($"A normalization has row store '{normalizationRelation.RowStore.Name}' and a check in its filter, the check cannot be moved out of it.");
             }
             var split = SplitCondition(normalizationRelation.Filter!);
 

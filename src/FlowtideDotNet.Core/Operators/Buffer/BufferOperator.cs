@@ -30,11 +30,13 @@ namespace FlowtideDotNet.Core.Operators.Buffer
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
         private readonly BufferRelation _bufferRelation;
+        private readonly int _outputLength;
         private IBPlusTree<ColumnRowReference, int, ColumnKeyStorageContainer, PrimitiveListValueContainer<int>>? _tree;
 
         public BufferOperator(BufferRelation bufferRelation, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this._bufferRelation = bufferRelation;
+            _outputLength = bufferRelation.OutputLength;
         }
 
         public override string DisplayName => "Buffer";
@@ -64,7 +66,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
             await foreach (var page in it)
             {
-                IColumn[] columns = new IColumn[_bufferRelation.OutputLength];
+                IColumn[] columns = new IColumn[_outputLength];
                 PrimitiveList<int> weights = page.Values.GetPrimitiveListCopy(MemoryAllocator);
                 PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
 
@@ -91,7 +93,7 @@ namespace FlowtideDotNet.Core.Operators.Buffer
 
             if (_bufferRelation.EmitSet)
             {
-                var columns = new IColumn[_bufferRelation.OutputLength];
+                var columns = new IColumn[_outputLength];
 
                 for (int i = 0; i < _bufferRelation.Emit.Count; i++)
                 {

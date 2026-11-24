@@ -54,7 +54,7 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
             };
             if (deferred != null)
             {
-                relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = deferred;
+                relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = deferred.Split(',').Select(int.Parse).ToList() };
             }
             return new ColumnNormalizationOperator(relation, FunctionsRegister, new ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 });
         }
@@ -190,14 +190,35 @@ namespace FlowtideDotNet.Core.Tests.Operators.Normalization
             Assert.Empty(references);
         }
 
+        [Fact]
+        public async Task AHostedNormalizationThatStoresTwoColumnsSendsTheKeyAndAReference()
+        {
+            var op = Operator("1,2");
+            var output = new BufferBlock<IStreamEvent>();
+            op.LinkTo(output);
+            await InitializeOperator(op);
+
+            await op.SendAsync(Message((1, 1, 10, "a"), (1, 2, 20, "b")));
+            var (first, firstReferences) = await Drain(op, output, 1);
+
+            Assert.Equal(["1: 1|ref", "1: 2|ref"], first);
+
+            await op.SendAsync(Message((1, 2, 21, "b")));
+            var (second, secondReferences) = await Drain(op, output, 2);
+
+            Assert.Equal(["-1: 2|ref", "1: 2|ref"], second);
+            Assert.Equal(firstReferences["1: 2|ref"], secondReferences["-1: 2|ref"]);
+            Assert.NotEqual(firstReferences["1: 2|ref"], secondReferences["1: 2|ref"]);
+        }
+
         [Theory]
-        [InlineData("0", "is a key column")]
-        [InlineData("3", "is not an output column")]
-        [InlineData("2,2", "is named twice")]
-        public void AWrongHintIsRefused(string deferred, string message)
+        [InlineData("0", "Row store 'rows' stores output column 0, a key column is not stored behind a reference.")]
+        [InlineData("3", "Row store 'rows' stores output column 3, the relation has 3.")]
+        [InlineData("2,2", "Row store 'rows' names output column 2 twice.")]
+        public void AWrongRowStoreIsRefused(string deferred, string message)
         {
             var exception = Assert.Throws<InvalidOperationException>(() => Operator(deferred));
-            Assert.Contains(message, exception.Message);
+            Assert.Equal(message, exception.Message);
         }
     }
 }

@@ -139,21 +139,14 @@ public class ReviewerBRegressionTests : OperatorTestBase
                 Names = ["key", "kept", "payload"],
                 Struct = new Struct { Types = [new AnyType(), new AnyType(), new AnyType()] }
             },
-            Hint = new FlowtideDotNet.Substrait.Hints.Hint
-            {
-                Optimizations = new FlowtideDotNet.Substrait.Hints.HintOptimizations
-                {
-                    Properties = new Dictionary<string, string> { [RowStoreHost.DeferredColumnsHint] = "2" }
-                }
-            }
+            RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }
         }, new FunctionsRegister(), new DataflowBlockOptions()) { SetHosted(hosted); }
 
         public void SetHosted(bool hosted)
         {
             var relation = (ReadRelation)typeof(ColumnBatchReadBaseOperator)
                 .GetField("_readRelation", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(this)!;
-            if (hosted) relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "2";
-            else relation.Hint.Optimizations.Properties.Remove(RowStoreHost.DeferredColumnsHint);
+            relation.RowStore = hosted ? new RowStoreDefinition() { Name = "rows", StoredColumns = [2] } : null;
         }
 
         public Task Cut() => OnCheckpoint(1);

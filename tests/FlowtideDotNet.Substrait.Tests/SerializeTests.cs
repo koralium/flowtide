@@ -634,6 +634,202 @@ namespace FlowtideDotNet.Substrait.Tests
         }
 
         [Fact]
+        public void TestSerializeReadRelationWithRowStore()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ReadRelation()
+                    {
+                        BaseSchema = new Type.NamedStruct()
+                        {
+                            Names = ["a", "b", "c"]
+                        },
+                        NamedTable = new Type.NamedTable()
+                        {
+                            Names = ["t"]
+                        },
+                        RowStore = new RowStoreDefinition()
+                        {
+                            Name = "t_rows",
+                            StoredColumns = [1, 2]
+                        }
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+            var deserialized = SubstraitDeserializer.DeserializeFromJson(SubstraitSerializer.SerializeToJson(plan));
+            Assert.Equal(2, deserialized.Relations[0].OutputLength);
+        }
+
+        [Fact]
+        public void ARowStoreIsPartOfThePlanWithoutHints()
+        {
+            Plan Read(RowStoreDefinition? rowStore)
+            {
+                return new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct() { Names = ["a", "b", "c"] },
+                            NamedTable = new Type.NamedTable() { Names = ["t"] },
+                            RowStore = rowStore
+                        }
+                    }
+                };
+            }
+            var plain = SubstraitSerializer.SerializeToJson(Read(null), includeHints: false);
+            var stored = SubstraitSerializer.SerializeToJson(Read(new RowStoreDefinition() { Name = "rows", StoredColumns = [1] }), includeHints: false);
+            var storedOther = SubstraitSerializer.SerializeToJson(Read(new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }), includeHints: false);
+
+            Assert.NotEqual(plain, stored);
+            Assert.NotEqual(stored, storedOther);
+        }
+
+        [Fact]
+        public void ANormalizationStoreAndAFetchArePartOfThePlanWithoutHints()
+        {
+            Plan Stored(int storedColumn, int fetchedColumn)
+            {
+                return new Plan()
+                {
+                    Relations = new List<Relation>()
+                    {
+                        new FetchRequiredColumnsRelation()
+                        {
+                            Fetches = [new RowStoreFetch() { ReferenceColumn = 2, StoreName = "rows", Columns = [fetchedColumn] }],
+                            Input = new NormalizationRelation()
+                            {
+                                KeyIndex = [0],
+                                RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [storedColumn, 3] },
+                                Input = new ReadRelation()
+                                {
+                                    BaseSchema = new Type.NamedStruct() { Names = ["a", "b", "c", "d"] },
+                                    NamedTable = new Type.NamedTable() { Names = ["t"] }
+                                }
+                            }
+                        }
+                    }
+                };
+            }
+            var plan = SubstraitSerializer.SerializeToJson(Stored(1, 0), includeHints: false);
+
+            Assert.NotEqual(plan, SubstraitSerializer.SerializeToJson(Stored(2, 0), includeHints: false));
+            Assert.NotEqual(plan, SubstraitSerializer.SerializeToJson(Stored(1, 1), includeHints: false));
+            Assert.Equal(plan, SubstraitSerializer.SerializeToJson(Stored(1, 0), includeHints: false));
+        }
+
+        [Fact]
+        public void AnotherEnhancementOnAReadIsIgnored()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new ReadRelation()
+                    {
+                        BaseSchema = new Type.NamedStruct() { Names = ["a", "b"] },
+                        NamedTable = new Type.NamedTable() { Names = ["t"] }
+                    }
+                }
+            };
+            var serialized = SubstraitSerializer.Serialize(plan);
+            serialized.Relations[0].Rel.Read.AdvancedExtension = new Protobuf.AdvancedExtension()
+            {
+                Enhancement = Google.Protobuf.WellKnownTypes.Any.Pack(new CustomProtobuf.WriteRelationPrimaryKeys())
+            };
+
+            var read = (ReadRelation)new SubstraitDeserializer().Deserialize(serialized).Relations[0];
+
+            Assert.Null(read.RowStore);
+            Assert.Equal(2, read.OutputLength);
+        }
+
+        [Fact]
+        public void TestSerializeNormalizationRelationWithRowStore()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new NormalizationRelation()
+                    {
+                        KeyIndex = [0],
+                        RowStore = new RowStoreDefinition()
+                        {
+                            Name = "n_rows",
+                            StoredColumns = [2]
+                        },
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct()
+                            {
+                                Names = ["a", "b", "c"]
+                            },
+                            NamedTable = new Type.NamedTable()
+                            {
+                                Names = ["t"]
+                            }
+                        },
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+        }
+
+        [Fact]
+        public void TestSerializeFetchRequiredColumnsRelation()
+        {
+            Plan plan = new Plan()
+            {
+                Relations = new List<Relation>()
+                {
+                    new FetchRequiredColumnsRelation()
+                    {
+                        Fetches =
+                        [
+                            new RowStoreFetch()
+                            {
+                                ReferenceColumn = 1,
+                                StoreName = "rows",
+                                Columns = [1, 0]
+                            }
+                        ],
+                        Emit = [0, 3, 2],
+                        Input = new ReadRelation()
+                        {
+                            BaseSchema = new Type.NamedStruct()
+                            {
+                                Names = ["a", "b", "c"]
+                            },
+                            NamedTable = new Type.NamedTable()
+                            {
+                                Names = ["t"]
+                            },
+                            RowStore = new RowStoreDefinition()
+                            {
+                                Name = "rows",
+                                StoredColumns = [1, 2]
+                            }
+                        }
+                    }
+                }
+            };
+
+            AssertPlanCanSerializeDeserialize(plan);
+            var fetch = (FetchRequiredColumnsRelation)plan.Relations[0];
+            Assert.Equal(3, fetch.OutputLength);
+            Assert.Equal(2, fetch.Input.OutputLength);
+            fetch.Emit = null;
+            Assert.Equal(4, fetch.OutputLength);
+        }
+
+        [Fact]
         public void TestSerializeBufferRelation()
         {
             Plan plan = new Plan()

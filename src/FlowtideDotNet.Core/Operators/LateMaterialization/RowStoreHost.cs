@@ -21,6 +21,7 @@ using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.StateManager;
 using FlowtideDotNet.Storage.Tree;
+using FlowtideDotNet.Substrait.Relations;
 
 namespace FlowtideDotNet.Core.Operators.LateMaterialization
 {
@@ -33,12 +34,6 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
         private const byte Verify = 3;
         private const byte KeptChanged = 4;
         private const byte Remove = 5;
-
-        // The hint that names the output columns to store
-        public const string DeferredColumnsHint = "ROW_STORE_DEFERRED_COLUMNS";
-
-        // A stand-in until the planner sets the role
-        internal static bool HintEnabled;
 
         private readonly RowStoreHostLayout _layout;
         private readonly IMemoryAllocator _memoryAllocator;
@@ -1167,34 +1162,33 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             }
         }
 
-        // Reads the hint, null when the relation stores no columns
-        public static RowStoreHostLayout? ReadLayout(IReadOnlyDictionary<string, string> properties, int columnCount, List<int> keyColumns, List<int> emitList)
+        // The layout a relation's row store asks for, null without one
+        public static RowStoreHostLayout? ReadLayout(RowStoreDefinition? rowStore, int columnCount, List<int> keyColumns, List<int> emitList)
         {
-            return ReadLayout(properties, columnCount, keyColumns, emitList, HintEnabled);
-        }
-
-        internal static RowStoreHostLayout? ReadLayout(IReadOnlyDictionary<string, string> properties, int columnCount, List<int> keyColumns, List<int> emitList, bool enabled)
-        {
-            if (!enabled || !properties.TryGetValue(DeferredColumnsHint, out var text) || string.IsNullOrWhiteSpace(text))
+            if (rowStore == null)
             {
                 return null;
             }
+            if (rowStore.StoredColumns.Count == 0)
+            {
+                throw new InvalidOperationException($"Row store '{rowStore.Name}' stores no column.");
+            }
             var positions = new List<int>();
             var deferred = new List<int>();
-            foreach (var part in text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            foreach (var position in rowStore.StoredColumns)
             {
-                if (!int.TryParse(part, out int position) || position < 0 || position >= emitList.Count)
+                if (position < 0 || position >= emitList.Count)
                 {
-                    throw new InvalidOperationException($"'{part}' in {DeferredColumnsHint} is not an output column, the relation has {emitList.Count}.");
+                    throw new InvalidOperationException($"Row store '{rowStore.Name}' stores output column {position}, the relation has {emitList.Count}.");
                 }
                 int column = emitList[position];
                 if (keyColumns.Contains(column))
                 {
-                    throw new InvalidOperationException($"Output column {position} in {DeferredColumnsHint} is a key column, a key is not stored behind a reference.");
+                    throw new InvalidOperationException($"Row store '{rowStore.Name}' stores output column {position}, a key column is not stored behind a reference.");
                 }
                 if (positions.Contains(position))
                 {
-                    throw new InvalidOperationException($"Output column {position} is named twice in {DeferredColumnsHint}.");
+                    throw new InvalidOperationException($"Row store '{rowStore.Name}' names output column {position} twice.");
                 }
                 positions.Add(position);
                 if (!deferred.Contains(column))
@@ -1211,7 +1205,12 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
                     kept.Add(emitList[i]);
                 }
             }
-            return new RowStoreHostLayout(columnCount, keyColumns, kept, deferred) { DeferredPositions = positions };
+            var storedColumns = new List<int>(positions.Count);
+            foreach (var position in positions)
+            {
+                storedColumns.Add(deferred.IndexOf(emitList[position]));
+            }
+            return new RowStoreHostLayout(columnCount, keyColumns, kept, deferred) { DeferredPositions = positions, StoredColumnOfPosition = storedColumns };
         }
 
         // True when an output position is behind the reference

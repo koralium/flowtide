@@ -33,6 +33,12 @@ namespace FlowtideDotNet.Core.Optimizer.WatermarkOutput
             return aggregateRelation;
         }
 
+        public override Relation VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, bool state)
+        {
+            Visit(fetchRequiredColumnsRelation.Input, state);
+            return fetchRequiredColumnsRelation;
+        }
+
         public override Relation VisitBufferRelation(BufferRelation bufferRelation, bool state)
         {
             Visit(bufferRelation.Input, state);

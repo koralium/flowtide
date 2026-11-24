@@ -57,7 +57,7 @@ public class ReviewerBRound4NormalizationFailureTests : OperatorTestBase
                 }
             }
         };
-        relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "1";
+        relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [1] };
         return new ColumnNormalizationOperator(relation, FunctionsRegister, new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 1 });
     }
 
