@@ -21,11 +21,19 @@ namespace FlowtideDotNet.Core.Optimizer
 {
     public static class PlanOptimizer
     {
+        private const string RowStoreMessage = "The plan has a row store or a fetch and cannot be optimized, add it with optimize set to false. Row stores are placed after optimization.";
+
         public static Plan Optimize(Plan plan, PlanOptimizerSettings? settings = null)
         {
             if (settings == null)
             {
                 settings = new PlanOptimizerSettings();
+            }
+
+            // The passes would shift a store's column positions
+            if (Engine.LateMaterialization.RowStoreHostCollector.UsesRowStores(plan.Relations))
+            {
+                throw new InvalidOperationException(RowStoreMessage);
             }
 
             // Marks the plan came with are not used: they would make equal joins differ, and the setting may be off
@@ -126,6 +134,11 @@ namespace FlowtideDotNet.Core.Optimizer
             else if (settings.Parallelization > 1)
             {
                 plan = MergeJoinParallelize.ParallelizeOptimizer.Optimize(plan, settings.Parallelization);
+            }
+            // A pass may have brought a subquery's relations into the plan
+            if (Engine.LateMaterialization.RowStoreHostCollector.UsesRowStores(plan.Relations))
+            {
+                throw new InvalidOperationException(RowStoreMessage);
             }
             return plan;
         }

@@ -36,8 +36,10 @@ namespace FlowtideDotNet.Core.Operators.Read
 
     public record struct DeltaReadEvent(EventBatchWeighted? BatchData, Watermark? Watermark);
 
-    public abstract class ColumnBatchReadBaseOperator : ReadBaseOperator
+    public abstract class ColumnBatchReadBaseOperator : ReadBaseOperator, IRowStoreHostVertex
     {
+        private RowStoreHandle? _rowStoreHandle;
+
         public const string DeltaLoadTriggerName = "delta_load";
         public const string FullLoadTriggerName = "full_load";
         private readonly string _deltaloadWithTableTriggerName;
@@ -186,7 +188,7 @@ namespace FlowtideDotNet.Core.Operators.Read
         {
             _initialSent = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initial_sent");
 
-            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, WatermarkModeKey, RowStoreHost.DeferredColumnsHint);
+            _readRelation.Hint.Optimizations.LogOnUnknownOptimization(Logger, WatermarkModeKey);
             _watermarkOutputMode = GetWatermarkOutputMode();
 
             if (_eventsCounter == null)
@@ -217,7 +219,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             else
             {
                 _emitList = new List<int>();
-                for (int i = 0; i < _readRelation.OutputLength; i++)
+                for (int i = 0; i < _readRelation.OutputLengthWithoutRowStore; i++)
                 {
                     _emitList.Add(i);
                     if (!_primaryKeyColumns.Contains(i))
@@ -234,11 +236,16 @@ namespace FlowtideDotNet.Core.Operators.Read
                 deleteTreeKeys.Add(i);
             }
 
+            if (_rowStoreHandle != null)
+            {
+                // A fetch that is reading the store ends first
+                await _rowStoreHandle.CloseAsync();
+            }
             _host?.Dispose();
             _host = null;
             _hostedTempKeys = null;
             _hostedDeleteKeys = null;
-            var hostLayout = RowStoreHost.ReadLayout(_readRelation.Hint.Optimizations.Properties, _readRelation.BaseSchema.Names.Count, _primaryKeyColumns, _emitList);
+            var hostLayout = RowStoreHost.ReadLayout(_readRelation.RowStore, _readRelation.BaseSchema.Names.Count, _primaryKeyColumns, _emitList);
             if (hostLayout != null)
             {
                 // Rows are stored behind references, every tree call is a batch
@@ -248,6 +255,8 @@ namespace FlowtideDotNet.Core.Operators.Read
                     _hostedTempKeys = await RowStoreKeySet.CreateAsync(stateManagerClient, "full_load_temp", _primaryKeyColumns.Count, MemoryAllocator);
                     _hostedDeleteKeys = await RowStoreKeySet.CreateAsync(stateManagerClient, "delete_keys", _primaryKeyColumns.Count, MemoryAllocator);
                 }
+                // Fetches may read the store from here on
+                _rowStoreHandle?.Open(_host);
                 return;
             }
             _fullLoadTempTree = await stateManagerClient.GetOrCreateTree("full_load_temp",
@@ -308,9 +317,18 @@ namespace FlowtideDotNet.Core.Operators.Read
 
         public override async ValueTask DisposeAsync()
         {
+            if (_rowStoreHandle != null)
+            {
+                await _rowStoreHandle.CloseAsync();
+            }
             _host?.Dispose();
             _host = null;
             await base.DisposeAsync();
+        }
+
+        void IRowStoreHostVertex.AttachRowStoreHandle(RowStoreHandle handle)
+        {
+            _rowStoreHandle = handle;
         }
 
         // Applies a batch, the caller holds its rent
@@ -850,7 +868,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             deleteIterations.Add(0);
                         }
                         bool shouldDisposeOffsets = true;
-                        IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
+                        IColumn[] deleteColumns = new IColumn[_emitList.Count];
                         for (int i = 0; i < _primaryKeyColumns.Count; i++)
                         {
                             var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);
@@ -1117,7 +1135,7 @@ namespace FlowtideDotNet.Core.Operators.Read
                             deleteIterations.Add(0);
                         }
                         bool shouldDisposeOffsets = true;
-                        IColumn[] deleteColumns = new IColumn[_readRelation.OutputLength];
+                        IColumn[] deleteColumns = new IColumn[_emitList.Count];
                         for (int i = 0; i < _primaryKeyColumns.Count; i++)
                         {
                             var emitIndex = _emitList.IndexOf(_primaryKeyColumns[i]);

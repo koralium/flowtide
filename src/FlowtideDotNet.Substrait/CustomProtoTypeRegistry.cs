@@ -25,6 +25,8 @@ namespace FlowtideDotNet.Substrait
             CustomProtobuf.IterationRelation.Descriptor,
             CustomProtobuf.NormalizationRelation.Descriptor,
             CustomProtobuf.BufferRelation.Descriptor,
+            CustomProtobuf.RowStoreDefinition.Descriptor,
+            CustomProtobuf.FetchRequiredColumnsRelation.Descriptor,
             CustomProtobuf.TopNRelation.Descriptor,
             CustomProtobuf.TableFunction.Descriptor,
             CustomProtobuf.TableFunctionRelation.Descriptor,

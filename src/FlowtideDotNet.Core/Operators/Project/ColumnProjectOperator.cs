@@ -27,6 +27,8 @@ namespace FlowtideDotNet.Core.Operators.Project
     internal class ColumnProjectOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly ProjectRelation projectRelation;
+        private readonly int _outputLength;
+        private readonly int _inputLength;
         private readonly Action<EventBatchData, int, Column>[] _expressions;
         private ICounter<long>? _eventsCounter;
         private ICounter<long>? _eventsProcessed;
@@ -34,6 +36,8 @@ namespace FlowtideDotNet.Core.Operators.Project
         public ColumnProjectOperator(ProjectRelation projectRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             this.projectRelation = projectRelation;
+            _outputLength = projectRelation.OutputLength;
+            _inputLength = projectRelation.Input.OutputLength;
             _expressions = new Action<EventBatchData, int, Column>[projectRelation.Expressions.Count];
             for (int i = 0; i < _expressions.Length; i++)
             {
@@ -84,14 +88,14 @@ namespace FlowtideDotNet.Core.Operators.Project
 
             if (projectRelation.EmitSet)
             {
-                IColumn[] outputColumns = new IColumn[projectRelation.OutputLength];
+                IColumn[] outputColumns = new IColumn[_outputLength];
 
                 for (int i = 0; i < projectRelation.Emit.Count; i++)
                 {
                     var emitVal = projectRelation.Emit[i];
-                    if (emitVal >= projectRelation.Input.OutputLength)
+                    if (emitVal >= _inputLength)
                     {
-                        outputColumns[i] = projectionColumns[emitVal - projectRelation.Input.OutputLength];
+                        outputColumns[i] = projectionColumns[emitVal - _inputLength];
                     }
                     else
                     {
@@ -104,7 +108,7 @@ namespace FlowtideDotNet.Core.Operators.Project
             }
             else
             {
-                IColumn[] outputColumns = new IColumn[projectRelation.OutputLength];
+                IColumn[] outputColumns = new IColumn[_outputLength];
                 for (int i = 0; i < data.EventBatchData.Columns.Count; i++)
                 {
                     outputColumns[i] = data.EventBatchData.Columns[i];

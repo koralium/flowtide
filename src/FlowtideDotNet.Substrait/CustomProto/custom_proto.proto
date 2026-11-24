@@ -23,6 +23,31 @@ message IterationReferenceReadRelation {
 message NormalizationRelation {
     repeated int32 keyIndex = 1;
     substrait.Expression filter = 2;
+    // Set when the relation keeps columns in a row store.
+    RowStoreDefinition row_store = 3;
+}
+
+// Columns kept in a row store, sent as one reference.
+// The enhancement of a named-table ReadRel, and a normalization field.
+message RowStoreDefinition {
+    // Name of the store.
+    string name = 1;
+    // Positions in the relation's output, before the store is applied.
+    repeated int32 stored_columns = 2;
+}
+
+// Reads stored columns back through reference columns.
+// Packed into the detail of an extension single rel.
+message FetchRequiredColumnsRelation {
+    message Fetch {
+        // Position of the reference column in the input.
+        int32 reference_column = 1;
+        // Name of the store the references point into.
+        string store_name = 2;
+        // Positions in the store's list of stored columns.
+        repeated int32 columns = 3;
+    }
+    repeated Fetch fetches = 1;
 }
 
 message BufferRelation {

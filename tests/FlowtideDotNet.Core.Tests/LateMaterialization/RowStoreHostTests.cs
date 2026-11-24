@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Substrait.Relations;
 using FlowtideDotNet.Core.ColumnStore;
 using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.ColumnStore.TreeStorage;
@@ -757,7 +758,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         {
             using var stream = await Open();
             var emit = new List<int>() { 0, 2, 2, 1 };
-            var layout = RowStoreHost.ReadLayout(new Dictionary<string, string>() { [RowStoreHost.DeferredColumnsHint] = "1" }, 4, [0], emit, true);
+            var layout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [1] }, 4, [0], emit);
             Assert.NotNull(layout);
             Assert.Equal([2, 1], layout.KeptColumns);
             Assert.Equal([2], layout.DeferredColumns);
@@ -908,12 +909,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         }
 
         [Fact]
-        public void TheHintIsIgnoredUnlessItIsTurnedOn()
+        public void ARelationWithoutARowStoreHasNoHostLayout()
         {
-            var properties = new Dictionary<string, string>() { [RowStoreHost.DeferredColumnsHint] = "2" };
-
-            Assert.Null(RowStoreHost.ReadLayout(properties, 3, [0], [0, 1, 2], false));
-            var layout = RowStoreHost.ReadLayout(properties, 3, [0], [0, 1, 2], true);
+            Assert.Null(RowStoreHost.ReadLayout(null, 3, [0], [0, 1, 2]));
+            var layout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }, 3, [0], [0, 1, 2]);
 
             Assert.NotNull(layout);
             Assert.Equal([1], layout.KeptColumns);

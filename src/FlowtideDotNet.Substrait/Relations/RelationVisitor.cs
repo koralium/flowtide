@@ -94,6 +94,11 @@ namespace FlowtideDotNet.Substrait.Relations
             throw new NotImplementedException("Iteration reference read relation is not implemented");
         }
 
+        public virtual TReturn VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, TState state)
+        {
+            throw new NotImplementedException("Fetch required columns relation is not implemented");
+        }
+
         public virtual TReturn VisitBufferRelation(BufferRelation bufferRelation, TState state)
         {
             throw new NotImplementedException("Buffer relation is not implemented");

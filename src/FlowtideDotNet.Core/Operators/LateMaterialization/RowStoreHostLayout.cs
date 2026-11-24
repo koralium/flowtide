@@ -42,6 +42,9 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
 
         // Output positions behind the reference, when a relation gave them
         public List<int>? DeferredPositions { get; init; }
+
+        // The stored column of each of those positions, in their order
+        public List<int>? StoredColumnOfPosition { get; init; }
     }
 
     // The layout a host was stored with, another one is refused

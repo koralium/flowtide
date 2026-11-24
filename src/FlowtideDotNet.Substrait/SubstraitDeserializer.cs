@@ -1629,6 +1629,27 @@ namespace FlowtideDotNet.Substrait
                         Input = input,
                         KeyIndex = normalization.KeyIndex.ToList(),
                         Filter = normalization.Filter != null ? expressionDeserializer.VisitExpression(normalization.Filter) : null,
+                        RowStore = normalization.RowStore != null ? ReadRowStore(normalization.RowStore) : null,
+                        Emit = GetEmit(extensionSingle.Common)
+                    };
+                }
+                else if (typeName == CustomProtobuf.FetchRequiredColumnsRelation.Descriptor.FullName)
+                {
+                    var fetchRel = extensionSingle.Detail.Unpack<CustomProtobuf.FetchRequiredColumnsRelation>();
+                    var fetches = new List<RowStoreFetch>(fetchRel.Fetches.Count);
+                    foreach (var fetch in fetchRel.Fetches)
+                    {
+                        fetches.Add(new RowStoreFetch()
+                        {
+                            ReferenceColumn = fetch.ReferenceColumn,
+                            StoreName = fetch.StoreName,
+                            Columns = fetch.Columns.ToList()
+                        });
+                    }
+                    return new FetchRequiredColumnsRelation()
+                    {
+                        Input = input,
+                        Fetches = fetches,
                         Emit = GetEmit(extensionSingle.Common)
                     };
                 }
@@ -1824,6 +1845,30 @@ namespace FlowtideDotNet.Substrait
             }
 
             
+            private static RowStoreDefinition ReadRowStore(CustomProtobuf.RowStoreDefinition rowStore)
+            {
+                return new RowStoreDefinition()
+                {
+                    Name = rowStore.Name,
+                    StoredColumns = rowStore.StoredColumns.ToList()
+                };
+            }
+
+            private static RowStoreDefinition? ReadRowStoreEnhancement(Protobuf.ReadRel readRel)
+            {
+                if (readRel.AdvancedExtension?.Enhancement == null)
+                {
+                    return null;
+                }
+                var typeName = Google.Protobuf.WellKnownTypes.Any.GetTypeName(readRel.AdvancedExtension.Enhancement.TypeUrl);
+                if (typeName != CustomProtobuf.RowStoreDefinition.Descriptor.FullName)
+                {
+                    // Another engine's enhancement, ignored as before
+                    return null;
+                }
+                return ReadRowStore(readRel.AdvancedExtension.Enhancement.Unpack<CustomProtobuf.RowStoreDefinition>());
+            }
+
             private Relation VisitRead(Protobuf.ReadRel readRel)
             {
                 List<string> names = new List<string>();
@@ -1855,6 +1900,7 @@ namespace FlowtideDotNet.Substrait
                             Names = namedTable
                         },
                         Filter = readRel.Filter != null ? expressionDeserializer.VisitExpression(readRel.Filter) : null,
+                        RowStore = ReadRowStoreEnhancement(readRel),
                         Emit = GetEmit(readRel.Common)
                     };
                 }

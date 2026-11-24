@@ -25,11 +25,13 @@ namespace FlowtideDotNet.Core.Operators.Filter
     internal class ColumnFilterOperator : UnaryVertex<StreamEventBatch>
     {
         private readonly FilterRelation _filterRelation;
+        private readonly int _outputLength;
         private readonly Func<EventBatchData, int, bool> _filter;
 
         public ColumnFilterOperator(FilterRelation filterRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(executionDataflowBlockOptions)
         {
             _filterRelation = filterRelation;
+            _outputLength = filterRelation.OutputLength;
             _filter = ColumnBooleanCompiler.Compile(filterRelation.Condition, functionsRegister);
         }
 
@@ -76,7 +78,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             if (_filterRelation.EmitSet)
             {
                 bool shouldDisposeOffset = true;
-                var outputColumns = new IColumn[_filterRelation.OutputLength];
+                var outputColumns = new IColumn[_outputLength];
                 for (int i = 0; i < _filterRelation.Emit.Count; i++)
                 {
                     var emitIndex = _filterRelation.Emit[i];
@@ -106,7 +108,7 @@ namespace FlowtideDotNet.Core.Operators.Filter
             else
             {
                 bool shouldDisposeOffset = true;
-                var outputColumns = new IColumn[_filterRelation.OutputLength];
+                var outputColumns = new IColumn[_outputLength];
                 for (int i = 0; i < data.EventBatchData.Columns.Count; i++)
                 {
                     outputColumns[i] = ColumnWithOffset.CreateFlattened(data.EventBatchData.Columns[i], offsets, MemoryAllocator, out var offsetUsed);

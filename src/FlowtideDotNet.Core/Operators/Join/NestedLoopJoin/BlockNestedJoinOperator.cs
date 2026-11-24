@@ -33,6 +33,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
     internal class BlockNestedJoinOperator : MultipleInputVertex<StreamEventBatch>
     {
         private readonly JoinRelation _joinRelation;
+        private readonly int _outputLength;
         protected readonly Func<EventBatchData, int, EventBatchData, int, bool> _condition;
         private ICounter<long>? _eventsProcessed;
         private ICounter<long>? _eventsOutCounter;
@@ -58,6 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
         public BlockNestedJoinOperator(JoinRelation joinRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions executionDataflowBlockOptions) : base(2, executionDataflowBlockOptions)
         {
             this._joinRelation = joinRelation;
+            _outputLength = joinRelation.OutputLength;
 
             if (joinRelation.Expression == null)
             {
@@ -111,9 +113,9 @@ namespace FlowtideDotNet.Core.Operators.Join.NestedLoopJoin
 
             PrimitiveList<int> weights = new PrimitiveList<int>(MemoryAllocator);
             PrimitiveList<uint> iterations = new PrimitiveList<uint>(MemoryAllocator);
-            IColumn[] columns = new IColumn[_joinRelation.OutputLength];
+            IColumn[] columns = new IColumn[_outputLength];
 
-            for (int i = 0; i < _joinRelation.OutputLength; i++)
+            for (int i = 0; i < _outputLength; i++)
             {
                 columns[i] = Column.Create(MemoryAllocator);
             }

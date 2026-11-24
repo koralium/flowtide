@@ -383,6 +383,12 @@ namespace FlowtideDotNet.Core.Optimizer
                 return null;
             }
 
+            public override object? VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, object? state)
+            {
+                Visit(fetchRequiredColumnsRelation.Input, state);
+                return null;
+            }
+
             public override object? VisitBufferRelation(BufferRelation bufferRelation, object? state)
             {
                 Visit(bufferRelation.Input, state);

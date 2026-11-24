@@ -849,5 +849,125 @@ namespace FlowtideDotNet.Core.Tests.LineageTests
                 { "t", new LineageInputTable("ns", "t") }
             };
         }
+
+        private static LineageInputField Direct(string column)
+        {
+            return new LineageInputField("namespace", "table", column, [new LineageTransformation(LineageTransformationType.Direct, LineageTransformationSubtype.Identity)]);
+        }
+
+        private static ReadRelation ReadWithRowStore(List<int>? emit, params int[] stored)
+        {
+            return new ReadRelation()
+            {
+                BaseSchema = new NamedStruct()
+                {
+                    Names = ["a", "b", "c", "d"],
+                },
+                NamedTable = new NamedTable()
+                {
+                    Names = ["table"]
+                },
+                Emit = emit,
+                RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = stored.ToList() }
+            };
+        }
+
+        private static ColumnLineage Lineage(Relation input, params string[] names)
+        {
+            var plan = new WriteRelation()
+            {
+                Input = input,
+                NamedObject = new NamedTable()
+                {
+                    Names = ["output"]
+                },
+                TableSchema = new NamedStruct()
+                {
+                    Names = names.ToList(),
+                }
+            };
+            var visitor = new LineageVisitor([plan], new Dictionary<string, LineageInputTable>()
+            {
+                { "table", new LineageInputTable("namespace", "table") }
+            });
+            return visitor.HandleWriteRelation(plan);
+        }
+
+        [Fact]
+        public void LineageOfAReadWithARowStoreMapsKeptColumnsAndTheReference()
+        {
+            var result = Lineage(ReadWithRowStore(null, 1, 3), "x", "y", "reference");
+
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["x"] = new ColumnLineageField([Direct("a")]),
+                ["y"] = new ColumnLineageField([Direct("c")]),
+                ["reference"] = new ColumnLineageField([Direct("b"), Direct("d")])
+            }, []);
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void LineageOfFetchedColumnsComesFromTheReadThatHostsTheStore()
+        {
+            var fetch = new FetchRequiredColumnsRelation()
+            {
+                Input = new FilterRelation()
+                {
+                    Condition = new BoolLiteral() { Value = true },
+                    Input = ReadWithRowStore([3, 2, 1, 0], 0, 2)
+                },
+                Fetches =
+                [
+                    new RowStoreFetch() { ReferenceColumn = 2, StoreName = "rows", Columns = [1, 0] }
+                ],
+                Emit = [0, 1, 3, 4]
+            };
+
+            var result = Lineage(fetch, "kept1", "kept2", "fetched1", "fetched2");
+
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["kept1"] = new ColumnLineageField([Direct("c")]),
+                ["kept2"] = new ColumnLineageField([Direct("a")]),
+                ["fetched1"] = new ColumnLineageField([Direct("b")]),
+                ["fetched2"] = new ColumnLineageField([Direct("d")])
+            }, []);
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void LineageThroughANormalizationWithARowStore()
+        {
+            var normalization = new NormalizationRelation()
+            {
+                KeyIndex = [0],
+                RowStore = new RowStoreDefinition() { Name = "normalized", StoredColumns = [1, 2] },
+                Input = new ReadRelation()
+                {
+                    BaseSchema = new NamedStruct() { Names = ["a", "b", "c", "d"] },
+                    NamedTable = new NamedTable() { Names = ["table"] }
+                }
+            };
+            var fetch = new FetchRequiredColumnsRelation()
+            {
+                Input = normalization,
+                Fetches =
+                [
+                    new RowStoreFetch() { ReferenceColumn = 2, StoreName = "normalized", Columns = [1] }
+                ]
+            };
+
+            var result = Lineage(fetch, "key", "kept", "reference", "fetched");
+
+            var expected = new ColumnLineage(new Dictionary<string, ColumnLineageField>()
+            {
+                ["key"] = new ColumnLineageField([Direct("a")]),
+                ["kept"] = new ColumnLineageField([Direct("d")]),
+                ["reference"] = new ColumnLineageField([Direct("b"), Direct("c")]),
+                ["fetched"] = new ColumnLineageField([Direct("c")])
+            }, []);
+            Assert.Equal(expected, result);
+        }
     }
 }

@@ -799,6 +799,13 @@ namespace FlowtideDotNet.Substrait
                     readRel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
                     readRel.Common.Emit.OutputMapping.AddRange(readRelation.Emit);
                 }
+                if (readRelation.RowStore != null)
+                {
+                    readRel.AdvancedExtension = new Protobuf.AdvancedExtension()
+                    {
+                        Enhancement = Google.Protobuf.WellKnownTypes.Any.Pack(SerializeRowStore(readRelation.RowStore))
+                    };
+                }
 
                 return new Protobuf.Rel()
                 {
@@ -1308,6 +1315,10 @@ namespace FlowtideDotNet.Substrait
                 {
                     customRel.KeyIndex.Add(k);
                 }
+                if (normalizationRelation.RowStore != null)
+                {
+                    customRel.RowStore = SerializeRowStore(normalizationRelation.RowStore);
+                }
                 rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(customRel);
 
                 if (normalizationRelation.EmitSet)
@@ -1349,6 +1360,46 @@ namespace FlowtideDotNet.Substrait
                 return new Rel()
                 {
                     Reference = refRel
+                };
+            }
+
+            private static CustomProtobuf.RowStoreDefinition SerializeRowStore(RowStoreDefinition rowStore)
+            {
+                var definition = new CustomProtobuf.RowStoreDefinition()
+                {
+                    Name = rowStore.Name
+                };
+                definition.StoredColumns.AddRange(rowStore.StoredColumns);
+                return definition;
+            }
+
+            public override Rel VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, SerializerVisitorState state)
+            {
+                var rel = new Protobuf.ExtensionSingleRel();
+                var fetchRel = new CustomProtobuf.FetchRequiredColumnsRelation();
+                foreach (var fetch in fetchRequiredColumnsRelation.Fetches)
+                {
+                    var fetchMessage = new CustomProtobuf.FetchRequiredColumnsRelation.Types.Fetch()
+                    {
+                        ReferenceColumn = fetch.ReferenceColumn,
+                        StoreName = fetch.StoreName
+                    };
+                    fetchMessage.Columns.AddRange(fetch.Columns);
+                    fetchRel.Fetches.Add(fetchMessage);
+                }
+                rel.Detail = Google.Protobuf.WellKnownTypes.Any.Pack(fetchRel);
+
+                if (fetchRequiredColumnsRelation.EmitSet)
+                {
+                    rel.Common = new Protobuf.RelCommon();
+                    rel.Common.Emit = new Protobuf.RelCommon.Types.Emit();
+                    rel.Common.Emit.OutputMapping.AddRange(fetchRequiredColumnsRelation.Emit);
+                }
+                rel.Input = Visit(fetchRequiredColumnsRelation.Input, state);
+
+                return new Protobuf.Rel()
+                {
+                    ExtensionSingle = rel
                 };
             }
 

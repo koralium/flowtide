@@ -77,13 +77,7 @@ public class ReviewerBRound3DeleteFailureTests : OperatorTestBase
                 Names = ["key", "payload"],
                 Struct = new Struct { Types = [new AnyType(), new AnyType()] }
             },
-            Hint = new FlowtideDotNet.Substrait.Hints.Hint
-            {
-                Optimizations = new FlowtideDotNet.Substrait.Hints.HintOptimizations
-                {
-                    Properties = new Dictionary<string, string> { [RowStoreHost.DeferredColumnsHint] = "1" }
-                }
-            }
+            RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [1] }
         }, new FunctionsRegister(), new DataflowBlockOptions()) { }
 
         public override string DisplayName => "delete output failure source";

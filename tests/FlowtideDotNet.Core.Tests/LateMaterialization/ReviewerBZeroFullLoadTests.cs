@@ -68,7 +68,7 @@ public class ReviewerBZeroFullLoadTests : OperatorTestBase
             NamedTable = new NamedTable { Names = ["t"] },
             BaseSchema = new NamedStruct { Names = ["key", "payload"], Struct = new Struct { Types = [new AnyType(), new AnyType()] } }
         };
-        if (hosted) relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "1";
+        if (hosted) relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [1] };
         return relation;
     }
 

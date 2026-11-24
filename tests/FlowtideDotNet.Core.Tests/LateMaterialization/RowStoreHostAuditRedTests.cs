@@ -438,7 +438,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType(), new AnyType() } }
                 }
             };
-            relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "2";
+            relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [2] };
             return relation;
         }
 
@@ -453,7 +453,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                     Struct = new Struct() { Types = new List<SubstraitBaseType>() { new AnyType(), new AnyType(), new AnyType() } }
                 }
             };
-            relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "1";
+            relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [1] };
             return relation;
         }
 
@@ -821,7 +821,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 },
                 Emit = new List<int>() { 0, 1, 1, 2 }
             };
-            relation.Hint.Optimizations.Properties[RowStoreHost.DeferredColumnsHint] = "3";
+            relation.RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [3] };
 
             var rows = new List<(string Key, long Kept, string Text)>() { ("key-1", 10, "alpha") };
             var source = new CountingSource(relation, rows, GlobalMemoryManager.Instance, GlobalMemoryManager.Instance, [0]);
@@ -1060,11 +1060,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         [Fact]
         public void ReadLayoutAllowsDeferringRepeatedOutputPositions()
         {
-            var properties = new Dictionary<string, string>()
-            {
-                [RowStoreHost.DeferredColumnsHint] = "1,2"
-            };
-            var layout = RowStoreHost.ReadLayout(properties, 3, [0], [0, 2, 2]);
+            var layout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [1, 2] }, 3, [0], [0, 2, 2]);
             Assert.NotNull(layout);
             Assert.Equal([2], layout!.DeferredColumns);
             Assert.Empty(layout.KeptColumns);
@@ -1256,7 +1252,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         {
             using var stream = await Open();
             var emit = new List<int>() { 0, 2, 2 };
-            var firstLayout = RowStoreHost.ReadLayout(new Dictionary<string, string>() { [RowStoreHost.DeferredColumnsHint] = "1" }, 3, [0], emit, true);
+            var firstLayout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [1] }, 3, [0], emit);
             Assert.NotNull(firstLayout);
             using (var firstHost = await RowStoreHost.CreateAsync(stream.Client, "keys", "rows", firstLayout!, new RowStoreOptions() { Mode = RowStoreMode.Keyed }, GlobalMemoryManager.Instance))
             {
@@ -1265,7 +1261,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 await stream.Manager.CheckpointAsync();
             }
 
-            var secondLayout = RowStoreHost.ReadLayout(new Dictionary<string, string>() { [RowStoreHost.DeferredColumnsHint] = "2" }, 3, [0], emit, true);
+            var secondLayout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }, 3, [0], emit);
             Assert.NotNull(secondLayout);
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 RowStoreHost.CreateAsync(stream.Client, "keys", "rows", secondLayout!, new RowStoreOptions() { Mode = RowStoreMode.Keyed }, GlobalMemoryManager.Instance));
@@ -1313,7 +1309,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
         public async Task LookupAsyncSetsRowCountOnUnemittedSchemaColumns()
         {
             using var stream = await Open();
-            var layout = RowStoreHost.ReadLayout(new Dictionary<string, string>() { [RowStoreHost.DeferredColumnsHint] = "2" }, 4, [1], [1, 2, 3], true);
+            var layout = RowStoreHost.ReadLayout(new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }, 4, [1], [1, 2, 3]);
             Assert.NotNull(layout);
             using var host = await RowStoreHost.CreateAsync(stream.Client, "keys", "rows", layout!, new RowStoreOptions() { Mode = RowStoreMode.Keyed }, GlobalMemoryManager.Instance);
 

@@ -314,6 +314,21 @@ namespace FlowtideDotNet.Core.Engine
                         // Without a hash the stream could not tell that its joins are stored in another way than before
                         throw new InvalidOperationException("The plan has a multi join and could not be serialized, so its version cannot be told. Turn MultiJoin off for this plan.", e);
                     }
+                    bool rowStores;
+                    try
+                    {
+                        rowStores = LateMaterialization.RowStoreHostCollector.UsesRowStores(_plan.Relations);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // A store named twice, still a plan with stores
+                        rowStores = true;
+                    }
+                    if (rowStores)
+                    {
+                        // Without a hash a changed store layout goes unseen
+                        throw new InvalidOperationException("The plan has a row store and could not be serialized, so its version cannot be told.", e);
+                    }
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
@@ -393,6 +408,9 @@ namespace FlowtideDotNet.Core.Engine
                         $"The substream name '{_distributedOptions.SubstreamName}' does not exist in the plan, it contains the substreams: {string.Join(", ", substreamNames)}.");
                 }
             }
+
+            // A row reference only goes where it can be taken
+            LateMaterialization.RowReferencePlanValidator.Validate(_plan.Relations);
 
             SubstraitVisitor visitor = new SubstraitVisitor(
                 _plan,

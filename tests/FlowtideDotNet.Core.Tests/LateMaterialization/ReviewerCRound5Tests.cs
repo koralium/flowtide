@@ -40,13 +40,7 @@ public class ReviewerCRound5Tests : OperatorTestBase
                 Names = ["key", "kept", "payload"],
                 Struct = new Struct { Types = [new AnyType(), new AnyType(), new AnyType()] }
             },
-            Hint = new FlowtideDotNet.Substrait.Hints.Hint
-            {
-                Optimizations = new FlowtideDotNet.Substrait.Hints.HintOptimizations
-                {
-                    Properties = new Dictionary<string, string> { [RowStoreHost.DeferredColumnsHint] = "2" }
-                }
-            }
+            RowStore = new RowStoreDefinition() { Name = "rows", StoredColumns = [2] }
         }, new FunctionsRegister(), new DataflowBlockOptions())
         {
         }
