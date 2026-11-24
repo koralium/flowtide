@@ -157,6 +157,13 @@ Classes
       <dd></dd>
     </dl>
     <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.FetchRequiredColumnsRelation.html">FetchRequiredColumnsRelation</a></dt>
+      <dd><p>Reads stored columns back through reference columns.
+The output is the input's columns, then each fetch's columns.
+A null reference gives nulls.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
       <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.FilterRelation.html">FilterRelation</a></dt>
       <dd></dd>
     </dl>
@@ -220,6 +227,17 @@ A delete will delete the key even though there have been multiple inserts before
     <dl class="jumplist">
       <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.RootRelation.html">RootRelation</a></dt>
       <dd></dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.RowStoreDefinition.html">RowStoreDefinition</a></dt>
+      <dd><p>A relation keeps these output columns in a row store.
+Its output is the other columns, then one reference column.</p>
+</dd>
+    </dl>
+    <dl class="jumplist">
+      <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.RowStoreFetch.html">RowStoreFetch</a></dt>
+      <dd><p>Columns to read from one row store through a reference column.</p>
+</dd>
     </dl>
     <dl class="jumplist">
       <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.ScatterExchangeKind.html">ScatterExchangeKind</a></dt>

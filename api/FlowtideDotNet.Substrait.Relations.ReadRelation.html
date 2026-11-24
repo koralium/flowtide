@@ -258,7 +258,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_OutputLength" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.OutputLength">
   OutputLength
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L26"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L36"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -285,6 +285,70 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
 
 
+  <a id="FlowtideDotNet_Substrait_Relations_ReadRelation_OutputLengthWithoutRowStore_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.OutputLengthWithoutRowStore*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_OutputLengthWithoutRowStore" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.OutputLengthWithoutRowStore">
+  OutputLengthWithoutRowStore
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L34"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The output length before the row store is applied.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public int OutputLengthWithoutRowStore { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.int32">int</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+  <a id="FlowtideDotNet_Substrait_Relations_ReadRelation_RowStore_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.RowStore*"></a>
+
+  <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_RowStore" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.RowStore">
+  RowStore
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L29"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>Set when columns are kept in a row store.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public RowStoreDefinition? RowStore { get; set; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="FlowtideDotNet.Substrait.Relations.RowStoreDefinition.html">RowStoreDefinition</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <h2 class="section" id="methods">Methods
 </h2>
 
@@ -293,7 +357,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_Accept__2_FlowtideDotNet_Substrait_Relations_RelationVisitor___0___1____1_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.Accept``2(FlowtideDotNet.Substrait.Relations.RelationVisitor{``0,``1},``1)">
   Accept&lt;TReturn, TState&gt;(RelationVisitor&lt;TReturn, TState&gt;, TState)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L38"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L45"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -338,7 +402,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_Copy" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.Copy">
   Copy()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L79"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L88"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -369,7 +433,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_Equals_FlowtideDotNet_Substrait_Relations_ReadRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.Equals(FlowtideDotNet.Substrait.Relations.ReadRelation)">
   Equals(ReadRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L49"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L56"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Indicates whether the current object is equal to another object of the same type.</p>
@@ -408,7 +472,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_Equals_System_Object_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.Equals(System.Object)">
   Equals(object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L43"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L50"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Determines whether the specified object is equal to the current object.</p>
@@ -447,7 +511,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_GetHashCode" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.GetHashCode">
   GetHashCode()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L58"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L66"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Serves as the default hash function.</p>
@@ -484,7 +548,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_op_Equality_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Substrait_Relations_ReadRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.op_Equality(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Substrait.Relations.ReadRelation)">
   operator ==(ReadRelation?, ReadRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L69"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L78"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -522,7 +586,7 @@ Class ReadRelation  <a class="header-action link-secondary" title="View source" 
 
   <h3 id="FlowtideDotNet_Substrait_Relations_ReadRelation_op_Inequality_FlowtideDotNet_Substrait_Relations_ReadRelation_FlowtideDotNet_Substrait_Relations_ReadRelation_" data-uid="FlowtideDotNet.Substrait.Relations.ReadRelation.op_Inequality(FlowtideDotNet.Substrait.Relations.ReadRelation,FlowtideDotNet.Substrait.Relations.ReadRelation)">
   operator !=(ReadRelation?, ReadRelation?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L74"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Substrait/Relations/ReadRelation.cs/#L83"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
