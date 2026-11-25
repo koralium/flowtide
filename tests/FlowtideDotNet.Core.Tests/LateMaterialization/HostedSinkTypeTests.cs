@@ -65,7 +65,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization
                 case ArrowTypeId.Decimal128:
                     return "m" + value.AsDecimal.ToString(CultureInfo.InvariantCulture);
                 case ArrowTypeId.String:
-                    return "s" + value.AsString.ToString();
+                    return "s" + value.AsString;
                 case ArrowTypeId.Boolean:
                     return value.AsBool ? "true" : "false";
                 case ArrowTypeId.Binary:
