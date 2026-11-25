@@ -24,12 +24,12 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
     {
         public const string ArmVariable = "FLOWTIDE_LM_ARM";
 
-        private const string Usage = "Usage: --late-materialization selfcheck|describe|run|census|paired [--workload LM-J5] [--scale 0.001] [--rounds 3] [--narrow] [--shuffled] [--cache-pages 10000] [--state-dir path] [--memory-state] [--seed 123] [--pairs 15] [--timeout 3600]";
+        private const string Usage = "Usage: --late-materialization selfcheck|describe|run|census|paired [--workload LM-J5] [--scale 0.001] [--rounds 3] [--narrow] [--hosted] [--shuffled] [--cache-pages 10000] [--state-dir path] [--memory-state] [--seed 123] [--pairs 15] [--timeout 3600]";
 
-        private static readonly string[] OptionNames = ["workload", "scale", "rounds", "narrow", "shuffled", "cache-pages", "state-dir", "memory-state", "seed", "pairs", "timeout"];
+        private static readonly string[] OptionNames = ["workload", "scale", "rounds", "narrow", "hosted", "shuffled", "cache-pages", "state-dir", "memory-state", "seed", "pairs", "timeout"];
 
         // Options that may come without a value
-        private static readonly string[] FlagNames = ["narrow", "shuffled", "memory-state"];
+        private static readonly string[] FlagNames = ["narrow", "hosted", "shuffled", "memory-state"];
 
         private static readonly string[] Metrics = ["LoadRowsPerSecond", "ChurnRowsPerSecond", "LoadCheckpointMs", "CheckpointMeanMs", "CheckpointMaxMs", "PeakWorkingSetMb"];
 
@@ -397,6 +397,8 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         public bool Narrow { get; private set; }
 
+        public bool Hosted { get; private set; }
+
         public bool Shuffled { get; private set; }
 
         public bool MemoryState { get; private set; }
@@ -453,6 +455,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             options.TimeoutSeconds = options.Number("timeout", options.TimeoutSeconds, 1, 1e7);
             options.Seed = options.Whole("seed", options.Seed, long.MinValue, long.MaxValue);
             options.Narrow = options.Flag("narrow");
+            options.Hosted = options.Flag("hosted");
             options.Shuffled = options.Flag("shuffled");
             options.MemoryState = options.Flag("memory-state");
             if (options._values.TryGetValue("workload", out var workload))
@@ -521,6 +524,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             {
                 Workload = workload,
                 Wide = wide,
+                Hosted = Hosted && wide,
                 Census = census,
                 Shuffled = Shuffled,
                 Scale = Scale,

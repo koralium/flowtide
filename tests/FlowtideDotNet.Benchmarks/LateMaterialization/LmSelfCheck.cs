@@ -53,6 +53,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                         problems.Add($"narrow state {narrow.TotalStateBytes} is not smaller than wide state {wide.TotalStateBytes}");
                     }
                     var workload = LmWorkload.Create(name, Scale);
+                    if (workload.HostedSql.Length > 0)
+                    {
+                        // Row stores in the sources, the fetch in the sink
+                        await RunOne(name, true, false, problems, true);
+                    }
                     if (workload.KeptOnceClass != null && LmProgram.SmallestTreeDifference(wide.Census!, narrow.Census!, workload.KeptOnceClass, out _) <= 0)
                     {
                         problems.Add($"no tree of class {workload.KeptOnceClass} holds wide data to keep once");
@@ -91,26 +96,31 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             return failed == 0 ? 0 : 1;
         }
 
-        private static async Task<LmRunResult> RunOne(string name, bool wide, bool shuffled, List<string> problems)
+        private static async Task<LmRunResult> RunOne(string name, bool wide, bool shuffled, List<string> problems, bool hosted = false)
         {
-            string form = (wide ? "wide" : "narrow") + (shuffled ? " shuffled" : string.Empty);
+            string form = (hosted ? "hosted" : wide ? "wide" : "narrow") + (shuffled ? " shuffled" : string.Empty);
             var workload = LmWorkload.Create(name, Scale);
             var control = new LmControl(Seed, shuffled, true, workload.Tables);
             var result = await LmRun.Run(new LmRunOptions()
             {
                 Workload = name,
                 Wide = wide,
+                Hosted = hosted,
                 Shuffled = shuffled,
                 Scale = Scale,
                 Rounds = Rounds,
                 Seed = Seed,
-                Census = true,
+                // The census storage cannot hold a row store's pages
+                Census = !hosted,
                 TrackRows = true,
                 TimeoutSeconds = 180
             }, control);
             int before = problems.Count;
-            CheckCensus(result, problems);
-            CheckShape(workload, result, problems);
+            if (!hosted)
+            {
+                CheckCensus(result, problems);
+                CheckShape(workload, result, problems);
+            }
             CheckWork(workload, result, problems);
             if (workload.GroupColumn == null)
             {
@@ -120,7 +130,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             {
                 CheckGroupRows(workload, control, problems);
             }
-            CheckWeights(control, problems);
+            if (!hosted)
+            {
+                // A hosted sink gets references, its rows are checked above
+                CheckWeights(control, problems);
+            }
             for (int i = before; i < problems.Count; i++)
             {
                 problems[i] = $"{form}: {problems[i]}";

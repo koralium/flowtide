@@ -609,7 +609,17 @@ namespace FlowtideDotNet.Core.Engine
 
             if (op is ITargetBlock<IStreamEvent> target)
             {
-                writeRelation.Input.Accept(this, target);
+                if (writeRelation.Input is FetchRequiredColumnsRelation fetch && op is IRowStoreFetchHostVertex fetchHost &&
+                    fetchHost.TryAttachFetch(fetch, fetch.Fetches.Select(x => GetRowStoreHandle(x.StoreName)).ToList()))
+                {
+                    // The sink fetches at upload, the fetch's id stays unused
+                    _operatorId++;
+                    fetch.Input.Accept(this, target);
+                }
+                else
+                {
+                    writeRelation.Input.Accept(this, target);
+                }
             }
             else
             {

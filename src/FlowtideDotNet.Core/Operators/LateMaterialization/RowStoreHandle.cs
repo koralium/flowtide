@@ -116,4 +116,11 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
     {
         void AttachRowStoreHandle(RowStoreHandle handle);
     }
+
+    // A sink that can take the fetch in front of it
+    internal interface IRowStoreFetchHostVertex
+    {
+        // False when the sink cannot, the fetch then runs by itself
+        bool TryAttachFetch(FlowtideDotNet.Substrait.Relations.FetchRequiredColumnsRelation fetch, IReadOnlyList<RowStoreHandle> handles);
+    }
 }

@@ -51,6 +51,16 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         public string NarrowSql { get; private set; } = string.Empty;
 
+        /// <summary>
+        /// The narrow query with one reference per table.
+        /// </summary>
+        public string HostedSql { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// The name the reference column has in the hosted query's tables.
+        /// </summary>
+        public const string ReferenceColumn = "rr";
+
         public int WideKeyColumns { get; private set; } = 1;
 
         public int NarrowKeyColumns { get; private set; } = 1;
@@ -186,8 +196,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             return new LmTable("fact", Scaled(rows, scale), true, columns.ToArray());
         }
 
-        private static void AppendColumns(StringBuilder select, LmTable table, string alias, string prefix, bool wide)
+        private static void AppendColumns(StringBuilder select, LmTable table, string alias, string prefix, bool wide, bool hosted = false)
         {
+            bool referenceWritten = false;
             for (int i = 0; i < table.Columns.Count; i++)
             {
                 var column = table.Columns[i];
@@ -195,7 +206,18 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 {
                     continue;
                 }
-                if (column.Payload && !wide)
+                string name = column.Name;
+                if (column.Payload && hosted)
+                {
+                    // One reference stands where the wide columns were
+                    if (referenceWritten)
+                    {
+                        continue;
+                    }
+                    referenceWritten = true;
+                    name = ReferenceColumn;
+                }
+                else if (column.Payload && !wide)
                 {
                     continue;
                 }
@@ -203,23 +225,23 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 {
                     select.Append(", ");
                 }
-                select.Append(alias).Append('.').Append(column.Name);
-                if (prefix.Length > 0)
+                select.Append(alias).Append('.').Append(name);
+                if (prefix.Length > 0 || name == ReferenceColumn)
                 {
-                    select.Append(" AS ").Append(prefix).Append(column.Name);
+                    select.Append(" AS ").Append(alias).Append('_').Append(name);
                 }
             }
         }
 
-        private static string JoinSql(LmTable fact, List<LmTable> dimensions, bool wide)
+        private static string JoinSql(LmTable fact, List<LmTable> dimensions, bool wide, bool hosted = false)
         {
             var select = new StringBuilder();
-            AppendColumns(select, fact, "f", string.Empty, wide);
+            AppendColumns(select, fact, "f", string.Empty, wide, hosted);
             var from = new StringBuilder("FROM fact f");
             for (int i = 0; i < dimensions.Count; i++)
             {
                 var name = dimensions[i].Name;
-                AppendColumns(select, dimensions[i], name, name + "_", wide);
+                AppendColumns(select, dimensions[i], name, name + "_", wide, hosted);
                 from.Append($" INNER JOIN {name} {name} ON f.{name}_id = {name}.id");
             }
             return $"INSERT INTO output SELECT {select} {from}";
@@ -250,6 +272,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             {
                 workload.WideSql = JoinSql(fact, dimensions, true);
                 workload.NarrowSql = JoinSql(fact, dimensions, false);
+                workload.HostedSql = JoinSql(fact, dimensions, false, true);
                 workload.Shape["Multi Join"] = dimensions.Count > 4 ? 2 : 1;
             }
             return workload;

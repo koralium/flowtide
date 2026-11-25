@@ -26,7 +26,7 @@ using System.Threading.Tasks.Dataflow;
 
 namespace FlowtideDotNet.Core.Operators.Write.Column
 {
-    public abstract class ColumnGroupedWriteOperator : EgressVertex<StreamEventBatch>
+    public abstract partial class ColumnGroupedWriteOperator : EgressVertex<StreamEventBatch>
     {
         private readonly ExecutionMode m_executionMode;
         private readonly WriteRelation m_writeRelation;
@@ -47,6 +47,8 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         private readonly IColumn[] _deleteBatchColumns;
         private readonly EventBatchData _deleteEventBatch;
         private bool m_hasExistingData;
+        // Columns the output tree stores, fewer with a fetch
+        private int _treeColumnCount;
 
         private const string BackgroundSendDoneTrigger = "__column_write_background_send_done";
         private Task? m_backgroundSend;
@@ -57,6 +59,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         {
             this.m_executionMode = executionMode;
             this.m_writeRelation = writeRelation;
+            _treeColumnCount = writeRelation.OutputLength;
             
             // Create the event batch used for delete, this is used to give the user the same amount of columns
             // if it is an upsert or a delete
@@ -97,13 +100,17 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             m_hasSentInitialData = await stateManagerClient.GetOrCreateObjectStateAsync<bool>("initialDataSent");
 
             m_primaryKeyColumns = await GetPrimaryKeyColumns();
+            var treeKeyColumns = TreeKeyColumns(m_primaryKeyColumns);
+            _treeKeyColumns = treeKeyColumns;
+            await CheckTreeLayout(stateManagerClient);
+            CreateFetchers();
 
             m_tree = await stateManagerClient.GetOrCreateTree("output",
                 new BPlusTreeOptions<ColumnRowReference, int, ColumnKeyStorageContainer, ListValueContainer<int>>()
                 {
-                    Comparer = new WriteTreeInsertComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), m_writeRelation.OutputLength),
+                    Comparer = new WriteTreeInsertComparer(treeKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), _treeColumnCount),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ColumnStoreSerializer(m_writeRelation.OutputLength, MemoryAllocator),
+                    KeySerializer = new ColumnStoreSerializer(_treeColumnCount, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
@@ -111,9 +118,9 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             m_modified = await stateManagerClient.GetOrCreateTree("temporary",
                 new BPlusTreeOptions<ColumnRowReference, int, ModifiedKeyStorage, ListValueContainer<int>>()
                 {
-                    Comparer = new ModifiedTreeComparer(m_primaryKeyColumns.ToList()),
+                    Comparer = new ModifiedTreeComparer(treeKeyColumns),
                     ValueSerializer = new ValueListSerializer<int>(new IntSerializer()),
-                    KeySerializer = new ModifiedKeyStorageSerializer(m_primaryKeyColumns.ToList(), MemoryAllocator),
+                    KeySerializer = new ModifiedKeyStorageSerializer(treeKeyColumns, MemoryAllocator),
                     MemoryAllocator = MemoryAllocator,
                     UseByteBasedPageSizes = true
                 });
@@ -124,7 +131,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             {
                 referenceColumns.Add(new KeyValuePair<int, ReferenceSegment?>(i, default));
             }
-            m_writeTreeSearchComparer = new WriteTreeSearchComparer(m_primaryKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), referenceColumns);
+            m_writeTreeSearchComparer = new WriteTreeSearchComparer(treeKeyColumns.Select(x => new KeyValuePair<int, ReferenceSegment?>(x, default)).ToList(), referenceColumns);
 
             if (FetchExistingData && !m_hasSentInitialData.Value)
             {
@@ -221,6 +228,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
         public override async ValueTask DisposeAsync()
         {
             await DrainBackgroundSendFromLastRun();
+            DisposeFetchers();
             await base.DisposeAsync();
         }
 
@@ -292,6 +300,7 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
                 await WaitForBackgroundSend();
             }
             Checkpoint(checkpointTime);
+            await CommitTreeLayout();
             await m_hasSentInitialData.Commit();
             await m_tree.Commit();
         }
@@ -306,7 +315,16 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_primaryKeyColumns != null);
             Debug.Assert(m_hasSentInitialData != null);
 
-            if (!m_hasSentInitialData.Value &&
+            if (_fetchRelation != null)
+            {
+                // The tree holds references, rows are fetched in chunks
+                var rows = !m_hasSentInitialData.Value && FetchExistingData ? CalculateDeltaWithExistingDataFetched() : ResolveChangedKeys();
+                await foreach (var row in rows)
+                {
+                    yield return row;
+                }
+            }
+            else if (!m_hasSentInitialData.Value &&
                 FetchExistingData)
             {
                 await foreach (var row in CalculateDeltaWithExistingData())
@@ -545,7 +563,10 @@ namespace FlowtideDotNet.Core.Operators.Write.Column
             Debug.Assert(m_modified != null);
 
             var batch = msg.Data.EventBatchData;
-            RowRefGuard.ThrowIfPresent(batch, this);
+            if (_fetchRelation == null)
+            {
+                RowRefGuard.ThrowIfPresent(batch, this);
+            }
             var weights = msg.Data.Weights;
             m_hasRowsSinceWatermark = true;
             for (int i = 0; i < msg.Data.Weights.Count; i++)
