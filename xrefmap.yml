@@ -35977,6 +35977,19 @@ references:
   fullName.vb: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.New
   nameWithType: ColumnGroupedWriteOperator.ColumnGroupedWriteOperator
   nameWithType.vb: ColumnGroupedWriteOperator.New
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch
+  name: CanHostFetch
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_CanHostFetch
+  commentId: P:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch
+  nameWithType: ColumnGroupedWriteOperator.CanHostFetch
+- uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch*
+  name: CanHostFetch
+  href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_CanHostFetch_
+  commentId: Overload:FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch
+  nameWithType: ColumnGroupedWriteOperator.CanHostFetch
 - uid: FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.Checkpoint(System.Int64)
   name: Checkpoint(long)
   href: api/FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_Checkpoint_System_Int64_

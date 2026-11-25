@@ -91,7 +91,7 @@
 
 
   <h1 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator" class="text-break">
-Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L29"><i class="bi bi-code-slash"></i></a>
+Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.Fetch.cs/#L26"><i class="bi bi-code-slash"></i></a>
   </h1>
 
   <div class="facts text-secondary">
@@ -259,7 +259,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator__ctor_FlowtideDotNet_Core_Operators_Write_ExecutionMode_FlowtideDotNet_Substrait_Relations_WriteRelation_System_Threading_Tasks_Dataflow_ExecutionDataflowBlockOptions_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.#ctor(FlowtideDotNet.Core.Operators.Write.ExecutionMode,FlowtideDotNet.Substrait.Relations.WriteRelation,System.Threading.Tasks.Dataflow.ExecutionDataflowBlockOptions)">
   ColumnGroupedWriteOperator(ExecutionMode, WriteRelation, ExecutionDataflowBlockOptions)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L56"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L58"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -294,11 +294,43 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 </h2>
 
 
+  <a id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_CanHostFetch_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_CanHostFetch" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.CanHostFetch">
+  CanHostFetch
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.Fetch.cs/#L52"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>False by default for a sink that overrides OnRecieve.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">protected virtual bool CanHostFetch { get; }</code></pre>
+  </div>
+
+
+
+
+
+  <h4 class="section">Property Value</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.boolean">bool</a></dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_ExistingRowComparer_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.ExistingRowComparer*"></a>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_ExistingRowComparer" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.ExistingRowComparer">
   ExistingRowComparer
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L80"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L83"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -329,7 +361,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_FetchExistingData" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.FetchExistingData">
   FetchExistingData
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L71"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L74"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -360,7 +392,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_PrimaryKeyColumns" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.PrimaryKeyColumns">
   PrimaryKeyColumns
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L78"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L81"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -391,7 +423,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_UsesBackgroundSend" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UsesBackgroundSend">
   UsesBackgroundSend
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L76"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L79"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Sink hands sends to <a class="xref" href="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.html#FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_SendInBackground_System_Threading_Tasks_Task_">SendInBackground(Task)</a>.</p>
@@ -427,7 +459,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_Checkpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.Checkpoint(System.Int64)">
   Checkpoint(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L299"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L308"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -458,7 +490,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_Compact" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.Compact">
   Compact()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L82"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L85"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Requests the operator to compact its persistent storage.</p>
@@ -491,7 +523,7 @@ Class ColumnGroupedWriteOperator  <a class="header-action link-secondary" title=
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_DeleteAsync" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DeleteAsync">
   DeleteAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L87"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L90"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Initiates the deletion process, allowing derived classes to permanently clean up any persistent state
@@ -525,7 +557,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_DisposeAsync" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.DisposeAsync">
   DisposeAsync()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L221"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L228"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Releases internal resources held by this vertex asynchronously.</p>
@@ -557,7 +589,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_GetExistingData" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.GetExistingData">
   GetExistingData()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L491"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L509"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -588,7 +620,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_GetExistingDataRow_FlowtideDotNet_Core_ColumnStore_TreeStorage_ColumnRowReference_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.GetExistingDataRow(FlowtideDotNet.Core.ColumnStore.TreeStorage.ColumnRowReference)">
   GetExistingDataRow(ColumnRowReference)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L496"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L514"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -624,7 +656,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_GetPrimaryKeyColumns" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.GetPrimaryKeyColumns">
   GetPrimaryKeyColumns()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L92"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L95"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -655,7 +687,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_InitializeOrRestore_System_Int64_FlowtideDotNet_Storage_StateManager_IStateManagerClient_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.InitializeOrRestore(System.Int64,FlowtideDotNet.Storage.StateManager.IStateManagerClient)">
   InitializeOrRestore(long, IStateManagerClient)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L94"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L97"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Restores or initializes the operator's persistent state from the provided state manager client.</p>
@@ -697,7 +729,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnCheckpoint_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnCheckpoint(System.Int64)">
   OnCheckpoint(long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L277"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L285"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Invoked when a checkpoint is triggered. Allows the vertex to persist any required state.</p>
@@ -736,7 +768,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnInitialDataSent" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnInitialDataSent">
   OnInitialDataSent()
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L535"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L553"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -767,7 +799,7 @@ associated with this vertex.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnRecieve_FlowtideDotNet_Core_StreamEventBatch_System_Int64_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnRecieve(FlowtideDotNet.Core.StreamEventBatch,System.Int64)">
   OnRecieve(StreamEventBatch, long)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L542"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L560"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called when the vertex receives data from upstream. Derived classes implement the actual sink logic here,
@@ -810,7 +842,7 @@ such as writing records to a database, file, or external service.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnTrigger_System_String_System_Object_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnTrigger(System.String,System.Object)">
   OnTrigger(string, object?)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L259"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L267"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Handles custom logic executed when the vertex processes a queued trigger event.</p>
@@ -852,7 +884,7 @@ such as writing records to a database, file, or external service.</p>
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_OnWatermark_FlowtideDotNet_Base_Watermark_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.OnWatermark(FlowtideDotNet.Base.Watermark)">
   OnWatermark(Watermark)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L163"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L170"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Called when a <a class="xref" href="FlowtideDotNet.Base.Watermark.html">Watermark</a> arrives at this egress vertex. Allows derived classes to
@@ -892,7 +924,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_SendInBackground_System_Threading_Tasks_Task_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.SendInBackground(System.Threading.Tasks.Task)">
   SendInBackground(Task)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L187"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L194"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"><p>Runs the network part of an upload off the operator loop.</p>
@@ -924,7 +956,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 
   <h3 id="FlowtideDotNet_Core_Operators_Write_Column_ColumnGroupedWriteOperator_UploadChanges_System_Collections_Generic_IAsyncEnumerable_FlowtideDotNet_Core_Operators_Write_Column_ColumnWriteOperation__FlowtideDotNet_Base_Watermark_System_Boolean_System_Threading_CancellationToken_" data-uid="FlowtideDotNet.Core.Operators.Write.Column.ColumnGroupedWriteOperator.UploadChanges(System.Collections.Generic.IAsyncEnumerable{FlowtideDotNet.Core.Operators.Write.Column.ColumnWriteOperation},FlowtideDotNet.Base.Watermark,System.Boolean,System.Threading.CancellationToken)">
   UploadChanges(IAsyncEnumerable&lt;ColumnWriteOperation&gt;, Watermark, bool, CancellationToken)
-  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L540"><i class="bi bi-code-slash"></i></a>
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L558"><i class="bi bi-code-slash"></i></a>
   </h3>
 
   <div class="markdown level1 summary"></div>
@@ -966,7 +998,7 @@ react to watermark advancement, for example to flush buffered output per time bo
 </article>
 
         <div class="contribution d-print-none">
-          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.cs/#L29" class="edit-link">Edit this page</a>
+          <a href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Operators/Write/Column/ColumnGroupedWriteOperator.Fetch.cs/#L26" class="edit-link">Edit this page</a>
         </div>
 
 
