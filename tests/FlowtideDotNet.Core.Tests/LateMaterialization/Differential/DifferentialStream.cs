@@ -18,6 +18,8 @@ using FlowtideDotNet.Core.ColumnStore.DataValues;
 using FlowtideDotNet.Core.Compute;
 using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.Core.Operators.Read;
+using FlowtideDotNet.Core.Operators.Write;
+using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
@@ -39,11 +41,15 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         {
             Name = name;
             Columns = columns;
+            WatermarkName = name;
         }
 
         public string Name { get; }
 
         public int Columns { get; }
+
+        // With one watermark name two tables act as one
+        public string WatermarkName { get; init; }
 
         public List<object?[]> Rows { get; } = new List<object?[]>();
 
@@ -130,7 +136,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             return Task.CompletedTask;
         }
 
-        protected override Task<IReadOnlySet<string>> GetWatermarkNames() => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _table.Name });
+        protected override Task<IReadOnlySet<string>> GetWatermarkNames() => Task.FromResult<IReadOnlySet<string>>(new HashSet<string>() { _table.WatermarkName });
 
         protected override ValueTask<List<int>> GetPrimaryKeyColumns() => ValueTask.FromResult(new List<int>() { 0 });
 
@@ -204,7 +210,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                         if (rows.Length > 0)
                         {
                             Volatile.Write(ref _table.TakenAt, Volatile.Read(ref _table.Barriers));
-                            yield return new DeltaReadEvent(Batch(rows), new Watermark(_table.Name, LongWatermarkValue.Create(++_watermark)));
+                            yield return new DeltaReadEvent(Batch(rows), new Watermark(_table.WatermarkName, LongWatermarkValue.Create(++_watermark)));
                         }
                         // Counted last, a settle waits for it
                         Interlocked.Increment(ref _table.Sent);
@@ -272,7 +278,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // A string that could be read as another value is quoted
-        private static string Text<T>(T value) where T : IDataValue
+        internal static string Text<T>(T value) where T : IDataValue
         {
             switch (value.Type)
             {
@@ -304,6 +310,167 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         public override Task DeleteAsync() => Task.CompletedTask;
     }
 
+    // What a grouped sink has written, kept over restarts
+    internal sealed class DifferentialDestination
+    {
+        private readonly Dictionary<string, string> _rows = new Dictionary<string, string>();
+
+        public ExecutionMode Mode { get; init; } = ExecutionMode.OnCheckpoint;
+
+        // Rows the destination holds before the stream starts
+        public List<object?[]>? Existing { get; init; }
+
+        // The upload runs off the operator, as a network send does
+        public bool Background { get; init; }
+
+        // False makes the sink leave the fetch to an operator
+        public bool CanHost { get; set; } = true;
+
+        // Test hooks: a background send began, and its gate
+        public Action? SendEntered { get; set; }
+
+        public Func<Task>? SendGate { get; set; }
+
+        public Action? WatermarkProcessed { get; set; }
+
+        public Action<EventBatchData>? ObserveBatch { get; set; }
+
+        // Every upsert and delete in the order it was sent
+        public ConcurrentQueue<string> Operations { get; } = new ConcurrentQueue<string>();
+
+        public void Apply(string key, string? row)
+        {
+            lock (_rows)
+            {
+                if (row == null)
+                {
+                    _rows.Remove(key);
+                    Operations.Enqueue("delete " + key);
+                }
+                else
+                {
+                    _rows[key] = row;
+                    Operations.Enqueue("upsert " + row);
+                }
+            }
+        }
+
+        public List<string> Rows()
+        {
+            lock (_rows)
+            {
+                return _rows.Values.ToList();
+            }
+        }
+    }
+
+    // A keyed grouped sink, key in column 0
+    internal sealed class DifferentialGroupedSink : ColumnGroupedWriteOperator
+    {
+        private readonly DifferentialDestination _destination;
+        private readonly int _columns;
+
+        public DifferentialGroupedSink(WriteRelation relation, DifferentialDestination destination)
+            : base(destination.Mode, relation, new ExecutionDataflowBlockOptions() { BoundedCapacity = 100, MaxDegreeOfParallelism = 1 })
+        {
+            _destination = destination;
+            _columns = relation.OutputLength;
+        }
+
+        public override string DisplayName => "differential grouped sink";
+
+        protected override bool FetchExistingData => _destination.Existing != null;
+
+        protected override bool CanHostFetch => _destination.CanHost;
+
+        protected override bool UsesBackgroundSend => _destination.Background && _destination.Mode != ExecutionMode.OnCheckpoint;
+
+        protected override ValueTask<IReadOnlyList<int>> GetPrimaryKeyColumns() => ValueTask.FromResult<IReadOnlyList<int>>(new List<int>() { 0 });
+
+        protected override void Checkpoint(long checkpointTime)
+        {
+        }
+
+        protected override async Task OnWatermark(Watermark watermark)
+        {
+            await base.OnWatermark(watermark);
+            _destination.WatermarkProcessed?.Invoke();
+        }
+
+        protected override async IAsyncEnumerable<EventBatchData> GetExistingData()
+        {
+            await Task.CompletedTask;
+            var columns = new IColumn[_columns];
+            for (int c = 0; c < columns.Length; c++)
+            {
+                columns[c] = Column.Create(MemoryAllocator);
+            }
+            foreach (var row in _destination.Existing!.OrderBy(x => (long)x[0]!))
+            {
+                for (int c = 0; c < columns.Length; c++)
+                {
+                    switch (row[c])
+                    {
+                        case null:
+                            columns[c].Add(NullValue.Instance);
+                            break;
+                        case long number:
+                            columns[c].Add(new Int64Value(number));
+                            break;
+                        default:
+                            columns[c].Add(new StringValue((string)row[c]!));
+                            break;
+                    }
+                }
+            }
+            if (columns[0].Count > 0)
+            {
+                yield return new EventBatchData(columns);
+            }
+        }
+
+        protected override async Task UploadChanges(IAsyncEnumerable<ColumnWriteOperation> rows, Watermark watermark, bool isInitialData, CancellationToken cancellationToken)
+        {
+            var changes = new List<(string key, string? row)>();
+            await foreach (var row in rows)
+            {
+                _destination.ObserveBatch?.Invoke(row.EventBatchData);
+                var columns = row.EventBatchData.Columns;
+                var key = DifferentialSink.Text(columns[0].GetValueAt(row.Index, default));
+                if (row.IsDeleted)
+                {
+                    changes.Add((key, null));
+                    continue;
+                }
+                var parts = new string[columns.Count];
+                for (int c = 0; c < parts.Length; c++)
+                {
+                    parts[c] = DifferentialSink.Text(columns[c].GetValueAt(row.Index, default));
+                }
+                changes.Add((key, string.Join("|", parts)));
+            }
+            if (UsesBackgroundSend)
+            {
+                SendInBackground(Task.Run(async () =>
+                {
+                    _destination.SendEntered?.Invoke();
+                    await (_destination.SendGate?.Invoke() ?? Task.Delay(20));
+                    Apply(changes);
+                }));
+                return;
+            }
+            Apply(changes);
+        }
+
+        private void Apply(List<(string key, string? row)> changes)
+        {
+            foreach (var (key, row) in changes)
+            {
+                _destination.Apply(key, row);
+            }
+        }
+    }
+
     // One plan running over its own tables and storage
     internal sealed class DifferentialStream : IAsyncDisposable
     {
@@ -324,6 +491,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         {
             public override IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions)
             {
+                if (owner.Destination != null)
+                {
+                    return new DifferentialGroupedSink(writeRelation, owner.Destination);
+                }
                 return owner.Sink;
             }
 
@@ -357,6 +528,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         public ConcurrentQueue<Exception?> Failures { get; } = new ConcurrentQueue<Exception?>();
 
         public DifferentialSink Sink { get; private set; } = new DifferentialSink();
+
+        // Set before the start to write through a grouped sink
+        public DifferentialDestination? Destination { get; set; }
 
         private sealed class CheckpointCounter(DifferentialStream owner) : ICheckpointListener
         {
@@ -413,13 +587,17 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // Stops the stream and starts it again from its storage
-        public async Task RestartAsync()
+        public async Task RestartAsync(bool waitForRunning = true)
         {
             await _stream!.StopAsync().WaitAsync(TimeSpan.FromSeconds(30));
             await _stream.DisposeAsync();
             Sink.AddTo(_restored);
             Sink = new DifferentialSink();
             await StartAsync();
+            if (!waitForRunning)
+            {
+                return;
+            }
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             while (_stream!.State != StreamStateValue.Running)
             {
@@ -429,6 +607,12 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
 
         public List<string> Result()
         {
+            if (Destination != null)
+            {
+                var written = Destination.Rows();
+                written.Sort(StringComparer.Ordinal);
+                return written;
+            }
             var rows = new Dictionary<string, int>(_restored);
             Sink.AddTo(rows);
             var result = new List<string>();
@@ -469,6 +653,13 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
     // The same plan with and without row stores, on equal tables
     internal sealed class DifferentialPair : IAsyncDisposable
     {
+        public DifferentialPair(Func<bool, Plan> plan, Func<DifferentialTable[]> tables, Func<DifferentialDestination> destination, Action<FlowtideBuilder>? configure = null)
+            : this(plan, tables, configure)
+        {
+            Hosted.Destination = destination();
+            Plain.Destination = destination();
+        }
+
         public DifferentialPair(Func<bool, Plan> plan, Func<DifferentialTable[]> tables, Action<FlowtideBuilder>? configure = null)
         {
             Hosted = new DifferentialStream(() => plan(true), configure, tables());
@@ -523,14 +714,40 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                 await Settle(Plain, expected, "plain");
                 Assert.Equal(expected, Plain.Result());
                 Assert.Equal(expected, Hosted.Result());
-                Assert.Empty(Plain.Negative());
-                Assert.Empty(Hosted.Negative());
+                if (Plain.Destination == null)
+                {
+                    // A grouped sink's signed rows are tested at its operator
+                    Assert.Empty(Plain.Negative());
+                    Assert.Empty(Hosted.Negative());
+                }
                 AssertNoFailures();
             }
             catch
             {
                 _failed = true;
                 throw;
+            }
+        }
+
+        // Both streams have sent every change and saved after it
+        public async Task SettleBoth()
+        {
+            foreach (var stream in new[] { Hosted, Plain })
+            {
+                var until = DateTime.UtcNow.Add(SettleTimeout);
+                while (!(stream.Tables.Values.All(x => Volatile.Read(ref x.Sent) == Volatile.Read(ref x.Enqueued)) && stream.Covered && stream.Stream.State == StreamStateValue.Running))
+                {
+                    if (stream.Tables.Values.Any(x => Volatile.Read(ref x.Sent) != Volatile.Read(ref x.Enqueued)))
+                    {
+                        await stream.TriggerAsync();
+                    }
+                    if (DateTime.UtcNow > until)
+                    {
+                        _failed = true;
+                        Assert.Fail($"A stream did not settle: state {stream.Stream.State}, covered {stream.Covered}.");
+                    }
+                    await Task.Delay(25);
+                }
             }
         }
 

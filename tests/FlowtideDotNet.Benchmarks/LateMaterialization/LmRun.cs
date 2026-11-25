@@ -40,6 +40,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         public bool Wide { get; init; } = true;
 
+        /// <summary>
+        /// Sources store the wide columns, the sink fetches.
+        /// </summary>
+        public bool Hosted { get; init; }
+
         public bool Shuffled { get; init; }
 
         public long Seed { get; init; } = 123;
@@ -72,6 +77,8 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
         public required string Arm { get; init; }
 
         public required bool Wide { get; init; }
+
+        public bool Hosted { get; init; }
 
         public required double Scale { get; init; }
 
@@ -120,6 +127,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         public long TotalStateBytes { get; init; }
 
+        /// <summary>
+        /// Size of the state folder at the end, dead pages included.
+        /// </summary>
+        public long StateDiskBytes { get; set; }
+
         public List<LmCensusRow>? Census { get; init; }
 
         public List<string>? CensusProblems { get; init; }
@@ -137,6 +149,8 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             "flowtide_s3fifo_small_queue_evictions",
             "flowtide_cache_read_hits",
             "flowtide_cache_read_misses",
+            "flowtide_fetched_rows",
+            "flowtide_fetch_cold_loads",
             MetricNames.PersistentStorageNumberOfReads,
             MetricNames.PersistentStorageNumberOfWrites
         ];
@@ -205,7 +219,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             var checkpoints = new Checkpoints();
             var deadline = DateTime.UtcNow.AddSeconds(options.TimeoutSeconds);
 
-            var plan = BuildPlan(workload, options.Wide);
+            var plan = options.Hosted ? LmHostedPlan.Build(workload) : BuildPlan(workload, options.Wide);
             var connectors = new ConnectorManager();
             connectors.AddSource(new LmSourceFactory(workload, control));
             connectors.AddSink(new LmSinkFactory(control, options.Wide ? workload.WideKeyColumns : workload.NarrowKeyColumns));
@@ -247,7 +261,13 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                     .Build();
                 try
                 {
-                    return await Measure(stream, streamName, workload, control, options, census, checkpoints, failures, deadline);
+                    var result = await Measure(stream, streamName, workload, control, options, census, checkpoints, failures, deadline);
+                    string stateDirectory = Path.Join(runDirectory, "state");
+                    if (Directory.Exists(stateDirectory))
+                    {
+                        result.StateDiskBytes = new DirectoryInfo(stateDirectory).EnumerateFiles("*", SearchOption.AllDirectories).Sum(x => x.Length);
+                    }
+                    return result;
                 }
                 finally
                 {
@@ -315,6 +335,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 Workload = workload.Name,
                 Arm = options.Arm,
                 Wide = options.Wide,
+                Hosted = options.Hosted,
                 Scale = options.Scale,
                 InputRows = workload.InputRows,
                 LoadSeconds = loadSeconds,

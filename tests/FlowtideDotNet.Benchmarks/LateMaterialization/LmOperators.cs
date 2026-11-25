@@ -485,6 +485,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             _control.SinkWatermark(watermark);
         }
 
+        // The weights it tracks read no column a fetch would bring
+        protected override bool CanHostFetch => true;
+
         protected override Task OnRecieve(StreamEventBatch msg, long time)
         {
             if (_control.SinkWeights != null)
