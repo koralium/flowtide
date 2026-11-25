@@ -516,7 +516,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         [Fact]
-        public async Task ASinkWhoseKeyIsFetchedRefusesToStart()
+        public async Task ASinkWhoseKeyIsFetchedGetsTheFetchInFront()
         {
             var plan = Write(new FetchRequiredColumnsRelation()
             {
@@ -534,6 +534,38 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                 Emit = [3, 0, 1, 4]
             }, 4);
             await using var stream = new DifferentialStream(() => plan, null, Table("t", Row(1, 5, "a", "x"))) { Destination = new DifferentialDestination() };
+
+            await stream.StartAsync();
+            var until = DateTime.UtcNow.AddSeconds(30);
+            while (stream.Failures.IsEmpty && stream.Result().Count == 0 && DateTime.UtcNow < until)
+            {
+                await Task.Delay(25);
+            }
+
+            Assert.Empty(stream.Failures);
+            Assert.Equal(["a|1|5|x"], stream.Result());
+            Assert.Equal(1, stream.Stream.GetDiagnosticsGraph().Nodes.Values.Count(x => x.DisplayName == "Fetch required columns"));
+        }
+
+        [Fact]
+        public async Task ASinkWhoseFactoryNamesAnotherKeyThanItUsesRefusesToStart()
+        {
+            var plan = Write(new FetchRequiredColumnsRelation()
+            {
+                Input = new ReadRelation()
+                {
+                    NamedTable = new NamedTable() { Names = ["t"] },
+                    BaseSchema = new NamedStruct()
+                    {
+                        Names = ["k", "n", "text", "note"],
+                        Struct = new Struct() { Types = [new AnyType(), new AnyType(), new AnyType(), new AnyType()] }
+                    },
+                    RowStore = new RowStoreDefinition() { Name = "t", StoredColumns = [2, 3] }
+                },
+                Fetches = [new RowStoreFetch() { ReferenceColumn = 2, StoreName = "t", Columns = [0, 1] }],
+                Emit = [3, 0, 1, 4]
+            }, 4);
+            await using var stream = new DifferentialStream(() => plan, null, Table("t", Row(1, 5, "a", "x"))) { Destination = new DifferentialDestination() { DeclaredKeys = [1] } };
 
             await stream.StartAsync();
             var until = DateTime.UtcNow.AddSeconds(30);

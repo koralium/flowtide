@@ -38,7 +38,7 @@ public class DistributedStorageRecoveryTests
         var connectors = new ConnectorManager();
         connectors.AddSource(new MockSourceFactory("*", db, false));
         connectors.AddSink(new MockSinkFactory("*", _ => { }, 0, _ => { }, onCommitVersion: commit));
-        return new FlowtideBuilder(name).AddPlan(plan.GetPlan(), false)
+        return new FlowtideBuilder(name).WithSuiteLateMaterialization().AddPlan(plan.GetPlan(), false)
             .AddConnectorManager(connectors)
             .WithStateOptions(new StateManagerOptions { PersistentStorage = storage })
             .SetDistributedOptions(new DistributedOptions(member, null, hub.CreateFactory(member)))

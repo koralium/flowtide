@@ -159,6 +159,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, substreamName == "substream_0" ? holdingStorage : null))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, true));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
@@ -213,6 +214,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, substreamName == "substream_0" ? holdingStorage : null))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, true));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
@@ -287,6 +289,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, substreamName == "substream_0" ? holdingStorage : null))
                     .ConfigureSubstream((substreamName, substreamBuilder) =>
                     {
+                        substreamBuilder.WithSuiteLateMaterialization();
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
@@ -361,6 +364,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, null))
                     .ConfigureSubstream((substreamName, substreamBuilder) =>
                     {
+                        substreamBuilder.WithSuiteLateMaterialization();
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));
@@ -456,6 +460,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     .WithStateOptionsFactory((_, substreamName) => CreateStateOptions(substreamName, null))
                     .ConfigureSubstream((substreamName, substreamBuilder) =>
                     {
+                        substreamBuilder.WithSuiteLateMaterialization();
                         var connectorManager = new ConnectorManager();
                         connectorManager.AddSource(new MockSourceFactory("*", _db, true));
                         connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data.Count, 0, _ => { }));

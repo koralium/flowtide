@@ -85,6 +85,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                     .WithStateOptionsFactory((streamName, substreamName) => DistributedStreamE2ETests.CreateStateOptions("e2e_unpairable_teardown", substreamName))
                     .ConfigureSubstream((substreamName, substreamBuilder) =>
                     {
+                        substreamBuilder.WithSuiteLateMaterialization();
                         var connectorManager = new ConnectorManager();
                         var delay = substreamName == "substream_0" ? TimeSpan.FromSeconds(30) : TimeSpan.Zero;
                         connectorManager.AddSource(new MockSourceFactory("*", _db, false, initialDataDelay: delay));

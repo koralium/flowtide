@@ -52,6 +52,13 @@ namespace FlowtideDotNet.Core.Connectors
             return _inner.GetLineageMetadata(copy, includeSchema);
         }
 
+        public IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation)
+        {
+            var copy = writeRelation.ShallowCopy();
+            copy.NamedObject.Names = writeRelation.NamedObject.Names.Skip(1).ToList();
+            return _inner.GetRowStoreFetchKeyColumns(copy);
+        }
+
         public Relation ModifyPlan(WriteRelation writeRelation)
         {
             var copy = writeRelation.ShallowCopy();

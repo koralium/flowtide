@@ -65,6 +65,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// Runs join chains as multi joins with at most this many inputs each, set before starting.
         /// </summary>
         protected int? MultiJoinMaxInputs { set => flowtideTestStream.MultiJoinMaxInputs = value; }
+        protected LateMaterializationMode? LateMaterialization { set => flowtideTestStream.LateMaterialization = value; }
 
         protected int MultiJoinGroupsMarked => flowtideTestStream.MultiJoinGroupsMarked;
 

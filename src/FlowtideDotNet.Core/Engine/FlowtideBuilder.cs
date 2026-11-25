@@ -47,6 +47,7 @@ namespace FlowtideDotNet.Core.Engine
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
         private bool _useColumnStore = true;
+        private LateMaterializationMode _lateMaterialization = LateMaterializationMode.Off;
         private string _version = "";
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckListenerRegistered = false;
@@ -247,6 +248,16 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
+        /// <summary>
+        /// Sets how the stream places row stores for wide columns.
+        /// Read at <see cref="Build"/>, so it covers plans added without optimization.
+        /// </summary>
+        public FlowtideBuilder SetLateMaterialization(LateMaterializationMode mode)
+        {
+            _lateMaterialization = mode;
+            return this;
+        }
+
         public FlowtideBuilder SetVersion(string version)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(version);
@@ -296,7 +307,8 @@ namespace FlowtideDotNet.Core.Engine
             return this;
         }
 
-        private string ComputePlanHash()
+        // Roles are state layouts the plan's text does not show
+        private string ComputePlanHash(string roles = "")
         {
             Debug.Assert(_plan != null, "Plan should not be null.");
             using (SHA256 sha256 = SHA256.Create())
@@ -331,7 +343,7 @@ namespace FlowtideDotNet.Core.Engine
                     }
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
-                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json));
+                var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json + roles));
                 return Base62.Encode(hashBytes);
             }
         }
@@ -362,6 +374,24 @@ namespace FlowtideDotNet.Core.Engine
 
             var hash = ComputePlanHash();
 
+            // Modify plan
+            if (_connectorManager != null)
+            {
+                var planModifier = new ConnectorPlanModifyVisitor(_connectorManager);
+                planModifier.VisitPlan(_plan);
+            }
+
+            // Auto places nothing until it has a cost model
+            if (_lateMaterialization == LateMaterializationMode.ForceOn && _useColumnStore)
+            {
+                LateMaterialization.LateMaterializationPass.Run(_plan, _connectorManager, _functionsRegister, _parallelism);
+            }
+            if (LateMaterialization.RowStoreHostCollector.UsesRowStores(_plan.Relations))
+            {
+                // The version follows the final plan and its sinks' roles
+                hash = ComputePlanHash(LateMaterialization.RowStoreRoles.Describe(_plan, _connectorManager));
+            }
+
             if (_versionParts?.Count > 0)
             {
                 StringBuilder sb = new();
@@ -389,13 +419,6 @@ namespace FlowtideDotNet.Core.Engine
             }
 
             dataflowStreamBuilder.SetVersionInformation(hash, _version);
-
-            // Modify plan
-            if (_connectorManager != null)
-            {
-                var planModifier = new ConnectorPlanModifyVisitor(_connectorManager);
-                planModifier.VisitPlan(_plan);
-            }
 
             if (_distributedOptions != null)
             {

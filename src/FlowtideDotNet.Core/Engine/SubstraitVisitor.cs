@@ -583,9 +583,12 @@ namespace FlowtideDotNet.Core.Engine
             var id = _operatorId++;
 
             IStreamEgressVertex? op = default;
+            // Without a connector the sink decides alone
+            bool fetchAtSink = true;
             if (connectorManager != null)
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);
+                fetchAtSink = LateMaterialization.RowStoreRoles.FetchesAtSink(writeRelation, sinkFactory.GetRowStoreFetchKeyColumns(writeRelation));
                 if (writeRelation.PrimaryKeyNames != null && !sinkFactory.SupportsPrimaryKeyDeclaration)
                 {
                     throw new FlowtidePrimaryKeyDeclarationNotSupportedException(
@@ -609,7 +612,7 @@ namespace FlowtideDotNet.Core.Engine
 
             if (op is ITargetBlock<IStreamEvent> target)
             {
-                if (writeRelation.Input is FetchRequiredColumnsRelation fetch && op is IRowStoreFetchHostVertex fetchHost &&
+                if (fetchAtSink && writeRelation.Input is FetchRequiredColumnsRelation fetch && op is IRowStoreFetchHostVertex fetchHost &&
                     fetchHost.TryAttachFetch(fetch, fetch.Fetches.Select(x => GetRowStoreHandle(x.StoreName)).ToList()))
                 {
                     // The sink fetches at upload, the fetch's id stays unused

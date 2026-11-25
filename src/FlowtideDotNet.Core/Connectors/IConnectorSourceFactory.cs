@@ -47,5 +47,15 @@ namespace FlowtideDotNet.Core.Connectors
         IStreamIngressVertex CreateSource(ReadRelation readRelation, IFunctionsRegister functionsRegister, DataflowBlockOptions dataflowBlockOptions);
 
         TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema);
+
+        /// <summary>
+        /// The names of the read's key columns, which are never stored.
+        /// Declared by a source that can keep columns in a row store.
+        /// Only a source built on <see cref="Operators.Read.ColumnBatchReadBaseOperator"/> can.
+        /// Every key column the source uses, named as in the schema.
+        /// A source without keys gives an empty list.
+        /// Null, the default, never gets a row store.
+        /// </summary>
+        IReadOnlyList<string>? GetRowStoreKeyColumns(ReadRelation readRelation) => null;
     }
 }

@@ -38,5 +38,13 @@ namespace FlowtideDotNet.Core.Connectors
         }
 
         public abstract TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema);
+
+        /// <summary>
+        /// <inheritdoc cref="IConnectorSourceFactory.GetRowStoreKeyColumns"/>
+        /// </summary>
+        public virtual IReadOnlyList<string>? GetRowStoreKeyColumns(ReadRelation readRelation)
+        {
+            return null;
+        }
     }
 }

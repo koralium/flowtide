@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 
@@ -49,7 +50,7 @@ namespace FlowtideDotNet.AcceptanceTests
             var fileProvider = new KeepAliveMemoryFileProvider();
 
             // Run in column store mode and stop, the checkpoint holds bulk window state.
-            await using (var columnStream = new SharedStorageTestStream("WindowModeSwitch/RowModeRestart", fileProvider))
+            await using (var columnStream = new SharedStorageTestStream("WindowModeSwitch/RowModeRestart", fileProvider) { LateMaterialization = LateMaterializationMode.Off })
             {
                 SeedUsers(columnStream);
                 await columnStream.StartStream(RunningSumQuery);
@@ -58,7 +59,7 @@ namespace FlowtideDotNet.AcceptanceTests
             }
 
             // Restart in row mode on the same state, with the same plan so the plan hash matches.
-            await using var rowStream = new SharedStorageTestStream("WindowModeSwitch/RowModeRestart", fileProvider);
+            await using var rowStream = new SharedStorageTestStream("WindowModeSwitch/RowModeRestart", fileProvider) { LateMaterialization = LateMaterializationMode.Off };
             rowStream.UseColumnStore = false;
             SeedUsers(rowStream);
 

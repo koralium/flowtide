@@ -441,6 +441,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             return new LmSinkOperator(_control, _keyColumns, writeRelation, dataflowBlockOptions);
         }
 
+        public override IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation)
+        {
+            return Enumerable.Range(0, _keyColumns).ToList();
+        }
+
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
         {
             return new TableLineageMetadata("lm", writeRelation.NamedObject.DotSeperated, default);
