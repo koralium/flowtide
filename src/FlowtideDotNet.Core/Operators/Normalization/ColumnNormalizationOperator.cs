@@ -454,7 +454,7 @@ namespace FlowtideDotNet.Core.Operators.Normalization
                 _host?.Dispose();
                 _host = null;
                 // A row that is not added leaves, also at weight zero
-                _host = await RowStoreHost.CreateAsync(stateManagerClient, "input_keyed", "rows", _hostLayout, new RowStoreOptions() { Mode = RowStoreMode.Keyed, Heap = RowHeapOptions ?? new RowHeapOptions() }, MemoryAllocator, zeroWeightDeletes: true);
+                _host = await RowStoreHost.CreateAsync(stateManagerClient, "input_keyed", "rows", _hostLayout, new RowStoreOptions() { Mode = RowStoreMode.Keyed, Heap = RowHeapOptions ?? new RowHeapOptions() { WriteQueueCapacity = _rowStoreHandle?.WriteQueuePages ?? 16 } }, MemoryAllocator, zeroWeightDeletes: true);
                 // Fetches may read the store from here on
                 _rowStoreHandle?.Open(_host);
                 return;

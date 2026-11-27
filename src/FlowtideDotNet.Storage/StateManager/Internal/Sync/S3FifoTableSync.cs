@@ -110,6 +110,8 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
         private Task? m_cleanupTask;
         private int maxSize;
+        // The size given, it runs smaller under memory pressure
+        private readonly int m_configuredMaxSize;
         private readonly ILogger logger;
         // Owned by the state manager, never disposed here.
         private readonly Meter meter;
@@ -159,6 +161,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
             m_ghostQueue = new Queue<GhostRecord>();
             m_ghostKeys = new Dictionary<long, GhostValue>();
             this.maxSize = tableOptions.MaxSize;
+            this.m_configuredMaxSize = tableOptions.MaxSize;
             this.logger = tableOptions.Logger;
             this.meter = tableOptions.Meter;
             this.m_streamName = tableOptions.StreamName;
@@ -532,13 +535,30 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
         {
             lock (m_reserveLock)
             {
-                if (m_reservedHeldPages + pages > maxSize / HeldPagesShare)
+                int needed = (m_reservedHeldPages + pages) * HeldPagesShare;
+                if (needed > Math.Max(maxSize, m_configuredMaxSize))
                 {
                     return false;
+                }
+                if (needed > maxSize)
+                {
+                    // Shrunk under memory pressure: it grows back to hold the pages
+                    Resize(needed);
                 }
                 m_reservedHeldPages += pages;
                 return true;
             }
+        }
+
+        // Sets the size and what follows it, returns where cleanup starts
+        private int Resize(int size)
+        {
+            Volatile.Write(ref maxSize, size);
+            // The correlation window follows maxSize too.
+            m_correlationClock.SetWindowSize(CorrelationWindowSize());
+            int cleanupSize = Math.Max(1, (int)Math.Ceiling(size * 0.70));
+            Volatile.Write(ref cleanupStart, cleanupSize);
+            return cleanupSize;
         }
 
         internal void ReleaseHeldPages(int pages)

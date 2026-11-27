@@ -112,11 +112,14 @@ namespace FlowtideDotNet.Core.Engine
         }
 
         // One handle per store, for its host and fetches
+        // Sized by the builder to what the cache can hold
+        internal int RowStoreWriteQueuePages { get; set; } = 16;
+
         private RowStoreHandle GetRowStoreHandle(string name)
         {
             if (!_rowStoreHandles.TryGetValue(name, out var handle))
             {
-                handle = new RowStoreHandle(name);
+                handle = new RowStoreHandle(name) { WriteQueuePages = RowStoreWriteQueuePages };
                 _rowStoreHandles.Add(name, handle);
             }
             return handle;
@@ -583,8 +586,8 @@ namespace FlowtideDotNet.Core.Engine
             var id = _operatorId++;
 
             IStreamEgressVertex? op = default;
-            // Without a connector the sink decides alone
-            bool fetchAtSink = true;
+            // Without a connector nothing declares the sink's keys
+            bool fetchAtSink = false;
             if (connectorManager != null)
             {
                 var sinkFactory = connectorManager.GetSinkFactory(writeRelation);

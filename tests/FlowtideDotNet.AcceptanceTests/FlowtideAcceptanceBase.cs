@@ -66,6 +66,7 @@ namespace FlowtideDotNet.AcceptanceTests
         /// </summary>
         protected int? MultiJoinMaxInputs { set => flowtideTestStream.MultiJoinMaxInputs = value; }
         protected LateMaterializationMode? LateMaterialization { set => flowtideTestStream.LateMaterialization = value; }
+        internal Core.Engine.LateMaterialization.LateMaterializationReport? LateMaterializationReport => flowtideTestStream.LateMaterializationReport;
 
         protected int MultiJoinGroupsMarked => flowtideTestStream.MultiJoinGroupsMarked;
 

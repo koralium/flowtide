@@ -50,6 +50,21 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
 
         public int Fetches { get; private set; }
 
+        // One per store a fetch reads from
+        public int Readers { get; private set; }
+
+        // The stores of a plan and the readers its fetches open
+        public static void Count(IReadOnlyList<Relation> relations, out int stores, out int readers)
+        {
+            var collector = new RowStoreHostCollector();
+            for (int i = 0; i < relations.Count; i++)
+            {
+                collector.Visit(relations[i], null!);
+            }
+            stores = collector.Hosts.Count;
+            readers = collector.Readers;
+        }
+
         // True when a plan stores rows behind references or fetches them
         public static bool UsesRowStores(IReadOnlyList<Relation> relations)
         {
@@ -106,6 +121,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         public override Relation VisitFetchRequiredColumnsRelation(FetchRequiredColumnsRelation fetchRequiredColumnsRelation, object state)
         {
             Fetches++;
+            Readers += fetchRequiredColumnsRelation.Fetches.Count;
             return base.VisitFetchRequiredColumnsRelation(fetchRequiredColumnsRelation, state);
         }
 

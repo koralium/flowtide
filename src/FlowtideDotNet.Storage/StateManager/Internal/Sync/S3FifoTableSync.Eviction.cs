@@ -402,14 +402,7 @@ namespace FlowtideDotNet.Storage.StateManager.Internal.Sync
 
                         if (Math.Abs(maxSize - idealMaxSize) > tolerance)
                         {
-                            Volatile.Write(ref maxSize, idealMaxSize);
-                            // The correlation window follows maxSize too.
-                            m_correlationClock.SetWindowSize(CorrelationWindowSize());
-
-                            var rawCleanupSize = (int)Math.Ceiling(idealMaxSize * 0.70);
-
-                            var cleanupSize = Math.Max(1, rawCleanupSize);
-                            Volatile.Write(ref cleanupStart, cleanupSize);
+                            int cleanupSize = Resize(idealMaxSize);
 
                             // Replan on the new threshold, the old evicts a grow.
                             toBeRemovedCount = currentCount - cleanupSize;

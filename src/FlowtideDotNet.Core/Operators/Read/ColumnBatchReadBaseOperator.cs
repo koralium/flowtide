@@ -249,7 +249,7 @@ namespace FlowtideDotNet.Core.Operators.Read
             if (hostLayout != null)
             {
                 // Rows are stored behind references, every tree call is a batch
-                _host = await RowStoreHost.CreateAsync(stateManagerClient, "persistent_keyed", "rows", hostLayout, new RowStoreOptions() { Mode = AppendOnly ? RowStoreMode.Append : RowStoreMode.Keyed, Heap = RowHeapOptions ?? new RowHeapOptions() }, MemoryAllocator);
+                _host = await RowStoreHost.CreateAsync(stateManagerClient, "persistent_keyed", "rows", hostLayout, new RowStoreOptions() { Mode = AppendOnly ? RowStoreMode.Append : RowStoreMode.Keyed, Heap = RowHeapOptions ?? new RowHeapOptions() { WriteQueueCapacity = _rowStoreHandle?.WriteQueuePages ?? 16 } }, MemoryAllocator);
                 if (!_host.AppendOnly)
                 {
                     _hostedTempKeys = await RowStoreKeySet.CreateAsync(stateManagerClient, "full_load_temp", _primaryKeyColumns.Count, MemoryAllocator);

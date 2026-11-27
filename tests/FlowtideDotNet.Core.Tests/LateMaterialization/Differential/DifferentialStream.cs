@@ -22,6 +22,7 @@ using FlowtideDotNet.Core.Operators.Write;
 using FlowtideDotNet.Core.Operators.Write.Column;
 using FlowtideDotNet.Storage.DataStructures;
 using FlowtideDotNet.Storage.Memory;
+using FlowtideDotNet.Storage.Persistence;
 using FlowtideDotNet.Storage.Persistence.Reservoir;
 using FlowtideDotNet.Storage.Persistence.Reservoir.Internal;
 using FlowtideDotNet.Storage.Persistence.Reservoir.MemoryDisk;
@@ -581,6 +582,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
 
         public Base.Engine.DataflowStream Stream => _stream!;
 
+        // Other state options than the stream's own storage alone
+        public Func<IPersistentStorage, StateManagerOptions>? StateOptions { get; init; }
+
         public string Name => _name;
 
         public async Task StartAsync()
@@ -597,7 +601,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             var builder = new FlowtideBuilder(_name)
                 .AddPlan(_plan(), false)
                 .AddConnectorManager(connectorManager)
-                .WithStateOptions(new StateManagerOptions() { PersistentStorage = _storage })
+                .WithStateOptions(StateOptions != null ? StateOptions(_storage) : new StateManagerOptions() { PersistentStorage = _storage })
                 .WithFailureListener(e => Failures.Enqueue(e))
                 .WithCheckpointListener(new CheckpointCounter(this));
             _configure?.Invoke(builder);
@@ -692,13 +696,13 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // One plan without stores, the planner places the hosted side's
-        public static DifferentialPair Planned(Func<Plan> plan, Func<DifferentialTable[]> tables, Action<FlowtideBuilder>? configure = null, Func<DifferentialDestination>? destination = null)
+        public static DifferentialPair Planned(Func<Plan> plan, Func<DifferentialTable[]> tables, Action<FlowtideBuilder>? configure = null, Func<DifferentialDestination>? destination = null, LateMaterializationMode mode = LateMaterializationMode.ForceOn)
         {
             var pair = new DifferentialPair(
                 new DifferentialStream(plan, builder =>
                 {
                     configure?.Invoke(builder);
-                    builder.SetLateMaterialization(LateMaterializationMode.ForceOn);
+                    builder.SetLateMaterialization(mode);
                 }, tables()),
                 new DifferentialStream(plan, builder =>
                 {

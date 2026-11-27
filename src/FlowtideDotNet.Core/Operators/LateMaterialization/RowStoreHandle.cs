@@ -26,6 +26,9 @@ namespace FlowtideDotNet.Core.Operators.LateMaterialization
             Name = name;
         }
 
+        // Pages the store's write queue may hold, set at build
+        public int WriteQueuePages { get; set; } = 16;
+
         public string Name { get; }
 
         // Set at build, a store nobody hosts is refused there

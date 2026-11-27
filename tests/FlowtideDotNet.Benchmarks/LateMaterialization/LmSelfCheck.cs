@@ -53,9 +53,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                         problems.Add($"narrow state {narrow.TotalStateBytes} is not smaller than wide state {wide.TotalStateBytes}");
                     }
                     var workload = LmWorkload.Create(name, Scale);
-                    if (workload.HostedSql.Length > 0)
+                    if (workload.Hostable)
                     {
-                        // Row stores in the sources, the fetch in the sink
+                        // The planner's row stores, the fetch in the sink
                         await RunOne(name, true, false, problems, true);
                     }
                     if (workload.KeptOnceClass != null && LmProgram.SmallestTreeDifference(wide.Census!, narrow.Census!, workload.KeptOnceClass, out _) <= 0)

@@ -80,6 +80,9 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
 
         public bool Hosted { get; init; }
 
+        // What the planner admitted and declined
+        public string Stores { get; set; } = string.Empty;
+
         public required double Scale { get; init; }
 
         public required long InputRows { get; init; }
@@ -219,7 +222,7 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
             var checkpoints = new Checkpoints();
             var deadline = DateTime.UtcNow.AddSeconds(options.TimeoutSeconds);
 
-            var plan = options.Hosted ? LmHostedPlan.Build(workload) : BuildPlan(workload, options.Wide);
+            var plan = BuildPlan(workload, options.Wide);
             var connectors = new ConnectorManager();
             connectors.AddSource(new LmSourceFactory(workload, control));
             connectors.AddSink(new LmSinkFactory(control, options.Wide ? workload.WideKeyColumns : workload.NarrowKeyColumns));
@@ -241,8 +244,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                 }
                 // Its own name keeps this run's counters apart
                 string streamName = StreamPrefix + Interlocked.Increment(ref _runs);
-                var stream = new FlowtideBuilder(streamName)
+                var builder = new FlowtideBuilder(streamName);
+                var stream = builder
                     .AddPlan(plan, false)
+                    // The hosted form is whatever the planner admits
+                    .SetLateMaterialization(options.Hosted ? LateMaterializationMode.Auto : options.Arm == "Placebo" ? LateMaterializationMode.Placebo : LateMaterializationMode.Off)
                     .AddConnectorManager(connectors)
                     .WithCheckpointListener(checkpoints)
                     .WithFailureListener(error => failures.Enqueue(error?.ToString() ?? "stream failure"))
@@ -261,12 +267,19 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
                     .Build();
                 try
                 {
+                    var report = builder.LateMaterializationReport;
+                    // The fact table is what the hosted form is measured for
+                    if (options.Hosted && (report == null || report.Skipped.Length > 0 || !report.Hosts.Any(x => x.Admitted && x.Table == workload.Tables[0].Name)))
+                    {
+                        throw new InvalidOperationException($"The hosted form of {workload.Name} got no row store for {workload.Tables[0].Name}: {report}");
+                    }
                     var result = await Measure(stream, streamName, workload, control, options, census, checkpoints, failures, deadline);
                     string stateDirectory = Path.Join(runDirectory, "state");
                     if (Directory.Exists(stateDirectory))
                     {
                         result.StateDiskBytes = new DirectoryInfo(stateDirectory).EnumerateFiles("*", SearchOption.AllDirectories).Sum(x => x.Length);
                     }
+                    result.Stores = report?.ToString() ?? string.Empty;
                     return result;
                 }
                 finally
