@@ -1710,6 +1710,8 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
             await table.ForceCleanup();
             int boundAfterShrink = table.HeldPagesBound;
             bool more = table.TryReserveHeldPages(1);
+            int boundAfterMore = table.HeldPagesBound;
+            bool tooMany = table.TryReserveHeldPages(100);
             table.ReleaseHeldPages(30);
             Hit(table, 2);
             await table.ForceCleanup();
@@ -1717,8 +1719,39 @@ namespace FlowtideDotNet.Core.Tests.Reservoir
 
             Assert.True(reserved);
             Assert.Equal(30, boundAfterShrink);
-            Assert.False(more);
+            Assert.True(more);
+            Assert.Equal(31, boundAfterMore);
+            Assert.False(tooMany);
             Assert.Equal(5, boundWithoutReservations);
+        }
+
+        [Fact]
+        public async Task AGrowForAReservationMovesTheEvictionTargetWithIt()
+        {
+            var memory = new FixedMemory();
+            using var meter = new Meter("regrow");
+            using var table = new S3FifoTableSync(new CacheTableOptions("regrow", NullLogger.Instance, meter, memory) { MaxSize = 2000, MinSize = 100, MaxMemoryUsageInBytes = 1_000_000 });
+            await table.StopCleanupTask();
+            var handler = new DropHandler();
+            for (int i = 1; i <= 50; i++)
+            {
+                table.Add(i, new Page(Bytes(i)), handler);
+            }
+
+            memory.Allocated = 1_000_000_000;
+            Hit(table, 1);
+            await table.ForceCleanup();
+            int boundAfterShrink = table.HeldPagesBound;
+            bool reserved = table.TryReserveHeldPages(30);
+            int boundAfterGrow = table.HeldPagesBound;
+            Hit(table, 2);
+            await table.ForceCleanup();
+            var shape = table.GetQueueShapeForTests();
+
+            Assert.Equal(5, boundAfterShrink);
+            Assert.True(reserved);
+            Assert.Equal(30, boundAfterGrow);
+            Assert.Equal((int)Math.Ceiling(600 * 0.7), shape.CleanupStart);
         }
 
         [Fact]

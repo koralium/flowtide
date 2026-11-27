@@ -47,7 +47,71 @@ namespace FlowtideDotNet.Core.Engine
         private TimeSpan _getTimestampInterval = TimeSpan.FromHours(1);
         private TaskScheduler? _taskScheduler;
         private bool _useColumnStore = true;
-        private LateMaterializationMode _lateMaterialization = LateMaterializationMode.Off;
+        private LateMaterializationMode _lateMaterialization = LateMaterializationMode.Auto;
+        // Read at build, the options may change until then
+        private StateManagerOptions? _stateManagerOptions;
+        private int _cachePageCount => _stateManagerOptions?.CachePageCount ?? new StateManagerOptions().CachePageCount;
+        // Without options the stream's storage is the file cache
+        private bool _storageHoldsRowStores => _stateManagerOptions?.PersistentStorage is global::FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage;
+        // False where page reads share one lock, not qualified yet
+        private bool _storageReadsSideBySide => _stateManagerOptions?.PersistentStorage is global::FlowtideDotNet.Storage.Persistence.Reservoir.Internal.ReservoirPersistentStorage reservoir && reservoir.ReadsPagesWithoutFileLock;
+        // False when the plan could not be serialized
+        private bool _planSerializes = true;
+
+        // Pages per store's write queue, under one: no fit.
+        // A store holds two pages besides its queue, a reader one.
+        private int WriteQueuePages(int stores, int readers)
+        {
+            return RowStoreWriteQueuePages(_cachePageCount, stores, readers);
+        }
+
+        // The rewrite cannot be undone, so it is tried on a copy of the plan.
+        // Null when the copy's stores can be hashed and fit the cache.
+        private string? WhyNotPlaced(LateMaterialization.LateMaterializationReport report)
+        {
+            Debug.Assert(_plan != null);
+            Plan copy;
+            LateMaterialization.LateMaterializationReport decided;
+            try
+            {
+                // Connectors may have changed the plan since its first hash
+                copy = new SubstraitDeserializer().Deserialize(SubstraitSerializer.Serialize(_plan));
+                decided = LateMaterialization.LateMaterializationPass.Analyze(copy, _connectorManager, _functionsRegister, _parallelism);
+            }
+            catch (Exception e)
+            {
+                return "the plan cannot be copied through its serialized form: " + e.Message;
+            }
+            // The copy stands for the plan only when it is decided the same
+            if (!decided.Hosts.Select(x => (x.Table, x.Admitted, string.Join(',', x.Columns))).SequenceEqual(report.Hosts.Select(x => (x.Table, x.Admitted, string.Join(',', x.Columns)))))
+            {
+                return "the plan reads back differently from its serialized form";
+            }
+            try
+            {
+                LateMaterialization.LateMaterializationPass.Run(copy, _connectorManager, _functionsRegister, _parallelism, decided.Selection());
+                SubstraitSerializer.SerializeToJson(copy, includeHints: false);
+            }
+            catch (Exception e)
+            {
+                return "the plan with its stores cannot be serialized for its version: " + e.Message;
+            }
+            LateMaterialization.RowStoreHostCollector.Count(copy.Relations, out int stores, out int readers);
+            if (stores == 0 || WriteQueuePages(stores, readers) < 1)
+            {
+                return $"the cache of {_cachePageCount} pages cannot hold the pages of {stores} row stores and their {readers} readers";
+            }
+            return null;
+        }
+
+        // The cache lets one page in twenty be held outside eviction
+        internal static int RowStoreWriteQueuePages(int cachePages, int stores, int readers)
+        {
+            return Math.Min(16, (cachePages / 20 - readers) / stores - 2);
+        }
+
+        // What the planner decided at the last build, for tests
+        internal LateMaterialization.LateMaterializationReport? LateMaterializationReport { get; private set; }
         private string _version = "";
         private List<(string? stringVersion, bool? addHashVersion)>? _versionParts;
         private bool _isCheckListenerRegistered = false;
@@ -93,6 +157,7 @@ namespace FlowtideDotNet.Core.Engine
 
         public FlowtideBuilder WithStateOptions(StateManagerOptions stateManagerOptions)
         {
+            _stateManagerOptions = stateManagerOptions;
             dataflowStreamBuilder.WithStateOptions(stateManagerOptions);
             return this;
         }
@@ -341,6 +406,7 @@ namespace FlowtideDotNet.Core.Engine
                         // Without a hash a changed store layout goes unseen
                         throw new InvalidOperationException("The plan has a row store and could not be serialized, so its version cannot be told.", e);
                     }
+                    _planSerializes = false;
                     Console.Error.WriteLine("Failed to serialize plan for hash check.");
                 }
                 var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(json + roles));
@@ -372,6 +438,7 @@ namespace FlowtideDotNet.Core.Engine
             // Safety net for plans added without optimization
             _plan = CheckExtractor.Extract(_plan);
 
+            _planSerializes = true;
             var hash = ComputePlanHash();
 
             // Modify plan
@@ -381,10 +448,51 @@ namespace FlowtideDotNet.Core.Engine
                 planModifier.VisitPlan(_plan);
             }
 
-            // Auto places nothing until it has a cost model
             if (_lateMaterialization == LateMaterializationMode.ForceOn && _useColumnStore)
             {
                 LateMaterialization.LateMaterializationPass.Run(_plan, _connectorManager, _functionsRegister, _parallelism);
+            }
+            else if (_lateMaterialization != LateMaterializationMode.Off && _useColumnStore)
+            {
+                // Placebo decides and places nothing
+                LateMaterialization.LateMaterializationReport report;
+                try
+                {
+                    report = LateMaterialization.LateMaterializationPass.Analyze(_plan, _connectorManager, _functionsRegister, _parallelism);
+                }
+                catch (Exception e)
+                {
+                    // A plan it cannot read runs without stores
+                    report = new LateMaterialization.LateMaterializationReport();
+                    report.Skip("the plan could not be analysed: " + e.Message);
+                }
+                LateMaterializationReport = report;
+                // Auto never fails a stream that runs without stores
+                if (!_storageHoldsRowStores)
+                {
+                    report.Skip("the state storage cannot hold row stores, they need Reservoir storage");
+                }
+                else if (!_storageReadsSideBySide)
+                {
+                    report.Skip("the state storage reads one page at a time, row stores are not qualified on it yet");
+                }
+                else if (!_planSerializes)
+                {
+                    // A plan with stores must have a hash of its text
+                    report.Skip("the plan cannot be serialized, so its version could not follow its stores");
+                }
+                else if (report.Admitted > 0 && WhyNotPlaced(report) is string reason)
+                {
+                    report.Skip(reason);
+                }
+                if (report.Hosts.Count > 0)
+                {
+                    dataflowStreamBuilder.LoggerFactory?.CreateLogger("FlowtideDotNet.Core.LateMaterialization").LogInformation("Late materialization ({Mode}) for stream {Stream}: {Report}", _lateMaterialization, _streamName, report.ToString());
+                }
+                if (_lateMaterialization == LateMaterializationMode.Auto && report.Admitted > 0 && report.Skipped.Length == 0)
+                {
+                    LateMaterialization.LateMaterializationPass.Run(_plan, _connectorManager, _functionsRegister, _parallelism, report.Selection());
+                }
             }
             if (LateMaterialization.RowStoreHostCollector.UsesRowStores(_plan.Relations))
             {
@@ -448,6 +556,17 @@ namespace FlowtideDotNet.Core.Engine
                 dataflowStreamBuilder.LoggerFactory,
                 _taskScheduler,
                 _distributedOptions);
+            LateMaterialization.RowStoreHostCollector.Count(_plan.Relations, out int rowStores, out int rowStoreReaders);
+            if (rowStores > 0)
+            {
+                // The cache sizes the stores, it does not choose them
+                visitor.RowStoreWriteQueuePages = WriteQueuePages(rowStores, rowStoreReaders);
+                if (visitor.RowStoreWriteQueuePages < 1)
+                {
+                    throw new InvalidOperationException(
+                        $"The plan has {rowStores} row stores and {rowStoreReaders} readers of them, a cache of {_cachePageCount} pages cannot hold their pages. Set CachePageCount to {(rowStores * 3 + rowStoreReaders) * 20} or more.");
+                }
+            }
 
             StreamLineage? lineage = null;
             OpenLineageHttpReporter? reporter = null;

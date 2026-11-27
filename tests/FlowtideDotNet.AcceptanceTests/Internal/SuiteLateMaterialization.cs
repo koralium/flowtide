@@ -27,7 +27,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
                 return builder;
             }
             // A misspelled mode would leave the suite on the default
-            // Only a mode's own name, no number and no list of names
+            // Only a mode's own name, no number or list
             if (!Enum.GetNames<LateMaterializationMode>().Contains(fromSuite, StringComparer.OrdinalIgnoreCase) ||
                 !Enum.TryParse<LateMaterializationMode>(fromSuite, true, out var mode))
             {

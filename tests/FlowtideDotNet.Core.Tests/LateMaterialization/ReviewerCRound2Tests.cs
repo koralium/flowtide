@@ -181,7 +181,7 @@ public class ReviewerCRound2Tests
     public void ARowOnlyConditionOnAnInnerJoinOfAGroupMakesEveryInputPlain()
     {
         var plan = GroupWithInnerRowOnlyCondition();
-        Run(plan);
+        Assert.True(Run(plan) > 0);
         var second = Assert.IsType<MergeJoinRelation>(((WriteRelation)plan.Relations[0]).Input);
         Assert.Equal(4, second.Right.OutputLength);
     }

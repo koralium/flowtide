@@ -71,6 +71,9 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public LateMaterializationMode? LateMaterialization { get; set; }
 
+        // What the planner decided when the stream was built
+        internal Core.Engine.LateMaterialization.LateMaterializationReport? LateMaterializationReport { get; private set; }
+
         public int MultiJoinGroupsMarked { get; private set; }
 
         /// <summary>
@@ -550,6 +553,7 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             flowtideBuilder.SetStopDrainTimeout(StopDrainTimeout ?? FastEngineTimings.StopDrainTimeout);
 
             var stream = flowtideBuilder.Build();
+            LateMaterializationReport = flowtideBuilder.LateMaterializationReport;
             _stream = stream;
             return Task.CompletedTask;
         }

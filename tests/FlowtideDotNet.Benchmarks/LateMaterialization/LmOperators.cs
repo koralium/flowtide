@@ -242,6 +242,11 @@ namespace FlowtideDotNet.Benchmarks.LateMaterialization
         {
             return new TableLineageMetadata("lm", readRelation.NamedTable.DotSeperated, default);
         }
+
+        public override IReadOnlyList<string>? GetRowStoreKeyColumns(ReadRelation readRelation)
+        {
+            return [LmSourceOperator.KeyColumn];
+        }
     }
 
     /// <summary>

@@ -26,7 +26,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
     /// A fetch goes before the first reader of a stored column.
     /// Relations between them pass references on in place of the columns.
     /// </summary>
-    internal sealed class LateMaterializationPass : OptimizerBaseVisitor
+    internal sealed partial class LateMaterializationPass : OptimizerBaseVisitor
     {
         // Where a column of the old plan is now
         private readonly struct Slot : IEquatable<Slot>
@@ -115,6 +115,16 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                 Rows = true;
                 return base.VisitSetPredicateExpression(setPredicateExpression, state);
             }
+
+            public override object? Visit(Expression expression, object? state)
+            {
+                // An expression the mover cannot copy keeps its input plain
+                if (!FieldMover.Copies(expression))
+                {
+                    Rows = true;
+                }
+                return base.Visit(expression, state);
+            }
         }
 
         // Copies an expression with its fields at their new positions.
@@ -126,6 +136,43 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
             public FieldMover(Dictionary<int, int> positions)
             {
                 _positions = positions;
+            }
+
+            // True when Move can copy the expression and all inside it
+            public static bool Copies(Expression? expression)
+            {
+                switch (expression)
+                {
+                    case null:
+                    case DirectFieldReference:
+                        return true;
+                    case ArrayLiteral array:
+                        return array.Expressions.All(Copies);
+                    case StringLiteral:
+                    case NumericLiteral:
+                    case NullLiteral:
+                    case BoolLiteral:
+                    case BinaryLiteral:
+                        return true;
+                    case ScalarFunction function:
+                        return function.Arguments.All(Copies);
+                    case IfThenExpression ifThen:
+                        return ifThen.Ifs.All(x => Copies(x.If) && Copies(x.Then)) && Copies(ifThen.Else);
+                    case SingularOrListExpression singular:
+                        return Copies(singular.Value) && singular.Options.All(Copies);
+                    case MultiOrListExpression multi:
+                        return multi.Value.All(Copies) && multi.Options.All(x => x.Fields.All(Copies));
+                    case MapNestedExpression map:
+                        return map.KeyValues.All(x => Copies(x.Key) && Copies(x.Value));
+                    case ListNestedExpression list:
+                        return list.Values.All(Copies);
+                    case CastExpression cast:
+                        return Copies(cast.Expression);
+                    case StructExpression structExpression:
+                        return structExpression.GetType() == typeof(StructExpression) && structExpression.Fields.All(Copies);
+                    default:
+                        return false;
+                }
             }
 
             public Expression Move(Expression expression)
@@ -345,6 +392,8 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         private readonly IConnectorManager? _connectorManager;
         private readonly IFunctionsRegister _functions;
         private readonly int _parallelism;
+        // What each host may store, null for everything
+        private readonly Dictionary<Relation, List<int>>? _selection;
         private readonly Dictionary<Relation, Layout> _layouts = new Dictionary<Relation, Layout>(ReferenceEqualityComparer.Instance);
         // 0 not visited, 1 being visited, 2 done
         private readonly int[] _rootState;
@@ -354,8 +403,9 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         private bool _underNormalization;
         private int _stores;
 
-        private LateMaterializationPass(List<Relation> relations, IConnectorManager? connectorManager, IFunctionsRegister functions, int parallelism, ReferenceScan scan)
+        private LateMaterializationPass(List<Relation> relations, IConnectorManager? connectorManager, IFunctionsRegister functions, int parallelism, ReferenceScan scan, Dictionary<Relation, List<int>>? selection)
         {
+            _selection = selection;
             _relations = relations;
             _connectorManager = connectorManager;
             _functions = functions;
@@ -366,7 +416,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         }
 
         // Rewrites the plan in place, returns the number of stores placed
-        public static int Run(Plan plan, IConnectorManager? connectorManager, IFunctionsRegister functions, int parallelism)
+        public static int Run(Plan plan, IConnectorManager? connectorManager, IFunctionsRegister functions, int parallelism, Dictionary<Relation, List<int>>? selection = null)
         {
             if (RowStoreHostCollector.UsesRowStores(plan.Relations))
             {
@@ -383,7 +433,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                 // Rewritten in place, a shared relation would be rewritten twice
                 return 0;
             }
-            var pass = new LateMaterializationPass(plan.Relations, connectorManager, functions, parallelism, scan);
+            var pass = new LateMaterializationPass(plan.Relations, connectorManager, functions, parallelism, scan, selection);
             for (int i = 0; i < plan.Relations.Count; i++)
             {
                 pass.Root(i);
@@ -517,10 +567,15 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         private RowStoreDefinition? Host(Relation relation, int columnCount, List<int> keys, string table)
         {
             int length = relation.EmitSet ? relation.Emit.Count : columnCount;
+            List<int>? admitted = null;
+            if (_selection != null && !_selection.TryGetValue(relation, out admitted))
+            {
+                return null;
+            }
             var stored = new List<int>();
             for (int i = 0; i < length; i++)
             {
-                if (!keys.Contains(relation.EmitSet ? relation.Emit[i] : i))
+                if (!keys.Contains(relation.EmitSet ? relation.Emit[i] : i) && (admitted == null || admitted.Contains(i)))
                 {
                     stored.Add(i);
                 }
@@ -584,44 +639,31 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
         public override Relation VisitExchangeRelation(ExchangeRelation exchangeRelation, object state)
         {
             int length = exchangeRelation.Input.OutputLength;
-            var routedOn = new bool[length];
-            if (exchangeRelation.ExchangeKind is ScatterExchangeKind asked)
+            // Asked for plain values, the exchange's input gives them
+            bool passes = state != null && !exchangeRelation.EmitSet && exchangeRelation.ExchangeKind is ScatterExchangeKind or BroadcastExchangeKind;
+            for (int i = 0; i < exchangeRelation.Targets.Count; i++)
             {
-                var early = new FieldReader(_functions, routedOn);
-                for (int i = 0; i < asked.Fields.Count; i++)
-                {
-                    early.Visit(asked.Fields[i], null);
-                }
+                passes &= exchangeRelation.Targets[i] is StandardOutputExchangeTarget;
             }
-            var input = Visit(exchangeRelation.Input, Ask(exchangeRelation.Input, routedOn));
-            if (Of(input) != null)
+            bool[]? need = null;
+            if (passes)
             {
-                // Asked for plain values, the exchange's input gives them:
-                // its readers need the exchange itself, not a fetch on it
-                bool passes = state != null && !exchangeRelation.EmitSet && exchangeRelation.ExchangeKind is ScatterExchangeKind or BroadcastExchangeKind;
-                for (int i = 0; i < exchangeRelation.Targets.Count; i++)
+                need = new bool[length];
+                if (exchangeRelation.ExchangeKind is ScatterExchangeKind scatter)
                 {
-                    passes &= exchangeRelation.Targets[i] is StandardOutputExchangeTarget;
-                }
-                bool[]? need = null;
-                if (passes)
-                {
-                    need = new bool[length];
-                    if (exchangeRelation.ExchangeKind is ScatterExchangeKind scatter)
+                    var reader = new FieldReader(_functions, need);
+                    for (int i = 0; i < scatter.Fields.Count; i++)
                     {
-                        var reader = new FieldReader(_functions, need);
-                        for (int i = 0; i < scatter.Fields.Count; i++)
-                        {
-                            reader.Visit(scatter.Fields[i], null);
-                        }
-                        if (reader.Rows)
-                        {
-                            need = null;
-                        }
+                        reader.Visit(scatter.Fields[i], null);
+                    }
+                    if (reader.Rows)
+                    {
+                        need = null;
                     }
                 }
-                input = Fetch(input, need);
             }
+            // A union below fetches before its merge what is needed here
+            var input = Fetch(Visit(exchangeRelation.Input, Ask(exchangeRelation.Input, need)), need);
             exchangeRelation.Input = input;
             var layout = Of(input);
             if (layout == null)
@@ -703,7 +745,7 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                     reader.Visit(projectRelation.Expressions[i], null);
                 }
             }
-            // A project drops no row: what its reader needs can be fetched
+            // A project drops no row: its reader's need is fetched
             // under it, where a union below does so in each partition
             bool passesDown = projectRelation.Input is ProjectRelation || (projectRelation.Input is SetRelation below && below.Operation == SetOperation.UnionAll);
             var down = need;
@@ -924,6 +966,10 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                 }
                 same &= Same(Of(setRelation.Inputs[0]), Of(setRelation.Inputs[i]));
             }
+            if (!same && state != null)
+            {
+                same = Align(setRelation);
+            }
             // Values wanted above: each input fetches, partitions stay parallel
             if (!same || state == null)
             {
@@ -940,6 +986,61 @@ namespace FlowtideDotNet.Core.Engine.LateMaterialization
                 ApplyEmit(setRelation, layout.Slots, layout.Length);
             }
             return setRelation;
+        }
+
+        // Gives every input the first input's column order
+        private bool Align(SetRelation setRelation)
+        {
+            var first = Of(setRelation.Inputs[0]);
+            if (first == null)
+            {
+                return false;
+            }
+            var aligned = new List<List<int>?>();
+            for (int i = 0; i < setRelation.Inputs.Count; i++)
+            {
+                var layout = Of(setRelation.Inputs[i]);
+                if (layout == null || layout.Length != first.Length || layout.Slots.Length != first.Slots.Length)
+                {
+                    return false;
+                }
+                if (Same(first, layout))
+                {
+                    aligned.Add(null);
+                    continue;
+                }
+                var emit = new int[first.Length];
+                Array.Fill(emit, -1);
+                for (int c = 0; c < first.Slots.Length; c++)
+                {
+                    var wanted = first.Slots[c];
+                    var here = layout.Slots[c];
+                    if (wanted.Store != here.Store || wanted.Stored != here.Stored)
+                    {
+                        return false;
+                    }
+                    if (emit[wanted.Position] >= 0 && emit[wanted.Position] != here.Position)
+                    {
+                        return false;
+                    }
+                    emit[wanted.Position] = here.Position;
+                }
+                if (emit.Contains(-1))
+                {
+                    return false;
+                }
+                aligned.Add(emit.ToList());
+            }
+            for (int i = 0; i < aligned.Count; i++)
+            {
+                if (aligned[i] != null)
+                {
+                    var reordered = new ProjectRelation() { Input = setRelation.Inputs[i], Expressions = new List<Expression>(), Emit = aligned[i] };
+                    Register(reordered, first.Slots, first.Length);
+                    setRelation.Inputs[i] = reordered;
+                }
+            }
+            return true;
         }
 
         private static bool Same(Layout? first, Layout? other)

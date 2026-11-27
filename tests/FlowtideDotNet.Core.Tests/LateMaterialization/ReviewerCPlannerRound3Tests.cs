@@ -292,6 +292,7 @@ public class ReviewerCPlannerRound3Tests
         await pair.SettleBoth();
         Assert.Equal(pair.Plain.Result(), pair.Hosted.Result());
         Assert.NotEmpty(pair.Hosted.Result());
+        Assert.True(Count(pair.Hosted, "Fetch required columns") > 0);
 
         pair.Change(tables => tables["t"].Upsert(Row(2, 5, "s0", "b"), Row(13, 1, "s4", null)));
         pair.Change(tables => tables["t"].Delete(4));
@@ -318,9 +319,10 @@ public class ReviewerCPlannerRound3Tests
             Expressions = [new DirectFieldReference() { Root = new OuterReference() { StepsOut = 1 }, ReferenceSegment = new StructReferenceSegment() { Field = 2 } }]
         };
         var plan = Write(project, 5);
-        PassOnly(plan);
+        Assert.Equal(1, PassOnly(plan));
         var kept = Assert.IsType<DirectFieldReference>(Assert.Single(project.Expressions));
-        Assert.IsType<OuterReference>(kept.Root);
+        Assert.Equal(1u, Assert.IsType<OuterReference>(kept.Root).StepsOut);
+        Assert.Equal(2, Assert.IsType<StructReferenceSegment>(kept.ReferenceSegment).Field);
     }
 
     [Fact]
