@@ -31391,6 +31391,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetLineageMetadata
   nameWithType: AbstractConnectorSinkFactory.GetLineageMetadata
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  name: GetRowStoreFetchKeyColumns(WriteRelation)
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSinkFactory_GetRowStoreFetchKeyColumns_FlowtideDotNet_Substrait_Relations_WriteRelation_
+  commentId: M:FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  nameWithType: AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns(WriteRelation)
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns*
+  name: GetRowStoreFetchKeyColumns
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSinkFactory_GetRowStoreFetchKeyColumns_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns
+  nameWithType: AbstractConnectorSinkFactory.GetRowStoreFetchKeyColumns
 - uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.WriteRelation)
   name: ModifyPlan(WriteRelation)
   href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSinkFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_WriteRelation_
@@ -31465,6 +31478,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetLineageMetadata
   nameWithType: AbstractConnectorSourceFactory.GetLineageMetadata
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  name: GetRowStoreKeyColumns(ReadRelation)
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_GetRowStoreKeyColumns_FlowtideDotNet_Substrait_Relations_ReadRelation_
+  commentId: M:FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  nameWithType: AbstractConnectorSourceFactory.GetRowStoreKeyColumns(ReadRelation)
+- uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns*
+  name: GetRowStoreKeyColumns
+  href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_GetRowStoreKeyColumns_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns
+  nameWithType: AbstractConnectorSourceFactory.GetRowStoreKeyColumns
 - uid: FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.ReadRelation)
   name: ModifyPlan(ReadRelation)
   href: api/FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_ReadRelation_
@@ -31548,6 +31574,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetLineageMetadata
   nameWithType: IConnectorSinkFactory.GetLineageMetadata
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  name: GetRowStoreFetchKeyColumns(WriteRelation)
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_GetRowStoreFetchKeyColumns_FlowtideDotNet_Substrait_Relations_WriteRelation_
+  commentId: M:FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns(FlowtideDotNet.Substrait.Relations.WriteRelation)
+  nameWithType: IConnectorSinkFactory.GetRowStoreFetchKeyColumns(WriteRelation)
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns*
+  name: GetRowStoreFetchKeyColumns
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_GetRowStoreFetchKeyColumns_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.GetRowStoreFetchKeyColumns
+  nameWithType: IConnectorSinkFactory.GetRowStoreFetchKeyColumns
 - uid: FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.WriteRelation)
   name: ModifyPlan(WriteRelation)
   href: api/FlowtideDotNet.Core.Connectors.IConnectorSinkFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSinkFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_WriteRelation_
@@ -31622,6 +31661,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetLineageMetadata
   nameWithType: IConnectorSourceFactory.GetLineageMetadata
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  name: GetRowStoreKeyColumns(ReadRelation)
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSourceFactory_GetRowStoreKeyColumns_FlowtideDotNet_Substrait_Relations_ReadRelation_
+  commentId: M:FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)
+  nameWithType: IConnectorSourceFactory.GetRowStoreKeyColumns(ReadRelation)
+- uid: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns*
+  name: GetRowStoreKeyColumns
+  href: api/FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSourceFactory_GetRowStoreKeyColumns_
+  commentId: Overload:FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.GetRowStoreKeyColumns
+  nameWithType: IConnectorSourceFactory.GetRowStoreKeyColumns
 - uid: FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.ReadRelation)
   name: ModifyPlan(ReadRelation)
   href: api/FlowtideDotNet.Core.Connectors.IConnectorSourceFactory.html#FlowtideDotNet_Core_Connectors_IConnectorSourceFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_ReadRelation_
@@ -32304,6 +32356,19 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetGetTimestampUpdateInterval
   nameWithType: FlowtideBuilder.SetGetTimestampUpdateInterval
+- uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization(FlowtideDotNet.Core.Engine.LateMaterializationMode)
+  name: SetLateMaterialization(LateMaterializationMode)
+  href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_SetLateMaterialization_FlowtideDotNet_Core_Engine_LateMaterializationMode_
+  commentId: M:FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization(FlowtideDotNet.Core.Engine.LateMaterializationMode)
+  fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization(FlowtideDotNet.Core.Engine.LateMaterializationMode)
+  nameWithType: FlowtideBuilder.SetLateMaterialization(LateMaterializationMode)
+- uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization*
+  name: SetLateMaterialization
+  href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_SetLateMaterialization_
+  commentId: Overload:FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization
+  isSpec: "True"
+  fullName: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetLateMaterialization
+  nameWithType: FlowtideBuilder.SetLateMaterialization
 - uid: FlowtideDotNet.Core.Engine.FlowtideBuilder.SetMessageQueueSize(System.Int32)
   name: SetMessageQueueSize(int)
   href: api/FlowtideDotNet.Core.Engine.FlowtideBuilder.html#FlowtideDotNet_Core_Engine_FlowtideBuilder_SetMessageQueueSize_System_Int32_
@@ -32650,6 +32715,36 @@ references:
   isSpec: "True"
   fullName: FlowtideDotNet.Core.Engine.IReadWriteFactory.GetWriteOperator
   nameWithType: IReadWriteFactory.GetWriteOperator
+- uid: FlowtideDotNet.Core.Engine.LateMaterializationMode
+  name: LateMaterializationMode
+  href: api/FlowtideDotNet.Core.Engine.LateMaterializationMode.html
+  commentId: T:FlowtideDotNet.Core.Engine.LateMaterializationMode
+  fullName: FlowtideDotNet.Core.Engine.LateMaterializationMode
+  nameWithType: LateMaterializationMode
+- uid: FlowtideDotNet.Core.Engine.LateMaterializationMode.Auto
+  name: Auto
+  href: api/FlowtideDotNet.Core.Engine.LateMaterializationMode.html#FlowtideDotNet_Core_Engine_LateMaterializationMode_Auto
+  commentId: F:FlowtideDotNet.Core.Engine.LateMaterializationMode.Auto
+  fullName: FlowtideDotNet.Core.Engine.LateMaterializationMode.Auto
+  nameWithType: LateMaterializationMode.Auto
+- uid: FlowtideDotNet.Core.Engine.LateMaterializationMode.ForceOn
+  name: ForceOn
+  href: api/FlowtideDotNet.Core.Engine.LateMaterializationMode.html#FlowtideDotNet_Core_Engine_LateMaterializationMode_ForceOn
+  commentId: F:FlowtideDotNet.Core.Engine.LateMaterializationMode.ForceOn
+  fullName: FlowtideDotNet.Core.Engine.LateMaterializationMode.ForceOn
+  nameWithType: LateMaterializationMode.ForceOn
+- uid: FlowtideDotNet.Core.Engine.LateMaterializationMode.Off
+  name: Off
+  href: api/FlowtideDotNet.Core.Engine.LateMaterializationMode.html#FlowtideDotNet_Core_Engine_LateMaterializationMode_Off
+  commentId: F:FlowtideDotNet.Core.Engine.LateMaterializationMode.Off
+  fullName: FlowtideDotNet.Core.Engine.LateMaterializationMode.Off
+  nameWithType: LateMaterializationMode.Off
+- uid: FlowtideDotNet.Core.Engine.LateMaterializationMode.Placebo
+  name: Placebo
+  href: api/FlowtideDotNet.Core.Engine.LateMaterializationMode.html#FlowtideDotNet_Core_Engine_LateMaterializationMode_Placebo
+  commentId: F:FlowtideDotNet.Core.Engine.LateMaterializationMode.Placebo
+  fullName: FlowtideDotNet.Core.Engine.LateMaterializationMode.Placebo
+  nameWithType: LateMaterializationMode.Placebo
 - uid: FlowtideDotNet.Core.Engine.ReadOperatorInfo
   name: ReadOperatorInfo
   href: api/FlowtideDotNet.Core.Engine.ReadOperatorInfo.html

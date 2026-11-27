@@ -283,6 +283,48 @@ Class AbstractConnectorSourceFactory  <a class="header-action link-secondary" ti
 
 
 
+  <a id="FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_GetRowStoreKeyColumns_" data-uid="FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns*"></a>
+
+  <h3 id="FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_GetRowStoreKeyColumns_FlowtideDotNet_Substrait_Relations_ReadRelation_" data-uid="FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.GetRowStoreKeyColumns(FlowtideDotNet.Substrait.Relations.ReadRelation)">
+  GetRowStoreKeyColumns(ReadRelation)
+  <a class="header-action link-secondary" title="View source" href="https://github.com/koralium/flowtide/blob/main/src/FlowtideDotNet.Core/Connectors/AbstractConnectorSourceFactory.cs/#L45"><i class="bi bi-code-slash"></i></a>
+  </h3>
+
+  <div class="markdown level1 summary"><p>The names of the read's key columns, which are never stored.
+Declared by a source that can keep columns in a row store.
+Only a source built on <a class="xref" href="FlowtideDotNet.Core.Operators.Read.ColumnBatchReadBaseOperator.html">ColumnBatchReadBaseOperator</a> can.
+Every key column the source uses, named as in the schema.
+A source without keys gives an empty list.
+Null, the default, never gets a row store.</p>
+</div>
+  <div class="markdown level1 conceptual"></div>
+
+  <div class="codewrapper">
+    <pre><code class="lang-csharp hljs">public virtual IReadOnlyList&lt;string&gt;? GetRowStoreKeyColumns(ReadRelation readRelation)</code></pre>
+  </div>
+
+  <h4 class="section">Parameters</h4>
+  <dl class="parameters">
+    <dt><code>readRelation</code> <a class="xref" href="FlowtideDotNet.Substrait.Relations.ReadRelation.html">ReadRelation</a></dt>
+    <dd></dd>
+  </dl>
+
+  <h4 class="section">Returns</h4>
+  <dl class="parameters">
+    <dt><a class="xref" href="https://learn.microsoft.com/dotnet/api/system.collections.generic.ireadonlylist-1">IReadOnlyList</a>&lt;<a class="xref" href="https://learn.microsoft.com/dotnet/api/system.string">string</a>&gt;</dt>
+    <dd></dd>
+  </dl>
+
+
+
+
+
+
+
+
+
+
+
   <a id="FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_ModifyPlan_" data-uid="FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.ModifyPlan*"></a>
 
   <h3 id="FlowtideDotNet_Core_Connectors_AbstractConnectorSourceFactory_ModifyPlan_FlowtideDotNet_Substrait_Relations_ReadRelation_" data-uid="FlowtideDotNet.Core.Connectors.AbstractConnectorSourceFactory.ModifyPlan(FlowtideDotNet.Substrait.Relations.ReadRelation)">
