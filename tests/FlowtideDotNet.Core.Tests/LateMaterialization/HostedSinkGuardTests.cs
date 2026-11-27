@@ -362,6 +362,9 @@ public class HostedSinkGuardTests
 
         public override TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
             => new("test", writeRelation.NamedObject.DotSeperated, default);
+
+        public override IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation)
+            => [0];
     }
 
     private static (ReadRelation read, FetchRequiredColumnsRelation fetch, WriteRelation write) BuildThreeColumnFetchPlan()

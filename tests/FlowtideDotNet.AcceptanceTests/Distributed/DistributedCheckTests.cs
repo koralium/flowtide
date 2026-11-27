@@ -94,6 +94,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => DistributedStreamE2ETests.CreateStateOptions(TestName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));

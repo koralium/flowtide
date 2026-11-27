@@ -45,5 +45,13 @@ namespace FlowtideDotNet.Core.Connectors
         IStreamEgressVertex CreateSink(WriteRelation writeRelation, IFunctionsRegister functionsRegister, ExecutionDataflowBlockOptions dataflowBlockOptions);
 
         TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema);
+
+        /// <summary>
+        /// The sink's key columns as positions in the write's input.
+        /// Declared by a sink that reads row store columns itself.
+        /// Only a sink built on <see cref="Operators.Write.Column.ColumnGroupedWriteOperator"/> can.
+        /// Null, the default, gets every stored column as a value.
+        /// </summary>
+        IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation) => null;
     }
 }

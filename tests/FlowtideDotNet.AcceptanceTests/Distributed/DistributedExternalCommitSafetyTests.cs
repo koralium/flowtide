@@ -812,6 +812,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, _ => { }, onCompact: onCompact, onCommitVersion: onCommitVersion));
 
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
+                .WithSuiteLateMaterialization()
                 .AddPlan(CreatePlan(sql), false)
                 .WithStateOptions(new Storage.StateManager.StateManagerOptions()
                 {

@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using Xunit.Abstractions;
 
@@ -618,6 +619,7 @@ namespace FlowtideDotNet.AcceptanceTests
             // Tiny cache keeps eviction serializing pages during the scan, exercising the page write
             // lock. Descending order by runs the descending radix and boundary paths under the same pressure.
             CachePageCount = 256;
+            LateMaterialization = LateMaterializationMode.Off;
             SetPageSizeBytes(2048);
             GenerateData(10_000);
 

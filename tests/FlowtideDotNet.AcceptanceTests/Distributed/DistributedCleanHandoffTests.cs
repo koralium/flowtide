@@ -2643,6 +2643,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var logProvider = _logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
+                .WithSuiteLateMaterialization()
                 .AddPlan(CreateDistributedPlan(JoinSql, substreamCount), false)
                 .WithStateOptions(CreateStateOptions(testName, substreamName, fileProviders))
                 .AddConnectorManager(connectorManager);

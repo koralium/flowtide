@@ -35,5 +35,13 @@ namespace FlowtideDotNet.Core.Connectors
         {
             return writeRelation;
         }
+
+        /// <summary>
+        /// <inheritdoc cref="IConnectorSinkFactory.GetRowStoreFetchKeyColumns"/>
+        /// </summary>
+        public virtual IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation)
+        {
+            return null;
+        }
     }
 }

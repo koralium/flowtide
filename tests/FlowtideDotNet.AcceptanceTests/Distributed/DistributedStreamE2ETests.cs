@@ -137,6 +137,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -145,6 +146,12 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 })
                 .DistributeAutomatically(substreamCount)
                 .Build();
+
+            if (Environment.GetEnvironmentVariable(SuiteLateMaterialization.Variable) == "ForceOn")
+            {
+                Assert.Contains(_stream.Substreams.Values, substream =>
+                    substream.GetDiagnosticsGraph().Nodes.Values.Any(node => node.DisplayName == "Fetch required columns"));
+            }
 
             // The join is partitioned across all substreams even though the plan has one sink
             Assert.Equal(
@@ -218,6 +225,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -679,6 +687,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 configureSubstream: (substreamName, substreamBuilder) =>
                 {
                     substreamBuilder.WithCheckpointListener(new CountingCheckpointListener(() => Interlocked.Increment(ref checkpoints)));
+                    substreamBuilder.SetLateMaterialization(Core.Engine.LateMaterializationMode.Off);
                 });
 
             await _stream.StartAsync();
@@ -877,6 +886,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 })
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
                     substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
@@ -990,6 +1000,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 })
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
                     substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
@@ -1072,6 +1083,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 })
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     substreamBuilder.WithFailureListener(e => failures.Add((substreamName, e)));
                     var provider = logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
                     substreamBuilder.WithLoggerFactory(Microsoft.Extensions.Logging.LoggerFactory.Create(b =>
@@ -1324,6 +1336,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_normal_aggregate", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -1383,6 +1396,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_agg_over_join", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -1449,6 +1463,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_having_over_join", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -1589,6 +1604,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_crash_recovery", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     // The sink in the sink substream crashes on its first checkpoint,
@@ -1651,6 +1667,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_mutual_recovery", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     // Several crashes so each run goes through several mutual recoveries.
@@ -1711,6 +1728,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -1784,6 +1802,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => stateOptions != null ? stateOptions(substreamName) : CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     var crash = crashConfig?.Invoke(substreamName) ?? (0, 0);
@@ -2405,7 +2424,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 };
             }
 
-            _stream = BuildHost("e2e_spill_stop", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions);
+            _stream = BuildHost("e2e_spill_stop", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions, configureSubstream: (_, substreamBuilder) => substreamBuilder.SetLateMaterialization(Core.Engine.LateMaterializationMode.Off));
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult());
@@ -2420,7 +2439,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
             await stopTask;
             await _stream.DisposeAsync();
 
-            _stream = BuildHost("e2e_spill_stop", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions);
+            _stream = BuildHost("e2e_spill_stop", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions, configureSubstream: (_, substreamBuilder) => substreamBuilder.SetLateMaterialization(Core.Engine.LateMaterializationMode.Off));
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
@@ -2721,7 +2740,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 };
             }
 
-            _stream = BuildHost("e2e_spill", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions);
+            _stream = BuildHost("e2e_spill", NormalJoinSql, latestData, failures, stateOptions: CreateSmallCacheOptions, configureSubstream: (_, substreamBuilder) => substreamBuilder.SetLateMaterialization(Core.Engine.LateMaterializationMode.Off));
 
             await _stream.StartAsync();
 
@@ -3032,7 +3051,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             _stream = BuildHost("e2e_spill_crash", NormalJoinSql, latestData, failures,
                 crashConfig: substreamName => substreamName == "substream_0" ? (1, 1) : (0, 0),
-                stateOptions: CreateSpillOptions);
+                stateOptions: CreateSpillOptions, configureSubstream: (_, substreamBuilder) => substreamBuilder.SetLateMaterialization(Core.Engine.LateMaterializationMode.Off));
             await _stream.StartAsync();
 
             await WaitForSinkData(latestData, failures, "substream_0", GetExpectedJoinResult(), allowFailures: true);
@@ -4239,6 +4258,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -4306,6 +4326,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions(testName, substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));
@@ -4366,6 +4387,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
                 .WithStateOptionsFactory((streamName, substreamName) => CreateStateOptions("e2e_distinct_over_join", substreamName))
                 .ConfigureSubstream((substreamName, substreamBuilder) =>
                 {
+                    substreamBuilder.WithSuiteLateMaterialization();
                     var connectorManager = new ConnectorManager();
                     connectorManager.AddSource(new MockSourceFactory("*", _db, false));
                     connectorManager.AddSink(new MockSinkFactory("*", data => latestData[substreamName] = data, 0, watermark => { }));

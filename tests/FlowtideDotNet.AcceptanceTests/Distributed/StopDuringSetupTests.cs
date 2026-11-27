@@ -409,6 +409,7 @@ namespace FlowtideDotNet.AcceptanceTests.Distributed
 
             var logProvider = _logBuffers.GetOrAdd(substreamName, _ => new RingBufferLoggerProvider());
             var builder = new FlowtideBuilder($"{testName.Length}_{testName}_{substreamName}")
+                .WithSuiteLateMaterialization()
                 .AddPlan(CreatePlan(), false)
                 .WithStateOptions(new StateManagerOptions()
                 {

@@ -66,6 +66,11 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
         /// </summary>
         public int? MultiJoinMaxInputs { get; set; }
 
+        /// <summary>
+        /// When set, the stream's late materialization mode, over the environment's.
+        /// </summary>
+        public LateMaterializationMode? LateMaterialization { get; set; }
+
         public int MultiJoinGroupsMarked { get; private set; }
 
         /// <summary>
@@ -499,6 +504,16 @@ namespace FlowtideDotNet.AcceptanceTests.Internal
             if (UseColumnStore.HasValue)
             {
                 flowtideBuilder.ColumnStore(UseColumnStore.Value);
+            }
+
+            // The environment sets the mode for the whole suite
+            if (LateMaterialization != null)
+            {
+                flowtideBuilder.SetLateMaterialization(LateMaterialization.Value);
+            }
+            else
+            {
+                flowtideBuilder.WithSuiteLateMaterialization();
             }
 
             if (TaskScheduler != null)

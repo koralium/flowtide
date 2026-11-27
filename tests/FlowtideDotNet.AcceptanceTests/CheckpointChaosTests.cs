@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.AcceptanceTests.Entities;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Storage.Persistence;
@@ -53,6 +54,8 @@ namespace FlowtideDotNet.AcceptanceTests
                 _directory = directory;
                 // Small enough that eviction, the commit walk and fetches overlap.
                 CachePageCount = 128;
+                // A row store's write queue needs more pages than this cache
+                LateMaterialization = LateMaterializationMode.Off;
                 MinCachePageCount = 32;
             }
 

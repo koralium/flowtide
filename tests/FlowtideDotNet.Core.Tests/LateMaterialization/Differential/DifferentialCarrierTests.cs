@@ -22,7 +22,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
     public class DifferentialCarrierTests
     {
         // k, n, text, note; the last two stored
-        private static ReadRelation Read(string table, bool hosted)
+        internal static ReadRelation Read(string table, bool hosted)
         {
             return new ReadRelation()
             {
@@ -36,17 +36,17 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             };
         }
 
-        private static DirectFieldReference Field(int field)
+        internal static DirectFieldReference Field(int field)
         {
             return new DirectFieldReference() { ReferenceSegment = new StructReferenceSegment() { Field = field } };
         }
 
-        private static ScalarFunction Compare(string name, Expression left, Expression right)
+        internal static ScalarFunction Compare(string name, Expression left, Expression right)
         {
             return new ScalarFunction() { ExtensionUrn = FunctionsComparison.Urn, ExtensionName = name, Arguments = [left, right] };
         }
 
-        private static Plan Write(Relation input, int columns)
+        internal static Plan Write(Relation input, int columns)
         {
             return new Plan()
             {
@@ -62,20 +62,20 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             };
         }
 
-        private static DifferentialTable Table(string name, params object?[][] rows)
+        internal static DifferentialTable Table(string name, params object?[][] rows)
         {
             var table = new DifferentialTable(name, 4);
             table.Load(rows);
             return table;
         }
 
-        private static object?[] Row(long key, long? number, string? text, string? note)
+        internal static object?[] Row(long key, long? number, string? text, string? note)
         {
             return [key, number, text, note];
         }
 
         // Rows with n over 10, flagged over 25
-        private static Plan FilterAndProject(bool hosted)
+        internal static Plan FilterAndProject(bool hosted)
         {
             var filter = new FilterRelation()
             {
@@ -122,7 +122,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // l joined with r on l.n = r.k
-        private static Plan Join(bool hosted, JoinType type)
+        internal static Plan Join(bool hosted, JoinType type)
         {
             var left = Read("l", hosted);
             var right = Read("r", hosted);
@@ -198,7 +198,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             await pair.Expect(rows.ToArray());
         }
 
-        private static int Count(DifferentialStream stream, string displayName)
+        internal static int Count(DifferentialStream stream, string displayName)
         {
             return stream.Stream.GetDiagnosticsGraph().Nodes.Values.Count(x => x.DisplayName == displayName);
         }
@@ -241,7 +241,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // a joins b on n, b joins c on n
-        private static Plan ThreeTables(bool hosted, JoinType second)
+        internal static Plan ThreeTables(bool hosted, JoinType second)
         {
             var a = Read("a", hosted);
             var b = Read("b", hosted);
@@ -304,7 +304,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // Rows over 10 and rows under 30, some twice
-        private static Plan UnionOfTwoFilters(bool hosted)
+        internal static Plan UnionOfTwoFilters(bool hosted)
         {
             Relation Branch(string comparison, int bound)
             {
@@ -351,13 +351,13 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             return new ScalarFunction() { ExtensionUrn = "extension:test:rows", ExtensionName = "is_odd", Arguments = [Field(0)] };
         }
 
-        private static void RegisterRowsOnly(Core.Engine.FlowtideBuilder builder)
+        internal static void RegisterRowsOnly(Core.Engine.FlowtideBuilder builder)
         {
             ((Core.Compute.FunctionsRegister)builder.FunctionsRegister).RegisterScalarFunctionWithExpression(
                 "extension:test:rows", "is_odd", x => FlexBuffers.FlxValue.FromBytes(FlexBuffers.FlexBuffer.SingleValue(x.AsLong % 2 == 1)));
         }
 
-        private static Plan RowFunctionFilter(bool hosted, bool fetchFirst)
+        internal static Plan RowFunctionFilter(bool hosted, bool fetchFirst)
         {
             Relation input = Read("t", hosted);
             if (hosted && fetchFirst)
@@ -412,7 +412,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         }
 
         // The left join of l and r, computed here
-        private static string[] LeftJoined(Dictionary<string, DifferentialTable> tables)
+        internal static string[] LeftJoined(Dictionary<string, DifferentialTable> tables)
         {
             var rows = new List<string>();
             foreach (var left in tables["l"].Rows)

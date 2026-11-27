@@ -51,6 +51,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
         // With one watermark name two tables act as one
         public string WatermarkName { get; init; }
 
+        // The most rows the source sends in one batch
+        public int MaxBatch { get; set; } = int.MaxValue;
+
         public List<object?[]> Rows { get; } = new List<object?[]>();
 
         public ConcurrentQueue<(object?[] row, int weight)[]> Deltas { get; } = new ConcurrentQueue<(object?[] row, int weight)[]>();
@@ -181,9 +184,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             {
                 rows = _table.Rows.Select(x => (x, 1)).ToArray();
             }
-            if (rows.Length > 0)
+            foreach (var part in rows.Chunk(_table.MaxBatch))
             {
-                yield return new ColumnReadEvent(Batch(rows), ++_watermark);
+                yield return new ColumnReadEvent(Batch(part), ++_watermark);
             }
         }
 
@@ -210,7 +213,10 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                         if (rows.Length > 0)
                         {
                             Volatile.Write(ref _table.TakenAt, Volatile.Read(ref _table.Barriers));
-                            yield return new DeltaReadEvent(Batch(rows), new Watermark(_table.WatermarkName, LongWatermarkValue.Create(++_watermark)));
+                        }
+                        foreach (var part in rows.Chunk(_table.MaxBatch))
+                        {
+                            yield return new DeltaReadEvent(Batch(part), new Watermark(_table.WatermarkName, LongWatermarkValue.Create(++_watermark)));
                         }
                         // Counted last, a settle waits for it
                         Interlocked.Increment(ref _table.Sent);
@@ -325,6 +331,9 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
 
         // False makes the sink leave the fetch to an operator
         public bool CanHost { get; set; } = true;
+
+        // What the sink's factory says its key columns are
+        public IReadOnlyList<int> DeclaredKeys { get; init; } = [0];
 
         // Test hooks: a background send began, and its gate
         public Action? SendEntered { get; set; }
@@ -481,6 +490,11 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                 return new DifferentialSource(readRelation, owner.Tables[readRelation.NamedTable.DotSeperated], functionsRegister);
             }
 
+            public override IReadOnlyList<string>? GetRowStoreKeyColumns(ReadRelation readRelation)
+            {
+                return [readRelation.BaseSchema.Names[0]];
+            }
+
             public override Core.Lineage.TableLineageMetadata GetLineageMetadata(ReadRelation readRelation, bool includeSchema)
             {
                 return new Core.Lineage.TableLineageMetadata("test", readRelation.NamedTable.DotSeperated, default);
@@ -496,6 +510,11 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                     return new DifferentialGroupedSink(writeRelation, owner.Destination);
                 }
                 return owner.Sink;
+            }
+
+            public override IReadOnlyList<int>? GetRowStoreFetchKeyColumns(WriteRelation writeRelation)
+            {
+                return owner.Destination?.DeclaredKeys;
             }
 
             public override Core.Lineage.TableLineageMetadata GetLineageMetadata(WriteRelation writeRelation, bool includeSchema)
@@ -666,6 +685,34 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
             Plain = new DifferentialStream(() => plan(false), configure, tables());
         }
 
+        private DifferentialPair(DifferentialStream hosted, DifferentialStream plain)
+        {
+            Hosted = hosted;
+            Plain = plain;
+        }
+
+        // One plan without stores, the planner places the hosted side's
+        public static DifferentialPair Planned(Func<Plan> plan, Func<DifferentialTable[]> tables, Action<FlowtideBuilder>? configure = null, Func<DifferentialDestination>? destination = null)
+        {
+            var pair = new DifferentialPair(
+                new DifferentialStream(plan, builder =>
+                {
+                    configure?.Invoke(builder);
+                    builder.SetLateMaterialization(LateMaterializationMode.ForceOn);
+                }, tables()),
+                new DifferentialStream(plan, builder =>
+                {
+                    configure?.Invoke(builder);
+                    builder.SetLateMaterialization(LateMaterializationMode.Off);
+                }, tables()));
+            if (destination != null)
+            {
+                pair.Hosted.Destination = destination();
+                pair.Plain.Destination = destination();
+            }
+            return pair;
+        }
+
         public DifferentialStream Hosted { get; }
 
         public DifferentialStream Plain { get; }
@@ -744,7 +791,7 @@ namespace FlowtideDotNet.Core.Tests.LateMaterialization.Differential
                     if (DateTime.UtcNow > until)
                     {
                         _failed = true;
-                        Assert.Fail($"A stream did not settle: state {stream.Stream.State}, covered {stream.Covered}.");
+                        Assert.Fail($"The {(stream == Hosted ? "hosted" : "plain")} stream did not settle: state {stream.Stream.State}, covered {stream.Covered}, failures {string.Join(" | ", stream.Failures.Select(x => x?.Message))}.");
                     }
                     await Task.Delay(25);
                 }

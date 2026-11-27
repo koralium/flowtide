@@ -10,6 +10,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+using FlowtideDotNet.Core.Engine;
 using FlowtideDotNet.AcceptanceTests.Internal;
 using FlowtideDotNet.Core;
 using Xunit.Abstractions;
@@ -52,7 +53,7 @@ namespace FlowtideDotNet.AcceptanceTests
         [Fact]
         public async Task DisposeOfAPausedStreamWithAParkedMessageCompletes()
         {
-            var stream = new GatedSinkTestStream($"{nameof(StreamDisposeTests)}_{nameof(DisposeOfAPausedStreamWithAParkedMessageCompletes)}") { SourceBatchSize = 1 };
+            var stream = new GatedSinkTestStream($"{nameof(StreamDisposeTests)}_{nameof(DisposeOfAPausedStreamWithAParkedMessageCompletes)}") { LateMaterialization = LateMaterializationMode.Off, SourceBatchSize = 1 };
             stream.Generate(2000);
             try
             {
